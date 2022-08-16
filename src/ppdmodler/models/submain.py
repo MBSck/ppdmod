@@ -2,13 +2,14 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
-from src.functionality.readout import ReadoutFits
-from src.functionality.fourier import FFT
-from src.functionality.utilities import trunc, azimuthal_modulation
-from src.models import Gauss2D, Ring, CompoundModel, InclinedDisk, UniformDisk
+from .functionality.fourier import FFT
+from .functionality.readout import ReadoutFits
+from .functionality.utilities import trunc, azimuthal_modulation
+from .models import Gauss2D, Ring, CompoundModel, InclinedDisk, UniformDisk
 
 # Shows the full np.arrays, takes ages to print the arrays
 # np.set_printoptions(threshold=sys.maxsize)
+
 
 def check_flux_behaviour(model, wavelength):
     """Plots the scaling behaviour of the fluxes"""
