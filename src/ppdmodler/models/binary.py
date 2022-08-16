@@ -1,15 +1,14 @@
 import sys
+import inspect
 import numpy as np
 import matplotlib.pyplot as plt
-import inspect
 
 from typing import Any, Dict, List, Union, Optional
 
-from src.functionality.baseClasses import Model
-from src.functionality.utilities import timeit, set_size, set_uvcoords,\
-        mas2rad
+from .functionality.fourier import FFT
+from .functionality.baseClasses import Model
+from .functionality.utilities import timeit, set_size, set_uvcoords, mas2rad
 
-from src.functionality.fourier import FFT
 
 class Binary(Model):
     """..."""
@@ -111,38 +110,5 @@ class Binary(Model):
 
 
 if __name__ == "__main__":
-    wavelength, sampling, mas_size, size = 1.55e-6, 256, 100, 35
-    size_Mlambda = size/(wavelength*1e6)
-    binary = Binary(1500, 7900, 19, 140, wavelength)
-    model = binary.eval_model([5, 2.5, 15, 0, -10, -20], mas_size, sampling)
-    fft = FFT(model, wavelength, binary.pixel_scale, zero_padding_order=4)
-
-    # FIXME: The phase information is the wrong way around -> Check
-    vis = binary.eval_vis([5, 2.5, 15, 0, -10, -20], wavelength,
-                          sampling, size)
-    vis_norm = abs(vis)/abs((np.fft.ifftshift(vis))[0][0])
-
-    fig, axarr = plt.subplots(2, 3)
-    ax, bx, cx = axarr[0].flatten()
-    ax2, bx2, cx2 = axarr[1].flatten()
-
-    matplot_axis = [fig, ax, bx, cx]
-
-    ax2.imshow(vis_norm, extent=[-size, size,
-                                 -size_Mlambda, size_Mlambda],
-              aspect=wavelength*1e6)
-    bx2.imshow(np.angle(vis, deg=True), extent=[-size, size,
-                                                -size_Mlambda, size_Mlambda],
-              aspect=wavelength*1e6)
-
-    ax2.set_title("Ana. calc. Visibilities")
-    ax2.set_xlabel("u [m]")
-    ax2.set_ylabel(r"v [M$\lambda$]")
-
-    bx2.set_title("Ana. calc. Phase")
-    bx2.set_xlabel("u [m]")
-    bx2.set_ylabel(r"v [M$\lambda$]")
-
-    fft.plot_amp_phase(matplot_axis, corr_flux=False,
-                       zoom=size, plt_save=False)
+    ...
 

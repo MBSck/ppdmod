@@ -4,11 +4,12 @@ import matplotlib.pyplot as plt
 
 from typing import Any, Dict, List, Union, Optional
 
-from src.functionality.baseClasses import Model
-from src.functionality.utilities import timeit, azimuthal_modulation, mas2rad
-from src.models import Delta, Ring
+from .functionality.baseClasses import Model
+from .functionality.utilities import timeit, azimuthal_modulation, mas2rad
+from . import Delta, Ring
 
-from src.functionality.fourier import FFT
+from .functionality.fourier import FFT
+
 
 class CompoundModel(Model):
     """Infinitesimal thin ring model. Can be both cirular or an ellipsoid, i.e.
@@ -82,10 +83,5 @@ class CompoundModel(Model):
 
 
 if __name__ == "__main__":
-    wavelength, sampling, mas_size = 10e-6, 2**10, 50
-    c = CompoundModel(1500, 7900, 19, 140, 8e-6)
-    c_flux = c.eval_model([1.5, 135, 1, 1, 4., 0.4, 0.7], mas_size, sampling)
-    fft = FFT(c_flux, wavelength, c.pixel_scale, 2)
-    fft.plot_amp_phase(zoom=1000)
-    plt.show()
+    ...
 

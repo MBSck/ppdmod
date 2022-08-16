@@ -1,12 +1,13 @@
 import sys
-import numpy as np
 import inspect
+import numpy as np
 import matplotlib.pyplot as plt
 
 from typing import Any, Dict, List, Union, Optional
 
-from src.functionality.baseClasses import Model
-from src.functionality.utilities import timeit, set_grid, set_uvcoords, mas2rad
+from .functionality.baseClasses import Model
+from .functionality.utilities import timeit, set_grid, set_uvcoords, mas2rad
+
 
 class OpticallyThinSphere(Model):
     """Optically Thin Sphere model
@@ -97,10 +98,5 @@ class OpticallyThinSphere(Model):
         return (3/(np.pi*diameter*B)**3)*(np.sin(np.pi*diameter*B)-np.pi*diameter*B*np.cos(np.pi*diameter*B))
 
 if __name__ == "__main__":
-    o = OpticallyThinSphere()
-
-    o_model = o.eval_model([1.], 128, 256)
-    print(o.get_flux(0.55, 1500, 19, 8e-6))
-    plt.imshow(o_model)
-    plt.show()
+    ...
 

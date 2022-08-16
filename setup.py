@@ -6,7 +6,8 @@ with open("README.md", "r",) as fh:
 setup(
     name="ppdmodler",
     version="0.0.1",
-    description="Modelling tools for protoplanetary disks",
+    description="A pipeline to model and fit protoplanetary disk data"\
+                "observed with the MATISSE-pipeline",
     author="Marten Scheuck",
     url="",
     py_modules=["main"],
@@ -31,6 +32,11 @@ setup(
     extras_require = {
         "dev": [
             "pytest>=3.7",
+            "numpy",
+            "scipy",
+            "emcee",
+            "dynesty",
+            "matplotlib"
         ],
     },
     # requirements.txt is for apps deployed on machines you control

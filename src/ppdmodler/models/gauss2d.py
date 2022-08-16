@@ -1,15 +1,13 @@
 import sys
+import inspect
 import numpy as np
 import matplotlib.pyplot as plt
-import inspect
 
 from typing import Any, Dict, List, Union, Optional
 
-from src.functionality.baseClasses import Model
-from src.functionality.utilities import timeit, set_grid, set_uvcoords,\
-        mas2rad
-
-from src.functionality.fourier import FFT
+from .functionality.fourier import FFT
+from .functionality.baseClasses import Model
+from .functionality.utilities import timeit, set_grid, set_uvcoords, mas2rad
 
 
 class Gauss2D(Model):
@@ -113,9 +111,5 @@ class Gauss2D(Model):
         return np.exp(-(np.pi*fwhm*B)**2/(4*np.log(2)))
 
 if __name__ == "__main__":
-    wavelength, mas_fov, size, sampling = 8e-6, 100, 2**8, 2**10
-    g = Gauss2D(1500, 7900, 19, 140, wavelength)
-    g_model = g.eval_model([2.5], mas_fov, size, sampling)
-    fft = FFT(g_model, wavelength, g.pixel_scale, 3)
-    fft.plot_amp_phase(corr_flux=True, zoom=1000, plt_save=False)
+    ...
 

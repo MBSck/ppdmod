@@ -6,9 +6,10 @@ import matplotlib.pyplot as plt
 from scipy.special import j0
 from typing import Any, Dict, List, Union, Optional
 
-from src.functionality.baseClasses import Model
-from src.functionality.utilities import timeit, set_grid, set_uvcoords, \
+from .functionality.baseClasses import Model
+from .functionality.utilities import timeit, set_grid, set_uvcoords,\
         temperature_gradient, mas2rad
+
 
 # TODO: Finish revamping both the eval_mod and eval_vis so the fit to the new
 # data format
@@ -211,13 +212,5 @@ class InclinedDisk(Model):
         return output_lst
 
 if __name__ == "__main__":
-    inclined = InclinedDisk()
-    model = inclined.eval_model([3., 5., 45, 45, 45], 512)
-    plt.imshow(model)
-    plt.show()
+    ...
 
-    '''
-    i_vis = i.eval_vis(radius=256.1, q=0.55, r_0=10, T_0=6000, sampling=512, wavelength=8e-06, distance=1, inc_angle=60, pos_angle_axis=45, pos_angle_measure=45)
-    plt.imshow(i_vis)
-    plt.show()
-    '''

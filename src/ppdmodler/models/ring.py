@@ -1,19 +1,17 @@
 import sys
+import inspect
 import numpy as np
 import matplotlib.pyplot as plt
-import inspect
 
 from scipy.special import j0
 from typing import Any, Dict, List, Union, Optional
 
-from src.functionality.baseClasses import Model
-from src.functionality.constant import I
-from src.functionality.fourier import FFT
-from src.functionality.utilities import timeit, set_grid, set_uvcoords,\
-        mas2rad, trunc, azimuthal_modulation
+from .functionality.baseClasses import Model
+from .functionality.constant import I
+from .functionality.fourier import FFT
+from .functionality.utilities import timeit, set_grid, set_uvcoords,\
+        mas2rad, azimuthal_modulation
 
-# TODO: Make the addition of the visibilities work properly, think of OOP
-# abilities
 
 class Ring(Model):
     """Infinitesimal thin ring model. Can be both cirular or an ellipsoid, i.e.
@@ -145,13 +143,5 @@ class Ring(Model):
         return j0(2*np.pi*r_max*B)
 
 if __name__ == "__main__":
-    wavelength, mas_fov, sampling, width, size  = 3.5e-6, 10, 2**8, 0.05, 2500
-    size_Mlambda = size/(wavelength*1e6)
-
-    r = Ring(1500, 7900, 19, 140, wavelength)
-    r_model = r.eval_model([0.6, 135], mas_fov, sampling,\
-                           inner_radius=1., outer_radius=2)
-    plt.imshow(r_model, extent=[-size, size, -size_Mlambda, size_Mlambda],
-              aspect=wavelength*1e6)
-    plt.show()
+    ...
 
