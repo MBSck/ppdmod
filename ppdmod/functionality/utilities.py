@@ -15,12 +15,159 @@ from typing import Any, Dict, List, Union, Optional, Callable
 
 from .constants import *
 
-# TODO: Make progress bar into a decorator and also keep the time of the
-# process and show the max time
-
-# TODO: Finish the fit function, but maybe implement it in the plotter instead?
 
 # Functions
+
+def model4fit_numerical(theta: np.ndarray, model_param_lst: List,
+                        uv_info_lst: List, vis_lst: List) -> np.ndarray:
+    """The model image, that is Fourier transformed for the fitting process
+
+    Parameters
+    ----------
+    theta: np.ndarray
+    model_param_lst: List
+    uv_info_lst: List
+    vis_lst: List
+
+    Returns
+    -------
+    amp: np.ndarray
+        Amplitudes of the model interpolated for the (u, v)-coordinates
+    cphases: np.ndarray
+        Closure phases of the model interpolated for the (u, v)-coordinates
+    """
+    model, pixel_size, sampling, wavelength,\
+            zero_padding_order, bb_params, _ = model_param_lst
+    uvcoords, u, v, t3phi_uvcoords = uv_info_lst
+    vis, vis2, intp = vis_lst
+
+    amp_lst, cphase_lst = [], []
+
+    for i in wavelength:
+        model_base = model(*bb_params, i)
+        model_flux = model_base.eval_model(theta, pixel_size, sampling)
+        fft = FFT(model_flux, i, model_base.pixel_scale,
+                 zero_padding_order)
+        amp, cphase, xycoords = fft.get_uv2fft2(uvcoords, t3phi_uvcoords,
+                                               corr_flux=vis, vis2=vis2,
+                                               intp=intp)
+        if len(amp) > 6:
+            flux_ind = np.where([i % 6 == 0 for i, o in
+                                 enumerate(amp)])[0].tolist()
+            amp = np.insert(amp, flux_ind, np.sum(model_flux))
+        else:
+            amp = np.insert(amp, 0, np.sum(model_flux))
+
+        amp_lst.append(amp)
+        cphase_lst.append(cphase)
+
+    return np.array(amp_lst), np.array(cphase_lst)
+
+def lnlike(theta: np.ndarray, realdata: List,
+           model_param_lst: List, uv_info_lst: List,
+           vis_lst: List) -> float:
+    """Takes theta vector and the x, y and the yerr of the theta.
+    Returns a number corresponding to how good of a fit the model is to your
+    data for a given set of parameters, weighted by the data points.
+
+
+    Parameters
+    ----------
+    theta: np.ndarray
+        A list of all the parameters that ought to be fitted
+    realdata: List
+    model_param_lst: List
+    uv_info_lst: List
+    vis_lst: List
+
+    Returns
+    -------
+    float
+        The goodness of the fitted model (will be minimised)
+    """
+    amp, cphase = map(lambda x: np.array(x), realdata[0])
+    amperr, cphaseerr = map(lambda x: np.array(x), realdata[1])
+
+    if amperr.shape != (7,):
+        sigma2amp = np.array([[x**2 for x in i] for i in amperr])
+        sigma2cphase = np.array([[x**2 for x in i] for i in cphaseerr])
+    else:
+        sigma2amp, sigma2cphase= map(lambda x: x**2, [amperr, cphaseerr])
+
+    amp_mod, cphase_mod = model4fit_numerical(theta, model_param_lst,
+                                              uv_info_lst, vis_lst)
+
+    amp_chi_sq = chi_sq(amp, sigma2amp, amp_mod)
+    cphase_chi_sq = chi_sq(cphase, sigma2cphase, cphase_mod)
+
+    return -0.5*(amp_chi_sq + cphase_chi_sq), [amp_chi_sq, cphase_chi_sq]
+
+def lnprior(theta: np.ndarray, priors: List) -> float:
+    """Checks if all variables are within their priors (as well as
+    determining them setting the same).
+
+    If all priors are satisfied it needs to return '0.0' and if not '-np.inf'
+    This function checks for an unspecified amount of flat priors. If upper
+    bound is 'None' then no upper bound is given
+
+    Parameters
+    ----------
+    theta: np.ndarray
+        A list of all the parameters that ought to be fitted
+    priors: List
+        A list containing all the prior's bounds
+
+    Returns
+    -------
+    float
+        Return-code 0.0 for within bounds and -np.inf for out of bound
+        priors
+    """
+    check_conditons = []
+
+    for i, o in enumerate(priors):
+        if o[1] is None:
+            if o[0] < theta[i]:
+                check_conditons.append(True)
+            else:
+                check_conditons.append(False)
+        else:
+            if o[0] < theta[i] < o[1]:
+                check_conditons.append(True)
+            else:
+                check_conditons.append(False)
+
+    return 0.0 if all(check_conditons) else -np.inf
+
+def lnprob(theta: np.ndarray, realdata: List,
+           model_param_lst: List, uv_info_lst: List,
+           vis_lst: List) -> np.ndarray:
+    """This function runs the lnprior and checks if it returned -np.inf, and
+    returns if it does. If not, (all priors are good) it returns the inlike for
+    that model (convention is lnprior + lnlike)
+
+    Parameters
+    ----------
+    theta: List
+        A vector that contains all the parameters of the model
+    realdata: List
+    model_param_lst: List
+    uv_info_lst: List
+    vis_lst: List
+
+    Returns
+    -------
+    float
+        The minimisation value or -np.inf if it fails
+    """
+    priors = model_param_lst[-1]
+    lp = lnprior(theta, priors)
+
+    if not np.isfinite(lp):
+        return -np.inf
+
+    return lp +\
+            lnlike(theta, realdata, model_param_lst, uv_info_lst, vis_lst)[0]
 
 def progress_bar(progress: int, total: int):
     """Displays a progress bar

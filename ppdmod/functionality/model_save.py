@@ -15,9 +15,7 @@ from .readout import ReadoutFits
 from .utilities import progress_bar, get_rndarr_from_bounds
 
 # TODO: Make the model save the numbers of pixel and zero padding that was used
-# for the calculation and some more edge data
-
-# TODO: Do this within the fits file
+# for the calculation and some more edge data (Do this within the fits file)
 
 def loop_model4wl(model, theta: List, bb_params: List,
                   mas_size: int, px_size: int,

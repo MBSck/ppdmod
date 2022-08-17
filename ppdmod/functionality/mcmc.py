@@ -49,34 +49,16 @@ import corner
 import numpy as np
 import matplotlib.pyplot as plt
 
-from glob import glob
 from pathlib import Path
 from schwimmbad import MPIPool
 from multiprocessing import Pool, cpu_count
-from typing import Any, Dict, List, Union, Optional
+from typing import Any, Dict, List, Union, Optional, Callable
 
 from .fourier import FFT
-from .readout import ReadoutFits, read_single_dish_txt2np
-from .utilities import chi_sq, plot_txt, plot_amp_phase_comparison
-
-# TODO: Make function that randomly assigns starting parameters from priors
-
-# FIXME: The code has some difficulties rescaling for higher pixel numbers
-# and does in that case not approximate the right values for the corr_fluxes,
-# see pixel_scaling
+from .utilities import chi_sq, plot_txt, plot_amp_phase_comparison, lnprob
 
 # TODO: Implement global parameter search algorithm (genetic algorithm)
-
 # TODO: Implement optimizer algorithm
-
-# TODO: Make plots of the model + fitting, that show the visibility curve, and
-# two more that show the fit of the visibilities and the closure phases to the
-# measured one
-
-# TODO: Make one plot that shows a model of the start parameters and the
-# uv-points plotted on top, before fitting starts and options to then change
-# them in order to get the best fit (Even multiple times)
-
 
 def generate_valid_guess(initial: List, priors: List,
                          nwalkers: int, frac: float) -> np.ndarray:
@@ -109,148 +91,6 @@ def generate_valid_guess(initial: List, priors: List,
         guess_lst.append(guess)
 
     return guess_lst
-
-def get_data(model, pixel_size: int, sampling: int,
-             wl_sel: Union[List, float],
-             flux_file: Path = None,
-             zero_padding_order: Optional[int] = 2,
-             bb_params: Optional[List] = [],
-             priors: Optional[List] = [],
-             vis2: Optional[bool] = False,
-             intp: Optional[bool] = False,
-             average_bin: Optional[float] = 0.2,
-             fits_file: Optional[Path] = [],
-             path_to_fits: Optional[Path] = "") -> List:
-    """Fetches the required info from the '.fits'-files and then returns a
-    tuple containing it.
-
-    If no wavelength index ('wl_ind') is provided, it fetches the data for all
-    the wavelengths (polychromatic)
-
-    If a few wavelength indices are provided, it will fetch them and average
-    them with an area around them.
-
-    The data can also be interpolated downwards, to have less gridpoints based
-    on the resolution of the problem.
-
-    Parameters
-    ----------
-    model
-        The model that is to be calculated
-    pixel_size: int
-        The size of the FOV, that is used
-    sampling: int
-        The amount of pixels used in the model image
-    wl_sel: List | float
-        Picks the wavelengths to be fitted to
-    flux_file: Path, optional
-        An additional '.fits'-file that contains the flux of the object
-    zero_padding_order: int, optional
-        The order of the zero padding
-    bb_params: List
-        The blackbody parameters that are used for Planck's law
-    priors: List, optional
-        The priors that set the bounds for the fitting algorithm
-    intp: bool, optional
-        Determines if it interpolates or rounds to the nearest pixel
-    average_bin: float, optional
-        The area around the wl_ind's return value around which is averaged.
-        Input is in microns
-    intp_down: bool, optional
-        Interpolates the wavelength grid downwards to fit a certain number of
-        parameters
-    fits_file: Path, optional
-        The path to a (.fits)-file
-    path_to_fits: Path, optional
-        The path from which the (.fits)-files are to be accessed. Either
-        'fits_files' or 'path_to_fits' must be given
-
-    Returns
-    -------
-    tuple
-    """
-    if path_to_fits:
-        fits_files = glob(os.path.join(path_to_fits, "*.fits"))
-    elif fits_file:
-        fits_files = [fits_file]
-    else:
-        raise IOError("Either 'path_to_fits' or 'fits_file' must be set!")
-
-    if path_to_fits and fits_file:
-        warnings.warn("Both 'path_to_fits' and 'fits_file' are set, this will"\
-                     " default to use 'path_to_fits', category=ResourceWarning")
-
-    vis_lst, vis_err_lst = [[] for _ in wl_sel], [[] for _ in wl_sel]
-    cphase_lst, cphase_err_lst = [[] for _ in wl_sel], [[] for _ in wl_sel]
-    flux_lst, flux_err_lst = [[] for _ in wl_sel], [[] for _ in wl_sel]
-    u_lst, v_lst, uvcoords_lst = [], [], []
-    t3phi_uvcoords_lst = [[[] for _ in range(3)] for _ in range(2)]
-
-    wl_sel = [i*1e-6 for i in wl_sel]
-    average_bin *= 1e-6
-
-    for fits_file in fits_files:
-        readout = ReadoutFits(fits_file)
-        wavelength = readout.get_wl()
-
-        for i, o in enumerate(wl_sel):
-            wl_ind = np.where(np.logical_and(wavelength > (o-average_bin/2),
-                                             wavelength < (o+average_bin/2)))[0].tolist()
-
-            if vis2:
-                vis, viserr = map(list, zip(*[readout.get_vis24wl(x) for x in wl_ind]))
-            else:
-                vis, viserr = map(list, zip(*[readout.get_vis4wl(x) for x in wl_ind]))
-
-            cphase, cphaseerr = map(list, zip(*[readout.get_t3phi4wl(x) for x in wl_ind]))
-
-            if flux_file:
-                # FIXME: Check if there is real fluxerr -> If yes, add it
-                # FIXME: Check if this still works with the polychromatic approach
-                flux = read_single_dish_txt2np(flux_file, wavelength)[wavelength[wl_ind]]
-                fluxerr = None
-            else:
-                flux, fluxerr = map(list, zip(*[readout.get_flux4wl(x) for x in wl_ind]))
-
-            # NOTE: Fluxerr is just 20% of flux, if no fluxerr is given
-            vis, viserr, flux, fluxerr = map(lambda x: np.mean(x, axis=0),
-                                             [vis, viserr, flux, fluxerr])
-
-            vis = np.insert(vis, 0, flux)
-            viserr = np.insert(viserr, 0, fluxerr) if fluxerr is not None else \
-                    np.insert(viserr, 0, flux*0.2)
-
-            vis_lst[i].extend(vis)
-            vis_err_lst[i].extend(viserr)
-
-            # FIXME: cannot mean over all cphase as more than one fits file
-            cphase_lst[i].extend(np.mean(cphase, axis=0))
-            cphase_err_lst[i].extend(np.mean(cphaseerr, axis=0))
-
-            # FIXME: Check how the flux is the calculated vs the model
-            flux_lst[i].append(flux)
-            flux_err_lst[i].append(fluxerr)
-
-        u, v = readout.get_split_uvcoords()
-        u_lst.extend(u)
-        v_lst.extend(v)
-        uvcoords_lst.extend(readout.get_uvcoords())
-
-        for i, o in enumerate(t3phi_uvcoords_lst):
-            for j, l in enumerate(o):
-                l.extend(readout.get_t3phi_uvcoords()[i][j])
-
-    t3phi_uvcoords_lst_reformatted = []
-    for x, y in zip(*t3phi_uvcoords_lst):
-        t3phi_uvcoords_lst_reformatted.extend(list(zip(x, y)))
-
-    data = ([vis_lst, cphase_lst], [vis_err_lst, cphase_err_lst])
-    uv_info_lst = [uvcoords_lst, u_lst, v_lst, t3phi_uvcoords_lst_reformatted]
-    model_param_lst = [model, pixel_size, sampling, wl_sel,
-                       zero_padding_order, bb_params, priors]
-    bool_lst = [not vis2, vis2, intp]
-
-    return [data, model_param_lst, uv_info_lst, bool_lst]
 
 def print_values(realdata: List, datamod: List,
                  theta_max: List, chi_sq_values: List) -> None:
@@ -409,142 +249,11 @@ def plot_chains(sampler: np.ndarray, model, theta: List,
     else:
         plt.savefig(os.path.join(save_path, plot_name))
 
-def model4fit_numerical(theta: np.ndarray, model_param_lst,
-                        uv_info_lst, vis_lst) -> np.ndarray:
-    """The model image, that is Fourier transformed for the fitting process"""
-    model, pixel_size, sampling, wavelength,\
-            zero_padding_order, bb_params, _ = model_param_lst
-    uvcoords, u, v, t3phi_uvcoords = uv_info_lst
-    vis, vis2, intp = vis_lst
-
-    amp_lst, cphase_lst = [], []
-
-    for i in wavelength:
-        model_base = model(*bb_params, i)
-        model_flux = model_base.eval_model(theta, pixel_size, sampling)
-        fft = FFT(model_flux, i, model_base.pixel_scale,
-                 zero_padding_order)
-        amp, cphase, xycoords = fft.get_uv2fft2(uvcoords, t3phi_uvcoords,
-                                               corr_flux=vis, vis2=vis2,
-                                               intp=intp)
-        if len(amp) > 6:
-            flux_ind = np.where([i % 6 == 0 for i, o in
-                                 enumerate(amp)])[0].tolist()
-            amp = np.insert(amp, flux_ind, np.sum(model_flux))
-        else:
-            amp = np.insert(amp, 0, np.sum(model_flux))
-
-        amp_lst.append(amp)
-        cphase_lst.append(cphase)
-
-    return np.array(amp_lst), np.array(cphase_lst)
-
-def lnlike(theta: np.ndarray, realdata: List,
-           model_param_lst: List, uv_info_lst: List,
-           vis_lst: List) -> float:
-    """Takes theta vector and the x, y and the yerr of the theta.
-    Returns a number corresponding to how good of a fit the model is to your
-    data for a given set of parameters, weighted by the data points.
-
-
-    Parameters
-    ----------
-    theta: np.ndarray
-        A list of all the parameters that ought to be fitted
-    realdata: List
-    model_param_lst: List
-    uv_info_lst: List
-    vis_lst: List
-
-    Returns
-    -------
-    float
-        The goodness of the fitted model (will be minimised)
-    """
-    amp, cphase = map(lambda x: np.array(x), realdata[0])
-    amperr, cphaseerr = map(lambda x: np.array(x), realdata[1])
-
-    if amperr.shape != (7,):
-        sigma2amp = np.array([[x**2 for x in i] for i in amperr])
-        sigma2cphase = np.array([[x**2 for x in i] for i in cphaseerr])
-    else:
-        sigma2amp, sigma2cphase= map(lambda x: x**2, [amperr, cphaseerr])
-
-    amp_mod, cphase_mod = model4fit_numerical(theta, model_param_lst,
-                                              uv_info_lst, vis_lst)
-
-    amp_chi_sq = chi_sq(amp, sigma2amp, amp_mod)
-    cphase_chi_sq = chi_sq(cphase, sigma2cphase, cphase_mod)
-
-    return -0.5*(amp_chi_sq + cphase_chi_sq), [amp_chi_sq, cphase_chi_sq]
-
-def lnprior(theta: np.ndarray, priors: List):
-    """Checks if all variables are within their priors (as well as
-    determining them setting the same).
-
-    If all priors are satisfied it needs to return '0.0' and if not '-np.inf'
-    This function checks for an unspecified amount of flat priors. If upper
-    bound is 'None' then no upper bound is given
-
-    Parameters
-    ----------
-    theta: np.ndarray
-        A list of all the parameters that ought to be fitted
-    priors: List
-        A list containing all the prior's bounds
-
-    Returns
-    -------
-    float
-        Return-code 0.0 for within bounds and -np.inf for out of bound
-        priors
-    """
-    check_conditons = []
-
-    for i, o in enumerate(priors):
-        if o[1] is None:
-            if o[0] < theta[i]:
-                check_conditons.append(True)
-            else:
-                check_conditons.append(False)
-        else:
-            if o[0] < theta[i] < o[1]:
-                check_conditons.append(True)
-            else:
-                check_conditons.append(False)
-
-    return 0.0 if all(check_conditons) else -np.inf
-
-def lnprob(theta: np.ndarray, realdata,
-           model_param_lst, uv_info_lst,
-           vis_lst) -> np.ndarray:
-    """This function runs the lnprior and checks if it returned -np.inf, and
-    returns if it does. If not, (all priors are good) it returns the inlike for
-    that model (convention is lnprior + lnlike)
-
-    Parameters
-    ----------
-    theta: List
-        A vector that contains all the parameters of the model
-
-    Returns
-    -------
-    """
-    priors = model_param_lst[-1]
-    lp = lnprior(theta, priors)
-
-    if not np.isfinite(lp):
-        return -np.inf
-
-    return lp +\
-            lnlike(theta, realdata, model_param_lst, uv_info_lst, vis_lst)[0]
-
-def do_mcmc(hyperparams: List, priors,
-            labels, lnprob, data, plot_wl: float,
-            frac: Optional[float] = 1e-4,
-            cluster: Optional[bool] = False,
-            debug: Optional[bool] = False,
-            save_path: Optional[str] = "") -> np.array:
+def run_mcmc(hyperparams: List, priors: List,
+             labels: List, lnprob: Callable, data, plot_wl: float,
+             frac: Optional[float] = 1e-4, cluster: Optional[bool] = False,
+             debug: Optional[bool] = False,
+             save_path: Optional[str] = "") -> np.array:
     """Runs the emcee Hastings Metropolitan sampler
 
     The EnsambleSampler recieves the parameters and the args are passed to
@@ -563,7 +272,7 @@ def do_mcmc(hyperparams: List, priors,
     hyperparams: List
     priors: List
     labels: List
-    lnprob
+    lnprob: Callable
     data: List
     plot_wl: float
     frac: float, optional
@@ -573,10 +282,11 @@ def do_mcmc(hyperparams: List, priors,
     """
     initial, nwalkers, nburn, niter = hyperparams
     p0 = generate_valid_guess(initial, priors, nwalkers, frac)
+    ndim = len(initial)
+
     print("Inital parameters")
     print(initial)
     print(p0[0], "p0 Sample")
-    ndim = len(initial)
 
     if cluster:
         with MPIPool as pool:
@@ -598,8 +308,7 @@ def do_mcmc(hyperparams: List, priors,
 
     else:
         with Pool() as pool:
-            ncores = cpu_count()
-            print(f"Executing MCMC with {ncores} cores.")
+            print(f"Executing MCMC with {cpu_count()} cores.")
             sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob,
                                             args=data, pool=pool)
 
