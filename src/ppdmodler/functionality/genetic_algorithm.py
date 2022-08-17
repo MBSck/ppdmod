@@ -2,7 +2,7 @@ import numpy as np
 
 from typing import Any, Dict, List, Union, Optional
 
-from .functionality.utilities import progress_bar
+from .utilities import progress_bar
 
 # Credit: https://machinelearningmastery.com/simple-genetic-algorithm-from-scratch-in-python/
 

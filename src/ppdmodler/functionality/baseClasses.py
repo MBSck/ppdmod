@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Union, Optional
 
-from .functionality.utilities import plancks_law_nu, sublimation_radius,\
+from .utilities import plancks_law_nu, sublimation_radius,\
         sr2mas, temperature_gradient, stellar_radius_pc, sublimation_temperature
 
 # TODO: Implement FFT as a part of the model class

@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Union, Optional, Callable
 from astropy.io import fits
 from functools import wraps
 
-from .functionality.constants import *
+from .constants import *
 
 # TODO: Make progress bar into a decorator and also keep the time of the
 # process and show the max time

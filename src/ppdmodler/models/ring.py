@@ -6,10 +6,10 @@ import matplotlib.pyplot as plt
 from scipy.special import j0
 from typing import Any, Dict, List, Union, Optional
 
-from .functionality.baseClasses import Model
-from .functionality.constant import I
-from .functionality.fourier import FFT
-from .functionality.utilities import timeit, set_grid, set_uvcoords,\
+from ..functionality.constants import I
+from ..functionality.baseClasses import Model
+from ..functionality.fourier import FFT
+from ..functionality.utilities import timeit, set_grid, set_uvcoords,\
         mas2rad, azimuthal_modulation
 
 

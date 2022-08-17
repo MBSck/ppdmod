@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 
 from typing import Any, Dict, List, Union, Optional
 
-from .functionality.fourier import FFT
-from .functionality.baseClasses import Model
-from .functionality.utilities import timeit, set_size, set_uvcoords, mas2rad
+from ..functionality.fourier import FFT
+from ..functionality.baseClasses import Model
+from ..functionality.utilities import timeit, set_grid, set_uvcoords, mas2rad
 
 
 class Binary(Model):

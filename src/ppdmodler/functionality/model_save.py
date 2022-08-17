@@ -9,10 +9,10 @@ from astropy.io import fits
 from shutil import copyfile
 from typing import Any, Dict, List, Union, Optional
 
-from src.models import CompoundModel
-from src.functionality.fourier import FFT
-from src.functionality.readout import ReadoutFits
-from src.functionality.utilities import progress_bar, get_rndarr_from_bounds
+from ..models import CompoundModel
+from .fourier import FFT
+from .readout import ReadoutFits
+from .utilities import progress_bar, get_rndarr_from_bounds
 
 # TODO: Make the model save the numbers of pixel and zero padding that was used
 # for the calculation and some more edge data

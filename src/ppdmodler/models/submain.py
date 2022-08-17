@@ -2,10 +2,10 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .functionality.fourier import FFT
-from .functionality.readout import ReadoutFits
-from .functionality.utilities import trunc, azimuthal_modulation
-from .models import Gauss2D, Ring, CompoundModel, InclinedDisk, UniformDisk
+from . import Gauss2D, Ring, CompoundModel, InclinedDisk, UniformDisk
+from ..functionality.fourier import FFT
+from ..functionality.readout import ReadoutFits
+from ..functionality.utilities import trunc, azimuthal_modulation
 
 # Shows the full np.arrays, takes ages to print the arrays
 # np.set_printoptions(threshold=sys.maxsize)

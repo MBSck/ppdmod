@@ -57,7 +57,7 @@ from scipy.interpolate import interpn
 from pathlib import Path
 from typing import Any, List, Dict, Optional, Union
 
-from .functionality.utilities import zoom_array, mas2rad
+from .utilities import zoom_array, mas2rad
 
 
 class FFT:

@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 
 from typing import Any, Dict, List, Union, Optional
 
-from .functionality.baseClasses import Model
-from .functionality.utilities import timeit, set_grid, set_uvcoords, mas2rad
+from ..functionality.baseClasses import Model
+from ..functionality.utilities import timeit, set_grid, set_uvcoords, mas2rad
 
 
 class OpticallyThinSphere(Model):
