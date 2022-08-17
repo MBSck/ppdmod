@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 
+import os
 import sys
+import time
+import inspect
 import numpy as np
 import matplotlib.pyplot as plt
-import inspect
-import time
 
-from typing import Any, Dict, List, Union, Optional, Callable
-from astropy.io import fits
+from glob import glob
+from pathlib import Path
 from functools import wraps
+from astropy.io import fits
+from typing import Any, Dict, List, Union, Optional, Callable
 
 from .constants import *
 
@@ -42,17 +45,17 @@ def chi_sq(data: np.ndarray, sigma_sq: np.ndarray,
     """The chi square minimisation"""
     return np.sum(np.log(2*np.pi*sigma_sq) + (data-model)**2/sigma_sq)
 
-def get_data(model, pixel_size: int, sampling: int,
-             wl_sel: Union[List, float],
-             flux_file: Path = None,
-             zero_padding_order: Optional[int] = 2,
-             bb_params: Optional[List] = [],
-             priors: Optional[List] = [],
-             vis2: Optional[bool] = False,
-             intp: Optional[bool] = False,
-             average_bin: Optional[float] = 0.2,
-             fits_file: Optional[Path] = [],
-             path_to_fits: Optional[Path] = "") -> List:
+def get_data_for_fit(model, pixel_size: int, sampling: int,
+                     wl_sel: Union[List, float],
+                     flux_file: Path = None,
+                     zero_padding_order: Optional[int] = 2,
+                     bb_params: Optional[List] = [],
+                     priors: Optional[List] = [],
+                     vis2: Optional[bool] = False,
+                     intp: Optional[bool] = False,
+                     average_bin: Optional[float] = 0.2,
+                     fits_file: Optional[Path] = [],
+                     path_to_fits: Optional[Path] = "") -> List:
     """Fetches the required info from the '.fits'-files and then returns a
     tuple containing it.
 

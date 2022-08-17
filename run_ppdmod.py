@@ -1,9 +1,10 @@
 from pathlib import Path
+from typing import Any, Dict, List, Union, Optional, Callable
 
-from ppdmodler.models import *
-from ppdmodler.functionality.mcmc import do_mcmc, lnprob
-from ppdmodler.functionality.baseClasses import Model
-from ppdmodler.functionality.utilities import get_rndarr_from_bounds, get_data_for_fit
+from ppdmod.models import *
+from ppdmod.functionality.mcmc import do_mcmc, lnprob
+from ppdmod.functionality.baseClasses import Model
+from ppdmod.functionality.utilities import get_rndarr_from_bounds, get_data_for_fit
 
 
 def run_mcmc_fit(priors: List, labels: List,
