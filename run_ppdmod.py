@@ -8,12 +8,12 @@ from ppdmodler.functionality.utilities import get_rndarr_from_bounds, get_data_f
 
 def run_mcmc_fit(priors: List, labels: List,
                  bb_params: List, mcmc_params: List,
-                 wl_sel: List, path_to_fits: Path, output_path: Path,
+                 wl_sel: List, path_to_fits: Path,
                  model: Model, pixel_size: int, sampling: int,
-                 frac: Optional[float] = 1e-4, cluster: Optional[bool] = False,
-                 zero_padding_order: int, save_path: Optional[Path] = "",
-                 vis2: Optional[bool] = False, intp: Optional[bool] = True,
-                 flux_file: Optional[Path] = None,
+                 zero_padding_order: int, frac: Optional[float] = 1e-4,
+                 cluster: Optional[bool] = False,
+                 save_path: Optional[Path] = "", vis2: Optional[bool] = False,
+                 intp: Optional[bool] = True, flux_file: Optional[Path] = None,
                  initial: Optional[List] = None) -> None:
     """Executes an mcmc_fit"""
     data = get_data_for_fit(CompoundModel, pixel_size=pixel_size,
@@ -43,3 +43,7 @@ if __name__ == "__main__":
     path_to_fits = "../../assets/data/SyntheticModels"
     output_path = "../../assets/model_results"
     flux_file = None
+
+    run_mcmc_fit(priors, labels, bb_params, mcmc_params,
+                 wl_sel, path_to_fits, CompoundModel, 50, 128, 1)
+
