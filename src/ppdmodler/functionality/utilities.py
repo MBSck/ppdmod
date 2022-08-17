@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Union, Optional, Callable
 from astropy.io import fits
 from functools import wraps
 
-from src.functionality.constant import *
+from .functionality.constants import *
 
 # TODO: Make progress bar into a decorator and also keep the time of the
 # process and show the max time
@@ -688,5 +688,5 @@ def do_fit():
 
 
 if __name__ == "__main__":
-    radius, axis, phi = set_grid(10, 2**6, 2**8)
-    print(azimuthal_modulation(np.arange(0, 10).reshape(2, 5).astype(float), 0.98, 90, 0.66))
+    ...
+

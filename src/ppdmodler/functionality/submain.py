@@ -5,12 +5,11 @@ import ultranest as un
 import matplotlib.pyplot as plt
 import scipy.stats
 
-from ultranest.plot import cornerplot
-from src.functionality.readout import ReadoutFits
-from src.functionality.utilities import set_uvcoords, plot_txt
-from src.functionality.genetic_algorithm import genetic_algorithm, decode
-from src.models import Gauss2D, CompoundModel, UniformDisk
-from src.functionality.fourier import FFT
+from .models import Gauss2D, CompoundModel, UniformDisk
+from .functionality.readout import ReadoutFits
+from .functionality.utilities import set_uvcoords, plot_txt
+from .functionality.genetic_algorithm import genetic_algorithm, decode
+from .functionality.fourier import FFT
 
 
 # Shows the full np.arrays, takes ages to print the arrays

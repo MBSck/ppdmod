@@ -2,7 +2,7 @@ import numpy as np
 
 from typing import Any, Dict, List, Union, Optional
 
-from src.functionality.utilities import progress_bar
+from .functionality.utilities import progress_bar
 
 # Credit: https://machinelearningmastery.com/simple-genetic-algorithm-from-scratch-in-python/
 
@@ -217,30 +217,4 @@ def objective(x):
     return x[0]**2.0 + x[1]**2.0
 
 if __name__ == "__main__":
-    # Hyperparameters
-
-    # Bounds for input variables
-    bounds = [[-5., 5.], [-5., 5.]]
-
-    # Number of iterations
-    number_of_iterations = 100
-    # Bits per variable 16
-    number_of_bits = 16
-    # Defines the population size
-    number_of_population = 100
-    # The crossover rate
-    crossover_rate = 0.9
-    # The mutation rate
-    mutation_rate = 1.0/(number_of_bits*len(bounds))
-
-    # Execute genetic algorithm
-    best, score = genetic_algorithm(objective, bounds,
-                                    number_of_bits,
-                                    number_of_iterations,
-                                    number_of_population,
-                                    crossover_rate, mutation_rate)
-
-    print("Done!")
-    print("f(%s) = %f" % (best, score))
-    decoded = decode(bounds, number_of_bits, best)
-    print("f(%s) = %F" % (decoded, score))
+    ...

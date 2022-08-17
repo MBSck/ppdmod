@@ -3,8 +3,8 @@
 import os
 import numpy as np
 
-from scipy.interpolate import CubicSpline
 from astropy.io import fits
+from scipy.interpolate import CubicSpline
 from typing import Any, Dict, List, Union, Optional
 
 def read_single_dish_txt2np(file, wl_axis):

@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Union, Optional
 
-from src.functionality.utilities import plancks_law_nu, sublimation_radius,\
+from .functionality.utilities import plancks_law_nu, sublimation_radius,\
         sr2mas, temperature_gradient, stellar_radius_pc, sublimation_temperature
 
 # TODO: Implement FFT as a part of the model class
@@ -144,6 +144,5 @@ class Parameter:
                 f" range=[{', '.join([str(i) for i in self.priors])}]"
 
 if __name__ == "__main__":
-    p = Parameter("x", 1.6, None, None, [0, 1], "x", "mas")
-    print(p)
+    ...
 

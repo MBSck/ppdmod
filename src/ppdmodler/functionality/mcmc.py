@@ -56,11 +56,11 @@ from schwimmbad import MPIPool
 from multiprocessing import Pool, cpu_count
 from typing import Any, Dict, List, Union, Optional
 
-from src.models import CompoundModel
-from src.functionality.fourier import FFT
-from src.functionality.readout import ReadoutFits, read_single_dish_txt2np
-from src.functionality.genetic_algorithm import genetic_algorithm, decode
-from src.functionality.utilities import chi_sq, get_rndarr_from_bounds,\
+from .models import CompoundModel
+from .functionality.fourier import FFT
+from .functionality.readout import ReadoutFits, read_single_dish_txt2np
+from .functionality.genetic_algorithm import genetic_algorithm, decode
+from .functionality.utilities import chi_sq, get_rndarr_from_bounds,\
         plot_txt, plot_amp_phase_comparison
 
 # TODO: Make function that randomly assigns starting parameters from priors

@@ -15,5 +15,7 @@ SOLAR_LUMINOSITY: float = 3.828e26                  # in [W]
 PARSEC2M: float =  3.085678e16                      # in [m]
 ARCSEC2RADIANS: float = 4.8481368110954E-06
 
+
 if __name__ == "__main__":
-    print(1/PARSEC2M)
+    ...
+
