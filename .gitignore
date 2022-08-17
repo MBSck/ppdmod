@@ -3,6 +3,5 @@ __pycache__
 .DS_Store
 
 # Ignored folders
-runs/
 assets/
-ppdmodler.egg-info/
+ppdmod.egg-info/

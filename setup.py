@@ -1,16 +1,16 @@
 from setuptools import setup, find_packages
 
+
 with open("README.md", "r",) as fh:
     long_description = fh.read()
 
 setup(
-    name="ppdmodler",
-    version="0.0.1",
-    description="A pipeline to model and fit protoplanetary disk data"\
-                "observed with the MATISSE-pipeline",
+    name="ppdmod",
+    version="0.1",
+    description="PPDMod is a pipeline to model and fit protoplanetary disk"\
+                " data observed with the MATISSE-pipeline",
     author="Marten Scheuck",
     url="",
-    py_modules=["main"],
     packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
