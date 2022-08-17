@@ -42,7 +42,6 @@ This calls the MCMC fitting
 
 """
 
-
 import os
 import emcee
 import warnings
@@ -56,12 +55,9 @@ from schwimmbad import MPIPool
 from multiprocessing import Pool, cpu_count
 from typing import Any, Dict, List, Union, Optional
 
-from ..models import CompoundModel
 from .fourier import FFT
 from .readout import ReadoutFits, read_single_dish_txt2np
-from .genetic_algorithm import genetic_algorithm, decode
-from .utilities import chi_sq, get_rndarr_from_bounds,\
-        plot_txt, plot_amp_phase_comparison
+from .utilities import chi_sq, plot_txt, plot_amp_phase_comparison
 
 # TODO: Make function that randomly assigns starting parameters from priors
 
@@ -577,7 +573,8 @@ def do_mcmc(hyperparams: List, priors,
     """
     initial, nwalkers, nburn, niter = hyperparams
     p0 = generate_valid_guess(initial, priors, nwalkers, frac)
-    print(initial, "Inital params")
+    print("Inital parameters")
+    print(initial)
     print(p0[0], "p0 Sample")
     ndim = len(initial)
 
@@ -621,26 +618,5 @@ def do_mcmc(hyperparams: List, priors,
 
 
 if __name__ == "__main__":
-    priors = [[1., 2.], [0, 180], [0.5, 1.], [0, 360], [1., 10.],
-              [0., 1.], [0., 1.]]
-    initial = get_rndarr_from_bounds(priors, True)
-    labels = ["axis ratio", "pos angle", "mod amplitude", "mod angle",
-              "inner radius", "tau", "q"]
-    bb_params = [1500, 9200, 16, 101.2]
-    mcmc_params = [initial, 32, 2500, 5000]
-    wl_sel = [3.2, 3.45, 3.7]
-
-    path_to_fits = "../../assets/data/SyntheticModels"
-    output_path = "../../assets/model_results"
-    flux_file = None
-
-    data = get_data(CompoundModel, pixel_size=50,
-                    sampling=128, wl_sel=wl_sel,
-                    flux_file=flux_file,
-                    zero_padding_order=1, bb_params=bb_params,
-                    priors=priors, vis2=False, intp=True,
-                    path_to_fits=path_to_fits)
-
-    do_mcmc(mcmc_params, priors, labels, lnprob, data, plot_wl=wl_sel,
-            frac=1e-4, cluster=False, debug=True)
+    ...
 
