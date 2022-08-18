@@ -115,7 +115,7 @@ def print_values(realdata: List, datamod: List,
 
 def plotter_mcmc(sampler, realdata: List, model_param_lst: List,
                  uv_info_lst: List, vis_lst: List, hyperparams: List,
-                 labels: List, plot_wl: float, debug: Optional[bool] = False,
+                 labels: List, plot_wl: float,
                  plot_px_size: Optional[int] = 2**12,
                  save_path: Optional[str] = "") -> None:
     """Plot the samples to get estimate of the density that has been sampled,
@@ -178,9 +178,8 @@ def plotter_mcmc(sampler, realdata: List, model_param_lst: List,
     print_values([amp_mod, cphase_mod], [amp, cphase],
                  theta_max, chi_sq_values)
 
-    if debug:
-        plot_corner(sampler, model_cp, labels, plot_wl)
-        plot_chains(sampler, model_cp, theta_max, labels, plot_wl)
+    plot_corner(sampler, model_cp, labels, plot_wl)
+    plot_chains(sampler, model_cp, theta_max, labels, plot_wl)
 
     fig, axarr = plt.subplots(2, 3, figsize=(20, 10))
     ax, bx, cx = axarr[0].flatten()
@@ -252,7 +251,6 @@ def plot_chains(sampler: np.ndarray, model, theta: List,
 def run_mcmc(hyperparams: List, priors: List,
              labels: List, lnprob: Callable, data, plot_wl: float,
              frac: Optional[float] = 1e-4, cluster: Optional[bool] = False,
-             debug: Optional[bool] = False,
              save_path: Optional[str] = "") -> np.array:
     """Runs the emcee Hastings Metropolitan sampler
 
@@ -277,7 +275,6 @@ def run_mcmc(hyperparams: List, priors: List,
     plot_wl: float
     frac: float, optional
     cluster: bool, optional
-    debug: bool, optional
     save_path: str, optional
     """
     initial, nwalkers, nburn, niter = hyperparams
@@ -323,7 +320,7 @@ def run_mcmc(hyperparams: List, priors: List,
 
     theta_max = (sampler.flatchain)[np.argmax(sampler.flatlnprobability)]
     plotter_mcmc(sampler, *data, hyperparams, labels, plot_wl=plot_wl,
-                 debug=debug, save_path=save_path)
+                 save_path=save_path)
 
 
 if __name__ == "__main__":
