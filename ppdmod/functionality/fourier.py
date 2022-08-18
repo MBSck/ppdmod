@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-
 """Fourier
 
 This script or rather the FFT class contained in it, takes a 2D-numpy arry and
@@ -57,7 +56,7 @@ from scipy.interpolate import interpn
 from pathlib import Path
 from typing import Any, List, Dict, Optional, Union
 
-from .utilities import zoom_array, mas2rad
+from .utils import zoom_array, mas2rad
 
 
 class FFT:

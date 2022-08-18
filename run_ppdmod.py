@@ -5,7 +5,7 @@ from ppdmod.models import *
 from ppdmod.functionality.mcmc import run_mcmc
 from ppdmod.functionality.nested import run_dynesty
 from ppdmod.functionality.baseClasses import Model
-from ppdmod.functionality.utilities import get_rndarr_from_bounds,\
+from ppdmod.functionality.fitting_utils import get_rndarr_from_bounds,\
         get_data_for_fit, lnprob, lnlike
 
 

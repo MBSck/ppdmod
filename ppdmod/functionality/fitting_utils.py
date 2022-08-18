@@ -1,3 +1,13 @@
+import os
+import numpy as np
+
+from glob import glob
+from pathlib import Path
+from typing import Any, Dict, List, Union, Optional, Callable
+
+from .fourier import FFT
+from .readout import ReadoutFits
+
 
 def model4fit_numerical(theta: np.ndarray, model_param_lst: List,
                         uv_info_lst: List, vis_lst: List) -> np.ndarray:
@@ -223,7 +233,7 @@ def get_data_for_fit(model, pixel_size: int, sampling: int,
 
     if path_to_fits and fits_file:
         warnings.warn("Both 'path_to_fits' and 'fits_file' are set, this will"\
-                     " default to use 'path_to_fits', category=ResourceWarning")
+                     " default to use 'path_to_fits'", category=ResourceWarning)
 
     vis_lst, vis_err_lst = [[] for _ in wl_sel], [[] for _ in wl_sel]
     cphase_lst, cphase_err_lst = [[] for _ in wl_sel], [[] for _ in wl_sel]
@@ -298,7 +308,7 @@ def get_data_for_fit(model, pixel_size: int, sampling: int,
     return [data, model_param_lst, uv_info_lst, bool_lst]
 
 def get_rndarr_from_bounds(bounds: List,
-                           centre_rnd: Optional[bool] = False):
+                           centre_rnd: Optional[bool] = False) -> np.ndarray:
     """Initialises a random float/list via a normal distribution from the
     bounds provided
 
@@ -328,4 +338,8 @@ def get_rndarr_from_bounds(bounds: List,
             initial.append(np.random.uniform(lower, upper))
 
     return initial
+
+
+if __name__ == "__main__":
+    ...
 

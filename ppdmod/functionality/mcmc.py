@@ -44,8 +44,8 @@ This calls the MCMC fitting
 
 import os
 import emcee
-import warnings
 import corner
+import warnings
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -55,7 +55,8 @@ from multiprocessing import Pool, cpu_count
 from typing import Any, Dict, List, Union, Optional, Callable
 
 from .fourier import FFT
-from .utilities import chi_sq, plot_txt, plot_amp_phase_comparison, lnprob
+from .fitting_utils import chi_sq, lnprob
+from .plotting_utils import plot_txt, plot_amp_phase_comparison
 
 # TODO: Implement global parameter search algorithm (genetic algorithm)
 # TODO: Implement optimizer algorithm

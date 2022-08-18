@@ -1,3 +1,12 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+from pathlib import Path
+from typing import Any, Dict, List, Union, Optional, Callable
+
+from .fourier import FFT
+
+
 def plot_amp_phase_comparison(amp_data: List, cphase_data: List,
                               baselines: List, t3phi_baselines: List,
                               matplot_axes: Optional[List] = []) -> None:
@@ -224,3 +233,8 @@ def make_uv_plot(dic,ax,verbose=False,annotate=True,B_lim=(np.nan,np.nan),figsiz
         return 1
 
     return 0
+
+
+if __name__ == "__main__":
+    ...
+

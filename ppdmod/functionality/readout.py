@@ -7,6 +7,7 @@ from astropy.io import fits
 from scipy.interpolate import CubicSpline
 from typing import Any, Dict, List, Union, Optional
 
+
 def read_single_dish_txt2np(file, wl_axis):
     """Reads x, y '.txt'-file intwo 2 numpy arrays"""
     file_data = np.loadtxt(file)

@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Union, Optional
 from . import Delta, Ring
 from ..functionality.fourier import FFT
 from ..functionality.baseClasses import Model
-from ..functionality.utilities import timeit, azimuthal_modulation, mas2rad
+from ..functionality.utils import timeit, azimuthal_modulation, mas2rad
 
 
 

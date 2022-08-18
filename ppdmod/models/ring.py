@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Union, Optional
 from ..functionality.constants import I
 from ..functionality.baseClasses import Model
 from ..functionality.fourier import FFT
-from ..functionality.utilities import timeit, set_grid, set_uvcoords,\
+from ..functionality.utils import timeit, set_grid, set_uvcoords,\
         mas2rad, azimuthal_modulation
 
 

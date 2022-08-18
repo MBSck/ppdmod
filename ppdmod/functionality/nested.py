@@ -7,7 +7,7 @@ from dynesty import utils as dyfunc
 from dynesty import plotting as dyplot
 from typing import Any, Dict, List, Union, Optional, Callable
 
-from .utilities import lnlike
+from .fitting_utils import lnlike
 
 
 def ptform(initial: List, priors: List) -> List:
