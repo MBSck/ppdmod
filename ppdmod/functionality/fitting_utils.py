@@ -181,7 +181,7 @@ def get_rndarr_from_bounds(bounds: List,
         for lower, upper in bounds:
             initial.append(np.random.uniform(lower, upper))
 
-    return initial
+    return np.array(initial, dtype=float)
 
 
 def model4fit_numerical(theta: np.ndarray, model_param_lst: List,
@@ -266,7 +266,7 @@ def lnlike(theta: np.ndarray, realdata: List,
     amp_chi_sq = chi_sq(amp, sigma2amp, amp_mod)
     cphase_chi_sq = chi_sq(cphase, sigma2cphase, cphase_mod)
 
-    return -0.5*(amp_chi_sq + cphase_chi_sq), [amp_chi_sq, cphase_chi_sq]
+    return np.array(-0.5*(amp_chi_sq + cphase_chi_sq), dtype=float)
 
 def lnprior(theta: np.ndarray, priors: List) -> float:
     """Checks if all variables are within their priors (as well as
