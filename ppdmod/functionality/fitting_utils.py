@@ -7,9 +7,12 @@ from typing import Any, Dict, List, Union, Optional, Callable
 
 from .fourier import FFT
 from .readout import ReadoutFits
+from .baseClasses import Model
+from .plotting_utils import plot_txt, plot_amp_phase_comparison,\
+        plot_amp_phase_comparison
 
 
-def get_data_for_fit(model, pixel_size: int, sampling: int,
+def get_data_for_fit(model: Model, pixel_size: int, sampling: int,
                      wl_sel: Union[List, float],
                      flux_file: Path = None,
                      zero_padding_order: Optional[int] = 2,
@@ -34,7 +37,7 @@ def get_data_for_fit(model, pixel_size: int, sampling: int,
 
     Parameters
     ----------
-    model
+    model: Model
         The model that is to be calculated
     pixel_size: int
         The size of the FOV, that is used
@@ -111,7 +114,6 @@ def get_data_for_fit(model, pixel_size: int, sampling: int,
             else:
                 flux, fluxerr = map(list, zip(*[readout.get_flux4wl(x) for x in wl_ind]))
 
-            # NOTE: Fluxerr is just 20% of flux, if no fluxerr is given
             vis, viserr, flux, fluxerr = map(lambda x: np.mean(x, axis=0),
                                              [vis, viserr, flux, fluxerr])
 
@@ -122,11 +124,9 @@ def get_data_for_fit(model, pixel_size: int, sampling: int,
             vis_lst[i].extend(vis)
             vis_err_lst[i].extend(viserr)
 
-            # FIXME: cannot mean over all cphase as more than one fits file
             cphase_lst[i].extend(np.mean(cphase, axis=0))
             cphase_err_lst[i].extend(np.mean(cphaseerr, axis=0))
 
-            # FIXME: Check how the flux is the calculated vs the model
             flux_lst[i].append(flux)
             flux_err_lst[i].append(fluxerr)
 
@@ -335,10 +335,105 @@ def lnprob(theta: np.ndarray, realdata: List,
     return lp +\
             lnlike(theta, realdata, model_param_lst, uv_info_lst, vis_lst)[0]
 
-def chi_sq(data: np.ndarray, sigma_sq: np.ndarray,
-           model: np.ndarray) -> float:
+def chi_sq(real_data: np.ndarray, sigma_sq: np.ndarray,
+           model_data: np.ndarray) -> float:
     """The chi square minimisation"""
-    return np.sum(np.log(2*np.pi*sigma_sq) + (data-model)**2/sigma_sq)
+    return np.sum(np.log(2*np.pi*sigma_sq) + (real_data-model_data)**2/sigma_sq)
+
+def plot_fit_results(sampler, realdata: List, model_param_lst: List,
+                     uv_info_lst: List, vis_lst: List, hyperparams: List,
+                     labels: List, plot_wl: float, plot_px_size: Optional[int] = 2**12,
+                     save_path: Optional[str] = "") -> None:
+    """Plot the samples to get estimate of the density that has been sampled,
+    to test if sampling went well"""
+    initial, nwalkers, nburn, niter = hyperparams
+    hyperparams_dict = {"nwalkers": nwalkers, "burn-in steps": nburn,
+                        "production steps": niter}
+
+    model, pixel_size, sampling, wavelength,\
+            zero_padding_order, bb_params, _ = model_param_lst
+
+    amp, cphase = map(lambda x: x[0], map(lambda x: x, realdata[0]))
+    amperr, cphaseerr = map(lambda x: np.array(x[0])**2,
+                            map(lambda x: x, realdata[1]))
+
+    plot_wl = plot_wl[0]*1e-6
+    bb_labels = ["sublimation temperature", "effective temperature",
+                 "luminosity of star", "distance to star"]
+    bb_params_dict = dict(zip(bb_labels, bb_params))
+
+    uvcoords_lst, u_lst, v_lst, t3phi_uvcoords_lst = map(lambda x: np.array(x),
+                                                         uv_info_lst)
+    vis, vis2, intp = vis_lst
+
+    if len(u_lst) > 6:
+        flux_ind = np.where([i % 6 == 0 for i, o in enumerate(u_lst)])[0].tolist()
+        baselines = np.insert(np.sqrt(u_lst**2+v_lst**2), flux_ind, 0.)
+    else:
+        baselines = np.insert(np.sqrt(u_lst**2+v_lst**2), 0, 0.)
+
+    t3phi_u_lst, t3phi_v_lst = map(lambda x: np.array(x),
+                                   map(list, zip(*t3phi_uvcoords_lst)))
+    t3phi_baselines = np.sqrt(t3phi_u_lst**2+t3phi_v_lst**2).\
+            reshape(len(t3phi_u_lst)//12, 12)
+    t3phi_baselines = np.array([np.sort(i)[~3:] for i in t3phi_baselines]).\
+            reshape(len(t3phi_u_lst)//12*4)
+
+    if sample_algorithm == "mcmc":
+        theta_max = (sampler.flatchain)[np.argmax(sampler.flatlnprobability)]
+    elif sample_algorithm == "dynesty":
+        ...
+    else:
+        raise RuntimeError("No sample algorithm of that kind is set!")
+
+    theta_max_dict = dict(zip(labels, theta_max))
+
+    model_cp = model(*bb_params, plot_wl)
+    model_flux = model_cp.eval_model(theta_max, pixel_size, sampling)
+    fft = FFT(model_flux, plot_wl, pixel_size/sampling,
+             zero_padding_order)
+    amp_mod, cphase_mod, xycoords = fft.get_uv2fft2(uvcoords_lst, t3phi_uvcoords_lst,
+                                                    corr_flux=vis, vis2=vis2, intp=intp)
+
+    if len(amp_mod) > 6:
+        flux_ind = np.where([i % 6 == 0 for i, o in enumerate(amp_mod)])[0].tolist()
+        amp_mod = np.insert(amp_mod, flux_ind, np.sum(model_flux))
+    else:
+        amp_mod = np.insert(amp_mod, 0, np.sum(model_flux))
+
+    _, chi_sq_values = lnlike(theta_max, realdata, model_param_lst,
+                              uv_info_lst, vis_lst)
+    print_values([amp_mod, cphase_mod], [amp, cphase],
+                 theta_max, chi_sq_values)
+
+    fig, axarr = plt.subplots(2, 3, figsize=(20, 10))
+    ax, bx, cx = axarr[0].flatten()
+    ax2, bx2, cx2 = axarr[1].flatten()
+
+    title_dict = {"Model Fit Parameters": ""}
+    text_dict = { "FOV": pixel_size, "npx": sampling,
+                 "zero pad order": zero_padding_order, "wavelength": plot_wl,
+                 "": "", "blackbody params": "", "---------------------": "",
+                 **bb_params_dict, "": "", "best fit values": "",
+                 "---------------------": "", **theta_max_dict, "": "",
+                 "hyperparams": "", "---------------------": "",
+                 **hyperparams_dict}
+
+    plot_txt(ax, title_dict, text_dict, text_font_size=10)
+    plot_amp_phase_comparison([[amp, amperr], [amp_mod]],
+                              [[cphase, cphaseerr], [cphase_mod]],
+                              baselines, t3phi_baselines, [bx, cx])
+
+    fft.plot_amp_phase([fig, ax2, bx2, cx2], corr_flux=True, uvcoords_lst=xycoords)
+
+    plt.tight_layout()
+    plot_name = f"{model_cp.name}_model_after_fit_{(plot_wl*1e6):.2f}.png"
+
+    if save_path == "":
+        plt.savefig(plot_name)
+    else:
+        plt.savefig(os.path.join(save_path, plot_name))
+    plt.show()
 
 
 if __name__ == "__main__":
