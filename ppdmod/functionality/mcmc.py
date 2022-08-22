@@ -55,7 +55,7 @@ from multiprocessing import Pool, cpu_count
 from typing import Any, Dict, List, Union, Optional, Callable
 
 from .fourier import FFT
-from .fitting_utils import chi_sq, lnprob
+from .fitting_utils import chi_sq, lnprob, lnlike
 from .plotting_utils import plot_txt, plot_amp_phase_comparison
 
 # TODO: Implement global parameter search algorithm (genetic algorithm)
@@ -91,7 +91,7 @@ def generate_valid_guess(initial: List, priors: List,
         guess = proposal + frac*dyn*np.random.normal(proposal, dyn)
         guess_lst.append(guess)
 
-    return guess_lst
+    return np.array(guess_lst, dtype=float)
 
 def print_values(realdata: List, datamod: List,
                  theta_max: List, chi_sq_values: List) -> None:
@@ -284,7 +284,7 @@ def run_mcmc(hyperparams: List, priors: List,
 
     print("Inital parameters")
     print(initial)
-    print(p0[0], "p0 Sample")
+    print("--------------------------------------------------------------")
 
     if cluster:
         with MPIPool as pool:
