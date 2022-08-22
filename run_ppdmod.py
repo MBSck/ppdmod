@@ -1,13 +1,17 @@
+import numpy as np
+
 from pathlib import Path
 from typing import Any, Dict, List, Union, Optional, Callable
 
 from ppdmod.models import *
 from ppdmod.functionality.mcmc import run_mcmc
-from ppdmod.functionality.nested import run_dynesty
+from ppdmod.functionality.nested import run_dynesty, ptform
 from ppdmod.functionality.baseClasses import Model
 from ppdmod.functionality.fitting_utils import get_rndarr_from_bounds,\
         get_data_for_fit, lnprob, lnlike
 
+# TODO: Add docstrings to the big overhead functions in this script
+# TODO: Improve code with namedtuples ASAP
 
 def run_mcmc_fit(priors: List, labels: List,
                  bb_params: List, mcmc_params: List,
@@ -18,7 +22,7 @@ def run_mcmc_fit(priors: List, labels: List,
                  save_path: Optional[Path] = "", vis2: Optional[bool] = False,
                  intp: Optional[bool] = True, flux_file: Optional[Path] = None,
                  initial: Optional[List] = None) -> None:
-    """Executes an mcmc-fit"""
+    """Executes a mcmc-fit"""
     data = get_data_for_fit(CompoundModel, pixel_size=pixel_size,
                             sampling=sampling, wl_sel=wl_sel,
                             flux_file=flux_file,
@@ -39,7 +43,7 @@ def run_nested_fit(priors: List, labels: List,
                    save_path: Optional[Path] = "", vis2: Optional[bool] = False,
                    intp: Optional[bool] = True, flux_file: Optional[Path] = None,
                    initial: Optional[List] = None) -> None:
-    """Executes an dynesty-fit"""
+    """Executes a dynesty-fit"""
     data = get_data_for_fit(CompoundModel, pixel_size=pixel_size,
                             sampling=sampling, wl_sel=wl_sel,
                             flux_file=flux_file,
@@ -52,22 +56,28 @@ def run_nested_fit(priors: List, labels: List,
 
 
 if __name__ == "__main__":
-    priors = [[1., 2.], [0, 180], [0.5, 1.], [0, 360], [1., 10.],
-              [0., 1.], [0., 1.]]
+    priors = np.array([[1., 2.], [0, 180], [0.5, 1.], [0, 360],
+                       [1., 10.], [0., 1.], [0., 1.]])
     initial = get_rndarr_from_bounds(priors, True)
-    labels = ["axis ratio", "pos angle", "mod amplitude", "mod angle",
-              "inner radius", "tau", "q"]
-    bb_params = [1500, 9200, 16, 101.2]
-    mcmc_params = [initial, 32, 2500, 5000]
-    dynesty_params = [initial, 5000]
-    wl_sel = [3.2, 3.45, 3.7]
+    labels = ("axis ratio", "pos angle", "mod amplitude",
+              "mod angle", "inner radius", "tau", "q")
+    wl_sel = (3.2, 3.45, 3.7)
+    bb_params = (1500, 9200, 16, 101.2)
 
-    path_to_fits = "../../assets/data/SyntheticModels"
-    output_path = "../../assets/model_results"
+    mcmc_params = (initial, 32, 25, 50)
+    dynesty_params = (initial, 100, 10)
+
+    path_to_fits = "assets/data/SyntheticModels"
+    output_path = "assets/model_results"
     flux_file = None
-    method = "dynamic"
 
-    run_nested_fit(priors, labels, bb_params, dynesty_params,
-                   wl_sel, path_to_fits, CompoundModel, 50, 128, 1,
-                   method=method)
+    print(initial)
+    print(priors)
+    print(ptform(initial, priors))
+
+    run_nested_fit(priors, labels, bb_params, dynesty_params, wl_sel,
+                   path_to_fits, CompoundModel, 50, 128, 1, method="static")
+
+    # run_mcmc_fit(priors, labels, bb_params, mcmc_params, wl_sel, path_to_fits,
+                 # CompoundModel, 30, 128, 2)
 
