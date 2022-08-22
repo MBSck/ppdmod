@@ -427,7 +427,6 @@ class FFT:
         if uvcoords_lst:
             uvcoords, uvcoords_cphase = map(lambda x: np.array(x), uvcoords_lst)
             u, v = np.split(uvcoords, 2, axis=1)
-            print(uvcoords_cphase)
             u_c, v_c = np.split(uvcoords_cphase, 2, axis=1)
             v, v_c = map(lambda x: x/(self.wl*1e6), [v, v_c])
 
