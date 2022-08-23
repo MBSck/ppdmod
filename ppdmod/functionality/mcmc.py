@@ -139,6 +139,7 @@ def plot_chains(sampler: np.ndarray, model, theta: List,
 def run_mcmc(hyperparams: List, priors: List,
              labels: List, lnprob: Callable, data, plot_wl: float,
              frac: Optional[float] = 1e-4, cluster: Optional[bool] = False,
+             synthetic: Optional[bool] = False,
              save_path: Optional[str] = "") -> np.array:
     """Runs the emcee Hastings Metropolitan sampler
 
@@ -163,8 +164,19 @@ def run_mcmc(hyperparams: List, priors: List,
     plot_wl: float
     frac: float, optional
     cluster: bool, optional
+    synthetic: bool, optional
     save_path: str, optional
     """
+    if synthetic:
+        try:
+            print("Loaded perfect parameters from the synthetic dataset")
+            print(np.load("assets/theta.npy"))
+        except FileNotFoundError:
+            warnings.warn("No 'theta.npy' file could be located!",
+                          category=FileNotFoundError)
+        finally:
+            print("File search done.")
+
     initial, nwalkers, nburn, niter = hyperparams
     p0 = generate_valid_guess(initial, priors, nwalkers, frac)
     ndim = len(initial)

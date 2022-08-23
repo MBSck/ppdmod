@@ -2,6 +2,7 @@ import dynesty
 import numpy as np
 import matplotlib.pyplot as plt
 
+from warnings import warn
 from schwimmbad import MPIPool
 from multiprocessing import Pool, cpu_count
 from dynesty import utils as dyfunc
@@ -11,28 +12,62 @@ from typing import Any, Dict, List, Union, Optional, Callable
 from .fitting_utils import lnlike, plot_fit_results
 
 
+def get_median_and_errors(samples, ndim: int, quantiles: List):
+    """Gets the medians and the error bounds for the samples
+
+    Parameters
+    ----------
+    samples
+    ndim: int
+
+    Returns
+    medians
+    errors_lower
+    errors_upper
+    """
+    medians, errors_lower, errors_upper = [], [], []
+
+    for i in range(ndim):
+        q = dyfunc.quantile(samples[: i], quantiles)
+        medians.append(q[1])
+        errors_lower.append(abs(q[1] - q[0]))
+        errors_upper.append(abs(q[2] - q[1]))
+
+    return medians, errors_lower, errors_upper
+
 def plot_runs(results, save_path: Optional[str] = ""):
     """Similar to the chain-plot of mcmc, this displays the run of a dynesty fit"""
     rfig, raxes = dyplot.runplot(results)
+
+    plot_name = "Dynesty_runs_plot.png"
+
     if save_path == "":
         plt.savefig(plot_name)
     else:
         plt.savefig(os.path.join(save_path, plot_name))
 
-def plot_trace(results, save_path: Optional[str] = "") -> None:
+def plot_trace(results, ndim: int, save_path: Optional[str] = "") -> None:
     """Makes a traceplot for the result of the dynesty fit"""
     tfig, taxes = dyplot.traceplot(results, truths=np.zeros(ndim), truth_color="black",
                                  show_titles=True, trace_cmap="viridis", connect=True)
+
+    plot_name = "Dynesty_trace_plot.png"
+
     if save_path == "":
         plt.savefig(plot_name)
     else:
         plt.savefig(os.path.join(save_path, plot_name))
 
-def plot_corner(results, save_path: Optional[str] = ""):
+def plot_corner(results, ndim: int,
+                labels: List, quantiles: List,
+                save_path: Optional[str] = ""):
     """This plots the corner plot for a dynesty fit"""
     cfig, caxes = dyplot.cornerplot(results, color="blue", truths=np.zeros(ndim),
                                     truth_color="black", show_titles=True,
-                                    quantiles=None)
+                                    quantiles=quantiles, labels=labels)
+
+    plot_name = "Dynesty_corner_plot.png"
+
     if save_path == "":
         plt.savefig(plot_name)
     else:
@@ -59,8 +94,11 @@ def ptform(initial: List, priors: List) -> List:
 
 def run_dynesty(hyperparams: List, priors: List,
                 labels: List, lnlike: Callable, data: List, plot_wl: List,
-                frac: Optional[float] = 1e-4, cluster: Optional[bool] = False,
+                quantiles: Optional[List] = [0.16, 0.84],
+                frac: Optional[float] = 1e-4,
+                cluster: Optional[bool] = False,
                 method: Optional[str] = "dynamic",
+                synthetic: Optional[bool] = False,
                 save_path: Optional[str] = "") -> np.array:
     """Runs the dynesty nested sampler
 
@@ -75,12 +113,23 @@ def run_dynesty(hyperparams: List, priors: List,
     lnlike: Callable
     data: List
     plot_wl: float
+    quantiles: List, optional
     frac: float, optional
     cluster: bool, optional
     method: str, optional
+    synthetic: bool, optional
     save_path: str, optional
     """
-    initial, nlive, nlive_init = hyperparams
+    if synthetic:
+        try:
+            print("Loaded perfect parameters from the synthetic dataset")
+            print(np.load("assets/theta.npy"))
+        except FileNotFoundError:
+            warn("No 'theta.npy' file could be located!", category=FileNotFoundError)
+        finally:
+            print("File search done.")
+
+    initial, nlive = hyperparams
     ndim = len(initial)
 
     if cluster:
@@ -107,19 +156,24 @@ def run_dynesty(hyperparams: List, priors: List,
                                                 ptform_args=[priors],
                                                 update_interval=float(ndim),
                                                 sample="rwalk", bound="multi",
-                                                nlive=nlive,
-                                                pool=pool, queue_size=cpu_amount)
+                                                nlive=nlive, pool=pool,
+                                                queue_size=cpu_amount)
 
-            sampler.run_nested(dlogz=0.001, print_progress=True)
+            sampler.run_nested(dlogz=1., print_progress=True)
 
     results = sampler.results
     samples, weights = results.samples, np.exp(results.logwt - results.logz[-1])
     mean, cov = dyfunc.mean_and_cov(samples, weights)
     new_samples = dyfunc.resample_equal(samples, weights)
 
-    plot_trace(results, save_path)
+    medians, lower_errors, upper_errors = get_median_and_errors(new_samples,
+                                                                ndim, quantiles)
+
+    print(medians, lower_errors, upper_errors)
+
     plot_runs(results, save_path)
-    plot_corner(results, save_path)
+    plot_trace(results, ndim, save_path)
+    plot_corner(results, ndim, labels, quantiles, save_path)
     # plot_fit_results(save_path)
     plt.show()
 

@@ -12,7 +12,9 @@ from typing import Any, Dict, List, Union, Optional
 from ..models import CompoundModel
 from .fourier import FFT
 from .readout import ReadoutFits
-from .utilities import progress_bar, get_rndarr_from_bounds
+from .baseClasses import Model
+from .utils import progress_bar
+from .fitting_utils import get_rndarr_from_bounds
 
 # TODO: Make the model save the numbers of pixel and zero padding that was used
 # for the calculation and some more edge data (Do this within the fits file)
@@ -36,7 +38,6 @@ def loop_model4wl(model, theta: List, bb_params: List,
     Returns
     -------
     """
-
     readout = ReadoutFits(fits_file)
     wl = readout.get_wl()
     uvcoords, t3phi_uvcoords = readout.get_uvcoords(),\
@@ -81,18 +82,37 @@ def loop_model4wl(model, theta: List, bb_params: List,
     return amp_lst, amperr_lst, phase_lst,\
             phaseerr_lst, flux_lst, fluxerr_lst, model_params_dict
 
-def create_model(output_path: Path, path_to_fits: Path, model,
+def create_model(save_path: Path, model: Model,
                  theta: List, bb_params: List, fov_size: int,
-                 pixel_size: int, zero_padding_order: Optional[int] = 2,
+                 pixel_size: int,
+                 path_to_fits: Optional[Path] = "",
+                 fits_file: Optional[Path] = "",
+                 zero_padding_order: Optional[int] = 2,
                  intp: Optional[bool] = True) -> None:
     """Saves the model as a '.fits'-file
 
     Parameters
     ----------
-    output_path: Path
-    path_to_fits: Path
+    save_path: Path
     data: List
+    model: Model
+    theta: List
+    bb_params: List
+    fov_size: int
+    pixel_size: int
+    path_to_fits: Path, optional
+    fits_file: Path, optional
+    zero_padding_order: int, optional
+    intp: bool, optional
     """
+    print("The input parameters for the synthetic dataset's creation.")
+    print("------------------------------------------------")
+    print(theta)
+
+    np.save(os.path.join('assets', 'theta.npy'), theta)
+    print(f"They have been saved to {os.path.join('assets', 'theta.npy')}")
+    print("------------------------------------------------")
+
     if path_to_fits:
         fits_files = glob(os.path.join(path_to_fits, "*.fits"))
     elif fits_file:
@@ -100,16 +120,15 @@ def create_model(output_path: Path, path_to_fits: Path, model,
     else:
         raise IOError("Either 'path_to_fits' or 'fits_file' must be set!")
 
+    if not os.path.exists(os.path.dirname(save_path)):
+        os.makedirs(os.path.dirname(save_path))
+        print(f"Created folder {os.path.dirname(save_path)}!")
 
     for number, fits_file in enumerate(fits_files):
         print(f"Model for {fits_file} is being calculated!")
         print("------------------------------------------------")
 
-        save_path = f"{output_path}_{number}.fits"
-
-        if not os.path.exists(os.path.dirname(save_path)):
-            os.makedirs(os.path.dirname(save_path))
-            print(f"Created folder {os.path.dirname(save_path)}!")
+        output_file = f"{save_path}_{number}.fits"
 
         data = loop_model4wl(model, theta, bb_params, fov_size,
                              pixel_size, fits_file, zero_padding_order, intp)
@@ -118,9 +137,9 @@ def create_model(output_path: Path, path_to_fits: Path, model,
                 flux, fluxerr= map(lambda x: np.array(x), data[:-1])
         model_params_dict = data[-1]
 
-        copyfile(fits_file, save_path)
+        copyfile(fits_file, output_file)
 
-        with fits.open(save_path, mode="update") as hdul:
+        with fits.open(output_file, mode="update") as hdul:
             hdul["oi_vis"].data["visamp"] = amp
             hdul["oi_vis"].data["visamperr"] = amperr
             hdul["oi_t3"].data["t3phi"] = phase
@@ -135,18 +154,10 @@ def create_model(output_path: Path, path_to_fits: Path, model,
 #        hdr = fits.Header(card_lst)
 #        hdul.append("oi_param")
 
-        print(f"Model for {fits_file} saved as a {save_path}-file"\
+        print(f"Model for {fits_file} saved as a {output_file}-file"\
               f" created and updated with model values")
 
 
 if __name__ == "__main__":
-    f = "../../assets/data/HD163296/L_Band"
-    bb_params = [1500, 9200, 16, 101.2]
-    priors = [[1., 2.], [0, 180], [0., 2.], [0, 180], [1., 10.],
-              [0., 0.1], [0., 1.]]
-    theta = get_rndarr_from_bounds(priors)
-    print(theta)
-    np.save("theta.npy", theta)
-    create_model("../../assets/data/SyntheticModels/Test_model", f, CompoundModel, theta,
-                 bb_params, 50, 512, 2, True)
+    ...
 
