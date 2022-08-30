@@ -18,7 +18,7 @@ from .constants import *
 
 # Functions
 
-def progress_bar(progress: int, total: int):
+def progress_bar(progress: int, total: int) -> None:
     """Displays a progress bar
 
     Parameters
@@ -31,22 +31,6 @@ def progress_bar(progress: int, total: int):
     percent = 100 * (progress/total)
     bar = '#' * int(percent) + '-' * (100-int(percent))
     print(f"\r|{bar}|{percent:.2f}% - {progress}/{total}", end='\r')
-
-def trunc(values, decs=0):
-    """Truncates the floating point decimals"""
-    return np.trunc(values*10**decs)/(10**decs)
-
-
-def timeit(func):
-    """Simple timer decorator for functions"""
-    @wraps(func)
-    def timed_func(*args, **kwargs):
-        st = time.time()
-        result = func(*args, **kwargs)
-        et = time.time()
-        print(f"{func.__name__} execution took: {et-st} sec")
-        return result
-    return timed_func
 
 def orbit_au2arc(orbit_radius: Union[int, float],
                  distance: Union[int, float]):
@@ -352,6 +336,48 @@ def sublimation_radius(T_sub: int, L_star: int, distance: int):
     sub_radius_m = np.sqrt(L_star/(4*np.pi*STEFAN_BOLTZMAN_CONST*T_sub**4))
     return m2mas(sub_radius_m, distance)
 
+def power_law(radius: Union[float, np.ndarray], r_0: float,
+              start_value: float, exponent: float) -> Union[float, np.ndarray]:
+    """A simple power law function
+
+    radius: float | np.ndarray
+        The specified radius
+    r_0: float
+        The initial radius
+    start_value: float
+        The temperature at r_0
+    exponent: float
+        The power-law exponent
+
+    Returns
+    -------
+    float | np.ndarray
+    """
+    with np.errstate(divide='ignore'):
+        return start_value*(radius/r_0)**(-exponent)
+
+def tau_gradient(radius: float, r_0: Union[int, float],
+                 p: float, tau_0: int) -> Union[float, np.ndarray]:
+    """Tau gradient model determined by power-law distribution.
+
+    Parameters
+    ----------
+    radius: float
+        The specified radius
+    r_0: float
+        The initial radius
+    p: float
+        The power-law exponent
+    tau_0: float
+        The optical depth at r_0
+
+    Returns
+    -------
+    optical_depth: float | np.ndarray
+        The optical_depth at a certain radius
+    """
+    return power_law(radius, r_0, tau_0, p)
+
 def temperature_gradient(radius: float, r_0: Union[int, float],
                          q: float, T_0: int) -> Union[float, np.ndarray]:
     """Temperature gradient model determined by power-law distribution.
@@ -363,7 +389,7 @@ def temperature_gradient(radius: float, r_0: Union[int, float],
     r_0: float
         The initial radius
     q: float
-        The power-law index
+        The power-law exponent
     T_0: float
         The temperature at r_0
 
@@ -373,8 +399,7 @@ def temperature_gradient(radius: float, r_0: Union[int, float],
         The temperature at a certain radius
     """
     # q is 0.5 for flared irradiated disks and 0.75 for standard viscuous disks
-    with np.errstate(divide='ignore'):
-        return T_0*(radius/r_0)**(-q)
+    return power_law(radius, r_0, T_0, q)
 
 def plancks_law_nu(T: Union[float, np.ndarray],
                    wavelength: float) -> [float, np.ndarray]:

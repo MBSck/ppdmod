@@ -7,8 +7,7 @@ from scipy.special import j0
 from typing import Any, Dict, List, Union, Optional
 
 from ..functionality.baseClasses import Model
-from ..functionality.utils import timeit, set_grid, set_uvcoords,\
-        temperature_gradient, mas2rad
+from ..functionality.utils import set_grid, set_uvcoords, temperature_gradient, mas2rad
 
 
 # TODO: Finish revamping both the eval_mod and eval_vis so the fit to the new
