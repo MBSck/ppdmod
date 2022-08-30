@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import matplotlib.pyplot as plt
 
 from glob import glob
 from pathlib import Path
@@ -95,9 +96,12 @@ def get_data_for_fit(model: Model, pixel_size: int, sampling: int,
         readout = ReadoutFits(fits_file)
         wavelength = readout.get_wl()
 
-        for i, o in enumerate(wl_sel):
-            wl_ind = np.where(np.logical_and(wavelength > (o-average_bin/2),
-                                             wavelength < (o+average_bin/2)))[0].tolist()
+        for i, wl in enumerate(wl_sel):
+            wl_ind = np.where(np.logical_and(wavelength > (wl-average_bin/2),
+                                             wavelength < (wl+average_bin/2)))[0].tolist()
+            if not wl_ind:
+                raise IOError("The wavelength for polychromatic fitting could not be"\
+                              " determined... Check the input wavelengths!")
 
             if vis2:
                 vis, viserr = map(list, zip(*[readout.get_vis24wl(x) for x in wl_ind]))
@@ -332,23 +336,55 @@ def lnprob(theta: np.ndarray, realdata: List,
     if not np.isfinite(lp):
         return -np.inf
 
-    return lp +\
-            lnlike(theta, realdata, model_param_lst, uv_info_lst, vis_lst)[0]
+    return lp + lnlike(theta, realdata, model_param_lst, uv_info_lst, vis_lst)
 
 def chi_sq(real_data: np.ndarray, sigma_sq: np.ndarray,
            model_data: np.ndarray) -> float:
     """The chi square minimisation"""
     return np.sum(np.log(2*np.pi*sigma_sq) + (real_data-model_data)**2/sigma_sq)
 
-def plot_fit_results(sampler, realdata: List, model_param_lst: List,
+def print_values(realdata: List, datamod: List, theta_max: List) -> None:
+    """Prints the model's values"""
+    print("Best fit corr. fluxes:")
+    print(datamod[0])
+    print("Real corr. fluxes:")
+    print(realdata[0])
+    print("--------------------------------------------------------------")
+    print("Best fit cphase:")
+    print(datamod[1])
+    print("Real cphase:")
+    print(realdata[1])
+    print("--------------------------------------------------------------")
+    print("Theta max:")
+    print(theta_max)
+
+def plot_fit_results(theta_max: List, realdata: List, model_param_lst: List,
                      uv_info_lst: List, vis_lst: List, hyperparams: List,
-                     labels: List, plot_wl: float, plot_px_size: Optional[int] = 2**12,
-                     save_path: Optional[str] = "") -> None:
+                     labels: List, plot_wl: List, plot_px_size: Optional[int] = 2**12,
+                     save_path: Optional[Path] = "") -> None:
     """Plot the samples to get estimate of the density that has been sampled,
-    to test if sampling went well"""
-    initial, nwalkers, nburn, niter = hyperparams
-    hyperparams_dict = {"nwalkers": nwalkers, "burn-in steps": nburn,
-                        "production steps": niter}
+    to test if sampling went well
+
+    Parameters
+    ----------
+    theta_max: List
+    realdata: List
+    model_param_lst: List
+    uv_info_lst: List
+    vis_lst: List
+    hyperparams: List
+    labels: List
+    plot_wl: List
+    plot_px_size: int, optional
+    save_path: Path, optional
+    """
+    if len(hyperparams) > 2:
+        initial, nwalkers, nburn, niter = hyperparams
+        hyperparams_dict = {"nwalkers": nwalkers, "burn-in steps": nburn,
+                            "production steps": niter}
+    else:
+        inital, nlive = hyperparams
+        hyperparams_dict = {"nlive": nlive}
 
     model, pixel_size, sampling, wavelength,\
             zero_padding_order, bb_params, _ = model_param_lst
@@ -379,13 +415,6 @@ def plot_fit_results(sampler, realdata: List, model_param_lst: List,
     t3phi_baselines = np.array([np.sort(i)[~3:] for i in t3phi_baselines]).\
             reshape(len(t3phi_u_lst)//12*4)
 
-    if sample_algorithm == "mcmc":
-        theta_max = (sampler.flatchain)[np.argmax(sampler.flatlnprobability)]
-    elif sample_algorithm == "dynesty":
-        ...
-    else:
-        raise RuntimeError("No sample algorithm of that kind is set!")
-
     theta_max_dict = dict(zip(labels, theta_max))
 
     model_cp = model(*bb_params, plot_wl)
@@ -401,10 +430,7 @@ def plot_fit_results(sampler, realdata: List, model_param_lst: List,
     else:
         amp_mod = np.insert(amp_mod, 0, np.sum(model_flux))
 
-    _, chi_sq_values = lnlike(theta_max, realdata, model_param_lst,
-                              uv_info_lst, vis_lst)
-    print_values([amp_mod, cphase_mod], [amp, cphase],
-                 theta_max, chi_sq_values)
+    print_values([amp_mod, cphase_mod], [amp, cphase], theta_max)
 
     fig, axarr = plt.subplots(2, 3, figsize=(20, 10))
     ax, bx, cx = axarr[0].flatten()

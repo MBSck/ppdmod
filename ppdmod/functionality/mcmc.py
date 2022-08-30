@@ -55,6 +55,7 @@ from multiprocessing import Pool, cpu_count
 from typing import Any, Dict, List, Union, Optional, Callable
 
 from .fourier import FFT
+from .baseClasses import Model
 from .fitting_utils import chi_sq, lnprob, lnlike
 
 # TODO: Implement global parameter search algorithm (genetic algorithm)
@@ -84,7 +85,6 @@ def generate_valid_guess(initial: List, priors: List,
     prior_dynamic = np.array([np.ptp(i) for i in priors])
     dyn = 1/prior_dynamic
 
-    # NOTE: Switch to np.rand.normal as it gives negative values as well
     guess_lst = []
     for i in range(nwalkers):
         guess = proposal + frac*dyn*np.random.normal(proposal, dyn)
@@ -92,28 +92,21 @@ def generate_valid_guess(initial: List, priors: List,
 
     return np.array(guess_lst, dtype=float)
 
-def print_values(realdata: List, datamod: List,
-                 theta_max: List, chi_sq_values: List) -> None:
-    """Prints the model's values"""
-    print("Best fit corr. fluxes:")
-    print(datamod[0])
-    print("Real corr. fluxes:")
-    print(realdata[0])
-    print("--------------------------------------------------------------")
-    print("Best fit cphase:")
-    print(datamod[1])
-    print("Real cphase:")
-    print(realdata[1])
-    print("--------------------------------------------------------------")
-    print("Theta max:")
-    print(theta_max)
-    print("--------------------------------------------------------------")
-    print("Chi squared amp:")
-    print(chi_sq_values[0])
-    print("Chi squared cphase:")
-    print(chi_sq_values[1])
+def plot_corner(sampler: np.ndarray,
+                labels: List, wavelength: float,
+                save_path: Optional[str] = "") -> None:
+    """Plots the corner plot of the posterior spread"""
+    samples = sampler.get_chain(flat=True)
+    fig = corner.corner(samples, show_titles=True, labels=labels,
+                       plot_datapoints=True, quantiles=[0.16, 0.5, 0.84])
+    plot_name = f"Corner_plot_{(wavelength):.2f}.png"
 
-def plot_chains(sampler: np.ndarray, model, theta: List,
+    if save_path == "":
+        plt.savefig(plot_name)
+    else:
+        plt.savefig(os.path.join(save_path, plot_name))
+
+def plot_chains(sampler: np.ndarray, theta: List,
                 labels: List, wavelength: float,
                 save_path: Optional[str] = "") -> None:
     """Plots the chains for debugging to see if and how they converge"""
@@ -129,7 +122,7 @@ def plot_chains(sampler: np.ndarray, model, theta: List,
         ax.yaxis.set_label_coords(-0.1, 0.5)
 
     axes[-1].set_xlabel("step number");
-    plot_name = f"{model.name}_chain_plot_{(wavelength*1e6):.2f}.png"
+    plot_name = f"Chain_plot_{(wavelength):.2f}.png"
 
     if save_path == "":
         plt.savefig(plot_name)
@@ -219,24 +212,11 @@ def run_mcmc(hyperparams: List, priors: List,
             print("--------------------------------------------------------------")
 
     theta_max = (sampler.flatchain)[np.argmax(sampler.flatlnprobability)]
-    plot_corner(sampler, model_cp, labels, plot_wl)
-    plot_chains(sampler, model_cp, theta_max, labels, plot_wl)
-    plot_fit_results(sampler, *data, hyperparams, labels,
+
+    plot_corner(sampler, labels, plot_wl[0])
+    plot_chains(sampler, theta_max, labels, plot_wl[0])
+    plot_fit_results(theta_max, *data, hyperparams, labels,
                      plot_wl=plot_wl, save_path=save_path)
-
-def plot_corner(sampler: np.ndarray, model,
-                labels: List, wavelength: float,
-                save_path: Optional[str] = "") -> None:
-    """Plots the corner plot of the posterior spread"""
-    samples = sampler.get_chain(flat=True)
-    fig = corner.corner(samples, show_titles=True, labels=labels,
-                       plot_datapoints=True, quantiles=[0.16, 0.5, 0.84])
-    plot_name = f"{model.name}_corner_plot_{(wavelength*1e6):.2f}.png"
-
-    if save_path == "":
-        plt.savefig(plot_name)
-    else:
-        plt.savefig(os.path.join(save_path, plot_name))
 
 
 if __name__ == "__main__":

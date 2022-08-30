@@ -12,7 +12,8 @@ from typing import Any, Dict, List, Union, Optional, Callable
 from .fitting_utils import lnlike, plot_fit_results
 
 
-def get_median_and_errors(samples, ndim: int, quantiles: List):
+def get_median_and_errors(samples, weights,
+                          ndim: int, quantiles: List):
     """Gets the medians and the error bounds for the samples
 
     Parameters
@@ -26,9 +27,10 @@ def get_median_and_errors(samples, ndim: int, quantiles: List):
     errors_upper
     """
     medians, errors_lower, errors_upper = [], [], []
+    get_quantiles = lambda x, y: np.percentile(x, [100. * q for q in y])
 
     for i in range(ndim):
-        q = dyfunc.quantile(samples[: i], quantiles)
+        q = get_quantiles(samples[:, i], quantiles)
         medians.append(q[1])
         errors_lower.append(abs(q[1] - q[0]))
         errors_upper.append(abs(q[2] - q[1]))
@@ -93,11 +95,14 @@ def ptform(initial: List, priors: List) -> List:
     return np.array(transformed_priors, dtype=float)
 
 def run_dynesty(hyperparams: List, priors: List,
-                labels: List, lnlike: Callable, data: List, plot_wl: List,
-                quantiles: Optional[List] = [0.16, 0.84],
+                labels: List, lnlike: Callable,
+                data: List, plot_wl: List,
+                quantiles: Optional[List] = [0.16, 0.5, 0.84],
                 frac: Optional[float] = 1e-4,
                 cluster: Optional[bool] = False,
                 method: Optional[str] = "dynamic",
+                sampling_method: Optional[str] = "auto",
+                bounding_method: Optional[str] = "multi",
                 synthetic: Optional[bool] = False,
                 save_path: Optional[str] = "") -> np.array:
     """Runs the dynesty nested sampler
@@ -117,6 +122,8 @@ def run_dynesty(hyperparams: List, priors: List,
     frac: float, optional
     cluster: bool, optional
     method: str, optional
+    sampling_method: str, optional
+    bounding_method: str, optional
     synthetic: bool, optional
     save_path: str, optional
     """
@@ -149,13 +156,17 @@ def run_dynesty(hyperparams: List, priors: List,
                                                        logl_args=data,
                                                        ptform_args=[priors],
                                                        update_interval=float(ndim),
-                                                       pool=pool, queue_size=cpu_amount)
+                                                       sample=sampling_method,
+                                                       bound=bounding_method,
+                                                       nlive=nlive, pool=pool,
+                                                       queue_size=cpu_amount)
             else:
                 sampler = dynesty.NestedSampler(lnlike, ptform, ndim,
                                                 logl_args=data,
                                                 ptform_args=[priors],
                                                 update_interval=float(ndim),
-                                                sample="rwalk", bound="multi",
+                                                sample=sampling_method,
+                                                bound=bounding_method,
                                                 nlive=nlive, pool=pool,
                                                 queue_size=cpu_amount)
 
@@ -166,16 +177,14 @@ def run_dynesty(hyperparams: List, priors: List,
     mean, cov = dyfunc.mean_and_cov(samples, weights)
     new_samples = dyfunc.resample_equal(samples, weights)
 
-    medians, lower_errors, upper_errors = get_median_and_errors(new_samples,
+    medians, lower_errors, upper_errors = get_median_and_errors(new_samples, weights,
                                                                 ndim, quantiles)
-
-    print(medians, lower_errors, upper_errors)
 
     plot_runs(results, save_path)
     plot_trace(results, ndim, save_path)
     plot_corner(results, ndim, labels, quantiles, save_path)
-    # plot_fit_results(save_path)
-    plt.show()
+    plot_fit_results(medians, *data, hyperparams, labels,
+                    plot_wl=plot_wl, save_path=save_path)
 
 
 if __name__ == "__main__":
