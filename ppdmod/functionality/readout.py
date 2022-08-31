@@ -147,8 +147,8 @@ class ReadoutFits:
             The closure phase error for a specific wavelength
         """
         t3phi, t3phierr = self.get_t3phi()[:2]
-        t3phi4wl, t3phierr4wl = map(lambda x: np.array([i[wl_ind] for i in x]).flatten(), [t3phi, t3phierr])
-
+        t3phi4wl, t3phierr4wl = map(lambda x: np.array([i[wl_ind] for i in x]),
+                                    [t3phi, t3phierr])
         return t3phi4wl, t3phierr4wl
 
     def get_vis24wl(self, wl_ind: np.ndarray) -> np.ndarray:

@@ -10,7 +10,6 @@ from ..functionality.baseClasses import Model
 from ..functionality.utils import azimuthal_modulation, mas2rad
 
 
-
 class CompoundModel(Model):
     """Infinitesimal thin ring model. Can be both cirular or an ellipsoid, i.e.
     inclined
@@ -48,12 +47,12 @@ class CompoundModel(Model):
         set_grid()
         """
         try:
-            if len(theta) == 7:
-                axis_ratio, pa, mod_amp, mod_angle, sub_radius, tau, q = theta
+            if len(theta) == 8:
+                axis_ratio, pa, mod_amp, mod_angle, sub_radius, tau_0, q, p = theta
                 ring_inner_radius, ring_outer_radius = None, None
             else:
                 axis_ratio, pa, mod_amp, mod_angle, ring_inner_radius,\
-                        ring_outer_radius, tau, q = theta
+                        ring_outer_radius, tau_0, q, p = theta
                 ring_outer_radius += ring_inner_radius
         except:
             raise IOError(f"{self.name}.{inspect.stack()[0][3]}():"
@@ -70,7 +69,7 @@ class CompoundModel(Model):
                                   sampling, inner_radius=ring_inner_radius,
                                   outer_radius=ring_outer_radius)
 
-        flux = self.r.get_flux(tau, q, sub_radius)
+        flux = self.r.get_flux(tau_0, q, p, sub_radius)
         flux = azimuthal_modulation(flux, self.r._phi, mod_angle, mod_amp)
         self._max_sub_flux = np.max(flux)
 

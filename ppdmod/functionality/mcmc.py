@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """Test file for a 2D-Gaussian PPD model, that is fit with MCMC; The emcee
 package
 
@@ -56,7 +54,7 @@ from typing import Any, Dict, List, Union, Optional, Callable
 
 from .fourier import FFT
 from .baseClasses import Model
-from .fitting_utils import chi_sq, lnprob, lnlike
+from .fitting_utils import chi_sq, lnprob, lnlike, plot_fit_results
 
 # TODO: Implement global parameter search algorithm (genetic algorithm)
 # TODO: Implement optimizer algorithm

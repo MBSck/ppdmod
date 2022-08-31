@@ -1,12 +1,13 @@
 import dynesty
 import numpy as np
+import pymultinest as mnest
 import matplotlib.pyplot as plt
 
 from warnings import warn
 from schwimmbad import MPIPool
-from multiprocessing import Pool, cpu_count
 from dynesty import utils as dyfunc
 from dynesty import plotting as dyplot
+from multiprocessing import Pool, cpu_count
 from typing import Any, Dict, List, Union, Optional, Callable
 
 from .fitting_utils import lnlike, plot_fit_results
@@ -75,7 +76,7 @@ def plot_corner(results, ndim: int,
     else:
         plt.savefig(os.path.join(save_path, plot_name))
 
-def ptform(initial: List, priors: List) -> List:
+def ptform(uniform: List, priors: List) -> List:
     """Tranforms all the priors to uniforms
 
     Parameters
@@ -91,7 +92,7 @@ def ptform(initial: List, priors: List) -> List:
         The reformatted priors
     """
     uniform_transform = lambda x, y, z: x + (y-x)*z
-    transformed_priors = [uniform_transform(*o, initial[i]) for i, o in enumerate(priors)]
+    transformed_priors = [uniform_transform(*o, uniform[i]) for i, o in enumerate(priors)]
     return np.array(transformed_priors, dtype=float)
 
 def run_dynesty(hyperparams: List, priors: List,

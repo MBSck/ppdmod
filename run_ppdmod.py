@@ -78,14 +78,15 @@ def run_nested_fit(priors: List, labels: List,
 
 
 if __name__ == "__main__":
-    priors = [[1., 2.], [0, 180], [0.5, 1.], [0, 360], [1., 10.], [0., 1.], [0., 1.]]
+    priors = [[1., 5.], [0, 180], [0.5, 1.], [0, 360], [1., 10.],
+              [0., 1.], [0., 1.], [0., 1.]]
     initial = get_rndarr_from_bounds(priors, True)
     labels = ("axis ratio", "pos angle", "mod amplitude",
-              "mod angle", "inner radius", "tau", "q")
+              "mod angle", "inner radius", "tau_0", "q", "p")
     wl_sel = (8.5, 10., 12.5)
     bb_params = (1500, 9200, 16, 101.2)
 
-    mcmc_params = (initial, 32, 250, 500)
+    mcmc_params = (initial, 32, 2500, 5000)
     dynesty_params = (initial, 15)
 
     path_to_fits = "assets/data/HD_142666/test"
