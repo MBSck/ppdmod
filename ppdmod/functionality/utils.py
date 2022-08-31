@@ -1,36 +1,16 @@
-#!/usr/bin/env python3
-
 import os
 import sys
 import time
 import inspect
 import numpy as np
 import matplotlib.pyplot as plt
+import astropy.units as u
+import astropy.constants as c
 
+from astropy.io import fits
 from glob import glob
 from pathlib import Path
-from functools import wraps
-from astropy.io import fits
 from typing import Any, Dict, List, Union, Optional, Callable
-
-from .constants import *
-
-
-# Functions
-
-def progress_bar(progress: int, total: int) -> None:
-    """Displays a progress bar
-
-    Parameters
-    ----------
-    progress: int
-        Total progress
-    total: int
-        Total iterations
-    """
-    percent = 100 * (progress/total)
-    bar = '#' * int(percent) + '-' * (100-int(percent))
-    print(f"\r|{bar}|{percent:.2f}% - {progress}/{total}", end='\r')
 
 def orbit_au2arc(orbit_radius: Union[int, float],
                  distance: Union[int, float]):
@@ -123,10 +103,8 @@ def azimuthal_modulation(image, polar_angle: Union[float, np.ndarray],
     # TODO: Implement Modulation field like Jozsef?
     modulation_angle = np.radians(modulation_angle)
     total_mod = (amplitude*np.cos(polar_angle-modulation_angle))
-
     image *= np.array(1 + total_mod)
     image[image < 0.0] = 0.0
-
     return image
 
 def set_grid(mas_size: int, size: int, sampling: Optional[int] = None,
@@ -290,8 +268,7 @@ def stellar_radius_pc(T_eff: int, L_star: int):
     stellar_radius: float
         The star's radius [pc]
     """
-    L_star *= SOLAR_LUMINOSITY
-    stellar_radius_m = np.sqrt(L_star/(4*np.pi*STEFAN_BOLTZMAN_CONST*T_eff**4))
+    stellar_radius_m = np.sqrt((L_star*c.L_sun)/(4*np.pi*c.sigma_sb*T_eff**4))
     return stellar_radius_m/PARSEC2M
 
 def sublimation_temperature(r_sub: float, L_star: int, distance: int):
@@ -311,9 +288,8 @@ def sublimation_temperature(r_sub: float, L_star: int, distance: int):
     T_sub: float
         The sublimation temperature [K]
     """
-    L_star *= SOLAR_LUMINOSITY
     r_sub /= m2mas(1, distance)
-    return (L_star/(4*np.pi*STEFAN_BOLTZMAN_CONST*r_sub**2))**(1/4)
+    return ((L_star*c.L_sun)/(4*np.pi*c.k_B*r_sub**2))**(1/4)
 
 def sublimation_radius(T_sub: int, L_star: int, distance: int):
     """Calculates the sublimation radius of the disk
@@ -332,98 +308,8 @@ def sublimation_radius(T_sub: int, L_star: int, distance: int):
     R_sub: int
         The sublimation_radius [mas]
     """
-    L_star *= SOLAR_LUMINOSITY
-    sub_radius_m = np.sqrt(L_star/(4*np.pi*STEFAN_BOLTZMAN_CONST*T_sub**4))
+    sub_radius_m = np.sqrt((L_star*c.L_sun)/(4*np.pi*c.sigma_sb*T_sub**4))
     return m2mas(sub_radius_m, distance)
-
-def power_law(radius: Union[float, np.ndarray], r_0: float,
-              start_value: float, exponent: float) -> Union[float, np.ndarray]:
-    """A simple power law function
-
-    radius: float | np.ndarray
-        The specified radius
-    r_0: float
-        The initial radius
-    start_value: float
-        The temperature at r_0
-    exponent: float
-        The power-law exponent
-
-    Returns
-    -------
-    float | np.ndarray
-    """
-    with np.errstate(divide='ignore'):
-        return start_value*(radius/r_0)**(-exponent)
-
-def tau_gradient(radius: float, r_0: Union[int, float],
-                 p: float, tau_0: int) -> Union[float, np.ndarray]:
-    """Tau gradient model determined by power-law distribution.
-
-    Parameters
-    ----------
-    radius: float
-        The specified radius
-    r_0: float
-        The initial radius
-    p: float
-        The power-law exponent
-    tau_0: float
-        The optical depth at r_0
-
-    Returns
-    -------
-    optical_depth: float | np.ndarray
-        The optical_depth at a certain radius
-    """
-    return power_law(radius, r_0, tau_0, p)
-
-def temperature_gradient(radius: float, r_0: Union[int, float],
-                         q: float, T_0: int) -> Union[float, np.ndarray]:
-    """Temperature gradient model determined by power-law distribution.
-
-    Parameters
-    ----------
-    radius: float
-        The specified radius
-    r_0: float
-        The initial radius
-    q: float
-        The power-law exponent
-    T_0: float
-        The temperature at r_0
-
-    Returns
-    -------
-    temperature: float | np.ndarray
-        The temperature at a certain radius
-    """
-    # q is 0.5 for flared irradiated disks and 0.75 for standard viscuous disks
-    return power_law(radius, r_0, T_0, q)
-
-def plancks_law_nu(T: Union[float, np.ndarray],
-                   wavelength: float) -> [float, np.ndarray]:
-    """Gets the blackbody spectrum at a certain T(r). Wavelength and
-    dependent. The wavelength will be converted to frequency
-
-    Parameters
-    ----------
-    T: float
-        The temperature of the blackbody
-    wavelength: float
-        The wavelength to be converted to frequency
-
-    Returns
-    -------
-    planck's law/B_nu(nu, T): float | np.ndarray
-        The spectral radiance (the power per unit solid angle) of a black-body
-        in terms of frequency
-    """
-    nu = SPEED_OF_LIGHT/wavelength
-    factor = (2*PLANCK_CONST*nu**3)/SPEED_OF_LIGHT**2
-    exponent = (PLANCK_CONST*nu)/(BOLTZMAN_CONST*T)
-
-    return factor*(1/(np.exp(exponent)-1))
 
 
 if __name__ == "__main__":

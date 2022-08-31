@@ -1,15 +1,13 @@
 import numpy as np
+import astropy.units as u
 
+from astropy.modeling import models
+from typing import Union, Optional
 from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass
-from typing import Any, Dict, List, Union, Optional
 
-from .utils import plancks_law_nu, sublimation_radius,\
-        sr2mas, temperature_gradient, stellar_radius_pc, sublimation_temperature
+from .utils import sublimation_radius, sr2mas, stellar_radius_pc, sublimation_temperature
 
-# TODO: Implement FFT as a part of the model class
-
-# Classes
+# TODO: Implement FFT as a part of the model class?
 
 class Model(metaclass=ABCMeta):
     """Abstract metaclass that initiates the models
@@ -65,17 +63,19 @@ class Model(metaclass=ABCMeta):
         """Sets the sublimation radius"""
         self._r_sub = value
 
-    def get_flux(self, optical_thickness: float, q: float,
+    def get_flux(self, tau_0: float, q: float, p: float,
                  r_sub: Optional[Union[int, float]] = None) -> np.array:
         """Calculates the total flux of the model
 
         Parameters
         ----------
-        optical_thickness: float
-            The optical thickness of the disk, value between 0-1, which 1 being
+        tau_0: float
+            The optical depth of the disk, value between 0-1, which 1 being
             a perfect black body
         q: float
-            The power law index
+            The power law exponent of temperature
+        p: float
+            The power law exponent of optical depth
         r_sub: int | float, optional
             The inner radius used to calculate the inner/sublimation
             temperature, if provided
@@ -86,18 +86,17 @@ class Model(metaclass=ABCMeta):
         """
         with np.errstate(divide='ignore'):
             if r_sub is not None:
-                T_sub = sublimation_temperature(r_sub, self.L_star, self.d)
-                T = temperature_gradient(self._radius, r_sub, q, T_sub)
+                sub_temperature = sublimation_temperature(r_sub, self.L_star, self.d)
             else:
-                T = temperature_gradient(self._radius, self._r_sub, q, self.T_sub)
+                sub_temperature = self._r_sub
 
-            flux = plancks_law_nu(T, self.wl)
-            flux *= (1-np.exp(-optical_thickness))*\
-                    sr2mas(self._mas_size, self._sampling)
+            temperature = models.PowerLaw1D(self._radius, self._r_sub, q, self.T_sub)
+            tau = models.PowerLaw1D(self._radius, self._r_sub, p, tau_0)
+            blackbody = models.BlackBody(temperature=temperature*u.K)
 
-            flux[np.where(np.isnan(flux))],\
-                    flux[np.where(np.isinf(flux))] = 0., 0.
-
+            flux = blackbody(self.wl)
+            flux *= (1-np.exp(-tau))*sr2mas(self._mas_size, self._sampling)
+            flux[np.where(np.isnan(flux))],flux[np.where(np.isinf(flux))] = 0., 0.
             return flux*1e26
 
     @abstractmethod
@@ -123,25 +122,6 @@ class Model(metaclass=ABCMeta):
             Two dimensional array that can be plotted with plt.imread()
         """
         pass
-
-@dataclass
-class Parameter:
-    """Class for keeping the parameters information"""
-    name: str
-    init_value: Union[int, float]
-    value: Union[Any, int, float]
-    error: Union[Any, int, float]
-    priors: List[float]
-    label: str
-    unit: str
-
-    def __call__(self) -> Union[int, float]:
-        """Returns the parameter value"""
-        return self.value
-
-    def __str__(self) -> str:
-        return f"Param='{self.name}': {self.value}+-{self.error}"\
-                f" range=[{', '.join([str(i) for i in self.priors])}]"
 
 if __name__ == "__main__":
     ...

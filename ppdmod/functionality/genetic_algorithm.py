@@ -1,8 +1,7 @@
 import numpy as np
 
+from tqdm import tqdm
 from typing import Any, Dict, List, Union, Optional
-
-from .utils import progress_bar
 
 # Credit: https://machinelearningmastery.com/simple-genetic-algorithm-from-scratch-in-python/
 
@@ -170,8 +169,7 @@ def genetic_algorithm(objective, bounds: List, n_bits: int,
 
     # Enumerate generations
     print("Running genetic algorithm!")
-    progress_bar(0, n_iter)
-    for gen in range(n_iter):
+    for gen in tqdm(range(n_iter)):
         # Decode population
         decoded = [decode(bounds, n_bits, p) for p in pop]
 
@@ -199,22 +197,11 @@ def genetic_algorithm(objective, bounds: List, n_bits: int,
                 # Store for the next generation
                 children.append(c)
 
-        progress_bar(gen + 1, n_iter)
-
         # replace population
         pop = children
 
-    print()
-
     return best, best_eval
 
-# ----- Test Functions for the Genetic Algorithm ---------
-
-def onemax(x):
-    return -np.sum(x)
-
-def objective(x):
-    return x[0]**2.0 + x[1]**2.0
 
 if __name__ == "__main__":
     ...
