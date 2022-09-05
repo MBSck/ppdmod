@@ -1,0 +1,55 @@
+[build-system]
+requires = ["flit_core"]
+build-backend = "flit_core.buildapi>=3.2,<4"
+
+[project]
+name = "ppdmod"
+version = "0.0.1"
+description = "A package for modelling and model-fitting protoplanetary disks"
+requires-python = ">=3.9"
+readme = "README.md"
+license = {file = "LICENSE"}
+
+keywords = ["astronomy", "protoplanetary discs", "modelling", "model-fitting"]
+authors = [
+	{name = "Marten Scheuck", email = "martenscheuck@gmail.com"}
+]
+
+classifiers = [
+	"Development Status :: 1 - Planning",
+	"Framework :: Pytest",
+	"Framework :: Sphinx",
+	"License :: OSI Approved :: MIT License",
+	"Natural Language :: English",
+	"Operating System :: OS Independent",
+	"Programming Language :: Python :: 3",
+	"Programming Language :: Python :: 3.9",
+	"Topic :: Scientific/Engineering :: Astronomy",
+	"Topic :: Scientific/Engineering :: Physics",
+]
+
+dependencies = [
+	'importlib-metadata; python_version<"3.8"',
+	"astropy >=5.1",
+	"corner >=2.2.1",
+	"emcee >=3.1.2",
+	"matplotlib >=3.5.3",
+	"numpy >=1.23.2",
+	"pip >=22.2.2",
+	"schwimmbad >= 0.3.2",
+	"scipy >=1.9.1",
+	"tqdm >=4.64.0"
+]
+
+[project.optional_dependencies]
+test = [
+	"pytest >=7.1.2",
+	"pytest-cov >=3.0.0"
+]
+
+dev = [
+	"pylint >=2.15.0",
+]
+
+[project.urls]
+repository = "https://github.com/MBSck/ppdmod"
