@@ -54,17 +54,38 @@ def test_get_data(example_fits_file_path, header_names_tuple):
     assert np.all(error == error_fits)
     assert np.all(sta_index == sta_index_fits)
 
+def test_get_data_for_wavelength(example_fits_file_path):
+    readout = ReadoutFits(example_fits_file_path)
+    visdata = readout.get_visibilities()
+    wl_ind = np.array([random.randint(0, 120)])
+    wl_indices = np.array([random.randint(0, 120) for _ in range(5)])
+    len_wl_indices = len(wl_indices)
+    vis4wl_singular, viserr4wl_singular = readout.get_data_for_wavelength(visdata, wl_ind)
+    vis4wl, viserr4wl = readout.get_data_for_wavelength(visdata, wl_indices)
+    assert isinstance(vis4wl_singular.value, np.ndarray)
+    assert isinstance(viserr4wl_singular.value, np.ndarray)
+    assert isinstance(vis4wl.value, np.ndarray)
+    assert isinstance(viserr4wl.value, np.ndarray)
+    assert vis4wl_singular.shape == (1, 6)
+    assert viserr4wl_singular.shape == (1, 6)
+    assert vis4wl.shape == (len_wl_indices, 6)
+    assert viserr4wl.shape == (len_wl_indices, 6)
+    assert vis4wl_singular.unit == u.Jy
+    assert viserr4wl_singular.unit == u.Jy
+    assert vis4wl.unit == u.Jy
+    assert viserr4wl.unit == u.Jy
+
 def test_get_telescope_information(example_fits_file_path):
     readout = ReadoutFits(example_fits_file_path)
     station_names, station_indicies,\
             station_indicies4baselines,\
             station_indicies4triangles = readout.get_telescope_information()
     assert isinstance(station_names, np.ndarray)
+    assert isinstance(station_names[0], str)
     assert isinstance(station_indicies.value, np.ndarray)
     assert isinstance(station_indicies4baselines.value, np.ndarray)
     assert isinstance(station_indicies4triangles.value, np.ndarray)
     assert station_indicies.unit == u.dimensionless_unscaled
-    assert isinstance(station_names[0], str)
 
 # TODO: Implement this test
 def test_get_split_uvcoords():
@@ -150,34 +171,61 @@ def test_get_wavelength_solution(example_fits_file_path):
     assert isinstance(wavelength_solution.value, np.ndarray)
     assert wavelength_solution.unit == u.um
 
+def test_get_visibilities4wavelength(example_fits_file_path):
+    readout = ReadoutFits(example_fits_file_path)
+    wl_ind = np.array([random.randint(0, 120)])
+    wl_indices = np.array([random.randint(0, 120) for _ in range(5)])
+    len_wl_indices = len(wl_indices)
+    vis_singular, viserr_singular = readout.get_flux4wavelength(wl_ind)
+    vis, viserr = readout.get_flux4wavelength(wl_indices)
+    assert isinstance(vis_singular.value, np.ndarray)
+    assert isinstance(viserr_singular.value, np.ndarray)
+    assert isinstance(vis.value, np.ndarray)
+    assert isinstance(vis.value, np.ndarray)
+    assert vis_singular.shape == (1, 6)
+    assert viserr_singular.shape == (1, 6)
+    assert vis4wl.shape == (len_wl_indices, 6)
+    assert viserr4wl.shape == (len_wl_indices, 6)
+
+    if np.max(vis.value) >= 1.:
+        assert vis_singular.unit == u.Jy
+        assert viserr_singular.unit == u.Jy
+        assert vis.unit == u.Jy
+        assert viserr.unit == u.Jy
+    else:
+        assert vis_singular.unit == u.dimensionless_unscaled
+        assert viserr_singular.unit == u.dimensionless_unscaled
+        assert vis.unit == u.dimensionless_unscaled
+        assert viserr.unit == u.dimensionless_unscaled
+
 def test_get_flux4wavlength(example_fits_file_path):
     readout = ReadoutFits(example_fits_file_path)
-    wavelength_index = np.array([random.randint(0, 120)])
-    wavelength_indicies = np.array([random.randint(0, 120) for _ in range(5)])
-    number_wavelength_indicies = len(wavelength_indicies)
-    flux4wavelength_singular,\
-            fluxerr4wavelength_singular = readout.get_flux4wavelength(wavelength_index)
-    flux4wavelength, fluxerr4wavelength = readout.get_flux4wavelength(wavelength_indicies)
-    assert isinstance(flux4wavelength_singular.value, np.ndarray)
-    assert isinstance(fluxerr4wavelength_singular.value, np.ndarray)
-    assert isinstance(flux4wavelength.value, np.ndarray)
-    assert isinstance(fluxerr4wavelength.value, np.ndarray)
-    assert flux4wavelength_singular.value.shape == (1, )
-    assert fluxerr4wavelength_singular.value.shape == (1, )
-    assert flux4wavelength.value.shape == (number_wavelength_indicies, )
-    assert fluxerr4wavelength.value.shape == (number_wavelength_indicies, )
-    assert flux4wavelength_singular.unit == u.Jy
-    assert fluxerr4wavelength_singular.unit == u.Jy
-    assert flux4wavelength.unit == u.Jy
-    assert fluxerr4wavelength.unit == u.Jy
+    wl_ind = np.array([random.randint(0, 120)])
+    wl_indices = np.array([random.randint(0, 120) for _ in range(5)])
+    len_wl_indices = len(wl_indices)
+    flux4wl_singular, fluxerr4wl_singular = readout.get_flux4wavelength(wl_ind)
+    flux4wl, fluxerr4wl = readout.get_flux4wavelength(wl_indices)
+    assert isinstance(flux4wl_singular.value, np.ndarray)
+    assert isinstance(fluxerr4wl_singular.value, np.ndarray)
+    assert isinstance(flux4wl.value, np.ndarray)
+    assert isinstance(fluxerr4wl.value, np.ndarray)
+    assert flux4wl_singular.value.shape == (1, )
+    assert fluxerr4wl_singular.value.shape == (1, )
+    assert flux4wl.value.shape == (len_wl_indices, )
+    assert fluxerr4wl.value.shape == (len_wl_indices, )
+    assert flux4wl_singular.unit == u.Jy
+    assert fluxerr4wl_singular.unit == u.Jy
+    assert flux4wl.unit == u.Jy
+    assert fluxerr4wl.unit == u.Jy
 
 def test_telescope_information_from_different_header(example_fits_file_path):
     readout = ReadoutFits(example_fits_file_path)
-    station_names, station_indicies,\
-            station_indicies4baselines,\
-            station_indicies4triangles = readout.get_telescope_information()
-    station_indicies_from_visibilities = readout.get_data("oi_vis", "sta_index")[0]
-    station_indicies_from_visibilities_squared = readout.get_data("oi_vis2", "sta_index")[0]
+    station_names, station_indices,\
+            station_indices4baselines,\
+            station_indices4triangles = readout.get_telescope_information()
+    station_indices_from_visibilities = readout.get_data("oi_vis", "sta_index")[0]
+    station_indices_from_visibilities_squared = readout.\
+            get_data("oi_vis2", "sta_index")[0]
 
-    assert np.all(station_indicies_from_visibilities ==\
-            station_indicies_from_visibilities_squared)
+    assert np.all(station_indices_from_visibilities ==\
+            station_indices_from_visibilities_squared)
