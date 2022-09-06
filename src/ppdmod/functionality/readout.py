@@ -88,18 +88,27 @@ class ReadoutFits:
         with fits.open(self.fits_file) as header_list:
             return (header_list[header].columns).names
 
-    def get_uvcoords(self) -> Quantity:
-        """Fetches the u, v coordinates from the (.fits)-files, merges them and gives the
-        quantities the proper units
+    def get_telescope_information(self) -> Union[np.ndarray, Quantity]:
+        """Fetches the telescop's array names and stations from the (.fits)-files and
+        gives the proper units to the quantities
 
         Returns
         -------
-        uvcoords: astropy.units.Quantity
-            The (u, v)-coordinates in [astropy.units.m]
+        station_name: np.ndarray
+        station_indicies: astropy.units.Quantity
+        station_indicies4baselines: astropy.units.Quantity
+        station_indicies4triangles: astropy.units.Quantity
         """
-        ucoords = np.array(self.get_data("oi_vis", "ucoord"))
-        vcoords = np.array(self.get_data("oi_vis", "vcoord"))
-        return np.array([uvcoords for uvcoords in zip(ucoords, vcoords)])*u.m
+        station_names, station_indicies = self.get_data("oi_array",
+                                                        "tel_name", "sta_index")
+        station_indicies *= u.dimensionless_unscaled
+        station_indicies4baselines = self.get_data("oi_vis", "sta_index")[0]*\
+            u.dimensionless_unscaled
+        station_indicies4triangles = self.get_data("oi_t3", "sta_index")[0]*\
+            u.dimensionless_unscaled
+
+        return station_names, station_indicies,\
+            station_indicies4baselines, station_indicies4triangles
 
     def get_split_uvcoords(self) -> Tuple[Quantity]:
         """Fetches the u, v coordinates from the (.fits)-files and gives the
@@ -116,7 +125,18 @@ class ReadoutFits:
         vcoords = np.array(self.get_data("oi_vis", "vcoord"))*u.m
         return ucoords, vcoords
 
-    def get_closure_phase_uvcoords(self) -> Tuple[Quantity]:
+    def get_uvcoords(self) -> Quantity:
+        """Fetches the u, v coordinates from the (.fits)-files, merges them and gives the
+        quantities the proper units
+
+        Returns
+        -------
+        uvcoords: astropy.units.Quantity
+            The (u, v)-coordinates in [astropy.units.m]
+        """
+        return np.array([uvcoords for uvcoords in zip(self.get_split_uvcoords())])
+
+    def get_closures_phase_uvcoords(self) -> Tuple[Quantity]:
         """Fetches the (u1, v1), (u2, v2) coordinate of the closure phase triangles from
         the (.fits)-file, calculates the third (u3, v3) coordinate pair and then gives the
         quantities the proper units
@@ -131,7 +151,7 @@ class ReadoutFits:
         u1, v1 = self.get_data("oi_t3", "u1coord", "v1coord")*u.m
         u2, v2 = self.get_data("oi_t3", "u2coord", "v2coord")*u.m
         u3, v3 = -(u1+u2), -(v1+v2)
-        return [u1, u2, u3], [v1, v2, v3]
+        return (u1, u2, u3), (v1, v2, v3)
 
     def get_baselines(self) -> Quantity:
         """Calculates the baselines from the uv coordinates
@@ -141,7 +161,8 @@ class ReadoutFits:
         baselines: astropy.unit.Quantity
             The baselines in [astropy.units.meter]
         """
-        return np.sqrt(*self.get_split_uvcoords**2)
+        ucoords, vcoords = self.get_split_uvcoords()
+        return np.sqrt(ucoords**2+vcoords**2)
 
     def get_visibilities(self) -> Quantity:
         """"Fetches the visibility data, its error and the sta_indicies from the
@@ -160,15 +181,13 @@ class ReadoutFits:
             The station indicies of the telescopes used
             [astropy.units.dimensionless_unscaled]
         """
-        vis, viserr, sta_indicies = self.get_data("oi_vis", "visamp",\
-                "visamperr", "sta_index")
+        vis, viserr = self.get_data("oi_vis", "visamp", "visamperr")
 
         if np.max(vis) > 1.:
-            vis, viserr = map(lambda x: x*u.Jy, [vis, viserr])
+            vis, viserr = map(lambda x: x*u.Jy, (vis, viserr))
         else:
-            vis, viserr = map(lambda x: x*u.dimensionless_unscaled, [vis, viserr])
-        sta_indicies *= u.dimensionless_unscaled
-        return vis, viserr, sta_indicies
+            vis, viserr = map(lambda x: x*u.dimensionless_unscaled, (vis, viserr))
+        return vis, viserr
 
     def get_visibilities_squared(self) -> Quantity:
         """Fetches the squared visibility data, its error and the sta_indicies from the
@@ -186,9 +205,8 @@ class ReadoutFits:
             The station indicies of the telescopes used
             [astropy.units.dimensionless_unscaled]
         """
-        vis2, vis2err, sta_indicies = self.get_data("oi_vis2", "vis2data",
-                "vis2err", "sta_index")
-        return map(lambda x: x*u.dimensionless_unscaled, [vis2, vis2err, sta_indicies])
+        vis2, vis2err = self.get_data("oi_vis2", "vis2data", "vis2err")
+        return list(map(lambda x: x*u.dimensionless_unscaled, (vis2, vis2err)))
 
     def get_closure_phases(self) -> Quantity:
         """Fetches the closure phase data, its error and the sta_indicies from the
@@ -205,11 +223,8 @@ class ReadoutFits:
             The station indicies of the telescopes used
             [astropy.units.dimensionless_unscaled]
         """
-        cphases, cphaseserr, sta_indicies = self.get_data("oi_t3", "t3phi",
-                "t3phierr", "sta_index")
-        cphases, cphaseserr = map(lambda x: x*u.deg, [cphases, cphaseserr])
-        sta_indicies *= u.dimensionless_unscaled
-        return cphases, cphaseserr, sta_indicies
+        cphases, cphaseserr = self.get_data("oi_t3", "t3phi", "t3phierr")
+        return list(map(lambda x: x*u.deg, (cphases, cphaseserr)))
 
     def get_flux(self) -> Quantity:
         """Fetches the (total) flux data, its error from the (.fits)-file and gives the
@@ -233,47 +248,51 @@ class ReadoutFits:
         flux: astropy.units.Quantity
             The wavelength solution of the MATISSE instrument [astropy.units.micrometer]
         """
-        return self.get_data("oi_wavelength", "eff_wave")[0]
+        return (self.get_data("oi_wavelength", "eff_wave")[0]*u.m).to(u.um)
 
-    def get_tel_sta(self) -> np.ndarray:
-        """Fetches the telescope array names and station from the (.fits)-files and
-        gives the proper units to the quantities
+    def get_flux4wavelength(self, wavelength_indicies: np.ndarray) -> Quantity:
+        """Fetches the flux for a specific wavelength
+
+        Parameters
+        ----------
+        wavelength_indicies: np.ndarray
+            The indicies of the wavelength solution
 
         Returns
         -------
-        station_name: astropy.units.Quantity
-        station_indicies: astropy.units.Quantity
+        wavelength_specific_flux: astropy.units.Quantity
+        wavelength_specific_fluxerr: astropy.units.Quantity
         """
-        return self.get_data("oi_array", "tel_name", "sta_index")
+        return list(map(lambda x: x[0][wavelength_indicies], self.get_flux()))
 
-    def get_flux4wl(self, wl_ind: np.ndarray) -> np.ndarray:
-        """Fetches the flux for a specific wavelength"""
-        return map(lambda x: x[wl_ind], self.get_flux())
-
-    def get_vis4wl(self, wl_ind: np.ndarray) -> np.ndarray:
+    def get_visibilities4wavelength(self, wavelength_indicies: np.ndarray) -> Quantity:
         """Fetches the visdata(amp/phase)/correlated fluxes for one specific wavelength
 
         Parameters
         ----------
-        wl_ind: np.ndarray
+        wavelength_indicies: np.ndarray
+            The indicies of the wavelength solution
 
         Returns
         --------
-        visamp4wl: np.ndarray
-            The visamp for a specific wavelength
-        visamperr4wl: np.ndarray
-            The visamperr for a specific wavelength
+        visamp4wavelength: astropy.units.Quantity
+            The visamps for a specific wavelength
+        visamperr4wavelength: astropy.units.Quantity
+            The visamperrs for a specific wavelength
         """
-        visdata = self.get_vis()
-        visamp, visamperr = map(lambda x: x[:6], visdata[:2])
-
         # FIXME: Is this ordering done correctly?? Check!
-        visamp4wl, visamperr4wl = map(lambda x: np.array([i[wl_ind] for i in x]).flatten().tolist(), [visamp, visamperr])
+        visamp4wl, visamperr4wl = map(lambda x: np.array([i[wavelength_indicies] for i in x]).\
+                flatten().tolist(), self.get_visibilities())
 
         return visamp4wl, visamperr4wl
 
-    def get_t3phi4wl(self, wl_ind: int) -> np.ndarray:
+    def get_closure_phases4wavelength(self, wavelength_indicies: np.ndarray) -> Quantity:
         """Fetches the closure phases for one specific wavelength
+
+        Parameters
+        ----------
+        wavelength_indicies: np.ndarray
+            The indicies of the wavelength solution
 
         Returns
         -------
@@ -282,13 +301,19 @@ class ReadoutFits:
         t3phierr4wl: np.ndarray
             The closure phase error for a specific wavelength
         """
-        t3phi, t3phierr = self.get_t3phi()[:2]
+        t3phi, t3phierr = self.get_closure_phases()
         t3phi4wl, t3phierr4wl = map(lambda x: np.array([i[wl_ind] for i in x]).flatten(), [t3phi, t3phierr])
 
         return t3phi4wl, t3phierr4wl
 
-    def get_vis24wl(self, wl_ind: np.ndarray) -> np.ndarray:
+    def get_visibilities_squared4wavelength(self,
+            wavelength_indicies: np.ndarray) -> np.ndarray:
         """Fetches the vis2data for one specific wavelength
+
+        Parameters
+        ----------
+        wavelength_indicies: np.ndarray
+            The indicies of the wavelength solution
 
         Returns
         --------
@@ -297,16 +322,12 @@ class ReadoutFits:
         vis2err4wl: np.ndarray
             The vis2err for a specific wavelength
         """
-        vis2data, vis2err  = map(lambda x: x[:6], self.get_vis2()[:2])
+        vis2data, vis2err  = map(lambda x: x[:6], self.get_visibilities_squared())
         vis2data4wl, vis2err4wl = map(lambda x: np.array([i[wl_ind] for i in x]).flatten(), [vis2data, vis2err])
 
         return vis2data4wl, vis2err4wl
 
 
 if __name__ == "__main__":
-    path = "/Users/scheuck/Documents/PhD/matisse_stuff/ppdmodler/assets/data"
-    path = os.path.join(path,
-                        "HD_142666_2019-03-24T09_01_46_L_TARGET_FINALCAL_INT.fits")
-    readout = ReadoutFits(path)
-    print(readout.get_vis4wl(30))
+    ...
 
