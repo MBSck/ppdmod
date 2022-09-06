@@ -3,8 +3,10 @@ import numpy as np
 import astropy.units as u
 
 from astropy.io import fits
+from pathlib import Path
+from astropy.units import Quantity
+from typing import Any, Tuple, Dict, List, Union
 from scipy.interpolate import CubicSpline
-from typing import Any, Dict, List, Union
 
 # TODO: Make merge function that merges different readouts
 # TOOD: Make Readout accept more than one file
@@ -24,106 +26,225 @@ def read_single_dish_txt2np(file, axis2interpolate):
     return wl2flux_dict
 
 class ReadoutFits:
-    # TODO: Make this accept more than one file
-    """All functionality to work with '.oifits/.fits'-files"""
-    def __init__(self, fits_file) -> None:
-        self.fits_file = fits_file
+    """All functionality to work with (.fits)-files"""
+    def __init__(self, fits_files: List[Path]) -> None:
+        self.fits_file = fits_files
 
     def get_info(self) -> str:
-        """Gets the header's info"""
-        with fits.open(self.fits_file) as hdul:
-            return hdul.info()
+        """Gets the (.fits)-file's primary header's info
 
-    def get_header(self, hdr) -> str:
-        """Reads out the specified data"""
-        return repr(fits.getheader(self.fits_file, hdr))
+        Returns
+        -------
+        primary_header_content: str
+        """
+        with fits.open(self.fits_file) as header_list:
+            return header_list.info()
 
-    def get_data(self, hdr: Union[int, str], *args: Union[int, str]) -> List[np.array]:
+    def get_header(self, header: Union[int, str]) -> str:
+        """Reads out the data of the header
+
+        Parameters
+        ----------
+        header: int | str
+            The header of the data to be retrieved
+
+        Returns
+        -------
+        header_content: str
+        """
+        return repr(fits.getheader(self.fits_file, header))
+
+    def get_data(self, header: Union[int, str],
+                 *sub_headers: Union[int, str]) -> List[np.array]:
         """Gets a specific set of data and its error from a header and
         subheader and returns the data of as many subheaders as in args
 
         Parameters
         ----------
-        hdr: int | str
+        header: int | str
             The header of the data to be retrieved
-        args: int | str
+        sub_headers: int | str
             The subheader(s) that specify the data
 
         Returns
         -------
         data: List[np.array]
         """
-        with fits.open(self.fits_file) as hdul:
-            return [hdul[hdr].data[i] for i in args] if len(args) > 1 \
-                    else hdul[hdr].data[args[0]]
+        with fits.open(self.fits_file) as header_list:
+            return [header_list[header].data[sub_header] for sub_header in sub_headers]
 
-    def get_column_names(self, hdr) -> np.ndarray:
-        """Fetches the columns of the header"""
-        with fits.open(self.fits_file) as hdul:
-            return (hdul[hdr].columns).names
+    def get_column_names(self, header: Union[int, str]) -> np.ndarray:
+        """Fetches the columns of the header
 
-    def get_uvcoords(self) -> np.ndarray:
-        """Fetches the u, v coord-lists and merges them as well as the individual components"""
-        return [i for i in zip(self.get_data(4, "ucoord")[:6], self.get_data(4, "vcoord")[:6])]
-
-    def get_split_uvcoords(self) -> np.ndarray:
-        """Splits a 2D-np.array into its 1D-components and returns the u- and
-        v-coords seperatly"""
-        uvcoords = self.get_uvcoords()
-        return [item[0] for item in uvcoords], [item[1] for item in uvcoords]
-
-    def get_t3phi_uvcoords(self):
-        """Fetches the (u1, v1), (u2, v2) coordinate tuples and then calculates
-        the corresponding baselines
+        Parameters
+        ----------
+        header: int | str
+            The header of the data to be retrieved
 
         Returns
         -------
-        u: np.ndarray
-        v: np.ndarray
+        column_names: List[np.array]
         """
-        u1, v1 = self.get_data("oi_t3", "u1coord", "v1coord")
-        u2, v2 = self.get_data("oi_t3", "u2coord", "v2coord")
+        with fits.open(self.fits_file) as header_list:
+            return (header_list[header].columns).names
+
+    def get_uvcoords(self) -> Quantity:
+        """Fetches the u, v coordinates from the (.fits)-files, merges them and gives the
+        quantities the proper units
+
+        Returns
+        -------
+        uvcoords: astropy.units.Quantity
+            The (u, v)-coordinates in [astropy.units.m]
+        """
+        ucoords = np.array(self.get_data("oi_vis", "ucoord"))
+        vcoords = np.array(self.get_data("oi_vis", "vcoord"))
+        return np.array([uvcoords for uvcoords in zip(ucoords, vcoords)])*u.m
+
+    def get_split_uvcoords(self) -> Tuple[Quantity]:
+        """Fetches the u, v coordinates from the (.fits)-files and gives the
+        quantities the proper units
+
+        Returns
+        -------
+        ucoords: astropy.units.Quantity
+            The u-coordinates in [astropy.units.m]
+        vcoords: astropy.untis.Quantity
+            The v-coordinates in [astropy.units.m]
+        """
+        ucoords = np.array(self.get_data("oi_vis", "ucoord"))*u.m
+        vcoords = np.array(self.get_data("oi_vis", "vcoord"))*u.m
+        return ucoords, vcoords
+
+    def get_closure_phase_uvcoords(self) -> Tuple[Quantity]:
+        """Fetches the (u1, v1), (u2, v2) coordinate of the closure phase triangles from
+        the (.fits)-file, calculates the third (u3, v3) coordinate pair and then gives the
+        quantities the proper units
+
+        Returns
+        -------
+        u: Tuple[astropy.units.Quantity]
+            The three u-coordinate pairs of the closure phase triangles
+        v: Tuple[astropy.units.Quantity]
+            The three v-coordinate pairs of the closure phase triangles
+        """
+        u1, v1 = self.get_data("oi_t3", "u1coord", "v1coord")*u.m
+        u2, v2 = self.get_data("oi_t3", "u2coord", "v2coord")*u.m
         u3, v3 = -(u1+u2), -(v1+v2)
         return [u1, u2, u3], [v1, v2, v3]
 
-    def get_baselines(self):
-        """Calculates the baselines from the uv coordinates"""
-        u, v = self.get_split_uvcoords()
-        return np.sqrt(u**2+v**2)
+    def get_baselines(self) -> Quantity:
+        """Calculates the baselines from the uv coordinates
 
-    def get_vis(self) -> np.ndarray:
-        """Fetches the visibility data/correlated fluxes, its errors and sta-indices"""
-        vis, viserr, sta_index = self.get_data("oi_vis", "visamp",\
+        Returns
+        -------
+        baselines: astropy.unit.Quantity
+            The baselines in [astropy.units.meter]
+        """
+        return np.sqrt(*self.get_split_uvcoords**2)
+
+    def get_visibilities(self) -> Quantity:
+        """"Fetches the visibility data, its error and the sta_indicies from the
+        (.fits)-file and gives the proper units to the quantities.
+
+        Returns
+        -------
+        vis: astropy.units.Quantity
+            The visibility of an observed object either in [astropy.units.Jansky] or
+            [astropy.units.dimensionless_unscaled]
+        viserr: astropy.units.Quantity
+            The error of the visibility of an observed object either in
+            [astropy.units.Jansky]
+            or [astropy.units.dimensionless_unscaled]
+        sta_indicies: astropy.units.Quantity
+            The station indicies of the telescopes used
+            [astropy.units.dimensionless_unscaled]
+        """
+        vis, viserr, sta_indicies = self.get_data("oi_vis", "visamp",\
                 "visamperr", "sta_index")
 
-        if np.max(vis) >= 1.:
-            vis, viserr = map(lambda x: np.array(x),\
-                    map(lambda x: [i*u.Jy for i in x], [vis, viserr]))
-            sta_index = np.array([i*u.dimensionless_unscaled for i in sta_index])
+        if np.max(vis) > 1.:
+            vis, viserr = map(lambda x: x*u.Jy, [vis, viserr])
         else:
-            vis, viserr, sta_index = map(lambda x: np.array(x),\
-                    map(lambda x: [i*u.dimensionless_unscaled for i in x],\
-                    [vis, viserr, sta_index]))
+            vis, viserr = map(lambda x: x*u.dimensionless_unscaled, [vis, viserr])
+        sta_indicies *= u.dimensionless_unscaled
+        return vis, viserr, sta_indicies
 
-        return vis, viserr, sta_index
+    def get_visibilities_squared(self) -> Quantity:
+        """Fetches the squared visibility data, its error and the sta_indicies from the
+        (.fits)-file and gives the proper units to the quantities
 
-    def get_vis2(self) -> np.ndarray:
-        """Fetches the squared visibility data, its error and sta_indicies"""
-        return self.get_data("oi_vis2", "vis2data", "vis2err", "sta_index")
+        Returns
+        ----------
+        vis2: astropy.units.Quantity
+            The squared visibility of an observed object in
+            [astropy.units.dimensionless_unscaled]
+        vis2err: astropy.units.Quantity
+            The error of the squared visibility of an observed object in
+            [astropy.units.dimensionless_unscaled]
+        sta_indicies: astropy.units.Quantity
+            The station indicies of the telescopes used
+            [astropy.units.dimensionless_unscaled]
+        """
+        vis2, vis2err, sta_indicies = self.get_data("oi_vis2", "vis2data",
+                "vis2err", "sta_index")
+        return map(lambda x: x*u.dimensionless_unscaled, [vis2, vis2err, sta_indicies])
 
-    def get_t3phi(self) -> np.ndarray:
-        """Fetches the closure phase data, its error and sta_indicies"""
-        return self.get_data("oi_t3", "t3phi", "t3phierr", "sta_index")
+    def get_closure_phases(self) -> Quantity:
+        """Fetches the closure phase data, its error and the sta_indicies from the
+        (.fits)-file and gives the proper units to the quantities
 
-    def get_flux(self) -> np.ndarray:
-        """Fetches the flux"""
-        return map(lambda x: x[0], self.get_data("oi_flux", "fluxdata",
-                                                 "fluxerr"))
-    def get_wl(self) -> np.ndarray:
-        return self.get_data("oi_wavelength", "eff_wave")
+        Returns
+        ----------
+        cphases: u.Quantity
+            The closure phases of an observed object in [astropy.units.degree]
+        cphaseserr: u.Quantity
+            The error of the closure phases of an observed object in
+            [astropy.units.degree]
+        sta_indicies: u.Quantity
+            The station indicies of the telescopes used
+            [astropy.units.dimensionless_unscaled]
+        """
+        cphases, cphaseserr, sta_indicies = self.get_data("oi_t3", "t3phi",
+                "t3phierr", "sta_index")
+        cphases, cphaseserr = map(lambda x: x*u.deg, [cphases, cphaseserr])
+        sta_indicies *= u.dimensionless_unscaled
+        return cphases, cphaseserr, sta_indicies
+
+    def get_flux(self) -> Quantity:
+        """Fetches the (total) flux data, its error from the (.fits)-file and gives the
+        proper units to the quantities
+
+        Returns
+        ----------
+        flux: u.Quantity
+            The (total) flux of an observed object [astropy.units.Jansky]
+        fluxerr: u.Quantity
+            The error of the (total) flux of an observed object in [astropy.units.Jansky]
+        """
+        return map(lambda x: x*u.Jy, self.get_data("oi_flux", "fluxdata", "fluxerr"))
+
+    def get_wavelength_solution(self) -> Quantity:
+        """Fetches the wavelength solution from the (.fits)-file and gives the
+        proper units to the quantities
+
+        Returns
+        ----------
+        flux: astropy.units.Quantity
+            The wavelength solution of the MATISSE instrument [astropy.units.micrometer]
+        """
+        return self.get_data("oi_wavelength", "eff_wave")[0]
 
     def get_tel_sta(self) -> np.ndarray:
-        return self.get_data(2, "tel_name", "sta_index")
+        """Fetches the telescope array names and station from the (.fits)-files and
+        gives the proper units to the quantities
+
+        Returns
+        -------
+        station_name: astropy.units.Quantity
+        station_indicies: astropy.units.Quantity
+        """
+        return self.get_data("oi_array", "tel_name", "sta_index")
 
     def get_flux4wl(self, wl_ind: np.ndarray) -> np.ndarray:
         """Fetches the flux for a specific wavelength"""
