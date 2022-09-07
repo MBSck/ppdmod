@@ -12,9 +12,24 @@ from scipy.interpolate import CubicSpline
 # TOOD: Make Readout accept more than one file
 
 
-def read_single_dish_txt2np(file, axis2interpolate):
-    """Reads x, y '.txt'-file intwo 2 numpy arrays"""
-    file_data = np.loadtxt(file)
+def readout_single_dish_txt2numpy_array(path_to_txt_file: Path,
+                                        wavelength_solution: Quantity) -> Dict:
+    """Reads x, y '.txt'-file intwo 2 numpy arrays
+
+    Parameters
+    ----------
+    path_to_txt_file: Path
+        The path to the (.txt)-file
+    wavelength_solution: astropy.units.Quantity
+        The wavelength solution of the instrument [astropy.units.micrometer]
+
+    Returns
+    -------
+    wavlength_flux_dict: Dict
+        A dictionary containing the interpolated flux information corresponding to the
+        wavelength solution of the instrument
+    """
+    single_dish_data = np.loadtxt(file)
     wavelength_axis = np.array([i[0] for i in file_data])*1e-6
     flux_axis = np.array([i[1] for i in file_data])
 
@@ -117,9 +132,16 @@ class ReadoutFits:
         Returns
         -------
         station_name: numpy.ndarray
-        station_indicies: astropy.units.Quantity
-        station_indicies4baselines: astropy.units.Quantity
-        station_indicies4triangles: astropy.units.Quantity
+            The names of the four telescopes used
+        station_indices: astropy.units.Quantity
+            The station indices of the four telescopes used
+            [astropy.units.dimensionless_unscaled]
+        station_indices4baselines: astropy.units.Quantity
+            The station indices of the baselines
+            [astropy.units.dimensionless_unscaled]
+        station_indices4triangles: astropy.units.Quantity
+            The station indices of the closure phases' triangles
+            [astropy.units.dimensionless_unscaled]
         """
         station_names, station_indices = self.get_data("oi_array",
                                                         "tel_name", "sta_index")
@@ -139,9 +161,9 @@ class ReadoutFits:
         Returns
         -------
         ucoords: astropy.units.Quantity
-            The u-coordinates in [astropy.units.m]
+            The u-coordinates [astropy.units.meter]
         vcoords: astropy.untis.Quantity
-            The v-coordinates in [astropy.units.m]
+            The v-coordinates [astropy.units.meter]
         """
         ucoords = np.array(self.get_data("oi_vis", "ucoord"))*u.m
         vcoords = np.array(self.get_data("oi_vis", "vcoord"))*u.m
@@ -154,7 +176,7 @@ class ReadoutFits:
         Returns
         -------
         uvcoords: astropy.units.Quantity
-            The (u, v)-coordinates in [astropy.units.m]
+            The (u, v)-coordinates [astropy.units.m]
         """
         return np.array([uvcoords for uvcoords in zip(self.get_split_uvcoords())])
 
@@ -167,8 +189,10 @@ class ReadoutFits:
         -------
         u: Tuple[astropy.units.Quantity]
             The three u-coordinate pairs of the closure phase triangles
+            [astropy.unit.meter]
         v: Tuple[astropy.units.Quantity]
             The three v-coordinate pairs of the closure phase triangles
+            [astropy.unit.meter]
         """
         u1, v1 = self.get_data("oi_t3", "u1coord", "v1coord")*u.m
         u2, v2 = self.get_data("oi_t3", "u2coord", "v2coord")*u.m
@@ -181,7 +205,7 @@ class ReadoutFits:
         Returns
         -------
         baselines: astropy.unit.Quantity
-            The baselines in [astropy.units.meter]
+            The baselines [astropy.units.meter]
         """
         ucoords, vcoords = self.get_split_uvcoords()
         return np.sqrt(ucoords**2+vcoords**2)
@@ -193,12 +217,11 @@ class ReadoutFits:
         Returns
         -------
         vis: astropy.units.Quantity
-            The visibility of an observed object either in [astropy.units.Jansky] or
+            The visibility of an observed object either [astropy.units.Jansky] or
             [astropy.units.dimensionless_unscaled]
         viserr: astropy.units.Quantity
-            The error of the visibility of an observed object either in
-            [astropy.units.Jansky]
-            or [astropy.units.dimensionless_unscaled]
+            The error of the visibility of an observed object either
+            [astropy.units.Jansky] or [astropy.units.dimensionless_unscaled]
         sta_indicies: astropy.units.Quantity
             The station indicies of the telescopes used
             [astropy.units.dimensionless_unscaled]
@@ -218,10 +241,10 @@ class ReadoutFits:
         Returns
         ----------
         vis2: astropy.units.Quantity
-            The squared visibility of an observed object in
+            The squared visibility of an observed object
             [astropy.units.dimensionless_unscaled]
         vis2err: astropy.units.Quantity
-            The error of the squared visibility of an observed object in
+            The error of the squared visibility of an observed object
             [astropy.units.dimensionless_unscaled]
         sta_indicies: astropy.units.Quantity
             The station indicies of the telescopes used
@@ -237,9 +260,9 @@ class ReadoutFits:
         Returns
         ----------
         cphases: u.Quantity
-            The closure phases of an observed object in [astropy.units.degree]
+            The closure phases of an observed object [astropy.units.degree]
         cphaseserr: u.Quantity
-            The error of the closure phases of an observed object in
+            The error of the closure phases of an observed object
             [astropy.units.degree]
         sta_indicies: u.Quantity
             The station indicies of the telescopes used
@@ -257,7 +280,7 @@ class ReadoutFits:
         flux: u.Quantity
             The (total) flux of an observed object [astropy.units.Jansky]
         fluxerr: u.Quantity
-            The error of the (total) flux of an observed object in [astropy.units.Jansky]
+            The error of the (total) flux of an observed object [astropy.units.Jansky]
         """
         return map(lambda x: x*u.Jy, self.get_data("oi_flux", "fluxdata", "fluxerr"))
 
@@ -278,15 +301,17 @@ class ReadoutFits:
 
         Parameters
         ----------
-        wavelength_indicies: List | numpy.ndarray
+        wavelength_indices: List | numpy.ndarray
             The indicies of the wavelength solution
 
         Returns
         --------
         visamp4wavelength: astropy.units.Quantity
-            The visamps for a specific wavelength
+            The visamps for a specific wavelength either [astropy.units.Jansky] or
+            [astropy.units.dimensionless_unscaled]
         visamperr4wavelength: astropy.units.Quantity
-            The visamperrs for a specific wavelength
+            The visamperrs for a specific wavelength either [astropy.units.Jansky] or
+            [astropy.units.dimensionless_unscaled]
         """
         # FIXME: Is this ordering done correctly?? Check!
         visdata = self.get_visibilities()
@@ -304,9 +329,9 @@ class ReadoutFits:
         Returns
         --------
         vis2data4wl: astropy.units.Quantity
-            The vis2data for a specific wavelength
+            The vis2data for a specific wavelength [astropy.units.dimensionless_unscaled]
         vis2err4wl: astropy.units.Quantity
-            The vis2err for a specific wavelength
+            The vis2err for a specific wavelength [astropy.units.dimensionless_unscaled]
         """
         vis2data = self.get_visibilities_squared()
         return self.get_data_for_wavelength(vis2data, wavelength_indices)
@@ -323,29 +348,38 @@ class ReadoutFits:
         Returns
         -------
         cphases4wl: astropy.units.Quantity
-            The closure phase for a specific wavelength
+            The closure phase for a specific wavelength [astropy.units.degree]
         cphaseserr4wl: astropy.units.Quantity
-            The closure phase error for a specific wavelength
+            The closure phase error for a specific wavelength [astropy.units.degree]
         """
         cphasesdata = self.get_closure_phases()
         return self.get_data_for_wavelength(cphasesdata, wavelength_indices)
 
     def get_flux4wavelength(self,
-                            wavelength_indicies: Union[List, np.ndarray]) -> Quantity:
+                            wavelength_indices: Union[List, np.ndarray]) -> Quantity:
         """Fetches the flux for a specific wavelength
 
         Parameters
         ----------
-        wavelength_indicies: List | numpy.ndarray
+        wavelength_indices: List | numpy.ndarray
             The indicies of the wavelength solution
 
         Returns
         -------
         wavelength_specific_flux: astropy.units.Quantity
+            The flux for a specific wavelength [astropy.units.Jansky]
         wavelength_specific_fluxerr: astropy.units.Quantity
+            The flux error for a specific wavelength [astropy.units.Jansky]
         """
-        return list(map(lambda x: x[0][wavelength_indicies], self.get_flux()))
+        return list(map(lambda x: x[0][wavelength_indices], self.get_flux()))
 
+
+class Data:
+    def __init__(self, fits_files: List):
+        ...
+
+    def merge_data(self):
+        ...
 
 if __name__ == "__main__":
     ...
