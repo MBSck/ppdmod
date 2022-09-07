@@ -176,27 +176,70 @@ def test_get_visibilities4wavelength(example_fits_file_path):
     wl_ind = np.array([random.randint(0, 120)])
     wl_indices = np.array([random.randint(0, 120) for _ in range(5)])
     len_wl_indices = len(wl_indices)
-    vis_singular, viserr_singular = readout.get_flux4wavelength(wl_ind)
-    vis, viserr = readout.get_flux4wavelength(wl_indices)
-    assert isinstance(vis_singular.value, np.ndarray)
-    assert isinstance(viserr_singular.value, np.ndarray)
-    assert isinstance(vis.value, np.ndarray)
-    assert isinstance(vis.value, np.ndarray)
-    assert vis_singular.shape == (1, 6)
-    assert viserr_singular.shape == (1, 6)
+    vis4wl_singular, viserr4wl_singular = readout.get_visibilities4wavelength(wl_ind)
+    vis4wl, viserr4wl = readout.get_visibilities4wavelength(wl_indices)
+    assert isinstance(vis4wl_singular.value, np.ndarray)
+    assert isinstance(viserr4wl_singular.value, np.ndarray)
+    assert isinstance(vis4wl.value, np.ndarray)
+    assert isinstance(viserr4wl.value, np.ndarray)
+    assert vis4wl_singular.shape == (1, 6)
+    assert viserr4wl_singular.shape == (1, 6)
     assert vis4wl.shape == (len_wl_indices, 6)
     assert viserr4wl.shape == (len_wl_indices, 6)
 
-    if np.max(vis.value) >= 1.:
-        assert vis_singular.unit == u.Jy
-        assert viserr_singular.unit == u.Jy
-        assert vis.unit == u.Jy
-        assert viserr.unit == u.Jy
+    if np.max(vis4wl_singular.value) >= 1.:
+        assert vis4wl_singular.unit == u.Jy
+        assert viserr4wl_singular.unit == u.Jy
+        assert vis4wl.unit == u.Jy
+        assert viserr4wl.unit == u.Jy
     else:
-        assert vis_singular.unit == u.dimensionless_unscaled
-        assert viserr_singular.unit == u.dimensionless_unscaled
-        assert vis.unit == u.dimensionless_unscaled
-        assert viserr.unit == u.dimensionless_unscaled
+        assert vis4wl_singular.unit == u.dimensionless_unscaled
+        assert viserr4wl_singular.unit == u.dimensionless_unscaled
+        assert vis4wl.unit == u.dimensionless_unscaled
+        assert viserr4wl.unit == u.dimensionless_unscaled
+
+def test_get_visibilities24wavelength(example_fits_file_path):
+    readout = ReadoutFits(example_fits_file_path)
+    wl_ind = np.array([random.randint(0, 120)])
+    wl_indices = np.array([random.randint(0, 120) for _ in range(5)])
+    len_wl_indices = len(wl_indices)
+    vis24wl_singular,\
+        vis2err4wl_singular = readout.get_visibilities_squared4wavelength(wl_ind)
+    vis24wl,\
+        vis2err4wl = readout.get_visibilities_squared4wavelength(wl_indices)
+    assert isinstance(vis24wl_singular.value, np.ndarray)
+    assert isinstance(vis2err4wl_singular.value, np.ndarray)
+    assert isinstance(vis24wl.value, np.ndarray)
+    assert isinstance(vis2err4wl.value, np.ndarray)
+    assert vis24wl_singular.shape == (1, 6)
+    assert vis2err4wl_singular.shape == (1, 6)
+    assert vis24wl.shape == (len_wl_indices, 6)
+    assert vis2err4wl.shape == (len_wl_indices, 6)
+    assert vis24wl_singular.unit == u.dimensionless_unscaled
+    assert vis2err4wl_singular.unit == u.dimensionless_unscaled
+    assert vis24wl.unit == u.dimensionless_unscaled
+    assert vis2err4wl.unit == u.dimensionless_unscaled
+
+def test_get_closure_phases4wavelength(example_fits_file_path):
+    readout = ReadoutFits(example_fits_file_path)
+    wl_ind = np.array([random.randint(0, 120)])
+    wl_indices = np.array([random.randint(0, 120) for _ in range(5)])
+    len_wl_indices = len(wl_indices)
+    cphases4wl_singular,\
+            cphaseserr4wl_singular = readout.get_closure_phases4wavelength(wl_ind)
+    cphases4wl, cphaseserr4wl = readout.get_closure_phases4wavelength(wl_indices)
+    assert isinstance(cphases4wl_singular.value, np.ndarray)
+    assert isinstance(cphaseserr4wl_singular.value, np.ndarray)
+    assert isinstance(cphases4wl.value, np.ndarray)
+    assert isinstance(cphaseserr4wl.value, np.ndarray)
+    assert cphases4wl_singular.shape == (1, 4)
+    assert cphaseserr4wl_singular.shape == (1, 4)
+    assert cphases4wl.shape == (len_wl_indices, 4)
+    assert cphaseserr4wl.shape == (len_wl_indices, 4)
+    assert cphases4wl_singular.unit == u.deg
+    assert cphaseserr4wl_singular.unit == u.deg
+    assert cphases4wl.unit == u.deg
+    assert cphaseserr4wl.unit == u.deg
 
 def test_get_flux4wavlength(example_fits_file_path):
     readout = ReadoutFits(example_fits_file_path)

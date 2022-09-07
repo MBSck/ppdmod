@@ -54,6 +54,21 @@ class ReadoutFits:
         """
         return repr(fits.getheader(self.fits_file, header))
 
+    def get_column_names(self, header: Union[int, str]) -> np.ndarray:
+        """Fetches the columns of the header
+
+        Parameters
+        ----------
+        header: int | str
+            The header of the data to be retrieved
+
+        Returns
+        -------
+        column_names: numpy.ndarray
+        """
+        with fits.open(self.fits_file) as header_list:
+            return (header_list[header].columns).names
+
     def get_data(self, header: Union[int, str],
                  *sub_headers: Union[int, str]) -> List[np.array]:
         """Gets a specific set of data and its error from a header and
@@ -68,25 +83,32 @@ class ReadoutFits:
 
         Returns
         -------
-        data: List[np.array]
+        data: List[numpy.ndarray]
         """
         with fits.open(self.fits_file) as header_list:
             return [header_list[header].data[sub_header] for sub_header in sub_headers]
 
-    def get_column_names(self, header: Union[int, str]) -> np.ndarray:
-        """Fetches the columns of the header
+    def get_data_for_wavelength(self, data: Union[Quantity, np.ndarray],
+                                wavelength_indices: Union[List, np.ndarray]) -> List:
+        """Fetches data for one or more wavelengths from the nested arrays. Gets the
+        corresponding values by index from the nested arrays (baselines/triangle)
 
         Parameters
         ----------
-        header: int | str
-            The header of the data to be retrieved
+        data: astropy.units.Quantity | numpy.ndarray
+            The data for every baseline/triangle
+        wavelength_indicies: List | numpy.ndarray
 
         Returns
-        -------
-        column_names: List[np.array]
+        --------
+        data4wl: List
         """
-        with fits.open(self.fits_file) as header_list:
-            return (header_list[header].columns).names
+        data4wl = []
+        for dataset in data:
+            data_temp = u.Quantity([u.Quantity([array[wl_ind] for array in dataset])\
+                                          for wl_ind in wavelength_indices])
+            data4wl.append(data_temp)
+        return [u.Quantity(dataset4wl) for dataset4wl in data4wl]
 
     def get_telescope_information(self) -> Union[np.ndarray, Quantity]:
         """Fetches the telescop's array names and stations from the (.fits)-files and
@@ -94,21 +116,21 @@ class ReadoutFits:
 
         Returns
         -------
-        station_name: np.ndarray
+        station_name: numpy.ndarray
         station_indicies: astropy.units.Quantity
         station_indicies4baselines: astropy.units.Quantity
         station_indicies4triangles: astropy.units.Quantity
         """
-        station_names, station_indicies = self.get_data("oi_array",
+        station_names, station_indices = self.get_data("oi_array",
                                                         "tel_name", "sta_index")
-        station_indicies *= u.dimensionless_unscaled
-        station_indicies4baselines = self.get_data("oi_vis", "sta_index")[0]*\
+        station_indices *= u.dimensionless_unscaled
+        station_indices4baselines = self.get_data("oi_vis", "sta_index")[0]*\
             u.dimensionless_unscaled
-        station_indicies4triangles = self.get_data("oi_t3", "sta_index")[0]*\
+        station_indices4triangles = self.get_data("oi_t3", "sta_index")[0]*\
             u.dimensionless_unscaled
 
-        return station_names, station_indicies,\
-            station_indicies4baselines, station_indicies4triangles
+        return station_names, station_indices,\
+            station_indices4baselines, station_indices4triangles
 
     def get_split_uvcoords(self) -> Tuple[Quantity]:
         """Fetches the u, v coordinates from the (.fits)-files and gives the
@@ -250,27 +272,13 @@ class ReadoutFits:
         """
         return (self.get_data("oi_wavelength", "eff_wave")[0]*u.m).to(u.um)
 
-    def get_flux4wavelength(self, wavelength_indicies: np.ndarray) -> Quantity:
-        """Fetches the flux for a specific wavelength
-
-        Parameters
-        ----------
-        wavelength_indicies: np.ndarray
-            The indicies of the wavelength solution
-
-        Returns
-        -------
-        wavelength_specific_flux: astropy.units.Quantity
-        wavelength_specific_fluxerr: astropy.units.Quantity
-        """
-        return list(map(lambda x: x[0][wavelength_indicies], self.get_flux()))
-
-    def get_visibilities4wavelength(self, wavelength_indicies: np.ndarray) -> Quantity:
+    def get_visibilities4wavelength(self, wavelength_indices:\
+                                    Union[List, np.ndarray]) -> Quantity:
         """Fetches the visdata(amp/phase)/correlated fluxes for one specific wavelength
 
         Parameters
         ----------
-        wavelength_indicies: np.ndarray
+        wavelength_indicies: List | numpy.ndarray
             The indicies of the wavelength solution
 
         Returns
@@ -281,51 +289,62 @@ class ReadoutFits:
             The visamperrs for a specific wavelength
         """
         # FIXME: Is this ordering done correctly?? Check!
-        visamp4wl, visamperr4wl = map(lambda x: np.array([i[wavelength_indicies] for i in x]).\
-                flatten().tolist(), self.get_visibilities())
+        visdata = self.get_visibilities()
+        return self.get_data_for_wavelength(visdata, wavelength_indices)
 
-        return visamp4wl, visamperr4wl
-
-    def get_closure_phases4wavelength(self, wavelength_indicies: np.ndarray) -> Quantity:
-        """Fetches the closure phases for one specific wavelength
-
-        Parameters
-        ----------
-        wavelength_indicies: np.ndarray
-            The indicies of the wavelength solution
-
-        Returns
-        -------
-        t3phi4wl: np.ndarray
-            The closure phase for a specific wavelength
-        t3phierr4wl: np.ndarray
-            The closure phase error for a specific wavelength
-        """
-        t3phi, t3phierr = self.get_closure_phases()
-        t3phi4wl, t3phierr4wl = map(lambda x: np.array([i[wl_ind] for i in x]).flatten(), [t3phi, t3phierr])
-
-        return t3phi4wl, t3phierr4wl
-
-    def get_visibilities_squared4wavelength(self,
-            wavelength_indicies: np.ndarray) -> np.ndarray:
+    def get_visibilities_squared4wavelength(self, wavelength_indices:\
+                                            Union[List, np.ndarray]) -> np.ndarray:
         """Fetches the vis2data for one specific wavelength
 
         Parameters
         ----------
-        wavelength_indicies: np.ndarray
+        wavelength_indicies: List | numpy.ndarray
             The indicies of the wavelength solution
 
         Returns
         --------
-        vis2data4wl: np.ndarray
+        vis2data4wl: astropy.units.Quantity
             The vis2data for a specific wavelength
-        vis2err4wl: np.ndarray
+        vis2err4wl: astropy.units.Quantity
             The vis2err for a specific wavelength
         """
-        vis2data, vis2err  = map(lambda x: x[:6], self.get_visibilities_squared())
-        vis2data4wl, vis2err4wl = map(lambda x: np.array([i[wl_ind] for i in x]).flatten(), [vis2data, vis2err])
+        vis2data = self.get_visibilities_squared()
+        return self.get_data_for_wavelength(vis2data, wavelength_indices)
 
-        return vis2data4wl, vis2err4wl
+    def get_closure_phases4wavelength(self, wavelength_indices:\
+                                      Union[List, np.ndarray]) -> Quantity:
+        """Fetches the closure phases for one specific wavelength
+
+        Parameters
+        ----------
+        wavelength_indicies: List | numpy.ndarray
+            The indicies of the wavelength solution
+
+        Returns
+        -------
+        cphases4wl: astropy.units.Quantity
+            The closure phase for a specific wavelength
+        cphaseserr4wl: astropy.units.Quantity
+            The closure phase error for a specific wavelength
+        """
+        cphasesdata = self.get_closure_phases()
+        return self.get_data_for_wavelength(cphasesdata, wavelength_indices)
+
+    def get_flux4wavelength(self,
+                            wavelength_indicies: Union[List, np.ndarray]) -> Quantity:
+        """Fetches the flux for a specific wavelength
+
+        Parameters
+        ----------
+        wavelength_indicies: List | numpy.ndarray
+            The indicies of the wavelength solution
+
+        Returns
+        -------
+        wavelength_specific_flux: astropy.units.Quantity
+        wavelength_specific_fluxerr: astropy.units.Quantity
+        """
+        return list(map(lambda x: x[0][wavelength_indicies], self.get_flux()))
 
 
 if __name__ == "__main__":
