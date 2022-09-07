@@ -25,20 +25,20 @@ def readout_single_dish_txt2numpy_array(path_to_txt_file: Path,
 
     Returns
     -------
-    wavlength_flux_dict: Dict
+    single_dish2wavelength_solution_dict: Dict
         A dictionary containing the interpolated flux information corresponding to the
         wavelength solution of the instrument
     """
     single_dish_data = np.loadtxt(file)
-    wavelength_axis = np.array([i[0] for i in file_data])*1e-6
-    flux_axis = np.array([i[1] for i in file_data])
+    wavelength_from_single_dish = np.array([wl[0] for wl in single_dish_data])*u.um
+    flux_from_single_dish = np.array([flux[1] for flux in single_dish_data])
 
-    wl2flux_dict = {}
-    cubic_spline = CubicSpline(wavelength_axis, flux_axis)
-    for i, wl_axis in enumerate(cubic_spline(axis2interpolate)):
-        wl2flux_dict[axis2interpolate[i]] = wl_axis
+    single_dish2wavelength_solution_dict = {}
+    cubic_spline = CubicSpline(wavelength_from_single_dish, flux_from_single_dish)
+    for i, flux in enumerate(cubic_spline(wavelength_solution)):
+        single_dish2wavelength_solution_dict[wavelength_solution[i]] = flux
 
-    return wl2flux_dict
+    return single_dish2wavelength_solution_dict
 
 class ReadoutFits:
     """All functionality to work with (.fits)-files"""
