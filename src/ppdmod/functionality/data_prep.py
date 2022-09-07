@@ -29,7 +29,7 @@ def readout_single_dish_txt2numpy_array(path_to_txt_file: Path,
         A dictionary containing the interpolated flux information corresponding to the
         wavelength solution of the instrument
     """
-    single_dish_data = np.loadtxt(file)
+    single_dish_data = np.loadtxt(path_to_txt_file)
     wavelength_from_single_dish = np.array([wl[0] for wl in single_dish_data])*u.um
     flux_from_single_dish = np.array([flux[1] for flux in single_dish_data])
 
