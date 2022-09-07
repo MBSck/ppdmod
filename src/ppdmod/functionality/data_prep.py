@@ -31,7 +31,7 @@ def readout_single_dish_txt2numpy_array(path_to_txt_file: Path,
     """
     single_dish_data = np.loadtxt(path_to_txt_file)
     wavelength_from_single_dish = np.array([wl[0] for wl in single_dish_data])*u.um
-    flux_from_single_dish = np.array([flux[1] for flux in single_dish_data])
+    flux_from_single_dish = np.array([flux[1] for flux in single_dish_data])*u.Jy
 
     single_dish2wavelength_solution_dict = {}
     cubic_spline = CubicSpline(wavelength_from_single_dish, flux_from_single_dish)
