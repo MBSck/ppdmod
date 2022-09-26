@@ -45,6 +45,7 @@ class ReadoutFits:
     """All functionality to work with (.fits)-files"""
     def __init__(self, fits_file: Path) -> None:
         self.fits_file = fits_file
+        self.wavelength_solution = self.get_wavelength_solution()
 
     def __str__(self):
         return f"Readout initialised at {self.startup_time} of"\
@@ -134,7 +135,6 @@ class ReadoutFits:
         wavelength_indices: List[int]
             A numpy array of wavelength indices for the input wavlengths around the window
         """
-        wavelength_solution = self.get_wavelength_solution()
         selected_wavelengths *= u.um
         if len(wavelength_window_sizes) == 1:
             wavelength_window_sizes *= len(selected_wavelengths)
@@ -147,7 +147,7 @@ class ReadoutFits:
 
         window_top_bound = selected_wavelengths + wavelength_window_sizes/2
         window_bot_bound = selected_wavelengths - wavelength_window_sizes/2
-        windows = [(wavelength_solution > bot, wavelength_solution < top)\
+        windows = [(self.wavelength_solution > bot, self.wavelength_solution < top)\
                    for bot, top in zip(window_bot_bound, window_top_bound)]
 
         return [np.where(np.logical_and(*window))[0] for window in windows]
@@ -174,7 +174,7 @@ class ReadoutFits:
             data4wl.append(data_temp)
         return [u.Quantity(dataset4wl) for dataset4wl in data4wl]
 
-    def average_polychromatic_data(self):
+    def average_polychromatic_data(self, polychromatic_data: List):
         """Fetches and then averages over polychromatic data"""
         ...
 
