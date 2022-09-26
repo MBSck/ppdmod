@@ -5,7 +5,7 @@ import astropy.units as u
 from astropy.io import fits
 from pathlib import Path
 from astropy.units import Quantity
-from typing import Any, Tuple, Dict, List, Union
+from typing import Tuple, Dict, List, Optional, Union
 from scipy.interpolate import CubicSpline
 
 # TODO: Make merge function that merges different readouts
@@ -40,10 +40,19 @@ def readout_single_dish_txt2numpy_array(path_to_txt_file: Path,
 
     return single_dish2wavelength_solution_dict
 
+# TODO: Make get_band_information method to check the band
 class ReadoutFits:
     """All functionality to work with (.fits)-files"""
-    def __init__(self, fits_files: List[Path]) -> None:
-        self.fits_file = fits_files
+    def __init__(self, fits_file: Path) -> None:
+        self.fits_file = fits_file
+
+    def __str__(self):
+        return f"Readout initialised at {self.startup_time} of"\
+            f" (.fits)-file:\n{self.fits_file}"
+
+    def __repr__(self):
+        return f"Readout initialised at {self.startup_time} of"\
+            f" (.fits)-file:\n{self.fits_file}"
 
     def get_info(self) -> str:
         """Gets the (.fits)-file's primary header's info
@@ -103,6 +112,46 @@ class ReadoutFits:
         with fits.open(self.fits_file) as header_list:
             return [header_list[header].data[sub_header] for sub_header in sub_headers]
 
+    def get_wavelength_indices(self, selected_wavelengths: List[float],
+                               wavelength_window_sizes:\
+                               Optional[List[float]] = [0.2]) -> List[int]:
+        """Fetches the wavelength indices of the instrument's wavelength solution for a
+        specific wavelength by taking a window around the chosen wavelength. BEWARE: The
+        window is divided by 2 and that is taken in both directions
+
+        Parameters
+        ----------
+        selected_wavelengths: List[float]
+            The wavelengths to be polychromatically fitted. Input will be converted to
+            [astropy.units.micrometer]
+        wavelength_window_sizes: List[float]
+            This determines how far around the central chosen wavelength other
+            wavelengths are to be fetched. Input will be converted to
+            [astropy.units.micrometer]
+
+        Returns
+        -------
+        wavelength_indices: List[int]
+            A numpy array of wavelength indices for the input wavlengths around the window
+        """
+        wavelength_solution = self.get_wavelength_solution()
+        selected_wavelengths *= u.um
+        if len(wavelength_window_sizes) == 1:
+            wavelength_window_sizes *= len(selected_wavelengths)
+
+        if len(wavelength_window_sizes) != len(selected_wavelengths):
+            raise IOError("The specified wavelength windows have to be given only once"\
+                          " or for each selected wavelength!")
+
+        wavelength_window_sizes *= u.um
+
+        window_top_bound = selected_wavelengths + wavelength_window_sizes/2
+        window_bot_bound = selected_wavelengths - wavelength_window_sizes/2
+        windows = [(wavelength_solution > bot, wavelength_solution < top)\
+                   for bot, top in zip(window_bot_bound, window_top_bound)]
+
+        return [np.where(np.logical_and(*window))[0] for window in windows]
+
     def get_data_for_wavelength(self, data: Union[Quantity, np.ndarray],
                                 wavelength_indices: Union[List, np.ndarray]) -> List:
         """Fetches data for one or more wavelengths from the nested arrays. Gets the
@@ -124,6 +173,10 @@ class ReadoutFits:
                                           for wl_ind in wavelength_indices])
             data4wl.append(data_temp)
         return [u.Quantity(dataset4wl) for dataset4wl in data4wl]
+
+    def average_polychromatic_data(self):
+        """Fetches and then averages over polychromatic data"""
+        ...
 
     def get_telescope_information(self) -> Union[np.ndarray, Quantity]:
         """Fetches the telescop's array names and stations from the (.fits)-files and
@@ -373,10 +426,17 @@ class ReadoutFits:
         """
         return list(map(lambda x: x[0][wavelength_indices], self.get_flux()))
 
+# TODO: For this class implement different methods of polychromatic fitting
+# TODO: This will for the start just fit either the L- or N-band and not both at the
+# same time, fix this later
+class DataHandler:
+    """This class handles all the data that is used for the fitting process, the observed
+    data as well as the data created by the modelling process"""
+    def __init__(self, fits_files: List[Path]) -> None:
+        """Initialises the class"""
+        self.fits_files = fits_files
+        self.readout_files = [ReadoutFits(fits_file) for fits_file in self.fits_files]
 
-class Data:
-    def __init__(self, fits_files: List):
-        ...
 
     def merge_data(self):
         ...

@@ -6,7 +6,10 @@ import astropy.units as u
 from astropy.io import fits
 from collections import namedtuple
 
-from ppdmod.functionality.readout import ReadoutFits
+from ppdmod.functionality.data_prep import ReadoutFits, DataHandler
+
+
+################################### Fixtures #############################################
 
 @pytest.fixture
 def example_fits_file_path():
@@ -22,6 +25,28 @@ def header_names_tuple():
     wavelength = Data("oi_wavelength", "eff_wave", None, None)
     Header = namedtuple("Header", ["vis", "vis2", "cphase", "flux", "wavelength"])
     return Header(vis, vis2, t3phi, flux, wavelength)
+
+@pytest.fixture
+def mock_vis_data():
+    mock_vis = np.random.rand(6, 121)*u.dimensionless_unscaled
+    mock_viserr = np.arange(6, 121)*0.2*u.dimensionless_unscaled
+    return mock_vis, mock_viserr
+
+@pytest.fixture
+def mock_wavelength_solution_nband():
+    """A mock wavelength solution in steps of 0.125 [astropy.units.micrometer]"""
+    return np.linspace(8, 13, 41)*u.um
+
+@pytest.fixture
+def mock_wavelength_solution_lband():
+    """A mock wavelength solution in steps of 0.1 [astropy.units.micrometer]"""
+    return np.linspace(3, 5, 21)*u.um
+
+@pytest.fixture
+def example_fits_files_list(example_fits_file_path):
+    return [example_fits_file_path]*random.randint(0, 2)
+
+################################ ReadoutFits - TESTS #####################################
 
 # TODO: Implement this test
 def test_get_info():
@@ -54,6 +79,35 @@ def test_get_data(example_fits_file_path, header_names_tuple):
     assert np.all(error == error_fits)
     assert np.all(sta_index == sta_index_fits)
 
+def test_get_wavelength_indicies(example_fits_file_path):
+    # TODO: Make this test better if (.fits)-file is in L-band -> Automatically read band
+    wavelength_selection_single = [8.5]
+    wavelength_selection_multiple = [8.5, 10.0]
+    readout = ReadoutFits(example_fits_file_path)
+    wl_ind_no_window = readout.get_wavelength_indices(wavelength_selection_single, [0.0])
+    wl_ind_small_window = readout.get_wavelength_indices(wavelength_selection_single,
+                                                         [0.1])
+
+    wl_ind_normal_window = readout.get_wavelength_indices(wavelength_selection_single,
+                                                         [0.2])
+    wl_ind_multi_no_win = readout.get_wavelength_indices(wavelength_selection_multiple,
+                                                         [0.0])
+
+    wl_ind_multi_s_win = readout.get_wavelength_indices(wavelength_selection_multiple,
+                                                        [0.1])
+    wl_ind_multi_n_win = readout.get_wavelength_indices(wavelength_selection_multiple,
+                                                        [0.2])
+    # TODO: Add here L-band check
+    assert wl_ind_no_window[0].shape == (0,)
+    assert wl_ind_small_window[0].shape == (1,)
+    assert wl_ind_normal_window[0].shape == (3,)
+    assert wl_ind_multi_no_win[0].shape == (0,)
+    assert wl_ind_multi_s_win[0].shape == (1,)
+    assert wl_ind_multi_n_win[0].shape == (3,)
+    assert wl_ind_multi_no_win[1].shape == (0,)
+    assert wl_ind_multi_s_win[1].shape == (3,)
+    assert wl_ind_multi_n_win[1].shape == (5,)
+
 def test_get_data_for_wavelength(example_fits_file_path):
     readout = ReadoutFits(example_fits_file_path)
     visdata = readout.get_visibilities()
@@ -74,6 +128,9 @@ def test_get_data_for_wavelength(example_fits_file_path):
     assert viserr4wl_singular.unit == u.Jy
     assert vis4wl.unit == u.Jy
     assert viserr4wl.unit == u.Jy
+
+def test_average_polychromatic_data(example_fits_file_path):
+    ...
 
 def test_get_telescope_information(example_fits_file_path):
     readout = ReadoutFits(example_fits_file_path)
@@ -115,8 +172,8 @@ def test_get_visibilities(example_fits_file_path):
     assert isinstance(vis.value[0][0], float)
     assert isinstance(viserr.value[0], np.ndarray)
     assert isinstance(viserr.value[0][0], float)
-    assert vis.value.shape == (6, 121)
-    assert viserr.value.shape == (6, 121)
+    assert vis.shape == (6, 121)
+    assert viserr.shape == (6, 121)
 
     if np.max(vis.value) >= 1.:
         assert vis.unit == u.Jy
@@ -135,8 +192,8 @@ def test_get_visibilities_squared(example_fits_file_path):
     assert isinstance(vis2.value[0][0], float)
     assert isinstance(vis2err.value[0], np.ndarray)
     assert isinstance(vis2err.value[0][0], float)
-    assert vis2.value.shape == (6, 121)
-    assert vis2err.value.shape == (6, 121)
+    assert vis2.shape == (6, 121)
+    assert vis2err.shape == (6, 121)
     assert vis2.unit == u.dimensionless_unscaled
     assert vis2err.unit == u.dimensionless_unscaled
 
@@ -150,8 +207,8 @@ def test_get_closure_phases(example_fits_file_path):
     assert isinstance(cphases.value[0][0], float)
     assert isinstance(cphaseserr.value[0], np.ndarray)
     assert isinstance(cphaseserr.value[0][0], float)
-    assert cphases.value.shape == (4, 121)
-    assert cphaseserr.value.shape == (4, 121)
+    assert cphases.shape == (4, 121)
+    assert cphaseserr.shape == (4, 121)
     assert cphases.unit == u.deg
     assert cphaseserr.unit == u.deg
 
@@ -160,8 +217,8 @@ def test_get_flux(example_fits_file_path):
     flux, fluxerr = readout.get_flux()
     assert isinstance(flux.value, np.ndarray)
     assert isinstance(fluxerr.value, np.ndarray)
-    assert flux.value.shape == (1, 121)
-    assert fluxerr.value.shape == (1, 121)
+    assert flux.shape == (1, 121)
+    assert fluxerr.shape == (1, 121)
     assert flux.unit== u.Jy
     assert fluxerr.unit== u.Jy
 
@@ -272,3 +329,11 @@ def test_telescope_information_from_different_header(example_fits_file_path):
 
     assert np.all(station_indices_from_visibilities ==\
             station_indices_from_visibilities_squared)
+
+
+################################ DataDandler - TESTS #####################################
+
+def test_data_handler_init(example_fits_files_list):
+    data_handler = DataHandler(example_fits_files_list)
+    assert len(data_handler.readout_files) == len(example_fits_files_list)
+
