@@ -115,7 +115,7 @@ class ReadoutFits:
 
     def get_wavelength_indices(self, selected_wavelengths: List[float],
                                wavelength_window_sizes:\
-                               Optional[List[float]] = [0.2]) -> List[int]:
+                               Optional[List[float]] = [0.2]) -> List[List[float]]:
         """Fetches the wavelength indices of the instrument's wavelength solution for a
         specific wavelength by taking a window around the chosen wavelength. BEWARE: The
         window is divided by 2 and that is taken in both directions
@@ -125,7 +125,7 @@ class ReadoutFits:
         selected_wavelengths: List[float]
             The wavelengths to be polychromatically fitted. Input will be converted to
             [astropy.units.micrometer]
-        wavelength_window_sizes: List[float]
+        wavelength_window_sizes: List[List[float]]
             This determines how far around the central chosen wavelength other
             wavelengths are to be fetched. Input will be converted to
             [astropy.units.micrometer]
@@ -150,10 +150,10 @@ class ReadoutFits:
         windows = [(self.wavelength_solution > bot, self.wavelength_solution < top)\
                    for bot, top in zip(window_bot_bound, window_top_bound)]
 
-        return [np.where(np.logical_and(*window))[0] for window in windows]
+        return [np.where(np.logical_and(*window))[0].tolist() for window in windows]
 
     def get_data_for_wavelength(self, data: Union[Quantity, np.ndarray],
-                                wavelength_indices: Union[List, np.ndarray]) -> List:
+                                wl_poly_indices: List) -> List:
         """Fetches data for one or more wavelengths from the nested arrays. Gets the
         corresponding values by index from the nested arrays (baselines/triangle)
 
@@ -161,22 +161,40 @@ class ReadoutFits:
         ----------
         data: astropy.units.Quantity | numpy.ndarray
             The data for every baseline/triangle
-        wavelength_indicies: List | numpy.ndarray
+        wl_poly_indices: List
+            The polychromatic indices of the wavelength solution. This has to be a doubly
+            nested list
 
         Returns
         --------
         data4wl: List
         """
-        data4wl = []
+        # NOTE: Right now the data is immediately averaged after getting taken. Maybe
+        # change this for the future
+        polychromatic_data_averaged = []
         for dataset in data:
-            data_temp = u.Quantity([u.Quantity([array[wl_ind] for array in dataset])\
-                                          for wl_ind in wavelength_indices])
-            data4wl.append(data_temp)
-        return [u.Quantity(dataset4wl) for dataset4wl in data4wl]
+            data4wl = []
+            for wl_indices in wl_poly_indices:
+                data4wl_poly_index = []
+                for wl_index in wl_indices:
+                    array_wl_slice = u.Quantity([array[wl_index] for array in dataset])
+                    data4wl_poly_index.append(array_wl_slice)
+                data4wl.append(u.Quantity(data4wl_poly_index))
+            averaged_dataset_slice = self.average_polychromatic_data(data4wl)
+            polychromatic_data_averaged.append(averaged_dataset_slice)
+        return [u.Quantity(dataset4wl) for dataset4wl in polychromatic_data_averaged]
 
-    def average_polychromatic_data(self, polychromatic_data: List):
-        """Fetches and then averages over polychromatic data"""
-        ...
+    def average_polychromatic_data(self, polychromatic_data: Quantity):
+        """Fetches and then averages over polychromatic data. Iterates over the
+        polychromatic wavelength slices and then takes the mean of them
+
+        Parameters
+        ----------
+        polychromatic_data: astropy.units.Quantity
+            The polychromatic data slices of wavelengths in one window
+        """
+        return u.Quantity([np.mean(data_slice, axis=0)\
+                           for data_slice in polychromatic_data])
 
     def get_telescope_information(self) -> Union[np.ndarray, Quantity]:
         """Fetches the telescop's array names and stations from the (.fits)-files and
@@ -335,7 +353,8 @@ class ReadoutFits:
         fluxerr: u.Quantity
             The error of the (total) flux of an observed object [astropy.units.Jansky]
         """
-        return map(lambda x: x*u.Jy, self.get_data("oi_flux", "fluxdata", "fluxerr"))
+        return list(map(lambda x: x*u.Jy,
+                        self.get_data("oi_flux", "fluxdata", "fluxerr")))
 
     def get_wavelength_solution(self) -> Quantity:
         """Fetches the wavelength solution from the (.fits)-file and gives the
@@ -395,7 +414,7 @@ class ReadoutFits:
 
         Parameters
         ----------
-        wavelength_indicies: List | numpy.ndarray
+        wavelength_indicies: List
             The indicies of the wavelength solution
 
         Returns
@@ -408,13 +427,12 @@ class ReadoutFits:
         cphasesdata = self.get_closure_phases()
         return self.get_data_for_wavelength(cphasesdata, wavelength_indices)
 
-    def get_flux4wavelength(self,
-                            wavelength_indices: Union[List, np.ndarray]) -> Quantity:
+    def get_flux4wavelength(self, wavelength_indices: List) -> Quantity:
         """Fetches the flux for a specific wavelength
 
         Parameters
         ----------
-        wavelength_indices: List | numpy.ndarray
+        wavelength_indicies: List
             The indicies of the wavelength solution
 
         Returns
@@ -424,7 +442,8 @@ class ReadoutFits:
         wavelength_specific_fluxerr: astropy.units.Quantity
             The flux error for a specific wavelength [astropy.units.Jansky]
         """
-        return list(map(lambda x: x[0][wavelength_indices], self.get_flux()))
+        return self.get_data_for_wavelength(self.get_flux(), wavelength_indices)
+
 
 # TODO: For this class implement different methods of polychromatic fitting
 # TODO: This will for the start just fit either the L- or N-band and not both at the

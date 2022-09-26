@@ -33,18 +33,29 @@ def mock_vis_data():
     return mock_vis, mock_viserr
 
 @pytest.fixture
-def mock_wavelength_solution_nband():
-    """A mock wavelength solution in steps of 0.125 [astropy.units.micrometer]"""
-    return np.linspace(8, 13, 41)*u.um
-
-@pytest.fixture
-def mock_wavelength_solution_lband():
-    """A mock wavelength solution in steps of 0.1 [astropy.units.micrometer]"""
-    return np.linspace(3, 5, 21)*u.um
-
-@pytest.fixture
 def example_fits_files_list(example_fits_file_path):
     return [example_fits_file_path]*random.randint(0, 2)
+
+@pytest.fixture
+def example_polychromatic_vis4wl_dataset():
+    visdata_first_wl_ind = [2.7, 2.5, 2.2, 2.0, 1.8, 1.6]*u.Jy
+    visdata_second_wl_ind = [2.5, 2.3, 2.0, 1.8, 1.6, 1.4]*u.Jy
+    visdata_third_wl_ind = [2.3, 2.1, 1.8, 1.6, 1.4, 1.2]*u.Jy
+    mock_visdata = u.Quantity([visdata_first_wl_ind, visdata_second_wl_ind,
+                               visdata_third_wl_ind])
+    mock_visdata = np.concatenate((mock_visdata, mock_visdata)).reshape(2, 3, 6)
+    return u.Quantity(mock_visdata)
+
+@pytest.fixture
+def wl_ind_mock_data():
+    wl_ind = [[random.randint(0, 120)]]
+    wl_indices = [[random.randint(0, 120) for _ in range(5)]]
+    wl_poly_indices = np.array([np.random.randint(0, 120)\
+                                for _ in range(6)]).reshape(2, 3)
+    len_wl_indices = len(wl_indices)
+    shape_wl_poly_indices = wl_poly_indices.shape
+    return wl_ind, wl_indices, wl_poly_indices.tolist(),\
+        len_wl_indices, shape_wl_poly_indices
 
 ################################ ReadoutFits - TESTS #####################################
 
@@ -98,22 +109,22 @@ def test_get_wavelength_indicies(example_fits_file_path):
     wl_ind_multi_n_win = readout.get_wavelength_indices(wavelength_selection_multiple,
                                                         [0.2])
     # TODO: Add here L-band check
-    assert wl_ind_no_window[0].shape == (0,)
-    assert wl_ind_small_window[0].shape == (1,)
-    assert wl_ind_normal_window[0].shape == (3,)
-    assert wl_ind_multi_no_win[0].shape == (0,)
-    assert wl_ind_multi_s_win[0].shape == (1,)
-    assert wl_ind_multi_n_win[0].shape == (3,)
-    assert wl_ind_multi_no_win[1].shape == (0,)
-    assert wl_ind_multi_s_win[1].shape == (3,)
-    assert wl_ind_multi_n_win[1].shape == (5,)
+    assert not wl_ind_no_window[0] == True
+    assert len(wl_ind_small_window[0]) == 1
+    assert len(wl_ind_normal_window[0]) == 3
+    assert not wl_ind_multi_no_win[0] == True
+    assert len(wl_ind_multi_s_win[0]) == 1
+    assert len(wl_ind_multi_n_win[0]) == 3
+    assert not wl_ind_multi_no_win[1] == True
+    assert len(wl_ind_multi_s_win[1]) == 3
+    assert len(wl_ind_multi_n_win[1]) == 5
 
-def test_get_data_for_wavelength(example_fits_file_path):
+def test_get_data_for_wavelength(example_fits_file_path, wl_ind_mock_data):
+    # TODO: Implement test for poly_wl_indices
     readout = ReadoutFits(example_fits_file_path)
+    wl_ind, wl_indices, wl_poly_indices,\
+        len_wl_indices, shape_wl_poly_indices = wl_ind_mock_data
     visdata = readout.get_visibilities()
-    wl_ind = np.array([random.randint(0, 120)])
-    wl_indices = np.array([random.randint(0, 120) for _ in range(5)])
-    len_wl_indices = len(wl_indices)
     vis4wl_singular, viserr4wl_singular = readout.get_data_for_wavelength(visdata, wl_ind)
     vis4wl, viserr4wl = readout.get_data_for_wavelength(visdata, wl_indices)
     assert isinstance(vis4wl_singular.value, np.ndarray)
@@ -129,8 +140,12 @@ def test_get_data_for_wavelength(example_fits_file_path):
     assert vis4wl.unit == u.Jy
     assert viserr4wl.unit == u.Jy
 
-def test_average_polychromatic_data(example_fits_file_path):
-    ...
+def test_average_polychromatic_data(example_fits_file_path,
+                                    example_polychromatic_vis4wl_dataset):
+    readout = ReadoutFits(example_fits_file_path)
+    averaged = readout.average_polychromatic_data(example_polychromatic_vis4wl_dataset)
+    assert averaged.shape == (2, 6)
+    assert averaged[0].shape == (6, )
 
 def test_get_telescope_information(example_fits_file_path):
     readout = ReadoutFits(example_fits_file_path)
@@ -228,11 +243,10 @@ def test_get_wavelength_solution(example_fits_file_path):
     assert isinstance(wavelength_solution.value, np.ndarray)
     assert wavelength_solution.unit == u.um
 
-def test_get_visibilities4wavelength(example_fits_file_path):
+def test_get_visibilities4wavelength(example_fits_file_path, wl_ind_mock_data):
     readout = ReadoutFits(example_fits_file_path)
-    wl_ind = np.array([random.randint(0, 120)])
-    wl_indices = np.array([random.randint(0, 120) for _ in range(5)])
-    len_wl_indices = len(wl_indices)
+    wl_ind, wl_indices, wl_poly_indices,\
+        len_wl_indices, shape_wl_poly_indices = wl_ind_mock_data
     vis4wl_singular, viserr4wl_singular = readout.get_visibilities4wavelength(wl_ind)
     vis4wl, viserr4wl = readout.get_visibilities4wavelength(wl_indices)
     assert isinstance(vis4wl_singular.value, np.ndarray)
@@ -255,11 +269,10 @@ def test_get_visibilities4wavelength(example_fits_file_path):
         assert vis4wl.unit == u.dimensionless_unscaled
         assert viserr4wl.unit == u.dimensionless_unscaled
 
-def test_get_visibilities24wavelength(example_fits_file_path):
+def test_get_visibilities24wavelength(example_fits_file_path, wl_ind_mock_data):
     readout = ReadoutFits(example_fits_file_path)
-    wl_ind = np.array([random.randint(0, 120)])
-    wl_indices = np.array([random.randint(0, 120) for _ in range(5)])
-    len_wl_indices = len(wl_indices)
+    wl_ind, wl_indices, wl_poly_indices,\
+        len_wl_indices, shape_wl_poly_indices = wl_ind_mock_data
     vis24wl_singular,\
         vis2err4wl_singular = readout.get_visibilities_squared4wavelength(wl_ind)
     vis24wl,\
@@ -277,11 +290,10 @@ def test_get_visibilities24wavelength(example_fits_file_path):
     assert vis24wl.unit == u.dimensionless_unscaled
     assert vis2err4wl.unit == u.dimensionless_unscaled
 
-def test_get_closure_phases4wavelength(example_fits_file_path):
+def test_get_closure_phases4wavelength(example_fits_file_path, wl_ind_mock_data):
     readout = ReadoutFits(example_fits_file_path)
-    wl_ind = np.array([random.randint(0, 120)])
-    wl_indices = np.array([random.randint(0, 120) for _ in range(5)])
-    len_wl_indices = len(wl_indices)
+    wl_ind, wl_indices, wl_poly_indices,\
+        len_wl_indices, shape_wl_poly_indices = wl_ind_mock_data
     cphases4wl_singular,\
             cphaseserr4wl_singular = readout.get_closure_phases4wavelength(wl_ind)
     cphases4wl, cphaseserr4wl = readout.get_closure_phases4wavelength(wl_indices)
@@ -298,21 +310,20 @@ def test_get_closure_phases4wavelength(example_fits_file_path):
     assert cphases4wl.unit == u.deg
     assert cphaseserr4wl.unit == u.deg
 
-def test_get_flux4wavlength(example_fits_file_path):
+def test_get_flux4wavlength(example_fits_file_path, wl_ind_mock_data):
     readout = ReadoutFits(example_fits_file_path)
-    wl_ind = np.array([random.randint(0, 120)])
-    wl_indices = np.array([random.randint(0, 120) for _ in range(5)])
-    len_wl_indices = len(wl_indices)
+    wl_ind, wl_indices, wl_poly_indices,\
+        len_wl_indices, shape_wl_poly_indices = wl_ind_mock_data
     flux4wl_singular, fluxerr4wl_singular = readout.get_flux4wavelength(wl_ind)
     flux4wl, fluxerr4wl = readout.get_flux4wavelength(wl_indices)
     assert isinstance(flux4wl_singular.value, np.ndarray)
     assert isinstance(fluxerr4wl_singular.value, np.ndarray)
     assert isinstance(flux4wl.value, np.ndarray)
     assert isinstance(fluxerr4wl.value, np.ndarray)
-    assert flux4wl_singular.value.shape == (1, )
-    assert fluxerr4wl_singular.value.shape == (1, )
-    assert flux4wl.value.shape == (len_wl_indices, )
-    assert fluxerr4wl.value.shape == (len_wl_indices, )
+    assert flux4wl_singular.value.shape == (1, 1)
+    assert fluxerr4wl_singular.value.shape == (1, 1)
+    assert flux4wl.value.shape == (len_wl_indices, 1)
+    assert fluxerr4wl.value.shape == (len_wl_indices, 1)
     assert flux4wl_singular.unit == u.Jy
     assert fluxerr4wl_singular.unit == u.Jy
     assert flux4wl.unit == u.Jy
