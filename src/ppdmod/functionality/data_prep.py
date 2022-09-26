@@ -460,6 +460,8 @@ class DataHandler:
     def merge_data(self):
         ...
 
+    # TODO: Write function that combines flux and vis, but leave it alone
+
 if __name__ == "__main__":
     ...
 
