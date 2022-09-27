@@ -113,7 +113,7 @@ class ReadoutFits:
 
     def get_wavelength_indices(self, selected_wavelengths: List[float],
                                wavelength_window_sizes:\
-                               Optional[List[float]] = [0.2]) -> List[List[float]]:
+                               List[float] = [0.2]) -> List[List[float]]:
         """Fetches the wavelength indices of the instrument's wavelength solution for a
         specific wavelength by taking a window around the chosen wavelength. BEWARE: The
         window is divided by 2 and that is taken in both directions
@@ -123,24 +123,27 @@ class ReadoutFits:
         selected_wavelengths: List[float]
             The wavelengths to be polychromatically fitted. Input will be converted to
             [astropy.units.micrometer]
-        wavelength_window_sizes: List[List[float]]
+        wavelength_window_sizes: List[float]
             This determines how far around the central chosen wavelength other
             wavelengths are to be fetched. Input will be converted to
             [astropy.units.micrometer]
 
         Returns
         -------
-        wavelength_indices: List[int]
-            A numpy array of wavelength indices for the input wavlengths around the window
+        wavelength_indices: List[List[float]]
+            A numpy array of wavelength indices for the input wavelengths around the
+            window
         """
-        selected_wavelengths *= u.um
-        if len(wavelength_window_sizes) == 1:
-            wavelength_window_sizes *= len(selected_wavelengths)
+        if (not len(selected_wavelengths) == 1) and (len(wavelength_window_sizes) == 1):
+            # NOTE: If done via normal list multiplication -> Error. Why?! Dunno...
+            wavelength_window_sizes = (np.ones((len(selected_wavelengths)))\
+                                       *wavelength_window_sizes[0]).tolist()
 
         if len(wavelength_window_sizes) != len(selected_wavelengths):
-            raise IOError("The specified wavelength windows have to be given only once"\
-                          " or for each selected wavelength!")
+            raise IOError("The specified wavelength windows have be the same length"\
+                          " as the selected wavelength list!")
 
+        selected_wavelengths *= u.um
         wavelength_window_sizes *= u.um
 
         window_top_bound = selected_wavelengths + wavelength_window_sizes/2
@@ -451,18 +454,20 @@ class DataHandler:
     """This class handles all the data that is used for the fitting process, the observed
     data as well as the data created by the modelling process"""
     def __init__(self, fits_files: List[Path], selected_wavelengths: List,
-                 wavelength_window_sizes: Optional[List] = [0.2]) -> None:
+                 wavelength_window_sizes: Optional[List[float]] = [0.2]) -> None:
         """Initialises the class"""
+        # TODO: Fix the wavelength_window_size error and make it possible to add it here
         self.fits_files = fits_files
         self.selected_wavelengths = selected_wavelengths
+        self.wavelength_window_sizes = wavelength_window_sizes
         self.readout_files = [ReadoutFits(fits_file) for fits_file in self.fits_files]
         self.getter_function_dictionary = {"vis": "get_visibilities4wavelength",
                                            "vis2": "get_visibilities_squared4wavelength",
                                            "cphases": "get_closure_phases4wavelength",
                                            "flux": "get_flux4wavelength"}
         # NOTE: This only works if the wl_solution stays the same for all files
-        self.wl_ind = self.readout_files[0].get_wavelength_indices(selected_wavelengths,
-                                                                   wavelength_window_sizes)
+        self.wl_ind = self.readout_files[0].\
+            get_wavelength_indices(self.selected_wavelengths, self.wavelength_window_sizes)
 
     def _get_data_type_function(self, readout_file: Callable,
                                data_keyword: str) -> Callable:
