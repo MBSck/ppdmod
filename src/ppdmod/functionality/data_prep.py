@@ -5,7 +5,7 @@ import astropy.units as u
 from astropy.io import fits
 from pathlib import Path
 from astropy.units import Quantity
-from typing import Tuple, Dict, List, Optional, Union
+from typing import Tuple, Dict, List, Optional, Union, Callable
 from scipy.interpolate import CubicSpline
 
 # TODO: Make merge function that merges different readouts
@@ -48,12 +48,10 @@ class ReadoutFits:
         self.wavelength_solution = self.get_wavelength_solution()
 
     def __str__(self):
-        return f"Readout initialised at {self.startup_time} of"\
-            f" (.fits)-file:\n{self.fits_file}"
+        return f"Readout initialised with (.fits)-file:\n{self.fits_file}"
 
     def __repr__(self):
-        return f"Readout initialised at {self.startup_time} of"\
-            f" (.fits)-file:\n{self.fits_file}"
+        return f"Readout initialised with (.fits)-file:\n{self.fits_file}"
 
     def get_info(self) -> str:
         """Gets the (.fits)-file's primary header's info
@@ -445,22 +443,109 @@ class ReadoutFits:
         return self.get_data_for_wavelength(self.get_flux(), wavelength_indices)
 
 
-# TODO: For this class implement different methods of polychromatic fitting
+# TODO: For this class implement different methods of polychromatic fitting. At a later
+# time
 # TODO: This will for the start just fit either the L- or N-band and not both at the
 # same time, fix this later
 class DataHandler:
     """This class handles all the data that is used for the fitting process, the observed
     data as well as the data created by the modelling process"""
-    def __init__(self, fits_files: List[Path]) -> None:
+    def __init__(self, fits_files: List[Path], selected_wavelengths: List,
+                 wavelength_window_sizes: Optional[List] = [0.2]) -> None:
         """Initialises the class"""
         self.fits_files = fits_files
+        self.selected_wavelengths = selected_wavelengths
         self.readout_files = [ReadoutFits(fits_file) for fits_file in self.fits_files]
+        self.getter_function_dictionary = {"vis": "get_visibilities4wavelength",
+                                           "vis2": "get_visibilities_squared4wavelength",
+                                           "cphases": "get_closure_phases4wavelength",
+                                           "flux": "get_flux4wavelength"}
+        # NOTE: This only works if the wl_solution stays the same for all files
+        self.wl_ind = self.readout_files[0].get_wavelength_indices(selected_wavelengths,
+                                                                   wavelength_window_sizes)
 
+    def _get_data_type_function(self, readout_file: Callable,
+                               data_keyword: str) -> Callable:
+        """This gets a method, to get a certain datatype, to be called from the
+        ReadoutFits class via a keyword provided
 
-    def merge_data(self):
-        ...
+        Parameters
+        ----------
+        readout_file: Callable
+            The class that is to be checked for the method
+        data_type_keyword: str
+            A keyword from "vis", "vis2", "cphases" or "flux" that is used to get the
+            correct function
+
+        Returns
+        -------
+        data_getter_function: Callable
+        """
+        return getattr(readout_file, self.getter_function_dictionary[data_keyword])
+
+    def _iterate_over_data_arrays(self, data: List, data_other: List) -> List:
+        """Iterates two arrays and merges them
+
+        Parameters
+        ----------
+        data: List
+            The first data to be merged
+        data_other: List
+            The other data that is to be merged
+
+        Returns
+        -------
+        List
+            The merged data
+        """
+        merged_data = [[], []]
+        for i, dataset in enumerate(data.copy()):
+            for j, polychromatic_data in enumerate(dataset):
+                unit = polychromatic_data.unit
+                merged_data[i] = np.zeros((dataset.shape[0],
+                                          polychromatic_data.shape[0]+\
+                                          data[i][j].shape[0]))
+                merged_data[i][j] = np.append(polychromatic_data, data[i][j])
+
+            merged_data[i] *= unit
+
+        return merged_data
+
+    def merge_data(self, data_type_keyword: str) -> Quantity:
+        """Fetches the data from the individual ReadoutFits classes for the selected
+        wavelengths and then merges them into new longer arrays for the determined
+        keyword.
+        The new arrays are of the same shape as before, but extended by their length times
+        the number of additional (.fits)-files that have been read
+
+        Parameters
+        ----------
+        data_type_keyword: str
+            A keyword from "vis", "vis2", "cphases" or "flux" that is used to get the
+            correct function
+
+        Returns
+        -------
+        merged_data: astropy.units.Quantity
+            The merged datasets, extended by their own length times the amount of
+            (.fits)-files passed to the DataHandler class
+        """
+        for i, readout_file in enumerate(self.readout_files):
+            getter_func = self._get_data_type_function(readout_file, data_type_keyword)
+            data = getter_func(self.wl_ind)
+            if i == 0:
+                getter_func_next = self._get_data_type_function(self.readout_files[i+1],
+                                                                data_type_keyword)
+                data_next = getter_func(self.wl_ind), getter_func_next(self.wl_ind)
+                merged_data = self._iterate_over_data_arrays(data, data_next)
+
+            if i not in [0, 1]:
+                merged_data = self._iterate_over_data_arrays(merged_data, data)
+
+        return merged_data
 
     # TODO: Write function that combines flux and vis, but leave it alone
+
 
 if __name__ == "__main__":
     ...
