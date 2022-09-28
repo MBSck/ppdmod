@@ -4,7 +4,8 @@ import astropy.units as u
 import astropy.constants as c
 
 from astropy.modeling import models
-from typing import Any, List, Union, Optional, Callable
+from astropy.units import Quantity
+from typing import List, Union, Optional
 
 # TODO: Implement FFT as a part of the base_model_class, maybe?
 # TODO: Think about calling FFT class in model class to evaluate model
@@ -24,23 +25,26 @@ class Model:
         Evaluates the visibilities of the model
     """
     def __init__(self, field_of_view: Quantity, image_size: int,
-                 T_sub: int, T_eff: int, L_star: int, distance: int,
-                 wavelength: float, pixel_sampling: Optional[int] = None) -> None:
+                 sublimation_temperature: int, effective_temperature: int,
+                 luminosity_star: int, distance: int, wavelength: float,
+                 pixel_sampling: Optional[int] = None) -> None:
         # TODO: Maybe make a specific save name for the model also
         self.name = None
-        self.wl = wavelength*u.um
-        self.axes_image, self.polar_angle = None, None
-        self.image_size = image_size*u.dimensionless_unscaled
-        self.field_of_view = field_of_view*u.mas
-        self.pixel_sampling = self.image_size if self.pixel_sampling\
-            is None else self.pixel_sampling
+        self.axes_image, self.axes_complex_image, self.polar_angle = None, None, None
 
-        self.T_sub, self.T_eff, self.L_star, self.d, self.wl = T_sub, T_eff, \
-                L_star, self.distance, self.wl
+        self.field_of_view = field_of_view*u.mas
+        self.image_size = image_size*u.dimensionless_unscaled
+        self.pixel_sampling = self.image_size if pixel_sampling\
+            is None else pixel_sampling
+        self.sublimation_temperature = sublimation_temperature*u.K
+        self.effective_temperature = effective_temperature*u.K
+        self.luminosity_star = luminostiy_star*u.L_sun
+        self.distance = distance*u.pc
+        self.wavelength = wavelength*u.um
 
         self._r_sub = sublimation_radius(self.T_sub, self.L_star, self.d)
         self._stellar_radius = stellar_radius_pc(self.T_eff, self.L_star)
-        self._stellar_radians = plancks_law_nu(self.T_eff, self.wl)
+        self._stellar_radians = plancks_law_nu(self.T_eff, self.wavelength)
         self.stellar_flux = np.pi*(self._stellar_radius/self.d)**2*\
                 self._stellar_radians*1e26
 
@@ -153,7 +157,7 @@ class Model:
             tau = models.PowerLaw1D(self._radius, self._r_sub, p, tau_0)
             blackbody = models.BlackBody(temperature=temperature*u.K)
 
-            flux = blackbody(self.wl)
+            flux = blackbody(self.wavelength)
             flux *= (1-np.exp(-tau))*sr2mas(self._mas_size, self._sampling)
             flux[np.where(np.isnan(flux))],flux[np.where(np.isinf(flux))] = 0., 0.
             return flux*1e26
@@ -205,6 +209,7 @@ class Model:
         radius: np.array
             The radius [astropy.units.mas/px]
         """
+        # Make function to cut the radius at some point, or add it to this function
         x = np.linspace(-self.image_size//2, self.image_size//2,
                         self.pixel_sampling, endpoint=False)*self.pixel_scaling
         y = x[:, np.newaxis]
@@ -215,13 +220,13 @@ class Model:
                 pos_angle = (pos_angle*u.deg).to(u.rad)
             except:
                 raise IOError(f"{inspect.stack()[0][3]}(): Check input"
-                              " arguments, ellipsis_angles must be of the"
+                              " arguments, 'incline_params' must be of the"
                               " form [axis_ratio, pos_angle]")
 
             if axis_ratio < 1.:
                 raise ValueError("The axis_ratio has to be bigger than 1.")
 
-            if (pos_angle < 0) or (pos_angle > 180):
+            if (pos_angle > 0) and (pos_angle < 180):
                 raise ValueError("The positional angle must be between [0, 180]")
 
             axis_ratio *= u.dimensionless_unscaled
@@ -238,63 +243,57 @@ class Model:
         return radius
 
     def set_uv_grid(self, incline_params: List[float] = None,
-                    uvcoords: np.ndarray = None, B: Optional[bool] = True) -> Quantity:
+                    uvcoords: np.ndarray = None,
+                    vector: Optional[bool] = True) -> Quantity:
         """Sets the uv coords for visibility modelling
 
         Parameters
         ----------
-        wavelength: float
-            The wavelength the (u,v)-plane is sampled at
-        sampling: int
-            The pixel sampling
-        size: int, optional
-            Sets the range of the (u,v)-plane in meters, with size being the
-            longest baseline
-        angles: List[float], optional
-            A list of the three angles [ellipsis_angle, pos_angle inc_angle]
+        incline_params: List[float], optional
+            A list of the three angles [axis_ratio, pos_angle, inc_angle]
         uvcoords: List[float], optional
-            If uv-coords are given, then the visibilities are calculated for
-        B: bool, optional
-            Returns the baseline vector if toggled true, else the r vector
+            If uv-coords are given, then the visibilities are calculated for them
+        vector: bool, optional
+            Returns the baseline vector if toggled true, else the baselines
 
         Returns
         -------
-        baselines: ArrayLike
-            The baselines for the uvcoords
-        uvcoords: ArrayLike
-            The axis used to calculate the baselines
+        baselines: astropy.units.Quantity
+            The baselines for the uvcoords [astropy.units.m]
+        uvcoords: astropy.units.Quantity
+            The axis used to calculate the baselines [astropy.units.m]
         """
         # TODO: Work to split this from image_size -> (u, v)-coords should be separate
         if uvcoords is None:
-            axis = np.linspace(-self.image_size, size, sampling, endpoint=False)
+            axis = np.linspace(-self.image_size, size, sampling, endpoint=False)*u.m
 
             # Star overhead sin(theta_0)=1 position
-            u, v = axis/wavelength, axis[:, np.newaxis]/wavelength
+            u, v = axis/self.wavelength.to(u.m),\
+                axis[:, np.newaxis]/self.wavelength.to(u.m)
 
         else:
-            axis = uvcoords/wavelength
-            u, v = np.array([i[0] for i in uvcoords]), \
-                    np.array([i[1] for i in uvcoords])
+            axis = uvcoords/self.wavelength.to(u.m)
+            u, v = np.array([uvcoord[0] for uvcoord in uvcoords]), \
+                    np.array([uvcoord[1] for uvcoord in uvcoords])
 
         if angles is not None:
             try:
-                if len(angles) == 1:
+                if len(angles) == 2:
                     axis_ratio, pos_angle = incline_params
-                    ur, vr = u*np.cos(pos_angle)+v*np.sin(pos_angle), \
-                            v*np.cos(pos_angle)-u*np.sin(pos_angle)
-                    baselines = np.sqrt(ur**2+vr**2)
-                    baseline_vector = baselines*self.wl.to(u.m) if B else baselines
                 else:
                     axis_ratio = incline_params[0]
                     pos_angle, inc_angle = map(lambda x: (x*u.deg).to(u.rad),
                                                incline_params[1:])
 
-                    ur, vr = u*np.cos(pos_angle)+v*np.sin(pos_angle), \
-                            (v*np.cos(pos_angle)-u*np.sin(pos_angle))/axis_ratio
-                    baselines = np.sqrt(ur**2+vr**2*np.cos(inc_angle)**2)
-                    baseline_vector = baselines*self.wl.to(u.m) if B else baselines
+                u_inclined, v_inclined = u*np.cos(pos_angle)+v*np.sin(pos_angle),\
+                        v*np.cos(pos_angle)-u*np.sin(pos_angle)
 
-                self.axes_complex_image = [ur, vr]
+                if len(angles) > 2:
+                    v_inclined = v_inclined*np.cos(inc_angle)
+
+                baselines = np.sqrt(u_inclined**2+v_inclined**2)
+                baseline_vector = baselines*self.wavelength.to(u.m)
+                self.axes_complex_image = [u_inclined, v_inclined]
             except:
                 raise IOError(f"{inspect.stack()[0][3]}(): Check input"
                               " arguments, ellipsis_angles must be of the form"
@@ -303,14 +302,13 @@ class Model:
 
         else:
             baselines = np.sqrt(u**2+v**2)
-            baseline_vector = baselines*self.wl.to(u.m) if B else baselines
+            baseline_vector = baselines*self.wavelength.to(u.m)
             self.axes_complex_image = [u, v]
 
-        return baseline_vector
+        return baseline_vector if vector else baselines
 
-    def eval_model() -> Quantity:
+    def eval_model(self) -> Quantity:
         """Evaluates the model image
-        Convention to put non fitting parameters at end of *args.
 
         Returns
         --------
@@ -319,17 +317,17 @@ class Model:
         """
         pass
 
-    def eval_vis() -> Quantity:
-        """Evaluates the visibilities of the model.
-        Convention to put non fitting parameters at end of *args.
+    def eval_vis(self) -> Quantity:
+        """Evaluates the complex visibility function of the model.
 
         Returns
         -------
-        complex_image: Quantity
+        complex_visibility_function: Quantity
+            A two-dimensional complex visibility function [astropy.units.m]
         """
         pass
 
 
 if __name__ == "__main__":
-    model = Model(1500, 7900, 140, 8)
+    model = Model(50, 128, 1500, 7900, 140, 19, 8)
 
