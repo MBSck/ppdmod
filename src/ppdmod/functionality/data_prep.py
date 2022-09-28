@@ -531,7 +531,7 @@ class DataHandler:
 
         return merged_data
 
-    def merge_data(self, data_type_keyword: str) -> Quantity:
+    def _merge_data(self, data_type_keyword: str) -> Quantity:
         """Fetches the data from the individual ReadoutFits classes for the selected
         wavelengths and then merges them into new longer arrays for the determined
         keyword.
@@ -556,15 +556,28 @@ class DataHandler:
             if i == 0:
                 getter_func_next = self._get_data_type_function(self.readout_files[i+1],
                                                                 data_type_keyword)
-                data_next = getter_func(self.wl_ind), getter_func_next(self.wl_ind)
+                data_next = getter_func_next(self.wl_ind)
                 merged_data = self._iterate_over_data_arrays(data, data_next)
-
-            if i not in [0, 1]:
+            elif i == 1:
+                continue
+            else:
                 merged_data = self._iterate_over_data_arrays(merged_data, data)
 
         return merged_data
 
-    # TODO: Write function that combines flux and vis, but leave it alone
+    # TODO: Write function that combines flux and vis, but leave it alone for now
+
+    def merge_visibilities(self):
+        return self._merge_data("vis")
+
+    def merge_visibilities_squared(self):
+        return self._merge_data("vis2")
+
+    def merge_closure_phases(self):
+        return self._merge_data("cphases")
+
+    def merge_flux(self):
+        return self._merge_data("flux")
 
 
 if __name__ == "__main__":

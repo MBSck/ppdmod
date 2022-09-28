@@ -474,9 +474,30 @@ def test_iterate_over_data_arrays(example_fits_files_lists, selected_wavelengths
 
 def test_merge_data(example_fits_files_lists, selected_wavelengths):
     selected_wl_solo, selected_wl, selected_wl_multi = selected_wavelengths
+    len_selected_wl, len_selected_wl_multi = len(selected_wl), len(selected_wl_multi)
     two_fits_files, three_fits_files = example_fits_files_lists
     data_handler_two_solo = DataHandler(two_fits_files, selected_wl_solo)
-    data_handler_two = DataHandler(three_fits_files, selected_wl)
+    data_handler_two = DataHandler(two_fits_files, selected_wl)
+    data_handler_two_multi = DataHandler(two_fits_files, selected_wl_multi)
     data_handler_three_solo = DataHandler(three_fits_files, selected_wl_solo)
     data_handler_three = DataHandler(three_fits_files, selected_wl)
-    assert data_handler_two_solo.merge_data("vis")[0].shape == (2, 12)
+    data_handler_three_multi = DataHandler(three_fits_files, selected_wl_multi)
+
+    assert data_handler_two_solo._merge_data("vis")[0].shape == (1, 12)
+    assert data_handler_two._merge_data("vis")[0].shape == (len_selected_wl, 12)
+    assert data_handler_two_multi._merge_data("vis")[0].shape ==\
+        (len_selected_wl_multi, 12)
+    assert data_handler_three_solo._merge_data("vis")[0].shape == (1, 18)
+    assert data_handler_three._merge_data("vis")[0].shape == (len_selected_wl, 18)
+    assert data_handler_three_multi._merge_data("vis")[0].shape ==\
+        (len_selected_wl_multi, 18)
+
+    assert data_handler_two_solo._merge_data("cphases")[0].shape == (1, 8)
+    assert data_handler_two._merge_data("cphases")[0].shape == (len_selected_wl, 8)
+    assert data_handler_two_multi._merge_data("cphases")[0].shape ==\
+        (len_selected_wl_multi, 8)
+    assert data_handler_three_solo._merge_data("cphases")[0].shape == (1, 12)
+    assert data_handler_three._merge_data("cphases")[0].shape == (len_selected_wl, 12)
+    assert data_handler_three_multi._merge_data("cphases")[0].shape ==\
+        (len_selected_wl_multi, 12)
+
