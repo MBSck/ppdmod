@@ -469,6 +469,20 @@ class DataHandler:
         self.wl_ind = self.readout_files[0].\
             get_wavelength_indices(self.selected_wavelengths, self.wavelength_window_sizes)
 
+    def __repr__(self):
+        """The DataHandler class' representation"""
+        return f"DataHandler contains the information of the ReadoutFits:"\
+            f"\n{', '.join([str(i) for i in self.readout_files])}\n and polychromatic"\
+            f"data of {self.selected_wavelengths} with the windows "\
+            f"{self.wavelength_window_sizes}"
+
+    def __str__(self):
+        """The DataHandler class' string representation"""
+        return f"DataHandler contains the information of the ReadoutFits:"\
+            f"\n{', '.join([str(i) for i in self.readout_files])}\n and polychromatic"\
+            f"data of {self.selected_wavelengths} with the windows "\
+            f"{self.wavelength_window_sizes}"
+
     def _get_data_type_function(self, readout_file: Callable,
                                data_keyword: str) -> Callable:
         """This gets a method, to get a certain datatype, to be called from the
@@ -507,10 +521,11 @@ class DataHandler:
         for i, dataset in enumerate(data.copy()):
             for j, polychromatic_data in enumerate(dataset):
                 unit = polychromatic_data.unit
-                merged_data[i] = np.zeros((dataset.shape[0],
-                                          polychromatic_data.shape[0]+\
-                                          data[i][j].shape[0]))
-                merged_data[i][j] = np.append(polychromatic_data, data[i][j])
+                if not np.any(merged_data[i]):
+                    merged_data[i] = np.zeros((dataset.shape[0],
+                                              polychromatic_data.shape[0]+\
+                                              data_other[i][j].shape[0]))
+                merged_data[i][j] = np.append(polychromatic_data, data_other[i][j])
 
             merged_data[i] *= unit
 
