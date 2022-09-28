@@ -12,39 +12,13 @@ from scipy.interpolate import CubicSpline
 # TOOD: Make Readout accept more than one file
 
 
-def readout_single_dish_txt2numpy_array(path_to_txt_file: Path,
-                                        wavelength_solution: Quantity) -> Dict:
-    """Reads x, y '.txt'-file intwo 2 numpy arrays
-
-    Parameters
-    ----------
-    path_to_txt_file: Path
-        The path to the (.txt)-file
-    wavelength_solution: astropy.units.Quantity
-        The wavelength solution of the instrument [astropy.units.micrometer]
-
-    Returns
-    -------
-    single_dish2wavelength_solution_dict: Dict
-        A dictionary containing the interpolated flux information corresponding to the
-        wavelength solution of the instrument
-    """
-    single_dish_data = np.loadtxt(path_to_txt_file)
-    wavelength_from_single_dish = np.array([wl[0] for wl in single_dish_data])*u.um
-    flux_from_single_dish = np.array([flux[1] for flux in single_dish_data])*u.Jy
-
-    single_dish2wavelength_solution_dict = {}
-    cubic_spline = CubicSpline(wavelength_from_single_dish, flux_from_single_dish)
-    for i, flux in enumerate(cubic_spline(wavelength_solution)):
-        single_dish2wavelength_solution_dict[wavelength_solution[i]] = flux
-
-    return single_dish2wavelength_solution_dict
-
 # TODO: Make get_band_information method to check the band
 class ReadoutFits:
     """All functionality to work with (.fits)-files"""
-    def __init__(self, fits_file: Path) -> None:
+    def __init__(self, fits_file: Path,
+                 flux_file: Optional[Path] = "") -> None:
         self.fits_file = fits_file
+        self.flux_file = flux_file if flux_file else ""
         self.wavelength_solution = self.get_wavelength_solution()
 
     def __str__(self):
@@ -91,6 +65,31 @@ class ReadoutFits:
         """
         with fits.open(self.fits_file) as header_list:
             return (header_list[header].columns).names
+
+    def _get_flux_file_data(self) -> Quantity:
+        """Reads the flux data from the flux file and then interpolates it to the
+        wavelength solution used by MATISSE.
+
+        Returns
+        -------
+        flux: astropy.units.Quantity
+            The flux provided by the flux_file interpolated to MATISSE's wavelength
+            solution
+        """
+        # TODO: Get a better error representation for the flux
+        single_dish_data = np.loadtxt(self.flux_file)
+        wavelength_from_single_dish = [wl[0] for wl in single_dish_data]
+        flux_from_single_dish = [flux[1] for flux in single_dish_data]
+        mean_wl = np.mean(wavelength_from_single_dish)
+
+        if all([i for i in self.get_wavelength_indices([mean_wl])]):
+            cubic_spline = CubicSpline(wavelength_from_single_dish*u.um,
+                                       flux_from_single_dish*u.Jy)
+            flux = cubic_spline(self.wavelength_solution)*u.Jy
+            return [flux, flux*0.1]
+        else:
+            raise IOError("The flux file seems to be outside of the wavelength solutions"\
+                          " range!")
 
     def get_data(self, header: Union[int, str],
                  *sub_headers: Union[int, str]) -> List[np.array]:
@@ -354,8 +353,13 @@ class ReadoutFits:
         fluxerr: u.Quantity
             The error of the (total) flux of an observed object [astropy.units.Jansky]
         """
-        return list(map(lambda x: x*u.Jy,
-                        self.get_data("oi_flux", "fluxdata", "fluxerr")))
+        # TODO: Check how to handle if there is additional flux data -> Maybe only for one
+        # dataset the flux
+        if self.flux_file:
+            return self._get_flux_file_data()
+        else:
+            return list(map(lambda x: x*u.Jy,
+                            self.get_data("oi_flux", "fluxdata", "fluxerr")))
 
     def get_wavelength_solution(self) -> Quantity:
         """Fetches the wavelength solution from the (.fits)-file and gives the
@@ -453,11 +457,15 @@ class ReadoutFits:
 class DataHandler:
     """This class handles all the data that is used for the fitting process, the observed
     data as well as the data created by the modelling process"""
-    def __init__(self, fits_files: List[Path], selected_wavelengths: List,
-                 wavelength_window_sizes: Optional[List[float]] = [0.2]) -> None:
+    def __init__(self, fits_files: List[Path],
+                 selected_wavelengths: List,
+                 wavelength_window_sizes: Optional[List[float]] = [0.2],
+                 priors: Optional[List] = [], labels: Optional[List] = []) -> None:
         """Initialises the class"""
         # TODO: Fix the wavelength_window_size error and make it possible to add it here
         self.fits_files = fits_files
+        self.priors = priors
+        self.labels = labels
         self.selected_wavelengths = selected_wavelengths
         self.wavelength_window_sizes = wavelength_window_sizes
         self.readout_files = [ReadoutFits(fits_file) for fits_file in self.fits_files]
@@ -482,6 +490,35 @@ class DataHandler:
             f"\n{', '.join([str(i) for i in self.readout_files])}\n and polychromatic"\
             f"data of {self.selected_wavelengths} with the windows "\
             f"{self.wavelength_window_sizes}"
+
+    def _generate_random_inital(self, centre: Optional[bool] = False) -> np.ndarray:
+        """Initialises a random float/list via a normal distribution from the
+        bounds provided
+
+        Parameters
+        -----------
+        bounds: List
+            Bounds list must be nested list(s) containing the bounds of the form
+            form [lower_bound, upper_bound]
+        centre_rnd: bool, optional
+            Get a random number close to the centre of the bound
+
+        Returns
+        -------
+        float | np.ndarray
+        """
+        initial = []
+        if centre:
+            for lower, upper in self.priors:
+                if upper == 2:
+                    initial.append(np.random.normal(1.5, 0.2))
+                else:
+                    initial.append(np.random.normal(upper/2, 0.2))
+        else:
+            for lower, upper in bounds:
+                initial.append(np.random.uniform(lower, upper))
+
+        return np.array(initial, dtype=float)
 
     def _get_data_type_function(self, readout_file: Callable,
                                data_keyword: str) -> Callable:
@@ -531,6 +568,7 @@ class DataHandler:
 
         return merged_data
 
+    # TODO: Check if this works for the uv-coords as well, if not make another merge_func
     def _merge_data(self, data_type_keyword: str) -> Quantity:
         """Fetches the data from the individual ReadoutFits classes for the selected
         wavelengths and then merges them into new longer arrays for the determined
@@ -566,18 +604,21 @@ class DataHandler:
         return merged_data
 
     # TODO: Write function that combines flux and vis, but leave it alone for now
+    def _get_sigma_square(self, data_type_keyword: str) -> Quantity:
+        """Fetches the errors from the datatype and then squares them
 
-    def merge_visibilities(self):
-        return self._merge_data("vis")
+        Parameters
+        ----------
+        data_type_keyword: str
+            A keyword from "vis", "vis2", "cphases" or "flux" that is used to get the
+            correct function
 
-    def merge_visibilities_squared(self):
-        return self._merge_data("vis2")
-
-    def merge_closure_phases(self):
-        return self._merge_data("cphases")
-
-    def merge_flux(self):
-        return self._merge_data("flux")
+        Returns
+        -------
+        sigma_square: astropy.units.Quantity
+            The squared error of the corresponding datatype
+        """
+        return self._merge_data(data_type_keyword)[1]**2
 
 
 if __name__ == "__main__":

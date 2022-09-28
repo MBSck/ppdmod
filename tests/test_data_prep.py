@@ -13,7 +13,14 @@ from ppdmod.functionality.data_prep import ReadoutFits, DataHandler
 
 @pytest.fixture
 def example_fits_file_path():
-    return "../data/test.fits"
+    """This is an N-band file"""
+    return "../data/tests/test.fits"
+
+@pytest.fixture
+def example_flux_files_path():
+    lband_flux_file = "../data/tests/HD_142666_sws.txt"
+    nband_flux_file = "../data/tests/HD_142666_timmi2.txt"
+    return lband_flux_file, nband_flux_file
 
 @pytest.fixture
 def header_names_tuple():
@@ -63,6 +70,14 @@ def wl_ind_mock_data():
 def selected_wavelengths():
     return [8.5], [8.5, 10.0], [8.5]*random.randint(1, 10)
 
+@pytest.fixture
+def mock_priors():
+    return [1.5, 180, 2, 180]
+
+@pytest.fixture
+def mock_lables():
+    return ["axis_ratio", "positional_angle", "mod_amplitude", "mod_angle"]
+
 ################################ ReadoutFits - TESTS #####################################
 
 # TODO: Implement this test
@@ -72,6 +87,20 @@ def test_get_info():
 # TODO: Implement this test
 def test_get_header():
     ...
+
+def test_get_flux_file_data(example_fits_file_path, example_flux_files_path):
+    lband_flux_file, nband_flux_file = example_flux_files_path
+    readout_lband = ReadoutFits(example_fits_file_path, lband_flux_file)
+    readout_nband = ReadoutFits(example_fits_file_path, nband_flux_file)
+    with pytest.raises(IOError):
+        readout_lband._get_flux_file_data()
+    flux, fluxerr = readout_nband._get_flux_file_data()
+    assert isinstance(flux.value, np.ndarray)
+    assert isinstance(fluxerr.value, np.ndarray)
+    assert flux.unit == u.Jy
+    assert fluxerr.unit == u.Jy
+    assert flux.shape == (121, )
+    assert fluxerr.shape == (121, )
 
 def test_get_data(example_fits_file_path, header_names_tuple):
     """Tests if all MATISSE values can be fetched from the (.fits)-file"""
@@ -126,6 +155,8 @@ def test_get_wavelength_indicies(example_fits_file_path):
     assert len(wl_ind_multi_n_win[1]) == 5
 
 def test_get_data_for_wavelength(example_fits_file_path, wl_ind_mock_data):
+    # TODO: Add test here that checks if correct indices are procurred for every
+    # wavelength
     readout = ReadoutFits(example_fits_file_path)
     wl_ind, wl_indices, wl_poly_indices,\
         len_wl_indices, len_wl_poly_indices = wl_ind_mock_data
@@ -481,6 +512,7 @@ def test_merge_data(example_fits_files_lists, selected_wavelengths):
     data_handler_two_multi = DataHandler(two_fits_files, selected_wl_multi)
     data_handler_three_solo = DataHandler(three_fits_files, selected_wl_solo)
     data_handler_three = DataHandler(three_fits_files, selected_wl)
+    data_handler_three_multi = DataHandler(three_fits_files, selected_wl_multi)
     data_handler_three_multi = DataHandler(three_fits_files, selected_wl_multi)
 
     assert data_handler_two_solo._merge_data("vis")[0].shape == (1, 12)
