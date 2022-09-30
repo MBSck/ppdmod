@@ -26,44 +26,104 @@ class Model:
     """
     def __init__(self, field_of_view: Quantity, image_size: int,
                  sublimation_temperature: int, effective_temperature: int,
-                 luminosity_star: int, distance: int,
+                 distance: int, luminosity_star: int,
                  pixel_sampling: Optional[int] = None) -> None:
         # TODO: Maybe make a specific save name for the model also
         self.name = None
         self.axes_image, self.axes_complex_image, self.polar_angle = None, None, None
 
-        self.field_of_view = field_of_view*u.mas
-        self.image_size = image_size*u.dimensionless_unscaled
-        self.pixel_sampling = self.image_size if pixel_sampling\
+        self._field_of_view = field_of_view*u.mas
+        self._image_size = image_size*u.dimensionless_unscaled
+        self._pixel_sampling = self.image_size if pixel_sampling\
             is None else pixel_sampling
-        self.pixel_scaling = self.field_of_view/self.pixel_sampling
-        self.sublimation_temperature = sublimation_temperature*u.K
-        self.effective_temperature = effective_temperature*u.K
-        self.luminosity_star = luminosity_star*c.L_sun
-        self.distance = distance*u.pc
+        self._sublimation_temperature = sublimation_temperature*u.K
+        self._effective_temperature = effective_temperature*u.K
+        self._luminosity_star = luminosity_star*c.L_sun
+        self._distance = distance*u.pc
 
-        # self._r_sub = sublimation_radius(self.T_sub, self.L_star, self.d)
         # self._stellar_radius = stellar_radius_pc(self.T_eff, self.L_star)
-        # self._stellar_radians = plancks_law_nu(self.T_eff, self.wavelength)
         # self.stellar_flux = np.pi*(self._stellar_radius/self.d)**2*\
                 # self._stellar_radians*1e26
 
+    @property
+    def field_of_view(self):
+        return self._field_of_view
+
+    @field_of_view.setter
+    def field_of_view(self, value):
+        self._field_of_view = value*u.mas
+
+    @property
+    def image_size(self):
+        return self._image_size
+
+    @image_size.setter
+    def image_size(self, value):
+        self._image_size = value*u.mas
+
+    @property
+    def pixel_sampling(self):
+        return self._pixel_sampling
+
+    @pixel_sampling.setter
+    def pixel_sampling(self, value):
+        self._pixel_sampling = value*u.mas
+
+    @property
+    def pixel_scaling(self):
+        return self.field_of_view/self.pixel_sampling
+
+    @property
+    def sublimation_temperature(self):
+        return self._field_of_view
+
+    @sublimation_temperature.setter
+    def sublimation_temperature(self, value):
+        if not isinstace(value, u.Quantity):
+            value *= u.K
+        self._sublimation_temperature = value
+
+    @property
+    def effective_temperature(self):
+        return self._effective_temperature
+
+    @effective_temperature.setter
+    def effective_temperature(self, value):
+        self._effective_temperature = value*u.K
+
+    @property
+    def luminosity_star(self):
+        return self._luminosity_star
+
+    @luminosity_star.setter
+    def luminosity_star(self, value):
+        self._luminosity_star = value*c.L_sun
+
+    @property
+    def distance(self):
+        return self._distance
+
+    @distance.setter
+    def distance(self, value):
+        self._distance = value*u.pc
+
     # TODO: Make repr function that tells what the model has been initialised with
-    def _calculate_orbit_radius_parallax(self, radius: Quantity) -> Quantity:
-        """Calculates the orbital radius from a radius [astropy.units.m] and gives it
-        in [astropy.units.arcsec]
+    def _calculate_orbital_radius_from_parallax(self, parallax: Quantity) -> Quantity:
+        """Calculates the orbital radius from a parallax [astropy.units.arcsec] and gives
+        it in [astropy.units.m]
 
         Parameters
         ----------
-        radius: astropy.units.Quantity
-            The radius [astropy.units.m] around the star as seen from a certain distance
+        parallax: astropy.units.Quantity
+            The angle of the orbital radius [astropy.units.arcsec]
 
         Returns
         -------
-        parallax_angle: astropy.units.Quantity
-            The angle of the orbital radius [astropy.units.arcsec]"""
-        radius = (radius*u.m).to(u.au)
-        return (radius/self.distance)
+        orbital_radius: astropy.units.Quantity
+            The orbital radius [astropy.units.m]
+        """
+        return (parallax.to('', equivalencies=u.dimensionless_angles())\
+                *self.distance).to(u.m)
 
     def _calculate_stellar_radius(self) -> Quantity:
         """Calculates the stellar radius from its attributes and converts it from
@@ -88,34 +148,38 @@ class Model:
         Returns
         -------
         stellar_radians: astropy.units.Quantity
-            The flux of the star [astropy.units.Jy/px]
+            The flux of the star for a specific wavelength [astropy.units.Jy/px]
         """
-        blackbody = models.BlackBody(temperature=self.effective_temperature)
-        return blackbody(wavelength)
+        stellar_radians = models.BlackBody(temperature=self.effective_temperature)
+        return stellar_radians(wavelength)
 
-    def _calculate_sublimation_temperature(self, inner_radius: Quantity) -> Quantity:
-        """Calculates the sublimation temperature at the inner rim of the disk
+    def _calculate_sublimation_temperature(self,
+                                           inner_radius: Optional[Quantity] = None
+                                           ) -> Quantity:
+        """Calculates the sublimation temperature at the inner rim of the disc
 
         Parameters
         ----------
-        inner_radius: astropy.units.Quantity
-            The sublimation radius [astropy.units.mas]
+        inner_radius: astropy.units.Quantity, optional
+            The inner radius of the disc [astropy.units.mas]
 
         Returns
         -------
         sublimation_temperature: astropy.units.Quantity
             The sublimation temperature [astropy.units.K]
         """
-        r_sub /= m2mas(1, self.distance)
-        return (self.luminosity_star/(4*np.pi*c.k_B*r_sub**2))**(1/4)
+        if inner_radius is None:
+            inner_radius = self.sublimation_radius
+        inner_radius = inner_radius.to(u.arcsec)
+        return (self.luminosity_star/(4*np.pi*c.k_B*inner_radius**2))**(1/4)
 
     def _calculate_sublimation_radius(self) -> Quantity:
-        """Calculates the sublimation radius of the disk
+        """Calculates the sublimation radius at the inner rim of the disc
 
         Returns
         -------
         sublimation_radius: astropy.units.Quantity
-            The sublimation_radius [mas]
+            The sublimation radius [astropy.units.mas]
         """
         sublimation_radius = np.sqrt(self.luminosity_star/\
                                      (4*np.pi*c.sigma_sb*self.sublimation_temperature**4))
@@ -380,5 +444,6 @@ class CombinedModel:
         ...
 
 if __name__ == "__main__":
-    model = Model(50, 128, 1500, 7900, 140, 19)
+    model = Model(50, 128, 1500, 7900, 1, 19)
+    print(model._calculate_orbital_radius_from_parallax(1*u.arcsec))
 
