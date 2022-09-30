@@ -80,14 +80,18 @@ class Model:
     def _calculate_stellar_radians(self, wavelength: Quantity) -> Quantity:
         """Calculates the flux from the central star
 
+        Parameters
+        ----------
+        wavelength: astropy.units.Quantity
+            The wavelength to be used for the BlackBody calculation [astropy.units.um]
+
         Returns
         -------
         stellar_radians: astropy.units.Quantity
             The flux of the star [astropy.units.Jy/px]
         """
-        if not isinstance(wavelength, Quantity):
-            wavelength *= u.um
-        return models.BlackBody(self.effective_temperature)
+        blackbody = models.BlackBody(temperature=self.effective_temperature)
+        return blackbody(wavelength)
 
     def _calculate_sublimation_temperature(self, inner_radius: Quantity) -> Quantity:
         """Calculates the sublimation temperature at the inner rim of the disk
@@ -96,10 +100,6 @@ class Model:
         ----------
         inner_radius: astropy.units.Quantity
             The sublimation radius [astropy.units.mas]
-        L_star: int
-            The star's luminosity in units of nominal solar luminosity
-        distance: int
-            Distance in parsec
 
         Returns
         -------
@@ -109,25 +109,16 @@ class Model:
         r_sub /= m2mas(1, self.distance)
         return (self.luminosity_star/(4*np.pi*c.k_B*r_sub**2))**(1/4)
 
-    def _calculate_sublimation_radius(self):
+    def _calculate_sublimation_radius(self) -> Quantity:
         """Calculates the sublimation radius of the disk
-
-        Parameters
-        ----------
-        T_sub: int
-            The sublimation temperature of the disk. Usually fixed to 1500 K
-        L_star: int
-            The star's luminosity in units of nominal solar luminosity
-        distance: int
-            Distance in parsec
 
         Returns
         -------
-        R_sub: int
+        sublimation_radius: astropy.units.Quantity
             The sublimation_radius [mas]
         """
-        sub_radius_m = np.sqrt(self.luminosity_star/\
-                               (4*np.pi*c.sigma_sb*self.sublimation_temperature**4))
+        sublimation_radius = np.sqrt(self.luminosity_star/\
+                                     (4*np.pi*c.sigma_sb*self.sublimation_temperature**4))
         return m2mas(sub_radius_m, self.distance)
 
     def _calculate_temperature_gradient(self, radius: Quantity, power_law_exponent: float,
@@ -164,54 +155,59 @@ class Model:
         return models.PowerLaw1D().evaluate(radius, inner_temperature,
                                             inner_radius, power_law_exponent)
 
-    def _calculate_total_flux(self, *args) -> Quantity:
-        """Sums up the flux from the individual pixel [astropy.units.Jy/px] brightness
-        distribution to the complete brightness [astropy.units.Jy]"""
-        return np.sum(self.get_flux(*args))
+    def _calculate_optical_depth_gradient(self, radius: Quantity,
+                                          inner_optical_depth: Quantity,
+                                          power_law_exponent: float,
+                                          inner_radius: Optional[Quantity] = None
+                                          ) -> Quantity:
+        """Calculates the optical depth gradient
 
-    def _calculate_flux_per_pixel(self, tau_0: float,
-                                  q: float, p: float,
-                                  r_sub: Optional[Union[int, float]] = None) -> Quantity:
+        Parameters
+        ----------
+        radius: astropy.units.Quantity
+            An array containing all the points for the radius extending outwards
+            [astropy.units.mas]
+        inner_optical_depth: Quantity
+            The optical depth at the inner radius [astropy.units.dimensionless_unscaled]
+        power_law_exponent: float
+            A float specifying the power law exponent of the temperature gradient "q"
+        inner_radius: astropy.units.Quantity, optional
+            The inner radius of the object, if not given then the sublimation radius is
+            used [astropy.units.mas]
+
+        Returns
+        -------
+        """
+        if inner_radius is None:
+            inner_radius = self.sublimation_radius
+        return models.PowerLaw1D().evaluate(radius, inner_optical_depth,
+                                            inner_radius, power_law_exponent)
+
+    def _calculate_flux_per_pixel(self) -> Quantity:
         """Calculates the total flux of the model
 
         Parameters
         ----------
-        tau_0: float
-            The optical depth of the disk, value between 0-1, which 1 being
-            a perfect black body
-        q: float
-            The power law exponent of temperature
-        p: float
-            The power law exponent of optical depth
-        r_sub: int | float, optional
-            The inner radius used to calculate the inner/sublimation
-            temperature, if provided
 
         Returns
         -------
-        flux: np.ndarray
+        flux: astropy.units.Quantity
+            The object's flux per pixel [astropy.units.Jy/px]
         """
-        with np.errstate(divide='ignore'):
-            if r_sub is not None:
-                sub_temperature = sublimation_temperature(r_sub, self.L_star, self.d)
-            else:
-                sub_temperature = self._r_sub
+        flux = blackbody(wavelength)
+        flux *= (1-np.exp(-tau))*sr2mas(self._mas_size, self._sampling)
+        flux[np.where(np.isnan(flux))],flux[np.where(np.isinf(flux))] = 0., 0.
+        return flux*1e26
 
-            tau = models.PowerLaw1D(self._radius, self._r_sub, p, tau_0)
-            blackbody = models.BlackBody()
-
-            flux = blackbody(wavelength)
-            flux *= (1-np.exp(-tau))*sr2mas(self._mas_size, self._sampling)
-            flux[np.where(np.isnan(flux))],flux[np.where(np.isinf(flux))] = 0., 0.
-            return flux*1e26
-
-
-    def azimuthal_modulation(self, image, modulation_angle: float,
-                             amplitude: int  = 1) -> Quantity:
-        """Azimuthal modulation of an object
+    def _calculate_azimuthal_modulation(self, image: Quantity,
+                                        modulation_angle: Quantity,
+                                        amplitude: int = 1) -> Quantity:
+        """Calculates the azimuthal modulation of the object
 
         Parameters
         ----------
+        image: astropy.units.Quantity
+            The model's image [astropy.units.Jy/px]
         polar_angle: astropy.units.Quantity
             The polar angle of the x, y-coordinates [astropy.units.rad]
         amplitude: int
@@ -223,13 +219,17 @@ class Model:
             The azimuthal modulation [astropy.units.dimensionless_unscaled]
         """
         # TODO: Implement Modulation field like Jozsef?
-        # TODO: Implement check that checks is polar angle is rad if not convert it
         modulation_angle = (modulation_angle*u.deg).to(u.rad)
         total_mod = (amplitude*u.dimensionless_unscaled*\
                      np.cos(self.polar_angle-modulation_angle))
         image *= 1 + total_mod
         image.value[image.value < 0.] = 0.
         return image
+
+    def _calculate_total_flux(self, *args) -> Quantity:
+        """Sums up the flux from the individual pixel [astropy.units.Jy/px] brightness
+        distribution to the complete brightness [astropy.units.Jy]"""
+        return np.sum(self.get_flux(*args))
 
     def set_grid(self, incline_params: Optional[List[float]] = None) -> Quantity:
         """Sets the size of the model and its centre. Returns the polar coordinates
@@ -373,7 +373,12 @@ class Model:
         pass
 
 
+# TODO: Make this class combine individual models
+class CombinedModel:
+    # TODO: Think of how to combine the models
+    def __init__(self):
+        ...
+
 if __name__ == "__main__":
     model = Model(50, 128, 1500, 7900, 140, 19)
-    print(model._calculate_stellar_radius())
 
