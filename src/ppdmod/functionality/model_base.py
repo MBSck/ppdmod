@@ -26,7 +26,7 @@ class Model:
     """
     def __init__(self, field_of_view: Quantity, image_size: int,
                  sublimation_temperature: int, effective_temperature: int,
-                 luminosity_star: int, distance: int, wavelength: float,
+                 luminosity_star: int, distance: int,
                  pixel_sampling: Optional[int] = None) -> None:
         # TODO: Maybe make a specific save name for the model also
         self.name = None
@@ -36,63 +36,66 @@ class Model:
         self.image_size = image_size*u.dimensionless_unscaled
         self.pixel_sampling = self.image_size if pixel_sampling\
             is None else pixel_sampling
+        self.pixel_scaling = self.field_of_view/self.pixel_sampling
         self.sublimation_temperature = sublimation_temperature*u.K
         self.effective_temperature = effective_temperature*u.K
-        self.luminosity_star = luminostiy_star*u.L_sun
+        self.luminosity_star = luminosity_star*c.L_sun
         self.distance = distance*u.pc
-        self.wavelength = wavelength*u.um
 
-        self._r_sub = sublimation_radius(self.T_sub, self.L_star, self.d)
-        self._stellar_radius = stellar_radius_pc(self.T_eff, self.L_star)
-        self._stellar_radians = plancks_law_nu(self.T_eff, self.wavelength)
-        self.stellar_flux = np.pi*(self._stellar_radius/self.d)**2*\
-                self._stellar_radians*1e26
+        # self._r_sub = sublimation_radius(self.T_sub, self.L_star, self.d)
+        # self._stellar_radius = stellar_radius_pc(self.T_eff, self.L_star)
+        # self._stellar_radians = plancks_law_nu(self.T_eff, self.wavelength)
+        # self.stellar_flux = np.pi*(self._stellar_radius/self.d)**2*\
+                # self._stellar_radians*1e26
 
-    @property
-    def pixel_scaling(self):
-        """Calculates the pixel scale [astropy.units.mas/px]"""
-        return (self.mas_size*u.mas)/self.pixel_sampling
-
-    @property
-    def r_sub(self):
-        """Calculates the sublimation radius"""
-        return self._r_sub
-
-    @r_sub.setter
-    def r_sub(self, value):
-        """Sets the sublimation radius"""
-        self._r_sub = value
-
-    def get_total_flux(self, *args) -> np.ndarray:
-        """Sums up the flux from [Jy/px] to [Jy]"""
-        return np.sum(self.get_flux(*args))
-
-    def _stellar_radius_pc(self, T_eff: int, L_star: int):
-        """Calculates the stellar radius from its attributes and converts it from
-        m to parsec
+    # TODO: Make repr function that tells what the model has been initialised with
+    def _calculate_orbit_radius_parallax(self, radius: Quantity) -> Quantity:
+        """Calculates the orbital radius from a radius [astropy.units.m] and gives it
+        in [astropy.units.arcsec]
 
         Parameters
         ----------
-        T_eff: int
-            The star's effective temperature [K]
-        L_star: int
-            The star's luminosity [L_sun]
+        radius: astropy.units.Quantity
+            The radius [astropy.units.m] around the star as seen from a certain distance
+
+        Returns
+        -------
+        parallax_angle: astropy.units.Quantity
+            The angle of the orbital radius [astropy.units.arcsec]"""
+        radius = (radius*u.m).to(u.au)
+        return (radius/self.distance)
+
+    def _calculate_stellar_radius(self) -> Quantity:
+        """Calculates the stellar radius from its attributes and converts it from
+        m to parsec
 
         Returns
         -------
         stellar_radius: float
-            The star's radius [pc]
+            The star's radius [astropy.units.pc]
         """
-        stellar_radius_m = np.sqrt((L_star*c.L_sun)/(4*np.pi*c.sigma_sb*T_eff**4))
-        return stellar_radius_m/PARSEC2M
+        return (np.sqrt(self.luminosity_star/\
+                       (4*np.pi*c.sigma_sb*self.effective_temperature**4))).to(u.pc)
 
-    def _sublimation_temperature(self, r_sub: float, L_star: int, distance: int):
+    def _calculate_stellar_radians(self, wavelength: Quantity) -> Quantity:
+        """Calculates the flux from the central star
+
+        Returns
+        -------
+        stellar_radians: astropy.units.Quantity
+            The flux of the star [astropy.units.Jy/px]
+        """
+        if not isinstance(wavelength, Quantity):
+            wavelength *= u.um
+        return models.BlackBody(self.effective_temperature)
+
+    def _calculate_sublimation_temperature(self, inner_radius: Quantity) -> Quantity:
         """Calculates the sublimation temperature at the inner rim of the disk
 
         Parameters
         ----------
-        r_sub: float
-            The sublimation radius [mas]
+        inner_radius: astropy.units.Quantity
+            The sublimation radius [astropy.units.mas]
         L_star: int
             The star's luminosity in units of nominal solar luminosity
         distance: int
@@ -100,13 +103,13 @@ class Model:
 
         Returns
         -------
-        T_sub: float
-            The sublimation temperature [K]
+        sublimation_temperature: astropy.units.Quantity
+            The sublimation temperature [astropy.units.K]
         """
-        r_sub /= m2mas(1, distance)
-        return ((L_star*c.L_sun)/(4*np.pi*c.k_B*r_sub**2))**(1/4)
+        r_sub /= m2mas(1, self.distance)
+        return (self.luminosity_star/(4*np.pi*c.k_B*r_sub**2))**(1/4)
 
-    def _sublimation_radius(self, T_sub: int, L_star: int, distance: int):
+    def _calculate_sublimation_radius(self):
         """Calculates the sublimation radius of the disk
 
         Parameters
@@ -123,11 +126,52 @@ class Model:
         R_sub: int
             The sublimation_radius [mas]
         """
-        sub_radius_m = np.sqrt((L_star*c.L_sun)/(4*np.pi*c.sigma_sb*T_sub**4))
-        return m2mas(sub_radius_m, distance)
+        sub_radius_m = np.sqrt(self.luminosity_star/\
+                               (4*np.pi*c.sigma_sb*self.sublimation_temperature**4))
+        return m2mas(sub_radius_m, self.distance)
 
-    def _get_flux(self, tau_0: float, q: float, p: float,
-                 r_sub: Optional[Union[int, float]] = None) -> np.array:
+    def _calculate_temperature_gradient(self, radius: Quantity, power_law_exponent: float,
+                                        inner_radius: Optional[Quantity] = None,
+                                        inner_temperature: Optional[Quantity] = None
+                                        ) -> Quantity:
+        """Calculates the temperature gradient
+
+        Parameters
+        ----------
+        radius: astropy.units.Quantity
+            An array containing all the points for the radius extending outwards
+            [astropy.units.mas]
+        power_law_exponent: float
+            A float specifying the power law exponent of the temperature gradient "q"
+        inner_radius: astropy.units.Quantity, optional
+            The inner radius of the object, if not given then the sublimation radius is
+            used [astropy.units.mas]
+        inner_temperature: astropy.units.Quantity, optional
+
+        Returns
+        -------
+        temperature_gradient: astropy.units.Quantity
+            The temperature gradient [astropy.units.K]
+        """
+        if inner_radius is None:
+            inner_radius = self.sublimation_radius
+        elif inner_temperature is None:
+            inner_temperature = self.sublimation_temperature
+        else:
+            raise IOError("Either the inner radius or the inner temperature can be"\
+                          "fixed, not both!")
+
+        return models.PowerLaw1D().evaluate(radius, inner_temperature,
+                                            inner_radius, power_law_exponent)
+
+    def _calculate_total_flux(self, *args) -> Quantity:
+        """Sums up the flux from the individual pixel [astropy.units.Jy/px] brightness
+        distribution to the complete brightness [astropy.units.Jy]"""
+        return np.sum(self.get_flux(*args))
+
+    def _calculate_flux_per_pixel(self, tau_0: float,
+                                  q: float, p: float,
+                                  r_sub: Optional[Union[int, float]] = None) -> Quantity:
         """Calculates the total flux of the model
 
         Parameters
@@ -153,11 +197,10 @@ class Model:
             else:
                 sub_temperature = self._r_sub
 
-            temperature = models.PowerLaw1D(self._radius, self._r_sub, q, self.T_sub)
             tau = models.PowerLaw1D(self._radius, self._r_sub, p, tau_0)
-            blackbody = models.BlackBody(temperature=temperature*u.K)
+            blackbody = models.BlackBody()
 
-            flux = blackbody(self.wavelength)
+            flux = blackbody(wavelength)
             flux *= (1-np.exp(-tau))*sr2mas(self._mas_size, self._sampling)
             flux[np.where(np.isnan(flux))],flux[np.where(np.isinf(flux))] = 0., 0.
             return flux*1e26
@@ -242,7 +285,8 @@ class Model:
 
         return radius
 
-    def set_uv_grid(self, incline_params: List[float] = None,
+    def set_uv_grid(self, wavelength: float,
+                    incline_params: List[float] = None,
                     uvcoords: np.ndarray = None,
                     vector: Optional[bool] = True) -> Quantity:
         """Sets the uv coords for visibility modelling
@@ -264,15 +308,16 @@ class Model:
             The axis used to calculate the baselines [astropy.units.m]
         """
         # TODO: Work to split this from image_size -> (u, v)-coords should be separate
+        wavelength *= u.um
         if uvcoords is None:
             axis = np.linspace(-self.image_size, size, sampling, endpoint=False)*u.m
 
             # Star overhead sin(theta_0)=1 position
-            u, v = axis/self.wavelength.to(u.m),\
-                axis[:, np.newaxis]/self.wavelength.to(u.m)
+            u, v = axis/wavelength.to(u.m),\
+                axis[:, np.newaxis]/wavelength.to(u.m)
 
         else:
-            axis = uvcoords/self.wavelength.to(u.m)
+            axis = uvcoords/wavelength.to(u.m)
             u, v = np.array([uvcoord[0] for uvcoord in uvcoords]), \
                     np.array([uvcoord[1] for uvcoord in uvcoords])
 
@@ -292,7 +337,7 @@ class Model:
                     v_inclined = v_inclined*np.cos(inc_angle)
 
                 baselines = np.sqrt(u_inclined**2+v_inclined**2)
-                baseline_vector = baselines*self.wavelength.to(u.m)
+                baseline_vector = baselines*wavelength.to(u.m)
                 self.axes_complex_image = [u_inclined, v_inclined]
             except:
                 raise IOError(f"{inspect.stack()[0][3]}(): Check input"
@@ -302,7 +347,7 @@ class Model:
 
         else:
             baselines = np.sqrt(u**2+v**2)
-            baseline_vector = baselines*self.wavelength.to(u.m)
+            baseline_vector = baselines*wavelength.to(u.m)
             self.axes_complex_image = [u, v]
 
         return baseline_vector if vector else baselines
@@ -329,5 +374,6 @@ class Model:
 
 
 if __name__ == "__main__":
-    model = Model(50, 128, 1500, 7900, 140, 19, 8)
+    model = Model(50, 128, 1500, 7900, 140, 19)
+    print(model._calculate_stellar_radius())
 
