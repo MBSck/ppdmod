@@ -24,6 +24,7 @@ class Model:
     eval_vis2():
         Evaluates the visibilities of the model
     """
+    # TODO: Make repr function that tells what the model has been initialised with
     def __init__(self, field_of_view: Quantity, image_size: int,
                  sublimation_temperature: int, effective_temperature: int,
                  distance: int, luminosity_star: int,
@@ -34,16 +35,12 @@ class Model:
 
         self._field_of_view = field_of_view*u.mas
         self._image_size = image_size*u.dimensionless_unscaled
-        self._pixel_sampling = self.image_size if pixel_sampling\
-            is None else pixel_sampling
+        self._pixel_sampling = (self.image_size if pixel_sampling\
+            is None else pixel_sampling)*u.sr
         self._sublimation_temperature = sublimation_temperature*u.K
         self._effective_temperature = effective_temperature*u.K
         self._luminosity_star = luminosity_star*c.L_sun
         self._distance = distance*u.pc
-
-        # self._stellar_radius = stellar_radius_pc(self.T_eff, self.L_star)
-        # self.stellar_flux = np.pi*(self._stellar_radius/self.d)**2*\
-                # self._stellar_radians*1e26
 
     @property
     def field_of_view(self):
@@ -59,7 +56,7 @@ class Model:
 
     @image_size.setter
     def image_size(self, value):
-        self._image_size = value*u.mas
+        self._image_size = value*u.dimensionless_unscaled
 
     @property
     def pixel_sampling(self):
@@ -67,7 +64,7 @@ class Model:
 
     @pixel_sampling.setter
     def pixel_sampling(self, value):
-        self._pixel_sampling = value*u.mas
+        self._pixel_sampling = value
 
     @property
     def pixel_scaling(self):
@@ -107,10 +104,27 @@ class Model:
     def distance(self, value):
         self._distance = value*u.pc
 
-    # TODO: Make repr function that tells what the model has been initialised with
+    def _calculate_parallax_from_orbital_radius(self, orbital_radius: Quantity
+                                                ) -> Quantity:
+        """Calculates the parallax [astropy.units.arcsec] from the orbital radius
+        [astropy.units.m]
+
+        Parameters
+        ----------
+        orbital_radius: astropy.units.Quantity
+            The orbital radius [astropy.units.m]
+
+        Returns
+        -------
+        parallax: astropy.units.Quantity
+            The angle of the orbital radius [astropy.units.arcsec]
+        """
+        return (orbital_radius/self.distance).\
+            to(u.arcsec, equivalencies=u.dimensionless_angles())
+
     def _calculate_orbital_radius_from_parallax(self, parallax: Quantity) -> Quantity:
-        """Calculates the orbital radius from a parallax [astropy.units.arcsec] and gives
-        it in [astropy.units.m]
+        """Calculates the orbital radius [astropy.units.m] from the parallax
+        [astropy.units.arcsec]
 
         Parameters
         ----------
@@ -126,16 +140,27 @@ class Model:
                 *self.distance).to(u.m)
 
     def _calculate_stellar_radius(self) -> Quantity:
-        """Calculates the stellar radius from its attributes and converts it from
-        m to parsec
+        """Calculates the stellar radius [astropy.units.m] from its attributes
 
         Returns
         -------
-        stellar_radius: float
-            The star's radius [astropy.units.pc]
+        stellar_radius: astropy.units.Quantity
+            The star's radius [astropy.units.m]
         """
         return (np.sqrt(self.luminosity_star/\
-                       (4*np.pi*c.sigma_sb*self.effective_temperature**4))).to(u.pc)
+                       (4*np.pi*c.sigma_sb*self.effective_temperature**4)))
+
+    def _calculate_stellar_flux(self) -> Quantity:
+        """Calculates the stellar flux from the distance and its radius
+
+        Returns
+        -------
+        stellar_flux: astropy.units.Quantity
+            The star's flux [astropy.units.Jy]
+        """
+        ...
+        # self.stellar_flux = np.pi*(self._stellar_radius/self.d)**2*\
+                # self._stellar_radians*1e26
 
     def _calculate_stellar_radians(self, wavelength: Quantity) -> Quantity:
         """Calculates the flux from the central star
@@ -247,21 +272,27 @@ class Model:
         return models.PowerLaw1D().evaluate(radius, inner_optical_depth,
                                             inner_radius, power_law_exponent)
 
-    def _calculate_flux_per_pixel(self) -> Quantity:
+    def _calculate_flux_per_pixel(self, temperature: Quantity,
+                                  optical_depth: Quantity) -> Quantity:
         """Calculates the total flux of the model
 
         Parameters
         ----------
+        temperature: astropy.units.Quantity
+            The temperature of the whole disc
 
         Returns
         -------
         flux: astropy.units.Quantity
             The object's flux per pixel [astropy.units.Jy/px]
         """
-        flux = blackbody(wavelength)
-        flux *= (1-np.exp(-tau))*sr2mas(self._mas_size, self._sampling)
-        flux[np.where(np.isnan(flux))],flux[np.where(np.isinf(flux))] = 0., 0.
-        return flux*1e26
+        # TODO: Check if the conversion of the Planck's law works from u.um to u.AA ->
+        # Should be ok tho
+        plancks_law = models.BlackBody(temperature=temperature)
+        spectral_radiance = plancks_law(wavelength).to(u.erg/(u.cm**2*u.Hz*u.s*u.mas**2))
+        flux_per_pixel = spectral_radiance*self.field_of_view**2
+        optical_depth = 1-np.exp(-optical_depth)
+        return flux_per_pixel.to(u.Jy)*optical_depth
 
     def _calculate_azimuthal_modulation(self, image: Quantity,
                                         modulation_angle: Quantity,
@@ -445,5 +476,5 @@ class CombinedModel:
 
 if __name__ == "__main__":
     model = Model(50, 128, 1500, 7900, 1, 19)
-    print(model._calculate_orbital_radius_from_parallax(1*u.arcsec))
+    print(model._calculate_flux_per_pixel(temperature=5000*u.K, optical_depth=0.5))
 
