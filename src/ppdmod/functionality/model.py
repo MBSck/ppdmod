@@ -3,16 +3,17 @@ import numpy as np
 import astropy.units as u
 import astropy.constants as c
 
+from abc import ABC, abstractmethod
 from astropy.modeling import models
 from astropy.units import Quantity
-from typing import List, Union, Optional
+from typing import List, Optional
 
 # TODO: Implement FFT as a part of the base_model_class, maybe?
 # TODO: Think about calling FFT class in model class to evaluate model
 # TODO: Add checks for right unit input in all the files
 
 
-class Model:
+class Model(ABC):
     """Model metaclass
 
     ...
@@ -34,13 +35,15 @@ class Model:
         self.axes_image, self.axes_complex_image, self.polar_angle = None, None, None
 
         self._field_of_view = field_of_view*u.mas
-        self._image_size = image_size*u.dimensionless_unscaled
-        self._pixel_sampling = (self.image_size if pixel_sampling\
-            is None else pixel_sampling)*u.sr
+        self._image_size = u.Quantity(image_size, unit=u.dimensionless_unscaled, dtype=int)
+        self._pixel_sampling = self.image_size if pixel_sampling\
+            is None else pixel_sampling
         self._sublimation_temperature = sublimation_temperature*u.K
         self._effective_temperature = effective_temperature*u.K
         self._luminosity_star = luminosity_star*c.L_sun
         self._distance = distance*u.pc
+
+        self.sublimation_radius = self._calculate_sublimation_radius()
 
     @property
     def field_of_view(self):
@@ -48,7 +51,11 @@ class Model:
 
     @field_of_view.setter
     def field_of_view(self, value):
-        self._field_of_view = value*u.mas
+        if not isinstance(value, u.Quantity):
+            self._field_of_view = value*u.mas
+        elif value.unit != u.mas:
+            raise IOError("Wrong unit has been input, field of view needs to"\
+                          " be in [astropy.units.mas] or unitless!")
 
     @property
     def image_size(self):
@@ -56,7 +63,13 @@ class Model:
 
     @image_size.setter
     def image_size(self, value):
-        self._image_size = value*u.dimensionless_unscaled
+        if not isinstance(value, u.Quantity):
+            self._image_size = u.Quantity(value,
+                                          unit=u.dimensionless_unscaled,
+                                          dtype=int)
+        elif value.unit != u.dimensionless_unscaled:
+            raise IOError("Wrong unit has been input, field of view needs to"\
+                          " be in [astropy.units.dimensionless_unscaled] or unitless!")
 
     @property
     def pixel_sampling(self):
@@ -72,12 +85,15 @@ class Model:
 
     @property
     def sublimation_temperature(self):
-        return self._field_of_view
+        return self._sublimation_temperature
 
     @sublimation_temperature.setter
     def sublimation_temperature(self, value):
-        if not isinstace(value, u.Quantity):
-            value *= u.K
+        if not isinstance(value, u.Quantity):
+            self._sublimation_temperature *= u.K
+        elif value.unit != u.K:
+            raise IOError("Wrong unit has been input, sublimation temperature needs to"\
+                          " be in [astropy.units.K] or unitless!")
         self._sublimation_temperature = value
 
     @property
@@ -86,7 +102,11 @@ class Model:
 
     @effective_temperature.setter
     def effective_temperature(self, value):
-        self._effective_temperature = value*u.K
+        if not isinstance(value, u.Quantity):
+            self._effective_temperature = value*u.K
+        elif value.unit != u.K:
+            raise IOError("Wrong unit has been input, effective temperature needs to be"\
+                          " in [astropy.units.K] or unitless!")
 
     @property
     def luminosity_star(self):
@@ -94,7 +114,11 @@ class Model:
 
     @luminosity_star.setter
     def luminosity_star(self, value):
-        self._luminosity_star = value*c.L_sun
+        if not isinstance(value, u.Quantity):
+            self._luminosity_star = value*c.L_sun
+        elif value.unit != u.W:
+            raise IOError("Wrong unit has been input, luminosity needs to be in"\
+                          "[astropy.units.W] or unitless!")
 
     @property
     def distance(self):
@@ -106,8 +130,8 @@ class Model:
 
     def _calculate_parallax_from_orbital_radius(self, orbital_radius: Quantity
                                                 ) -> Quantity:
-        """Calculates the parallax [astropy.units.arcsec] from the orbital radius
-        [astropy.units.m]
+        """Calculates the parallax [astropy.units.mas] from the orbital radius
+        [astropy.units.m]. The formula for the angular diameter is used
 
         Parameters
         ----------
@@ -117,27 +141,25 @@ class Model:
         Returns
         -------
         parallax: astropy.units.Quantity
-            The angle of the orbital radius [astropy.units.arcsec]
+            The angle of the orbital radius [astropy.units.mas]
         """
-        return (orbital_radius/self.distance).\
-            to(u.arcsec, equivalencies=u.dimensionless_angles())
+        return (1*u.rad).to(u.mas)*(orbital_radius.to(u.m)/self.distance.to(u.m))
 
     def _calculate_orbital_radius_from_parallax(self, parallax: Quantity) -> Quantity:
         """Calculates the orbital radius [astropy.units.m] from the parallax
-        [astropy.units.arcsec]
+        [astropy.units.mas]. The formula for the angular diameter is used
 
         Parameters
         ----------
         parallax: astropy.units.Quantity
-            The angle of the orbital radius [astropy.units.arcsec]
+            The angle of the orbital radius [astropy.units.mas]
 
         Returns
         -------
         orbital_radius: astropy.units.Quantity
             The orbital radius [astropy.units.m]
         """
-        return (parallax.to('', equivalencies=u.dimensionless_angles())\
-                *self.distance).to(u.m)
+        return (parallax*self.distance.to(u.m))/(1*u.rad).to(u.mas)
 
     def _calculate_stellar_radius(self) -> Quantity:
         """Calculates the stellar radius [astropy.units.m] from its attributes
@@ -150,42 +172,14 @@ class Model:
         return (np.sqrt(self.luminosity_star/\
                        (4*np.pi*c.sigma_sb*self.effective_temperature**4)))
 
-    def _calculate_stellar_flux(self) -> Quantity:
-        """Calculates the stellar flux from the distance and its radius
-
-        Returns
-        -------
-        stellar_flux: astropy.units.Quantity
-            The star's flux [astropy.units.Jy]
-        """
-        ...
-        # self.stellar_flux = np.pi*(self._stellar_radius/self.d)**2*\
-                # self._stellar_radians*1e26
-
-    def _calculate_stellar_radians(self, wavelength: Quantity) -> Quantity:
-        """Calculates the flux from the central star
-
-        Parameters
-        ----------
-        wavelength: astropy.units.Quantity
-            The wavelength to be used for the BlackBody calculation [astropy.units.um]
-
-        Returns
-        -------
-        stellar_radians: astropy.units.Quantity
-            The flux of the star for a specific wavelength [astropy.units.Jy/px]
-        """
-        stellar_radians = models.BlackBody(temperature=self.effective_temperature)
-        return stellar_radians(wavelength)
-
     def _calculate_sublimation_temperature(self,
-                                           inner_radius: Optional[Quantity] = None
-                                           ) -> Quantity:
-        """Calculates the sublimation temperature at the inner rim of the disc
+                                           inner_radius: Quantity) -> Quantity:
+        """Calculates the sublimation temperature at the inner rim of the disc. Assumes
+        input to be in [astropy.units.mas]
 
         Parameters
         ----------
-        inner_radius: astropy.units.Quantity, optional
+        inner_radius: astropy.units.Quantity
             The inner radius of the disc [astropy.units.mas]
 
         Returns
@@ -193,12 +187,19 @@ class Model:
         sublimation_temperature: astropy.units.Quantity
             The sublimation temperature [astropy.units.K]
         """
-        if inner_radius is None:
-            inner_radius = self.sublimation_radius
-        inner_radius = inner_radius.to(u.arcsec)
-        return (self.luminosity_star/(4*np.pi*c.k_B*inner_radius**2))**(1/4)
+        if not isinstance(inner_radius, u.Quantity):
+            inner_radius *= u.mas
 
-    def _calculate_sublimation_radius(self) -> Quantity:
+        if inner_radius.unit == u.mas:
+            inner_radius = self._calculate_orbital_radius_from_parallax(inner_radius)
+        elif inner_temperature.unit != u.mas:
+            raise IOError("Enter the inner radius in [astropy.units.mas] or unitless!")
+
+        return (self.luminosity_star/(4*np.pi*c.sigma_sb*inner_radius**2))**(1/4)
+
+    def _calculate_sublimation_radius(self,
+                                      inner_temperature: Optional[Quantity] = None
+                                      ) -> Quantity:
         """Calculates the sublimation radius at the inner rim of the disc
 
         Returns
@@ -206,125 +207,15 @@ class Model:
         sublimation_radius: astropy.units.Quantity
             The sublimation radius [astropy.units.mas]
         """
-        sublimation_radius = np.sqrt(self.luminosity_star/\
-                                     (4*np.pi*c.sigma_sb*self.sublimation_temperature**4))
-        return m2mas(sub_radius_m, self.distance)
-
-    def _calculate_temperature_gradient(self, radius: Quantity, power_law_exponent: float,
-                                        inner_radius: Optional[Quantity] = None,
-                                        inner_temperature: Optional[Quantity] = None
-                                        ) -> Quantity:
-        """Calculates the temperature gradient
-
-        Parameters
-        ----------
-        radius: astropy.units.Quantity
-            An array containing all the points for the radius extending outwards
-            [astropy.units.mas]
-        power_law_exponent: float
-            A float specifying the power law exponent of the temperature gradient "q"
-        inner_radius: astropy.units.Quantity, optional
-            The inner radius of the object, if not given then the sublimation radius is
-            used [astropy.units.mas]
-        inner_temperature: astropy.units.Quantity, optional
-
-        Returns
-        -------
-        temperature_gradient: astropy.units.Quantity
-            The temperature gradient [astropy.units.K]
-        """
-        if inner_radius is None:
-            inner_radius = self.sublimation_radius
-        elif inner_temperature is None:
+        if inner_temperature is None:
             inner_temperature = self.sublimation_temperature
-        else:
-            raise IOError("Either the inner radius or the inner temperature can be"\
-                          "fixed, not both!")
+        elif not isinstance(inner_temperature, u.Quantity):
+            inner_temperature *= u.K
+        elif inner_temperature.unit != u.K:
+            raise IOError("Enter the inner temperature in [astropy.units.K] or unitless!")
 
-        return models.PowerLaw1D().evaluate(radius, inner_temperature,
-                                            inner_radius, power_law_exponent)
-
-    def _calculate_optical_depth_gradient(self, radius: Quantity,
-                                          inner_optical_depth: Quantity,
-                                          power_law_exponent: float,
-                                          inner_radius: Optional[Quantity] = None
-                                          ) -> Quantity:
-        """Calculates the optical depth gradient
-
-        Parameters
-        ----------
-        radius: astropy.units.Quantity
-            An array containing all the points for the radius extending outwards
-            [astropy.units.mas]
-        inner_optical_depth: Quantity
-            The optical depth at the inner radius [astropy.units.dimensionless_unscaled]
-        power_law_exponent: float
-            A float specifying the power law exponent of the temperature gradient "q"
-        inner_radius: astropy.units.Quantity, optional
-            The inner radius of the object, if not given then the sublimation radius is
-            used [astropy.units.mas]
-
-        Returns
-        -------
-        """
-        if inner_radius is None:
-            inner_radius = self.sublimation_radius
-        return models.PowerLaw1D().evaluate(radius, inner_optical_depth,
-                                            inner_radius, power_law_exponent)
-
-    def _calculate_flux_per_pixel(self, temperature: Quantity,
-                                  optical_depth: Quantity) -> Quantity:
-        """Calculates the total flux of the model
-
-        Parameters
-        ----------
-        temperature: astropy.units.Quantity
-            The temperature of the whole disc
-
-        Returns
-        -------
-        flux: astropy.units.Quantity
-            The object's flux per pixel [astropy.units.Jy/px]
-        """
-        # TODO: Check if the conversion of the Planck's law works from u.um to u.AA ->
-        # Should be ok tho
-        plancks_law = models.BlackBody(temperature=temperature)
-        spectral_radiance = plancks_law(wavelength).to(u.erg/(u.cm**2*u.Hz*u.s*u.mas**2))
-        flux_per_pixel = spectral_radiance*self.field_of_view**2
-        optical_depth = 1-np.exp(-optical_depth)
-        return flux_per_pixel.to(u.Jy)*optical_depth
-
-    def _calculate_azimuthal_modulation(self, image: Quantity,
-                                        modulation_angle: Quantity,
-                                        amplitude: int = 1) -> Quantity:
-        """Calculates the azimuthal modulation of the object
-
-        Parameters
-        ----------
-        image: astropy.units.Quantity
-            The model's image [astropy.units.Jy/px]
-        polar_angle: astropy.units.Quantity
-            The polar angle of the x, y-coordinates [astropy.units.rad]
-        amplitude: int
-            The 'c'-amplitude. Will be converted to [astropy.units.dimensionless_unscaled]
-
-        Returns
-        -------
-        azimuthal_modulation: astropy.units.Quantity
-            The azimuthal modulation [astropy.units.dimensionless_unscaled]
-        """
-        # TODO: Implement Modulation field like Jozsef?
-        modulation_angle = (modulation_angle*u.deg).to(u.rad)
-        total_mod = (amplitude*u.dimensionless_unscaled*\
-                     np.cos(self.polar_angle-modulation_angle))
-        image *= 1 + total_mod
-        image.value[image.value < 0.] = 0.
-        return image
-
-    def _calculate_total_flux(self, *args) -> Quantity:
-        """Sums up the flux from the individual pixel [astropy.units.Jy/px] brightness
-        distribution to the complete brightness [astropy.units.Jy]"""
-        return np.sum(self.get_flux(*args))
+        radius = np.sqrt(self.luminosity_star/(4*np.pi*c.sigma_sb*inner_temperature**4))
+        return self._calculate_parallax_from_orbital_radius(radius)
 
     def set_grid(self, incline_params: Optional[List[float]] = None) -> Quantity:
         """Sets the size of the model and its centre. Returns the polar coordinates
@@ -347,7 +238,9 @@ class Model:
         radius: np.array
             The radius [astropy.units.mas/px]
         """
-        # Make function to cut the radius at some point, or add it to this function
+        # TODO: Make function to cut the radius at some point, or add it to this function
+        # TODO: Does center shift, xc, yc need to be applied?
+        print(self.image_size)
         x = np.linspace(-self.image_size//2, self.image_size//2,
                         self.pixel_sampling, endpoint=False)*self.pixel_scaling
         y = x[:, np.newaxis]
@@ -355,23 +248,23 @@ class Model:
         if incline_params:
             try:
                 axis_ratio, pos_angle = incline_params
-                pos_angle = (pos_angle*u.deg).to(u.rad)
             except:
                 raise IOError(f"{inspect.stack()[0][3]}(): Check input"
                               " arguments, 'incline_params' must be of the"
                               " form [axis_ratio, pos_angle]")
 
-            if axis_ratio < 1.:
-                raise ValueError("The axis_ratio has to be bigger than 1.")
+            if (axis_ratio < 0.) or (axis_ratio > 1.):
+                raise ValueError("The axis ratio must be between [0., 1.]")
 
-            if (pos_angle > 0) and (pos_angle < 180):
+            if (pos_angle < 0) or (pos_angle > 180):
                 raise ValueError("The positional angle must be between [0, 180]")
 
             axis_ratio *= u.dimensionless_unscaled
             pos_angle = (pos_angle*u.deg).to(u.rad)
 
-            xr, yr = x*np.cos(pos_angle)+y*np.sin(pos_angle),\
-                    (-x*np.sin(pos_angle)+y*np.cos(pos_angle))/axis_ratio
+            # NOTE: This was taken from Jozsef's code and until here output is equal
+            xr, yr = (x*np.cos(pos_angle)-y*np.sin(pos_angle))/axis_ratio,\
+                (x*np.sin(pos_angle)+y*np.cos(pos_angle))
             radius = np.sqrt(xr**2+yr**2)
             self.axes_image, self.polar_angle = [xr, yr], np.arctan2(xr, yr)
         else:
@@ -447,6 +340,193 @@ class Model:
 
         return baseline_vector if vector else baselines
 
+    def temperature_gradient(self, radius: Quantity, power_law_exponent: float,
+                             inner_radius: Optional[Quantity] = None,
+                             inner_temperature: Optional[Quantity] = None
+                             ) -> Quantity:
+        """Calculates the temperature gradient
+
+        Parameters
+        ----------
+        radius: astropy.units.Quantity
+            An array containing all the points for the radius extending outwards
+            [astropy.units.mas]
+        power_law_exponent: float
+            A float specifying the power law exponent of the temperature gradient "q"
+        inner_radius: astropy.units.Quantity, optional
+            The inner radius of the object, if not given then the sublimation radius is
+            used [astropy.units.mas]
+        inner_temperature: astropy.units.Quantity, optional
+
+        Returns
+        -------
+        temperature_gradient: astropy.units.Quantity
+            The temperature gradient [astropy.units.K]
+        """
+        if inner_radius is None:
+            inner_radius = self.sublimation_radius
+        elif not isinstance(inner_radius, u.Quantity):
+            inner_radius *= u.mas
+        elif inner_temperature.unit != u.mas:
+            raise IOError("Enter the inner radius in [astropy.units.mas] or unitless!")
+
+        if inner_temperature is None:
+            inner_temperature = self.sublimation_temperature
+        elif not isinstance(inner_temperature, u.Quantity):
+            inner_temperature *= u.K
+        elif inner_temperature.unit != u.mas:
+            raise IOError("Enter the inner temperature in [astropy.units.K] or unitless!")
+
+        return models.PowerLaw1D().evaluate(radius, inner_temperature,
+                                            inner_radius, power_law_exponent)
+
+    def optical_depth_gradient(self, radius: Quantity,
+                               inner_optical_depth: Quantity,
+                               power_law_exponent: float,
+                               inner_radius: Optional[Quantity] = None
+                               ) -> Quantity:
+        """Calculates the optical depth gradient
+
+        Parameters
+        ----------
+        radius: astropy.units.Quantity
+            An array containing all the points for the radius extending outwards
+            [astropy.units.mas]
+        inner_optical_depth: Quantity
+            The optical depth at the inner radius [astropy.units.dimensionless_unscaled]
+        power_law_exponent: float
+            A float specifying the power law exponent of the temperature gradient "q"
+        inner_radius: astropy.units.Quantity, optional
+            The inner radius of the object, if not given then the sublimation radius is
+            used [astropy.units.mas]
+
+        Returns
+        -------
+        """
+        if not isinstance(inner_optical_depth, u.Quantity):
+            inner_optical_depth *= u.dimensionless_unscaled
+        elif inner_optical_depth.unit != u.dimensionless_unscaled:
+            raise IOError("Enter the inner optical depth in"\
+                          " [astropy.units.dimensionless_unscaled] or unitless!")
+
+        if inner_radius is None:
+            inner_radius = self.sublimation_radius
+        elif not isinstance(inner_radius, u.Quantity):
+            inner_radius *= u.mas
+        elif inner_radius.unit != u.mas:
+            raise IOError("Enter the inner radius in [astropy.units.mas] or unitless!")
+
+        return models.PowerLaw1D().evaluate(radius, inner_optical_depth,
+                                            inner_radius, power_law_exponent)
+
+    def azimuthal_modulation(self, image: Quantity,
+                             modulation_angle: Quantity,
+                             amplitude: int = 1) -> Quantity:
+        """Calculates the azimuthal modulation of the object
+
+        Parameters
+        ----------
+        image: astropy.units.Quantity
+            The model's image [astropy.units.Jy/px]
+        polar_angle: astropy.units.Quantity
+            The polar angle of the x, y-coordinates [astropy.units.rad]
+        amplitude: int
+            The 'c'-amplitude. Will be converted to [astropy.units.dimensionless_unscaled]
+
+        Returns
+        -------
+        azimuthal_modulation: astropy.units.Quantity
+            The azimuthal modulation [astropy.units.dimensionless_unscaled]
+        """
+        # TODO: Implement Modulation field like Jozsef?
+        modulation_angle = (modulation_angle*u.deg).to(u.rad)
+        total_mod = (amplitude*u.dimensionless_unscaled*\
+                     np.cos(self.polar_angle-modulation_angle))
+        image *= 1 + total_mod
+        image.value[image.value < 0.] = 0.
+        return image
+
+    def flux_per_pixel(self, wavelength: Quantity,
+                       temperature_distribution: Quantity,
+                       optical_depth_distribution: Quantity) -> Quantity:
+        """Calculates the total flux of the model
+
+        Parameters
+        ----------
+        wavelength: astropy.units.Quantity
+            The wavelength to be used for the BlackBody calculation [astropy.units.um]
+        temperature: astropy.units.Quantity
+            The temperature of the whole disc
+        optical_depth: astropy.units.Quantity
+
+        Returns
+        -------
+        flux: astropy.units.Quantity
+            The object's flux per pixel [astropy.units.Jy/px]
+        """
+        if not isinstance(wavelength, u.Quantity):
+            wavelength = (wavelength*u.um).to(u.AA)
+        elif wavelength.unit == u.um:
+            wavelength = wavelength.to(u.AA)
+        else:
+            raise IOError("Enter the wavelength in"\
+                          " [astropy.units.um] or unitless!")
+
+        if not isinstance(optical_depth_distribution, u.Quantity):
+            temperature_distribution *= u.K
+        elif temperature_distribution.unit != u.K:
+            raise IOError("Enter the temperature distribution in"\
+                          " [astropy.units.K] or unitless!")
+
+        if not isinstance(optical_depth_distribution, u.Quantity):
+            optical_depth_distribution *= u.dimensionless_unscaled
+        elif optical_depth_distribution.unit != u.dimensionless_unscaled:
+            raise IOError("Enter the optical depth distribution in"\
+                          " [astropy.units.dimensionless_unscaled] or unitless!")
+
+        # TODO: Check if the conversion of the Planck's law works from u.um to u.AA ->
+        # Should be ok tho
+        plancks_law = models.BlackBody(temperature=temperature_distribution)
+        # NOTE: Convert sr to mas**2. Field of view = sr or mas**2
+        spectral_radiance = plancks_law(wavelength).to(u.erg/(u.cm**2*u.Hz*u.s*u.mas**2))
+        flux_per_pixel = spectral_radiance*self.field_of_view**2
+
+        return flux_per_pixel.to(u.Jy)*(1-np.exp(-optical_depth_distribution))
+
+    def stellar_flux(self, wavelength: Quantity) -> Quantity:
+        """Calculates the stellar flux from the distance and its radius
+
+        Parameters
+        ----------
+        wavelength: astropy.units.Quantity
+            The wavelength to be used for the BlackBody calculation [astropy.units.um]
+
+        Returns
+        -------
+        stellar_flux: astropy.units.Quantity
+            The star's flux [astropy.units.Jy]
+        """
+        if not isinstance(wavelength, u.Quantity):
+            wavelength = (wavelength*u.um).to(u.AA)
+        elif wavelength.unit == u.um:
+            wavelength = wavelength.to(u.AA)
+        else:
+            raise IOError("Enter the wavelength in"\
+                          " [astropy.units.um] or unitless!")
+
+        plancks_law = models.BlackBody(temperature=self.effective_temperature)
+        spectral_radiance = plancks_law(wavelength)
+        return spectral_radiance
+        ...
+        # self.stellar_flux = np.pi*(self._stellar_radius/self.d)**2*\
+                # self._stellar_radians*1e26
+
+    def total_flux(self, *args) -> Quantity:
+        """Sums up the flux from the individual pixel [astropy.units.Jy/px] brightness
+        distribution to the complete brightness [astropy.units.Jy]"""
+        return np.sum(self.get_flux(*args))
+
+    @abstractmethod
     def eval_model(self) -> Quantity:
         """Evaluates the model image
 
@@ -457,6 +537,7 @@ class Model:
         """
         pass
 
+    @abstractmethod
     def eval_vis(self) -> Quantity:
         """Evaluates the complex visibility function of the model.
 
@@ -467,14 +548,36 @@ class Model:
         """
         pass
 
+    def plot(self, plot_vis: Optional[bool] = false) -> None:
+        """Plots the model info from either 'eval_model' or 'eval_vis', defaults to
+        plotting the 'eval_model'
+
+        Parameters
+        ----------
+        plot_vis: bool, optional
+            Plots the 'eval_vis' output
+        """
+        if plot_vis:
+            pass
+        else:
+            pass
+
 
 # TODO: Make this class combine individual models
 class CombinedModel:
     # TODO: Think of how to combine the models
-    def __init__(self):
+    def __init__(self, field_of_view: Quantity, image_size: int,
+                 sublimation_temperature: int, effective_temperature: int,
+                 distance: int, luminosity_star: int,
+                 pixel_sampling: Optional[int] = None):
+        ...
+
+    def add_component(self):
         ...
 
 if __name__ == "__main__":
-    model = Model(50, 128, 1500, 7900, 1, 19)
-    print(model._calculate_flux_per_pixel(temperature=5000*u.K, optical_depth=0.5))
+    model = Model(50, 128, 1500, 7900, 140, 19)
+    model = Model(4, 4, 1, 1, 1, 1)
+    print(model._calculate_sublimation_radius())
+    print(model.set_grid())
 
