@@ -3,17 +3,18 @@ import numpy as np
 import astropy.units as u
 import astropy.constants as c
 
-from abc import ABC, abstractmethod
 from astropy.modeling import models
 from astropy.units import Quantity
 from typing import List, Optional
+
+from numpy.core.multiarray import inner
 
 # TODO: Implement FFT as a part of the base_model_class, maybe?
 # TODO: Think about calling FFT class in model class to evaluate model
 # TODO: Add checks for right unit input in all the files
 
 
-class Model(ABC):
+class Model:
     """Model metaclass
 
     ...
@@ -126,10 +127,13 @@ class Model(ABC):
 
     @distance.setter
     def distance(self, value):
-        self._distance = value*u.pc
+        if not isinstance(value, u.Quantity):
+            self._distance = value*u.pc
+        elif value.unit != u.pc:
+            raise IOError("Wrong unit has been input, distance needs to be in"\
+                          "[astropy.units.pc] or unitless!")
 
-    def _calculate_parallax_from_orbital_radius(self, orbital_radius: Quantity
-                                                ) -> Quantity:
+    def _convert_parallax_from_orbital_radius(self, orbital_radius: Quantity) -> Quantity:
         """Calculates the parallax [astropy.units.mas] from the orbital radius
         [astropy.units.m]. The formula for the angular diameter is used
 
@@ -145,7 +149,7 @@ class Model(ABC):
         """
         return (1*u.rad).to(u.mas)*(orbital_radius.to(u.m)/self.distance.to(u.m))
 
-    def _calculate_orbital_radius_from_parallax(self, parallax: Quantity) -> Quantity:
+    def _convert_orbital_radius_from_parallax(self, parallax: Quantity) -> Quantity:
         """Calculates the orbital radius [astropy.units.m] from the parallax
         [astropy.units.mas]. The formula for the angular diameter is used
 
@@ -161,7 +165,7 @@ class Model(ABC):
         """
         return (parallax*self.distance.to(u.m))/(1*u.rad).to(u.mas)
 
-    def _calculate_stellar_radius(self) -> Quantity:
+    def _stellar_radius(self) -> Quantity:
         """Calculates the stellar radius [astropy.units.m] from its attributes
 
         Returns
@@ -172,8 +176,7 @@ class Model(ABC):
         return (np.sqrt(self.luminosity_star/\
                        (4*np.pi*c.sigma_sb*self.effective_temperature**4)))
 
-    def _calculate_sublimation_temperature(self,
-                                           inner_radius: Quantity) -> Quantity:
+    def _calculate_sublimation_temperature(self, inner_radius: Quantity) -> Quantity:
         """Calculates the sublimation temperature at the inner rim of the disc. Assumes
         input to be in [astropy.units.mas]
 
@@ -191,8 +194,8 @@ class Model(ABC):
             inner_radius *= u.mas
 
         if inner_radius.unit == u.mas:
-            inner_radius = self._calculate_orbital_radius_from_parallax(inner_radius)
-        elif inner_temperature.unit != u.mas:
+            inner_radius = self._convert_orbital_radius_from_parallax(inner_radius)
+        elif inner_radius.unit != u.mas:
             raise IOError("Enter the inner radius in [astropy.units.mas] or unitless!")
 
         return (self.luminosity_star/(4*np.pi*c.sigma_sb*inner_radius**2))**(1/4)
@@ -215,9 +218,9 @@ class Model(ABC):
             raise IOError("Enter the inner temperature in [astropy.units.K] or unitless!")
 
         radius = np.sqrt(self.luminosity_star/(4*np.pi*c.sigma_sb*inner_temperature**4))
-        return self._calculate_parallax_from_orbital_radius(radius)
+        return self._convert_parallax_from_orbital_radius(radius)
 
-    def set_grid(self, incline_params: Optional[List[float]] = None) -> Quantity:
+    def _set_grid(self, incline_params: Optional[List[float]] = None) -> Quantity:
         """Sets the size of the model and its centre. Returns the polar coordinates
 
         Parameters
@@ -273,10 +276,10 @@ class Model(ABC):
 
         return radius
 
-    def set_uv_grid(self, wavelength: float,
-                    incline_params: List[float] = None,
-                    uvcoords: np.ndarray = None,
-                    vector: Optional[bool] = True) -> Quantity:
+    def _set_uv_grid(self, wavelength: float,
+                     incline_params: List[float] = None,
+                     uvcoords: np.ndarray = None,
+                     vector: Optional[bool] = True) -> Quantity:
         """Sets the uv coords for visibility modelling
 
         Parameters
@@ -340,10 +343,10 @@ class Model(ABC):
 
         return baseline_vector if vector else baselines
 
-    def temperature_gradient(self, radius: Quantity, power_law_exponent: float,
-                             inner_radius: Optional[Quantity] = None,
-                             inner_temperature: Optional[Quantity] = None
-                             ) -> Quantity:
+    def _temperature_gradient(self, radius: Quantity, power_law_exponent: float,
+                              inner_radius: Optional[Quantity] = None,
+                              inner_temperature: Optional[Quantity] = None
+                              ) -> Quantity:
         """Calculates the temperature gradient
 
         Parameters
@@ -367,24 +370,24 @@ class Model(ABC):
             inner_radius = self.sublimation_radius
         elif not isinstance(inner_radius, u.Quantity):
             inner_radius *= u.mas
-        elif inner_temperature.unit != u.mas:
+        elif inner_radius.unit != u.mas:
             raise IOError("Enter the inner radius in [astropy.units.mas] or unitless!")
 
         if inner_temperature is None:
             inner_temperature = self.sublimation_temperature
         elif not isinstance(inner_temperature, u.Quantity):
             inner_temperature *= u.K
-        elif inner_temperature.unit != u.mas:
+        elif inner_temperature.unit != u.K:
             raise IOError("Enter the inner temperature in [astropy.units.K] or unitless!")
 
         return models.PowerLaw1D().evaluate(radius, inner_temperature,
                                             inner_radius, power_law_exponent)
 
-    def optical_depth_gradient(self, radius: Quantity,
-                               inner_optical_depth: Quantity,
-                               power_law_exponent: float,
-                               inner_radius: Optional[Quantity] = None
-                               ) -> Quantity:
+    def _optical_depth_gradient(self, radius: Quantity,
+                                inner_optical_depth: Quantity,
+                                power_law_exponent: float,
+                                inner_radius: Optional[Quantity] = None
+                                ) -> Quantity:
         """Calculates the optical depth gradient
 
         Parameters
@@ -419,9 +422,9 @@ class Model(ABC):
         return models.PowerLaw1D().evaluate(radius, inner_optical_depth,
                                             inner_radius, power_law_exponent)
 
-    def azimuthal_modulation(self, image: Quantity,
-                             modulation_angle: Quantity,
-                             amplitude: int = 1) -> Quantity:
+    def _set_azimuthal_modulation(self, image: Quantity,
+                                  modulation_angle: Quantity,
+                                  amplitude: int = 1) -> Quantity:
         """Calculates the azimuthal modulation of the object
 
         Parameters
@@ -446,9 +449,9 @@ class Model(ABC):
         image.value[image.value < 0.] = 0.
         return image
 
-    def flux_per_pixel(self, wavelength: Quantity,
-                       temperature_distribution: Quantity,
-                       optical_depth_distribution: Quantity) -> Quantity:
+    def _flux_per_pixel(self, wavelength: Quantity,
+                        temperature_distribution: Quantity,
+                        optical_depth_distribution: Quantity) -> Quantity:
         """Calculates the total flux of the model
 
         Parameters
@@ -490,10 +493,9 @@ class Model(ABC):
         # NOTE: Convert sr to mas**2. Field of view = sr or mas**2
         spectral_radiance = plancks_law(wavelength).to(u.erg/(u.cm**2*u.Hz*u.s*u.mas**2))
         flux_per_pixel = spectral_radiance*self.field_of_view**2
-
         return flux_per_pixel.to(u.Jy)*(1-np.exp(-optical_depth_distribution))
 
-    def stellar_flux(self, wavelength: Quantity) -> Quantity:
+    def _stellar_flux(self, wavelength: Quantity) -> Quantity:
         """Calculates the stellar flux from the distance and its radius
 
         Parameters
@@ -521,12 +523,11 @@ class Model(ABC):
         # self.stellar_flux = np.pi*(self._stellar_radius/self.d)**2*\
                 # self._stellar_radians*1e26
 
-    def total_flux(self, *args) -> Quantity:
+    def _total_flux(self, *args) -> Quantity:
         """Sums up the flux from the individual pixel [astropy.units.Jy/px] brightness
         distribution to the complete brightness [astropy.units.Jy]"""
         return np.sum(self.get_flux(*args))
 
-    @abstractmethod
     def eval_model(self) -> Quantity:
         """Evaluates the model image
 
@@ -537,7 +538,6 @@ class Model(ABC):
         """
         pass
 
-    @abstractmethod
     def eval_vis(self) -> Quantity:
         """Evaluates the complex visibility function of the model.
 
@@ -548,7 +548,7 @@ class Model(ABC):
         """
         pass
 
-    def plot(self, plot_vis: Optional[bool] = false) -> None:
+    def plot(self, plot_vis: Optional[bool] = False) -> None:
         """Plots the model info from either 'eval_model' or 'eval_vis', defaults to
         plotting the 'eval_model'
 
@@ -566,18 +566,14 @@ class Model(ABC):
 # TODO: Make this class combine individual models
 class CombinedModel:
     # TODO: Think of how to combine the models
-    def __init__(self, field_of_view: Quantity, image_size: int,
-                 sublimation_temperature: int, effective_temperature: int,
-                 distance: int, luminosity_star: int,
-                 pixel_sampling: Optional[int] = None):
-        ...
+    def __init__(self, *args, **kwargs):
+        self._components = []
 
-    def add_component(self):
-        ...
+    def add_component(self, component: Model):
+        self._components.append(component)
 
 if __name__ == "__main__":
     model = Model(50, 128, 1500, 7900, 140, 19)
-    model = Model(4, 4, 1, 1, 1, 1)
-    print(model._calculate_sublimation_radius())
-    print(model.set_grid())
+    print(model._calculate_sublimation_radius(1500))
+    # print(model._set_grid())
 
