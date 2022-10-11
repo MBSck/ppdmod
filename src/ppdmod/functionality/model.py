@@ -1,13 +1,14 @@
 import inspect
-from operator import pos
+from astropy.time.core import enum
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
 import astropy.constants as c
 
+from collections import namedtuple
 from astropy.modeling import models
 from astropy.units import Quantity
-from typing import Tuple, List, Optional
+from typing import IO, Tuple, List, Optional
 
 from pyparsing import Opt
 
@@ -79,6 +80,7 @@ class Model:
 
     @property
     def image_centre(self) -> Tuple:
+        # TODO: Add that this is index and not Quantity
         return (self.image_size//2, self.image_size//2)
 
     @property
@@ -624,24 +626,10 @@ class Model:
         plt.show()
 
 
-# TODO: Make this class combine individual models
-class CombinedModel:
-    # TODO: Think of how to combine the models
-    def __init__(self) -> None:
-        self._components = []
-
-    def add_component(self, component: Model) -> None:
-        self._components.append(component)
-
-    def get_component_flux(self) -> Quantity:
-        ...
-
-    def total_flux(self, *args) -> Quantity:
-        """Sums up the flux from the individual pixel [astropy.units.Jy/px] brightness
-        distribution to the complete brightness [astropy.units.Jy]"""
-        return np.sum(self.get_flux(*args))
-
-
 if __name__ == "__main__":
     model = Model(50, 128, 1500, 7900, 140, 19)
-
+    attributes = ["flux1", "flux2"]
+    BinaryInfo = namedtuple("BinaryInfo", attributes)
+    binary = BinaryInfo(2*u.Jy)
+    units = [u.Jy, u.Jy]
+    model._check_attrs(binary, attributes, units)

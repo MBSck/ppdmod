@@ -3,7 +3,7 @@ import pytest
 import astropy.units as u
 import astropy.constants as c
 
-from ppdmod.functionality.model import CombinedModel, Model
+from ppdmod.functionality.model import Model
 
 # TODO: Improve a lot of theses tests and check how to test properly
 
@@ -202,11 +202,3 @@ def test_stellar_flux(mock_values_ab_aur, wavelength):
     stellar_flux = model._stellar_flux(wavelength)
     assert stellar_flux.unit == u.Jy
 
-################################ COMBINED MODEL - TESTS ##################################
-
-def test_init_combined_model():
-    combined_model = CombinedModel()
-    assert combined_model
-
-if __name__ == "__main__":
-    ...
