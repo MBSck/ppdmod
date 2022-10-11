@@ -11,3 +11,4 @@
 [] Implement better tests for model.py
 [] Rework the plotting functionality for the fitted models
 [] Make fits adapt to the new scheme and maybe implement tests here as well
+[] Make all theta into named tuples to easily access their values
