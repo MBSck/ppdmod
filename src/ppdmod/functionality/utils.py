@@ -6,49 +6,60 @@ from typing import List, Union, Optional
 from astropy.units import Quantity
 
 
-# TODO: Make sure the tests for this are solid and updated
-# TODO: Make parameter checks for the tuples, that if wrong params are entered if raises
-# Error
-
 class IterNamespace(SimpleNamespace):
     """Contains the functionality of a SimpleNamespace with the addition of a '_fields'
     attribute and the ability to iterate over the values of the '__dict__'"""
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._fields = [attr for attr in self.__dict__.keys()]
-
+        self._fields = tuple(attr for attr in self.__dict__.keys())
 
     def __iter__(self):
         for attr, val in self.__dict__.items():
-            if not attr.startswith("__"):
+            if not (attr.startswith("__") or attr.startswith("_")):
                 yield val
 
 
-# TODO: Make test for this function. Seems broken?
-def _check_and_convert(params: Union[List[Quantity], IterNamespace],
-                       attributes: List[str], units: List[Quantity]) -> IterNamespace:
-    """Checks if 'params' is a IterNamespace and if not converts it to one. Also checks if
-    the provided IterNamespace contains all needed parameters
+def _set_units_for_priors(priors: List, units: List[Quantity]) -> List[Quantity]:
+    """Sets the [astropy.units] for the priors
 
     Parameters
     ----------
-    params: Union[List, IterNamespace]
-        Either a list or a IterNamespace of params
-    attributes: List[str]
-        The labels that are being checked for in the IterNamespace -> Parameter checks
+    priors: List
+        The priors
     units: List[Quantity]
-        The units that are being checked for in the params
+        The to the priors corresponding units
 
     Returns
     -------
-    params: IterNamespace
+    priors: List[Quantity]
+        A list containing the nested [astropy.units.Quantity] that are the priors
     """
-    if isinstance(params, IterNamespace):
-        # NOTE: Raises error if wrong input
-        if check_attributes(params, attributes, units):
-            return params
-    else:
-        return make_params(params, attributes)
+    return [u.Quantity(prior, unit=units[i]) for i, prior in enumerate(priors)]
+
+def _set_params_from_priors(priors: IterNamespace) -> List[Quantity]:
+    """Initialises a random float/list via a uniform distribution from the
+    bounds provided
+
+    Parameters
+    -----------
+    priors: IterNamespace
+        Bounds list must be nested list(s) containing the bounds of the form
+        form [lower_bound, upper_bound]
+
+    Returns
+    -------
+    List[astropy.units.Quantity]
+        A list of the parameters corresponding to the priors. Also does not take the full
+        priors but 1/4 from the edges, to avoid emcee problems
+    """
+    params = []
+    for prior in priors:
+        quarter_prior_distance = np.diff(prior.value)/4
+        lower_bound, upper_bounds = prior.value[0]+quarter_prior_distance,\
+            prior.value[1]-quarter_prior_distance
+        param = np.random.uniform(lower_bound, upper_bounds)
+        params.append(param*prior.unit)
+    return params
 
 
 def make_params(params: List[Quantity], labels: List[str]) -> SimpleNamespace:
@@ -69,10 +80,10 @@ def make_params(params: List[Quantity], labels: List[str]) -> SimpleNamespace:
     if not all([isinstance(param, u.Quantity) for param in params]):
         raise IOError("All params have to be a [astropy.units.Quantity]!")
 
-    return IterNamespace(**dict(zip(params, labels)))
+    return IterNamespace(**dict(zip(labels, params)))
 
 
-# TODO: Add docs and tests
+# TODO: Add docs
 def make_priors(priors: List[List[float]], units: List[Quantity],
                 labels: List[str]) -> IterNamespace:
     """Makes the priors"""
@@ -128,11 +139,14 @@ def make_component(name: str, component_name: str,
 
     if mod_priors is None:
         modulated = False
-    elif mod_params is None:
-        modulated = True
-        mod_priors = make_priors(mod_priors, mod_units, mod_labels)
-        mod_params = make_params_from_priors(mod_priors, mod_labels)
     else:
+        mod_priors = make_priors(mod_priors, mod_units, mod_labels)
+
+    if (mod_params is None) and (mod_priors is not None):
+        modulated = True
+        mod_params = make_params_from_priors(mod_priors, mod_labels)
+    if mod_params is not None:
+        modulated = True
         mod_params = make_params(mod_params, mod_labels)
 
     keys = ["name", "component", "modulated", "params",
@@ -140,6 +154,63 @@ def make_component(name: str, component_name: str,
     values = [name, component_name, modulated, params,
               priors, mod_params, mod_priors]
     return IterNamespace(**dict(zip(keys, values)))
+
+
+# TODO: Maybe rename this function?
+def check_attributes(params: IterNamespace,
+                     attributes: List[str], units: List[Quantity]) -> bool:
+    """Checks the attributes contained in an IterNamespace with them of the model class.
+    Returns 'True' if the attributes exist and are in the right [astropy.units]
+
+    Parameters
+    ----------
+    params: IterNamespace
+        A IterNamespace containing the parameters and their values
+    attributes: List[str]
+        The names of the parameters
+    units: List[Quantity]
+        A list containing the required units for the respective parameters
+
+    Returns
+    -------
+    bool
+    """
+    for i, parameter in enumerate(zip(params._fields, params)):
+        param_name, param = parameter
+        if param_name in attributes:
+            if not param.unit == units[i]:
+                raise IOError(f"Wrong unit for parameter '{param}' has been input!")
+        else:
+            raise IOError(f"Check inputs! {param_name} is missing!\n"\
+                          f"Required inputs: {attributes}")
+    return True
+
+
+# TODO: Make test for this function. Seems broken?
+def _check_and_convert(params: Union[List[Quantity], IterNamespace],
+                       attributes: List[str], units: List[Quantity]) -> IterNamespace:
+    """Checks if 'params' is a IterNamespace and if not converts it to one. Also checks if
+    the provided IterNamespace contains all needed parameters
+
+    Parameters
+    ----------
+    params: Union[List, IterNamespace]
+        Either a list or a IterNamespace of params
+    attributes: List[str]
+        The labels that are being checked for in the IterNamespace -> Parameter checks
+    units: List[Quantity]
+        The units that are being checked for in the params
+
+    Returns
+    -------
+    params: IterNamespace
+    """
+    if isinstance(params, IterNamespace):
+        # NOTE: Raises error if wrong input
+        if check_attributes(params, attributes, units):
+            return params
+    else:
+        return make_params(params, attributes)
 
 
 # TODO: Write test for this
@@ -180,79 +251,6 @@ def make_fixed_params(field_of_view: int, image_size: int,
     return IterNamespace(**dict(zip(keys, values)))
 
 
-# TODO: Maybe rename this function?
-def check_attributes(params: IterNamespace,
-                     attributes: List[str], units: List[Quantity]) -> bool:
-    """Checks the attributes contained in an IterNamespace with them of the model class.
-    Returns 'True' if the attributes exist and are in the right [astropy.units]
-
-    Parameters
-    ----------
-    params: IterNamespace
-        A IterNamespace containing the parameters and their values
-    attributes: List[str]
-        The names of the parameters
-    units: List[Quantity]
-        A list containing the required units for the respective parameters
-
-    Returns
-    -------
-    bool
-    """
-    for i, parameter in enumerate(zip(params._fields, params)):
-        param_name, param = parameter
-        if param_name in attributes:
-            if not param.unit == units[i]:
-                raise IOError(f"Wrong unit for parameter '{param}' has been input!")
-        else:
-            raise IOError(f"Check inputs! {param_name} is missing!\n"\
-                          f"Required inputs: {attributes}")
-    return True
-
-
-def _set_units_for_priors(priors: List, units: List[Quantity]) -> List[Quantity]:
-    """Sets the [astropy.units] for the priors
-
-    Parameters
-    ----------
-    priors: List
-        The priors
-    units: List[Quantity]
-        The to the priors corresponding units
-
-    Returns
-    -------
-    priors: List[Quantity]
-        A list containing the nested [astropy.units.Quantity] that are the priors
-    """
-    return [u.Quantity(prior, unit=units[i]) for i, prior in enumerate(priors)]
-
-
-def _set_params_from_priors(priors: IterNamespace) -> Quantity:
-    """Initialises a random float/list via a normal distribution from the
-    bounds provided
-    Parameters
-    -----------
-    priors: IterNamespace
-        Bounds list must be nested list(s) containing the bounds of the form
-        form [lower_bound, upper_bound]
-    centre_rnd: bool, optional
-        Get a random number close to the centre of the bound
-    Returns
-    -------
-    astropy.units.Quantity
-    """
-    params = []
-    # NOTE: Tries to get values in the centre
-    # TODO: Maybe implement complete random values
-    for prior in priors:
-        quarter_prior_distance = np.diff(prior.value)/4
-        lower_bound, upper_bounds = prior.value[0]+quarter_prior_distance,\
-            prior.value[1]-quarter_prior_distance
-        param = np.random.uniform(lower_bound, upper_bounds)
-        params.append(param*prior.unit)
-    return params
-
 # TODO: Add docs and tests
 def make_ring_component(name: str, priors: List[List[Quantity]] = None,
                         mod_priors: List[Quantity] = None,
@@ -271,5 +269,6 @@ def make_delta_component(name: str):
 
 if __name__ == "__main__":
     fixed_params = make_fixed_params(50*u.mas, 128, 1500*u.K, 7900*u.K, 140*u.pc, None)
-    print(fixed_params._fields)
+    print(fixed_params.fov.value)
+    print([value for value in fixed_params])
 
