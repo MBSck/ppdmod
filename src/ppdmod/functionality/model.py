@@ -1,5 +1,4 @@
 import inspect
-from astropy.time.core import enum
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
@@ -8,13 +7,16 @@ import astropy.constants as c
 from collections import namedtuple
 from astropy.modeling import models
 from astropy.units import Quantity
-from typing import IO, Tuple, List, Optional
+from typing import Tuple, List, Optional
 
-from pyparsing import Opt
 
-# TODO: Implement FFT as a part of the base_model_class, maybe?
-# TODO: Think about calling FFT class in model class to evaluate model
+# NOTE: Implement FFT as a part of the base_model_class, maybe?
+# NOTE: Think about calling FFT class in model class to evaluate model
+
 # TODO: Add checks for right unit input in all the files
+# TODO: Make sure all is tested!
+# TODO: Make docstrings proper
+# TODO: Write test for set_ones and improve all tests
 
 
 class Model:
@@ -278,6 +280,7 @@ class Model:
         """
         # TODO: Make function to cut the radius at some point, or add it to this function
         # TODO: Does center shift, xc, yc need to be applied?
+        # TODO: Make tests for borders of inputs
         x = np.linspace(-self.image_size//2, self.image_size//2,
                         self.pixel_sampling, endpoint=False)*self.pixel_scaling
         y = x[:, np.newaxis]
@@ -290,10 +293,10 @@ class Model:
                               " arguments, 'incline_params' must be of the"
                               " form [axis_ratio, pos_angle]")
 
-            if (axis_ratio < 0.) or (axis_ratio > 1.):
+            if (axis_ratio.value < 0.) or (axis_ratio.value > 1.):
                 raise ValueError("The axis ratio must be between [0., 1.]")
 
-            if (pos_angle < 0) or (pos_angle > 180):
+            if (pos_angle.value < 0) or (pos_angle.value > 180):
                 raise ValueError("The positional angle must be between [0, 180]")
 
             if not isinstance(axis_ratio, u.Quantity):
@@ -433,7 +436,8 @@ class Model:
 
     def _set_ones(self, image: Quantity) -> Quantity:
         """Sets and image grid to all ones"""
-        ...
+        image[image != 0.] = 1.*image.unit
+        return image
 
     def _temperature_gradient(self, radius: Quantity, power_law_exponent: float,
                               inner_radius: Optional[Quantity] = None,
@@ -514,9 +518,10 @@ class Model:
         return models.PowerLaw1D().evaluate(radius, inner_optical_depth,
                                             inner_radius, power_law_exponent)
 
+    # TODO: Fix the tests here
     def _flux_per_pixel(self, wavelength: Quantity,
-                        temperature_distribution: Quantity,
-                        optical_depth: Quantity) -> Quantity:
+                       temperature_distribution: Quantity,
+                       optical_depth: Quantity) -> Quantity:
         """Calculates the total flux of the model
 
         Parameters
@@ -589,8 +594,8 @@ class Model:
         stellar_radius_angular = self._convert_orbital_radius_to_parallax(stellar_radius)
         return (spectral_radiance*np.pi*(stellar_radius_angular)**2).to(u.Jy)
 
-    def eval_model(self) -> Quantity:
-        """Evaluates the model image
+    def eval_model(self, params: namedtuple) -> Quantity:
+        """Evaluates the model image's radius
 
         Returns
         --------
@@ -599,7 +604,17 @@ class Model:
         """
         pass
 
-    def eval_vis(self) -> Quantity:
+    def eval_object(self, params: namedtuple) -> Quantity:
+        """Evaluates the model image's object
+
+        Returns
+        --------
+        image: Quantity
+            A two-dimensional model image [astropy.units.dimensionless_unscaled]
+        """
+        return self._set_ones(self.eval_model(params)).value*u.dimensionless_unscaled
+
+    def eval_vis(self, params: namedtuple) -> Quantity:
         """Evaluates the complex visibility function of the model.
 
         Returns
@@ -610,26 +625,11 @@ class Model:
         pass
 
     # TODO: Properly implement this function at a later time
-    def plot(self, plot_vis: Optional[bool] = False) -> None:
-        """Plots the model info from either 'eval_model' or 'eval_vis', defaults to
-        plotting the 'eval_model'
-
-        Parameters
-        ----------
-        plot_vis: bool, optional
-            Plots the 'eval_vis' output
-        """
-        if plot_vis:
-            plt.imshow(self.eval_vis)
-        else:
-            plt.imshow(self.eval_model)
+    def plot(self, image: Quantity) -> None:
+        """Plots and image"""
+        plt.imshow(image.value)
         plt.show()
 
 
 if __name__ == "__main__":
-    model = Model(50, 128, 1500, 7900, 140, 19)
-    attributes = ["flux1", "flux2"]
-    BinaryInfo = namedtuple("BinaryInfo", attributes)
-    binary = BinaryInfo(2*u.Jy)
-    units = [u.Jy, u.Jy]
-    model._check_attrs(binary, attributes, units)
+    ...

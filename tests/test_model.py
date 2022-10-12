@@ -131,7 +131,7 @@ def test_calculate_sublimation_temperature(mock_init_values_all_one):
     assert sublimation_temperature.unit == u.K
     assert sublimation_temperature_mas.unit == u.K
     with pytest.raises(IOError):
-        sublimation_temperature_K = model._calculate_sublimation_temperature(1*u.K)
+        model._calculate_sublimation_temperature(1*u.K)
 
 def test_sublimation_radius(mock_init_values_all_one):
     model = Model(*mock_init_values_all_one)

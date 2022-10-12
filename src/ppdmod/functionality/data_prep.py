@@ -12,6 +12,7 @@ from .readout import ReadoutFits
 # time
 # TODO: This will for the start just fit either the L- or N-band and not both at the
 # same time, fix this later
+# TODO: Check if this works for the uv-coords as well, if not make another merge_func
 class DataHandler:
     """This class handles all the data that is used for the fitting process, the observed
     data as well as the data created by the modelling process"""
@@ -21,7 +22,6 @@ class DataHandler:
                  flux_file: Optional[Path] = None,
                  priors: Optional[List] = [], labels: Optional[List] = []) -> None:
         """Initialises the class"""
-        # TODO: Fix the wavelength_window_size error and make it possible to add it here
         self.fits_files, self.flux_file = fits_files, flux_file
         self.priors = priors
         self.labels = labels
@@ -50,35 +50,6 @@ class DataHandler:
             f"\n{', '.join([str(i) for i in self.readout_files])}\n and polychromatic"\
             f"data of {self.selected_wavelengths} with the windows "\
             f"{self.wavelength_window_sizes}"
-
-    def _generate_random_inital(self, centre: Optional[bool] = False) -> np.ndarray:
-        """Initialises a random float/list via a normal distribution from the
-        bounds provided
-
-        Parameters
-        -----------
-        bounds: List
-            Bounds list must be nested list(s) containing the bounds of the form
-            form [lower_bound, upper_bound]
-        centre_rnd: bool, optional
-            Get a random number close to the centre of the bound
-
-        Returns
-        -------
-        float | np.ndarray
-        """
-        initial = []
-        if centre:
-            for lower, upper in self.priors:
-                if upper == 2:
-                    initial.append(np.random.normal(1.5, 0.2))
-                else:
-                    initial.append(np.random.normal(upper/2, 0.2))
-        else:
-            for lower, upper in bounds:
-                initial.append(np.random.uniform(lower, upper))
-
-        return np.array(initial, dtype=float)
 
     def _get_data_type_function(self, readout_file: Callable,
                                data_keyword: str) -> Callable:
@@ -180,50 +151,53 @@ class DataHandler:
         """
         return self._merge_data(data_type_keyword)[1]**2
 
-    def do_model(parameters: np.ndarray, model_param_lst: List,
-                            uv_info_lst: List, vis_lst: List) -> np.ndarray:
-        """The model image, that is Fourier transformed for the fitting process
+    # def do_model(parameters: np.ndarray, model_param_lst: List,
+                            # uv_info_lst: List, vis_lst: List) -> np.ndarray:
+        # """The model image, that is Fourier transformed for the fitting process
 
-        Parameters
-        ----------
-        theta: np.ndarray
-        model_param_lst: List
-        uv_info_lst: List
-        vis_lst: List
+        # Parameters
+        # ----------
+        # theta: np.ndarray
+        # model_param_lst: List
+        # uv_info_lst: List
+        # vis_lst: List
 
-        Returns
-        -------
-        amp: np.ndarray
-            Amplitudes of the model interpolated for the (u, v)-coordinates
-        cphases: np.ndarray
-            Closure phases of the model interpolated for the (u, v)-coordinates
-        """
-        # TODO: Work this into the class
-        model, pixel_size, sampling, wavelength,\
-                zero_padding_order, bb_params, _ = model_param_lst
-        uvcoords, u, v, t3phi_uvcoords = uv_info_lst
-        vis, vis2, intp = vis_lst
+        # Returns
+        # -------
+        # amp: np.ndarray
+            # Amplitudes of the model interpolated for the (u, v)-coordinates
+        # cphases: np.ndarray
+            # Closure phases of the model interpolated for the (u, v)-coordinates
+        # """
+        # # TODO: Work this into the class
+        # model, pixel_size, sampling, wavelength,\
+                # zero_padding_order, bb_params, _ = model_param_lst
+        # uvcoords, u, v, t3phi_uvcoords = uv_info_lst
+        # vis, vis2, intp = vis_lst
 
-        amp_lst, cphase_lst = [], []
+        # amp_lst, cphase_lst = [], []
 
-        for i in wavelength:
-            model_base = model(*bb_params, i)
-            model_flux = model_base.eval_model(theta, pixel_size, sampling)
-            fft = FFT(model_flux, i, model_base.pixel_scale,
-                     zero_padding_order)
-            amp, cphase, xycoords = fft.get_uv2fft2(uvcoords, t3phi_uvcoords,
-                                                   corr_flux=vis, vis2=vis2,
-                                                   intp=intp)
-            if len(amp) > 6:
-                flux_ind = np.where([i % 6 == 0 for i, o in
-                                     enumerate(amp)])[0].tolist()
-                amp = np.insert(amp, flux_ind, np.sum(model_flux))
-            else:
-                amp = np.insert(amp, 0, np.sum(model_flux))
+        # for i in wavelength:
+            # model_base = model(*bb_params, i)
+            # model_flux = model_base.eval_model(theta, pixel_size, sampling)
+            # fft = FFT(model_flux, i, model_base.pixel_scale,
+                     # zero_padding_order)
+            # amp, cphase, xycoords = fft.get_uv2fft2(uvcoords, t3phi_uvcoords,
+                                                   # corr_flux=vis, vis2=vis2,
+                                                   # intp=intp)
+            # if len(amp) > 6:
+                # flux_ind = np.where([i % 6 == 0 for i, o in
+                                     # enumerate(amp)])[0].tolist()
+                # amp = np.insert(amp, flux_ind, np.sum(model_flux))
+            # else:
+                # amp = np.insert(amp, 0, np.sum(model_flux))
 
-            amp_lst.append(amp)
-            cphase_lst.append(cphase)
+            # amp_lst.append(amp)
+            # cphase_lst.append(cphase)
 
-        return np.array(amp_lst), np.array(cphase_lst)
+        # return np.array(amp_lst), np.array(cphase_lst)
 
+
+if __name__ == "__main__":
+    ...
 
