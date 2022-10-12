@@ -10,7 +10,7 @@ from ..functionality.model import Model
 from ..functionality.utils import _check_and_convert
 
 
-class Binary(Model):
+class BinaryComponent(Model):
     """..."""
     def __init__(self, *args):
         super().__init__(*args)
@@ -116,7 +116,7 @@ class Binary(Model):
 
 
 if __name__ == "__main__":
-    binary = Binary(50, 128, 1500, 7900, 140, 19)
+    binary = BinaryComponent(50, 128, 1500, 7900, 140, 19)
     coords = [10, -10, 15, -15]*u.dimensionless_unscaled
     theta = [10*u.Jy, 10*u.Jy]
     theta.extend(coords)

@@ -114,5 +114,5 @@ class RingComponent(Model):
 if __name__ == "__main__":
     ring = RingComponent(50, 128, 1500, 7900, 140, 19)
     params = [0.5*u.dimensionless_unscaled, 145*u.deg, 0*u.mas, 0*u.mas]
-    ring.plot(ring.eval_object(params))
+    ring.plot(ring.eval_model(params))
 
