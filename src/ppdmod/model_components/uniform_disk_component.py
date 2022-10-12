@@ -49,6 +49,7 @@ class UniformDiskComponent(Model):
             attributes = ["axis_ratio", "pa", "diameter"]
             units = [u.dimensionless_unscaled, u.deg, u.mas]
             params = _check_and_convert(params, attributes, units)
+            self.params_count = self.non_zero_params_count = len(attributes)
         except TypeError:
             raise IOError(f"{self.name}.{inspect.stack()[0][3]}():\n"
                           f"Check input arguments! They must be: {attributes}.")

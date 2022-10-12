@@ -50,6 +50,7 @@ class BinaryComponent(Model):
             units = [u.Jy, u.Jy]
             units.extend(coord_units)
             params = _check_and_convert(params, attributes, units)
+            self.params_count = len(attributes)
         except TypeError:
             raise IOError(f"{self.name}.{inspect.stack()[0][3]}():\n"
                           f"Check input arguments! They must be: {attributes}.")

@@ -35,9 +35,6 @@ class RingComponent(Model):
         super().__init__(*args)
         self.name = "Ring"
 
-    def eval_flux(self):
-        ...
-
     def eval_model(self, params: Union[namedtuple, List]) -> Quantity:
         """Evaluates the model's radius
 
@@ -53,6 +50,8 @@ class RingComponent(Model):
             attributes = ["axis_ratio", "pa", "inner_radius", "outer_radius"]
             units = [u.dimensionless_unscaled, u.deg, u.mas, u.mas]
             params = _check_and_convert(params, attributes, units)
+            self.params_count = len(attributes)
+            self.non_zero_params_count = 2
         except TypeError:
             raise IOError(f"{self.name}.{inspect.stack()[0][3]}():\n"
                           f"Check input arguments! They must be: {attributes}.")
@@ -61,12 +60,13 @@ class RingComponent(Model):
 
         if params.inner_radius != 0:
             image[image < params.inner_radius] = 0.*u.mas
+            self.non_zero_params_count *= 1
         else:
             image[image < self.sublimation_radius] = 0.*u.mas
 
         if params.outer_radius != 0.:
             image[image > params.outer_radius] = 0.*u.mas
-
+            self.non_zero_params_count *= 1
         return image
 
     # def eval_vis(self, theta: List, sampling: int,

@@ -28,7 +28,7 @@ class DeltaComponent(Model):
     def eval_flux(self, wavelength: Quantity) -> Quantity:
         return self._flux_per_pixel(wavelength)
 
-    def eval_model(self) -> np.array:
+    def eval_model(self) -> Quantity:
         """Evaluates the model
 
         Parameters

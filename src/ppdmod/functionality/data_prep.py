@@ -17,14 +17,11 @@ class DataHandler:
     """This class handles all the data that is used for the fitting process, the observed
     data as well as the data created by the modelling process"""
     def __init__(self, fits_files: List[Path],
-                 selected_wavelengths: List,
+                 selected_wavelengths: List[float],
                  wavelength_window_sizes: Optional[List[float]] = [0.2],
-                 flux_file: Optional[Path] = None,
-                 priors: Optional[List] = [], labels: Optional[List] = []) -> None:
+                 flux_file: Optional[Path] = None) -> None:
         """Initialises the class"""
         self.fits_files, self.flux_file = fits_files, flux_file
-        self.priors = priors
-        self.labels = labels
         self.selected_wavelengths = selected_wavelengths
         self.wavelength_window_sizes = wavelength_window_sizes
         self.readout_files = [ReadoutFits(fits_file, self.flux_file)\

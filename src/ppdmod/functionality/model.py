@@ -33,12 +33,16 @@ class Model:
     """
     # TODO: Make repr function that tells what the model has been initialised with
     def __init__(self, field_of_view: Quantity, image_size: int,
-                 sublimation_temperature: int, effective_temperature: int,
-                 distance: int, luminosity_star: int,
+                 sublimation_temperature: Quantity, effective_temperature: Quantity,
+                 distance: Quantity, luminosity_star: int,
                  pixel_sampling: Optional[int] = None) -> None:
         # TODO: Maybe make a specific save name for the model also
         self.name = None
-        self.axes_image, self.axes_complex_image, self.polar_angle = None, None, None
+        self.axes_image, self.axes_complex_image = None, None
+        self.polar_angle = None
+        self.params_count = 0
+        self.non_zero_params_count = 0
+        self.modulated = False
 
         self._field_of_view = field_of_view*u.mas
         # TODO: Make checks so only even numbers can be input for image_size
@@ -79,6 +83,8 @@ class Model:
         elif value.unit != u.dimensionless_unscaled:
             raise IOError("Wrong unit has been input, field of view needs to"\
                           " be in [astropy.units.dimensionless_unscaled] or unitless!")
+        else:
+            self._image_size = value
 
     @property
     def image_centre(self) -> Tuple:
@@ -108,7 +114,8 @@ class Model:
         elif value.unit != u.K:
             raise IOError("Wrong unit has been input, sublimation temperature needs to"\
                           " be in [astropy.units.K] or unitless!")
-        self._sublimation_temperature = value
+        else:
+            self._sublimation_temperature = value
 
     @property
     def effective_temperature(self):
@@ -121,6 +128,8 @@ class Model:
         elif value.unit != u.K:
             raise IOError("Wrong unit has been input, effective temperature needs to be"\
                           " in [astropy.units.K] or unitless!")
+        else:
+            self._effective_temperature = value
 
     @property
     def luminosity_star(self):
@@ -133,6 +142,8 @@ class Model:
         elif value.unit != u.W:
             raise IOError("Wrong unit has been input, luminosity needs to be in"\
                           "[astropy.units.W] or unitless!")
+        else:
+            self._luminosity_star = value
 
     @property
     def distance(self):
@@ -145,6 +156,8 @@ class Model:
         elif value.unit != u.pc:
             raise IOError("Wrong unit has been input, distance needs to be in"\
                           "[astropy.units.pc] or unitless!")
+        else:
+            self._distance = value
 
     def _convert_orbital_radius_to_parallax(self, orbital_radius: Quantity,
                                               distance: Optional[Quantity] = None
@@ -324,75 +337,75 @@ class Model:
         return radius
 
     # TODO: Rework this function alike the others
-    def _set_uv_grid(self, wavelength: float,
-                     incline_params: List[float] = None,
-                     uvcoords: np.ndarray = None,
-                     vector: Optional[bool] = True) -> Quantity:
-        """Sets the uv coords for visibility modelling
+    # def _set_uv_grid(self, wavelength: float,
+                     # incline_params: List[float] = None,
+                     # uvcoords: np.ndarray = None,
+                     # vector: Optional[bool] = True) -> Quantity:
+        # """Sets the uv coords for visibility modelling
 
-        Parameters
-        ----------
-        incline_params: List[float], optional
-            A list of the three angles [axis_ratio, pos_angle, inc_angle]
-        uvcoords: List[float], optional
-            If uv-coords are given, then the visibilities are calculated for them
-        vector: bool, optional
-            Returns the baseline vector if toggled true, else the baselines
+        # Parameters
+        # ----------
+        # incline_params: List[float], optional
+            # A list of the three angles [axis_ratio, pos_angle, inc_angle]
+        # uvcoords: List[float], optional
+            # If uv-coords are given, then the visibilities are calculated for them
+        # vector: bool, optional
+            # Returns the baseline vector if toggled true, else the baselines
 
-        Returns
-        -------
-        baselines: astropy.units.Quantity
-            The baselines for the uvcoords [astropy.units.m]
-        uvcoords: astropy.units.Quantity
-            The axis used to calculate the baselines [astropy.units.m]
-        """
-        if not isinstance(wavelength, u.Quantity):
-            wavelength *= u.um
-        elif wavelength.unit != u.um:
-            raise IOError("Enter the wavelength in [astropy.units.um] or unitless!")
+        # Returns
+        # -------
+        # baselines: astropy.units.Quantity
+            # The baselines for the uvcoords [astropy.units.m]
+        # uvcoords: astropy.units.Quantity
+            # The axis used to calculate the baselines [astropy.units.m]
+        # """
+        # if not isinstance(wavelength, u.Quantity):
+            # wavelength *= u.um
+        # elif wavelength.unit != u.um:
+            # raise IOError("Enter the wavelength in [astropy.units.um] or unitless!")
 
-        if uvcoords is None:
-            axis = np.linspace(-self.image_size, size, sampling, endpoint=False)*u.m
+        # if uvcoords is None:
+            # axis = np.linspace(-self.image_size, size, sampling, endpoint=False)*u.m
 
-            # Star overhead sin(theta_0)=1 position
-            u, v = axis/wavelength.to(u.m),\
-                axis[:, np.newaxis]/wavelength.to(u.m)
+            # # Star overhead sin(theta_0)=1 position
+            # u, v = axis/wavelength.to(u.m),\
+                # axis[:, np.newaxis]/wavelength.to(u.m)
 
-        else:
-            axis = uvcoords/wavelength.to(u.m)
-            u, v = np.array([uvcoord[0] for uvcoord in uvcoords]), \
-                    np.array([uvcoord[1] for uvcoord in uvcoords])
+        # else:
+            # axis = uvcoords/wavelength.to(u.m)
+            # u, v = np.array([uvcoord[0] for uvcoord in uvcoords]), \
+                    # np.array([uvcoord[1] for uvcoord in uvcoords])
 
-        if angles is not None:
-            try:
-                if len(angles) == 2:
-                    axis_ratio, pos_angle = incline_params
-                else:
-                    axis_ratio = incline_params[0]
-                    pos_angle, inc_angle = map(lambda x: (x*u.deg).to(u.rad),
-                                               incline_params[1:])
+        # if angles is not None:
+            # try:
+                # if len(angles) == 2:
+                    # axis_ratio, pos_angle = incline_params
+                # else:
+                    # axis_ratio = incline_params[0]
+                    # pos_angle, inc_angle = map(lambda x: (x*u.deg).to(u.rad),
+                                               # incline_params[1:])
 
-                u_inclined, v_inclined = u*np.cos(pos_angle)+v*np.sin(pos_angle),\
-                        v*np.cos(pos_angle)-u*np.sin(pos_angle)
+                # u_inclined, v_inclined = u*np.cos(pos_angle)+v*np.sin(pos_angle),\
+                        # v*np.cos(pos_angle)-u*np.sin(pos_angle)
 
-                if len(angles) > 2:
-                    v_inclined = v_inclined*np.cos(inc_angle)
+                # if len(angles) > 2:
+                    # v_inclined = v_inclined*np.cos(inc_angle)
 
-                baselines = np.sqrt(u_inclined**2+v_inclined**2)
-                baseline_vector = baselines*wavelength.to(u.m)
-                self.axes_complex_image = [u_inclined, v_inclined]
-            except:
-                raise IOError(f"{inspect.stack()[0][3]}(): Check input"
-                              " arguments, ellipsis_angles must be of the form"
-                              " either [pos_angle] or "
-                              " [ellipsis_angle, pos_angle, inc_angle]")
+                # baselines = np.sqrt(u_inclined**2+v_inclined**2)
+                # baseline_vector = baselines*wavelength.to(u.m)
+                # self.axes_complex_image = [u_inclined, v_inclined]
+            # except:
+                # raise IOError(f"{inspect.stack()[0][3]}(): Check input"
+                              # " arguments, ellipsis_angles must be of the form"
+                              # " either [pos_angle] or "
+                              # " [ellipsis_angle, pos_angle, inc_angle]")
 
-        else:
-            baselines = np.sqrt(u**2+v**2)
-            baseline_vector = baselines*wavelength.to(u.m)
-            self.axes_complex_image = [u, v]
+        # else:
+            # baselines = np.sqrt(u**2+v**2)
+            # baseline_vector = baselines*wavelength.to(u.m)
+            # self.axes_complex_image = [u, v]
 
-        return baseline_vector if vector else baselines
+        # return baseline_vector if vector else baselines
 
     def _set_azimuthal_modulation(self, image: Quantity,
                                   modulation_angle: Quantity,
@@ -413,6 +426,7 @@ class Model:
         azimuthal_modulation: astropy.units.Quantity
             The azimuthal modulation [astropy.units.dimensionless_unscaled]
         """
+        self.modulated = True
         if not isinstance(modulation_angle, u.Quantity):
             modulation_angle *= u.deg
         elif modulation_angle.unit != u.deg:
@@ -440,7 +454,7 @@ class Model:
         return image
 
     def _temperature_gradient(self, radius: Quantity, power_law_exponent: float,
-                              inner_radius: Optional[Quantity] = None,
+                              inner_radius: Optional[Quantity] = 0.,
                               inner_temperature: Optional[Quantity] = None
                               ) -> Quantity:
         """Calculates the temperature gradient
@@ -462,7 +476,7 @@ class Model:
         temperature_gradient: astropy.units.Quantity
             The temperature gradient [astropy.units.K]
         """
-        if inner_radius is None:
+        if inner_radius == 0.:
             inner_radius = self.sublimation_radius
         elif not isinstance(inner_radius, u.Quantity):
             inner_radius *= u.mas
@@ -482,7 +496,7 @@ class Model:
     def _optical_depth_gradient(self, radius: Quantity,
                                 inner_optical_depth: Quantity,
                                 power_law_exponent: float,
-                                inner_radius: Optional[Quantity] = None
+                                inner_radius: Optional[Quantity] = 0.
                                 ) -> Quantity:
         """Calculates the optical depth gradient
 
@@ -508,7 +522,7 @@ class Model:
             raise IOError("Enter the inner optical depth in"\
                           " [astropy.units.dimensionless_unscaled] or unitless!")
 
-        if inner_radius is None:
+        if inner_radius == 0.:
             inner_radius = self.sublimation_radius
         elif not isinstance(inner_radius, u.Quantity):
             inner_radius *= u.mas
