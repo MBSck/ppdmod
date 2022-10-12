@@ -10,6 +10,8 @@ from collections import namedtuple
 from ..functionality.model import Model
 from ..functionality.utils import _check_and_convert
 
+# TODO: Implement analytical formula for inclined disk and uniform one in same eval_vis
+# TODO: Implement inclination in eval model
 
 class UniformDiskComponent(Model):
     """Uniformly bright disc model
