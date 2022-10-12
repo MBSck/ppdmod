@@ -1,4 +1,8 @@
 # Notes
+## Plan
+- Pass everything Model to DataHandler (does the fitting etc.)
+- DataHandler also does the FFT
+- Make example code where the combined models go
 ## Done
 [x] Reworking model.py, methods to implement:
 [x]
