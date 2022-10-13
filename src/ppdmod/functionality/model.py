@@ -327,7 +327,7 @@ class Model:
 
             # NOTE: This was taken from Jozsef's code and until here output is equal
             xr, yr = (x*np.cos(pos_angle)-y*np.sin(pos_angle))/axis_ratio,\
-                (x*np.sin(pos_angle)+y*np.cos(pos_angle))
+                x*np.sin(pos_angle)+y*np.cos(pos_angle)
             radius = np.sqrt(xr**2+yr**2)
             self.axes_image, self.polar_angle = [xr, yr], np.arctan2(xr, yr)
         else:
@@ -454,8 +454,8 @@ class Model:
         return image
 
     def _temperature_gradient(self, radius: Quantity, power_law_exponent: float,
-                              inner_radius: Optional[Quantity] = 0.,
-                              inner_temperature: Optional[Quantity] = None
+                              inner_radius: Optional[Quantity],
+                              inner_temperature: Optional[Quantity]
                               ) -> Quantity:
         """Calculates the temperature gradient
 
@@ -476,16 +476,12 @@ class Model:
         temperature_gradient: astropy.units.Quantity
             The temperature gradient [astropy.units.K]
         """
-        if inner_radius == 0.:
-            inner_radius = self.sublimation_radius
-        elif not isinstance(inner_radius, u.Quantity):
+        if not isinstance(inner_radius, u.Quantity):
             inner_radius *= u.mas
         elif inner_radius.unit != u.mas:
             raise IOError("Enter the inner radius in [astropy.units.mas] or unitless!")
 
-        if inner_temperature is None:
-            inner_temperature = self.sublimation_temperature
-        elif not isinstance(inner_temperature, u.Quantity):
+        if not isinstance(inner_temperature, u.Quantity):
             inner_temperature *= u.K
         elif inner_temperature.unit != u.K:
             raise IOError("Enter the inner temperature in [astropy.units.K] or unitless!")
@@ -561,9 +557,9 @@ class Model:
                           " [astropy.units.um] or unitless!")
 
         if not isinstance(optical_depth, u.Quantity):
-            temperature_distribution *= u.K
-        elif temperature_distribution.unit != u.K:
-            raise IOError("Enter the temperature distribution in"\
+            optical_depth *= u.dimensionless_unscaled
+        elif optical_depth.unit != u.dimensionless_unscaled:
+            raise IOError("Enter the optical depth in"\
                           " [astropy.units.K] or unitless!")
 
         if not isinstance(optical_depth, u.Quantity):
@@ -577,9 +573,10 @@ class Model:
         plancks_law = models.BlackBody(temperature=temperature_distribution)
         # NOTE: Convert sr to mas**2. Field of view = sr or mas**2
         spectral_radiance = plancks_law(wavelength).to(u.erg/(u.cm**2*u.Hz*u.s*u.mas**2))
-        flux_per_pixel = spectral_radiance*self.field_of_view**2
-        return flux_per_pixel.to(u.Jy)*(1-np.exp(-optical_depth))
+        flux_per_pixel = spectral_radiance*self.pixel_scaling**2
+        return (flux_per_pixel.to(u.Jy))
 
+    # TODO: Make test with Jozsef's values
     def _stellar_flux(self, wavelength: Quantity) -> Quantity:
         """Calculates the stellar flux from the distance and its radius
 
