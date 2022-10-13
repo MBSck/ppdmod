@@ -5,10 +5,9 @@ import astropy.units as u
 from scipy.special import j1
 from astropy.units import Quantity
 from typing import List, Optional
-from collections import namedtuple
 
 from ..functionality.model import Model
-from ..functionality.utils import _check_and_convert
+from ..functionality.utils import IterNamespace, check_and_convert
 
 # TODO: Implement analytical formula for inclined disk and uniform one in same eval_vis
 # TODO: Implement inclination in eval model
@@ -29,7 +28,7 @@ class UniformDiskComponent(Model):
         super().__init__(*args)
         self.name = "Uniform Disk"
 
-    def eval_model(self, params: namedtuple) -> Quantity:
+    def eval_model(self, params: IterNamespace) -> Quantity:
         """Evaluates the model
 
         Parameters
@@ -57,9 +56,6 @@ class UniformDiskComponent(Model):
         image = self._set_grid([params.axis_ratio, params.pa])
         image[image > params.diameter/2] = 0.*u.mas
         return image
-
-    def eval_object(self, params: namedtuple) -> Quantity:
-        return self._set_ones(self.eval_model(params)).value*u.dimensionless_unscaled
 
     # def eval_vis(self, params: named, uvcoords: np.ndarray = None) -> Quantity:
         # """Evaluates the visibilities of the model

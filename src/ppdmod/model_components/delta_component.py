@@ -4,6 +4,7 @@ import astropy.units as u
 from astropy.units import Quantity
 
 from ..functionality.model import Model
+from ..functionality.utils import stellar_flux
 
 # TODO: Write tests for this as well
 class DeltaComponent(Model):
@@ -22,11 +23,10 @@ class DeltaComponent(Model):
         super().__init__(*args)
         self.name = "Delta"
 
-    def _flux_per_pixel(self, wavelength: Quantity) -> Quantity:
-        return self.eval_model().value*self._stellar_flux(wavelength)
-
     def eval_flux(self, wavelength: Quantity) -> Quantity:
-        return self._flux_per_pixel(wavelength)
+        return self.eval_model()\
+            .value*stellar_flux(wavelength, self.luminosity_star,
+                                self.effective_temperature, self.distance)
 
     def eval_model(self) -> Quantity:
         """Evaluates the model

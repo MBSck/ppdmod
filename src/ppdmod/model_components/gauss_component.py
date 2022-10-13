@@ -3,10 +3,9 @@ import numpy as np
 import astropy.units as u
 
 from astropy.units import Quantity
-from collections import namedtuple
 
 from ..functionality.model import Model
-from ..functionality.utils import _check_and_convert
+from ..functionality.utils import IterNamespace, check_and_convert
 
 
 class GaussComponent(Model):
@@ -27,7 +26,7 @@ class GaussComponent(Model):
         super().__init__(*args)
         self.name = "Gaussian"
 
-    def eval_model(self, params: namedtuple) -> Quantity:
+    def eval_model(self, params: IterNamespace) -> Quantity:
         """Evaluates the model's radius
 
         Parameters
@@ -40,7 +39,7 @@ class GaussComponent(Model):
         try:
             attributes = ["fwhm"]
             units = [u.mas]
-            params = _check_and_convert(params, attributes, units)
+            params = check_and_convert(params, attributes, units)
             self.params_count = self.non_zero_params_count = len(attributes)
         except TypeError:
             raise IOError(f"{self.name}.{inspect.stack()[0][3]}():\n"

@@ -3,11 +3,10 @@ import astropy.units as u
 
 # from scipy.special import j0
 from astropy.units import Quantity
-from collections import namedtuple
 from typing import List, Union
 
 from ..functionality.model import Model
-from ..functionality.utils import _check_and_convert
+from ..functionality.utils import IterNamespace, check_and_convert
 
 # TODO: Make function that automatically greps the docstrings of functions that need to be
 # implemented
@@ -35,7 +34,7 @@ class RingComponent(Model):
         super().__init__(*args)
         self.name = "Ring"
 
-    def eval_model(self, params: Union[namedtuple, List]) -> Quantity:
+    def eval_model(self, params: Union[IterNamespace, List]) -> Quantity:
         """Evaluates the model's radius
 
         Parameters
@@ -49,7 +48,7 @@ class RingComponent(Model):
         try:
             attributes = ["axis_ratio", "pa", "inner_radius", "outer_radius"]
             units = [u.dimensionless_unscaled, u.deg, u.mas, u.mas]
-            params = _check_and_convert(params, attributes, units)
+            params = check_and_convert(params, attributes, units)
             self.params_count = len(attributes)
             self.non_zero_params_count = 2
         except TypeError:

@@ -25,10 +25,6 @@ def mock_init_values_all_one():
             1*u.K, 1*u.pc, 1*c.L_sun, image_size]
 
 @pytest.fixture
-def mock_wavelength():
-    return 8*u.um
-
-@pytest.fixture
 def mock_incline_params():
     return [0.6, 180]
 

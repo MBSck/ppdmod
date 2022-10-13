@@ -3,11 +3,10 @@ import numpy as np
 import astropy.units as u
 
 from typing import Union
-from collections import namedtuple
 from astropy.units import Quantity
 
 from ..functionality.model import Model
-from ..functionality.utils import _check_and_convert
+from ..functionality.utils import IterNamespace, check_and_convert
 
 
 class BinaryComponent(Model):
@@ -28,7 +27,7 @@ class BinaryComponent(Model):
         return flux
 
     # TODO: Make this work as a realistic component
-    def eval_model(self, params: Union[namedtuple, List]) -> Quantity:
+    def eval_model(self, params: Union[IterNamespace, List]) -> Quantity:
         """Evaluates the model
 
         Binary values have to be input in negative for some values
