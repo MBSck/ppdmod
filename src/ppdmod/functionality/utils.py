@@ -15,6 +15,18 @@ class IterNamespace(SimpleNamespace):
         super().__init__(*args, **kwargs)
         self._fields = tuple(attr for attr in self.__dict__.keys())
 
+    def __len__(self):
+        return len(self._fields)
+
+    def __getitem__(self, index):
+        keys = self._fields[index]
+        values = [value for value in self.__iter__()][index]
+        if isinstance(values, list):
+            return IterNamespace(**dict(zip(keys, values)))
+        else:
+            return values
+
+
     def __iter__(self):
         for attr, val in self.__dict__.items():
             if not (attr.startswith("__") or attr.startswith("_")):
@@ -512,11 +524,24 @@ def _make_component(name: str, component_name: str,
     return IterNamespace(**dict(zip(keys, values)))
 
 
-# TODO: Write test for this
-def make_disc_params(priors: List, prior_units: List[Quantity],
-                     labels: List[str], params: Optional[List] = None,) -> IterNamespace:
+def make_disc_params(priors: List, params: Optional[List] = None) -> IterNamespace:
     """Makes the disc param's tuple"""
-    priors = _make_priors(priors, prior_units, labels)
+    labels, units = ["q", "p"], [u.dimensionless_unscaled, u.dimensionless_unscaled]
+    priors = _make_priors(priors, units, labels)
+
+    for i, prior in enumerate(priors):
+        if not isinstance(prior, u.Quantity):
+            priors[i] = prior*units[i]
+        elif prior.unit != units[i]:
+            raise IOError(f"Wrong unit has been input for priors in {keys[i]}. Needs to"\
+                          f" be in {units[i]} or unitless!")
+        if params:
+            if not isinstance(params[i], u.Quantity):
+                params[i] = params[i]*units[i]
+            elif params[i].unit != units[i]:
+                raise IOError(f"Wrong unit has been input for params in {keys[i]}."\
+                              f" Needs to be in {units[i]} or unitless!")
+
     if params is None:
         params = _make_params_from_priors(priors, labels)
     else:
@@ -525,12 +550,12 @@ def make_disc_params(priors: List, prior_units: List[Quantity],
     return IterNamespace(**dict(zip(keys, values)))
 
 
-# TODO: Add docs and tests
+# TODO: Add docs
 def make_fixed_params(field_of_view: int, image_size: int,
                       sublimation_temperature: int,
                       effective_temperature: int,
                       distance: int, luminosity_star: int,
-                      pixel_sampling: Optional[int] = None) -> IterNamespace:
+                      tau: float, pixel_sampling: Optional[int] = None) -> IterNamespace:
     """Crates a dictionary of the fixed params
 
     Parameters
@@ -541,13 +566,15 @@ def make_fixed_params(field_of_view: int, image_size: int,
     effective_temperature: int
     distance: int
     luminosity_star: int
+    tau: float
     pixel_sampling: int, optional
     """
     keys = ["fov", "image_size", "sub_temp", "eff_temp",
-              "distance", "lum_star", "pixel_sampling"]
+              "distance", "lum_star", "pixel_sampling", "tau"]
     values = [field_of_view, image_size, sublimation_temperature,
-              effective_temperature, distance, luminosity_star, pixel_sampling]
-    units = [u.mas, u.dimensionless_unscaled, u.K, u.K, u.pc, u.W, u.dimensionless_unscaled]
+              effective_temperature, distance, luminosity_star, pixel_sampling, tau]
+    units = [u.mas, u.dimensionless_unscaled, u.K, u.K,
+             u.pc, u.W, u.dimensionless_unscaled, u.dimensionless_unscaled]
     fixed_param_dict = dict(zip(keys, values))
 
     for i, (key, value) in enumerate(fixed_param_dict.items()):
@@ -555,8 +582,7 @@ def make_fixed_params(field_of_view: int, image_size: int,
             fixed_param_dict[key] = fixed_param_dict["image_size"]
         if not isinstance(value, u.Quantity):
             if key == "image_size":
-                fixed_param_dict[key] = u.Quantity(value,
-                                                   unit=u.dimensionless_unscaled,
+                fixed_param_dict[key] = u.Quantity(value, unit=u.dimensionless_unscaled,
                                                    dtype=int)
             elif key == "lum_star":
                 fixed_param_dict[key] *= c.L_sun
@@ -571,8 +597,8 @@ def make_fixed_params(field_of_view: int, image_size: int,
 
 
 # TODO: Add docs and tests
-def make_ring_component(name: str, priors: List[List[Quantity]] = None,
-                        mod_priors: List[Quantity] = None,
+def make_ring_component(name: str, priors: List[List[float]] = None,
+                        mod_priors: List[float] = None,
                         mod_params: List[Quantity] = None,
                         params: List[Quantity] = None) -> IterNamespace:
     """The specific makeup of the ring-component"""
@@ -644,16 +670,10 @@ def check_and_convert(params: Union[List[Quantity], IterNamespace],
         return _make_params(params, attributes)
 
 
-# TODO: Move this to plotting utils at some point
-def plot(image: Quantity) -> None:
-    """Plots and image"""
-    plt.imshow(image.value)
-    plt.show()
-
-
 if __name__ == "__main__":
     fixed_params = make_fixed_params(50, 128, 1500,
-                                     7900*u.K, 140*u.pc, 19*c.L_sun)
+                                     7900*u.K, 140*u.pc, 19*c.L_sun, 1)
     print([value for value in fixed_params])
     print(fixed_params.fov.value)
+    print(fixed_params[-1])
 

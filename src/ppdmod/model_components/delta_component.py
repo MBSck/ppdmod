@@ -1,9 +1,10 @@
-import numpy as np
 import astropy.units as u
+import astropy.constants as c
 
 from astropy.units import Quantity
 
 from ..functionality.model import Model
+from ..functionality.plotting_utils import plot
 from ..functionality.utils import stellar_flux
 
 # TODO: Write tests for this as well
@@ -24,9 +25,10 @@ class DeltaComponent(Model):
         self.name = "Delta"
 
     def eval_flux(self, wavelength: Quantity) -> Quantity:
-        return self.eval_model()\
-            .value*stellar_flux(wavelength, self.luminosity_star,
-                                self.effective_temperature, self.distance)
+        return self.eval_model().value*stellar_flux(wavelength,
+                                                    self.effective_temperature,
+                                                    self.distance,
+                                                    self.luminosity_star)
 
     def eval_model(self) -> Quantity:
         """Evaluates the model
@@ -72,6 +74,8 @@ class DeltaComponent(Model):
         # return flux*np.ones((sampling, sampling))
 
 if __name__ == "__main__":
-    delta = DeltaComponent(50, 128, 1500, 7900, 140, 19)
-    delta.plot(delta.eval_flux(8*u.um))
+    image_size = u.Quantity(128, unit=u.dimensionless_unscaled, dtype=int)
+    delta = DeltaComponent(50*u.mas, image_size, 1500*u.K,
+                           7900*u.K, 140*u.pc, 19*c.L_sun, image_size)
+    plot(delta.eval_flux(8*u.um))
 

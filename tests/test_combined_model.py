@@ -20,3 +20,4 @@ def test_init_combined_model():
     combined_model = CombinedModel()
     assert combined_model
 
+# TODO: Write tests that compares the output of the FFT to the total flux of the image

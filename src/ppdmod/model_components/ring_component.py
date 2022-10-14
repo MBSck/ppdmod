@@ -1,5 +1,6 @@
 import inspect
 import astropy.units as u
+import astropy.constants as c
 
 # from scipy.special import j0
 from astropy.units import Quantity
@@ -7,6 +8,7 @@ from typing import List, Union
 
 from ..functionality.model import Model
 from ..functionality.utils import IterNamespace, check_and_convert
+from ..functionality.plotting_utils import plot
 
 # TODO: Make function that automatically greps the docstrings of functions that need to be
 # implemented
@@ -59,13 +61,11 @@ class RingComponent(Model):
 
         if params.inner_radius != 0:
             image[image < params.inner_radius] = 0.*u.mas
-            self.non_zero_params_count *= 1
-        else:
-            image[image < self.sublimation_radius] = 0.*u.mas
+            self.non_zero_params_count += 1
 
         if params.outer_radius != 0.:
             image[image > params.outer_radius] = 0.*u.mas
-            self.non_zero_params_count *= 1
+            self.non_zero_params_count += 1
         return image
 
     # def eval_vis(self, theta: List, sampling: int,
@@ -111,7 +111,10 @@ class RingComponent(Model):
         # return j0(2*np.pi*r_max*B)
 
 if __name__ == "__main__":
-    ring = RingComponent(50, 128, 1500, 7900, 140, 19)
-    params = [0.5*u.dimensionless_unscaled, 145*u.deg, 0*u.mas, 0*u.mas]
-    ring.plot(ring.eval_model(params))
+    params_model = [50*u.mas, u.Quantity(128, unit=u.dimensionless_unscaled, dtype=int),
+                    1500*u.K, 7900*u.K, 140*u.pc, 19*c.L_sun, 1*u.dimensionless_unscaled,
+                    u.Quantity(128, unit=u.dimensionless_unscaled, dtype=int)]
+    ring = RingComponent(*params_model)
+    params = [0.5*u.dimensionless_unscaled, 145*u.deg, 1*u.mas, 0*u.mas]
+    plot(ring.eval_model(params))
 

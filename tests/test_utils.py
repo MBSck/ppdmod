@@ -232,6 +232,14 @@ def mock_wrong_labels():
     return "flux1", "pa"
 
 @pytest.fixture
+def mock_fixed_params():
+    return [50, 128, 1500, 7900, 140, 19, 1]
+
+@pytest.fixture
+def mock_disc_priors():
+    return [[0., 1.], [0., 1.]]
+
+@pytest.fixture
 def attributes():
     return "axis_ratio", "pa"
 
@@ -338,23 +346,50 @@ def test_check_and_convert(mock_priors, mock_prior_units,
     with pytest.raises(IOError):
         check_and_convert(params, mock_wrong_labels, mock_prior_units)
 
+# TODO: Implementation test
+def test_make_disc_params(mock_disc_priors):
+    units = [u.dimensionless_unscaled, u.dimensionless_unscaled]
+    disc_params = make_disc_params(*mock_disc_priors)
+    assert all(param.unit == units[i] for i, param in enumerate(disc_params.params))
+    assert len(disc_params) == len(units)
 
-# NOTE: Implementation of other functions
-def test_make_disc_params():
-    ...
+# TODO: Implementation test
+def test_make_fixed_params(mock_fixed_params):
+    units = [u.mas, u.dimensionless_unscaled, u.K,
+             u.K, u.pc, u.W, u.dimensionless_unscaled, u.dimensionless_unscaled]
+    wrong_fov = [50*u.m, 128, 1500, 7900, 140, 19, 1]
+    wrong_image_size = [50, 128*u.K, 1500, 7900, 140, 19, 1]
+    wrong_temp = [50, 128, 1500*u.mas, 7900, 140, 19, 1]
+    wrong_eff_temp = [50, 128, 1500, 7900*u.mas, 140, 19, 1]
+    wrong_distance = [50, 128, 1500, 7900, 140*u.m, 19, 1]
+    wrong_lum = [50, 128, 1500, 7900, 140, 19*u.K, 1]
+    wrong_tau = [50, 128, 1500, 7900, 140, 19, 1*u.mas]
+    wrong_pixel_samp = [50, 128, 1500, 7900, 140, 19, 1, 128*u.Jy]
+    fixed_params = make_fixed_params(*mock_fixed_params)
+    assert all(param.unit == units[i] for i, param in enumerate(fixed_params))
+    assert len(fixed_params) == len(units)
+    with pytest.raises(IOError):
+        make_fixed_params(*wrong_fov)
+    with pytest.raises(IOError):
+        make_fixed_params(*wrong_image_size)
+    with pytest.raises(IOError):
+        make_fixed_params(*wrong_temp)
+    with pytest.raises(IOError):
+        make_fixed_params(*wrong_eff_temp)
+    with pytest.raises(IOError):
+        make_fixed_params(*wrong_distance)
+    with pytest.raises(IOError):
+        make_fixed_params(*wrong_lum)
+    with pytest.raises(IOError):
+        make_fixed_params(*wrong_tau)
+    with pytest.raises(IOError):
+        make_fixed_params(*wrong_pixel_samp)
 
-
-# NOTE: Implementation of other functions
-def test_make_fixed_params():
-    ...
-
-
-# NOTE: Implementation of other functions
+# TODO: Implementation test
 def test_make_ring_component():
     ...
 
-
-# NOTE: Implementation of other functions
+# TODO: Implementation test
 def test_make_delta_component():
     ...
 
