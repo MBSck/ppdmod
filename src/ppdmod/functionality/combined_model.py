@@ -8,7 +8,6 @@ from .utils import IterNamespace, make_fixed_params, make_delta_component,\
     make_ring_component, _make_priors, _make_params_from_priors, make_disc_params,\
     _calculate_sublimation_temperature, temperature_gradient, optical_depth_gradient,\
     flux_per_pixel
-from .fourier import FastFourierTransform
 from .plotting_utils import plot
 from ..model_components import DeltaComponent, GaussComponent,\
     RingComponent, UniformDiskComponent
@@ -23,21 +22,16 @@ class CombinedModel:
     # TODO: Implement model combine with names of IterNamespace
     def __init__(self, fixed_params: IterNamespace,
                  disc_params: IterNamespace,
-                 wavelength: List[Quantity],
+                 wavelengths: List[Quantity],
                  global_geometric_priors: List[List[float]] = None,
-                 global_modulation_priors: List[List[float]] = None,
-                 zero_padding_order: Optional[int] = 1) -> None:
+                 global_modulation_priors: List[List[float]] = None) -> None:
         """"""
         self._model_init_params = fixed_params[:-1]
         self.tau = fixed_params[-1]
-        self._wl = wavelength
+        self._wavelengths = wavelengths
         self._disc_params = disc_params
-        self._geometric_priors = global_geometric_priors
-        self._mod_priors = global_modulation_priors
-        self.zp_order = zero_padding_order
-
-        self._mod_params = self._set_mod_params()
-        self._geometric_params = self._set_geometric_params()
+        self.geometric_priors = global_geometric_priors
+        self.mod_priors = global_modulation_priors
 
         self._components_dic = {"ring": RingComponent, "delta": DeltaComponent,
                                 "gauss": GaussComponent,
@@ -60,11 +54,6 @@ class CombinedModel:
             raise ValueError("Add components before accessing the class's functions!")
 
     @property
-    def fourier(self):
-        return FastFourierTransform(self.eval_flux(self._wl), self._wl,
-                                    self.pixel_scaling, self.zp_order)
-
-    @property
     def pixel_scaling(self):
         if self._model_init_params.pixel_sampling is None:
             return self._model_init_params.fov/self._model_init_params.image_size
@@ -79,48 +68,6 @@ class CombinedModel:
                                                       self._model_init_params.lum_star)
         else:
             return self._model_init_params.sub_temp
-
-    def _set_geometric_priors(self):
-        """Sets the geometric priors"""
-        if self._geometric_priors is not None:
-            units = [u.dimensionless_unscaled, u.deg]
-            labels = ["axis_ratio", "pa"]
-            return _make_priors(self._geometric_priors, units, labels)
-        else:
-            return False
-
-    def _set_geometric_params(self):
-        """Gets the geometric params from the priors"""
-        labels = ["axis_ratio", "pa"]
-        self._geometric_priors = self._set_geometric_priors()
-        return _make_params_from_priors(self._geometric_priors, labels)\
-            if self._geometric_priors else False
-
-    def _set_mod_priors(self):
-        """Sets the modulation priors"""
-        if self._mod_priors is not None:
-            units = [u.deg, u.dimensionless_unscaled]
-            labels = ["mod_angle", "mod_amp"]
-            return _make_priors(self._mod_priors, units, labels)
-        else:
-            return False
-
-    def _set_mod_params(self):
-        """Gets the modulation params from the priors"""
-        labels = ["mod_angle", "mod_amp"]
-        self._mod_priors = self._set_mod_priors()
-        return _make_params_from_priors(self._mod_priors, labels)\
-            if self._mod_priors else False
-
-    # TODO: Write function that checks if the geometric params are input, if yes only do
-    # one prior to the prior list
-    # TODO: Complete all these funcitons
-    def _refactor_priors_for_emcee(self):
-        ...
-
-    # TODO: Complete all these funcitons
-    def _refactor_params_for_emcee(self):
-        ...
 
     def add_component(self, value: IterNamespace) -> None:
         """Adds components to the model"""
@@ -192,31 +139,16 @@ class CombinedModel:
         distribution to the complete brightness [astropy.units.Jy]"""
         return np.sum(self.eval_flux(wavelength))
 
-    def get_interpolated_amp_and_phase(self, uv_coords: Quantity,
-                                       uv_coords_cphase: Quantity) -> List[Quantity]:
-        return self.fourier.get_uv2fft2(uv_coords, uv_coords_cphase)
-
     # TODO: Add functionality here
     def plot(self, image: Quantity) -> None:
         plot(image)
-
-    def get_amp_phase(self) -> None:
-        return self.fourier.get_amp_phase()
-
-    def plot_amp_and_phase(self, matplot_axis: Optional[List] = [],
-                           zoom: Optional[int] = 500,
-                           uv_coords: Optional[List] = None,
-                           uv_coords_cphase: Optional[List] = None,
-                           plt_save: Optional[bool] = False) -> None:
-        self.fourier.plot_amp_phase(matplot_axis, zoom, uv_coords,
-                                    uv_coords_cphase, plt_save)
 
 
 if __name__ == "__main__":
     # TODO: Make ring component maker
     fixed_params = make_fixed_params(30, 128, 1500, 7900, 140, 19, 1)
     disc_params = make_disc_params([[0., 1.], [0., 1.]])
-    wavelength = 8*u.um
+    wavelengths = [8*u.um]
     complete_ring = make_ring_component("inner_ring",
                                         [[0., 0.], [0, 0], [3., 5.], [0., 0.]])
     # inner_ring_component = make_ring_component("inner_ring",
@@ -228,12 +160,10 @@ if __name__ == "__main__":
     global_geometric_priors = [[0., 1.], [0, 180]]
     global_modulation_priors = [[0., 1.], [0, 360]]
     model = CombinedModel(fixed_params, disc_params,
-                          wavelength, global_geometric_priors,
+                          wavelengths, global_geometric_priors,
                           global_modulation_priors, zero_padding_order=2)
     model.add_component(complete_ring)
     # model.add_component(inner_ring_component)
     # model.add_component(outer_ring_component)
     model.add_component(delta_component)
-    print(model.fourier.dim, model.fourier.freq_axis)
-    print(model.eval_total_flux(wavelength))
-    model.plot_amp_and_phase(zoom=1000)
+    model.fouriers_for_wl[0].get_uv2fft2()

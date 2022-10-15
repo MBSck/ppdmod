@@ -435,13 +435,16 @@ def _set_params_from_priors(priors: IterNamespace) -> List[Quantity]:
     return params
 
 
-def _make_params(params: List[Quantity], labels: List[str]) -> SimpleNamespace:
+def _make_params(params: List[float], units: List[Quantity],
+                 labels: List[str]) -> SimpleNamespace:
     """Creates an IterNamespace for the params
 
     Parameters
     ----------
-    params: List[astropy.units.Quantity]
+    params: List[float]
         The parameters's values
+    units: List[astropy.units.Quantity]
+        The parameter's units
     labels: List[str]
         The parameter's names
 
@@ -450,9 +453,7 @@ def _make_params(params: List[Quantity], labels: List[str]) -> SimpleNamespace:
     IterNamespace
         An IterNamespace made up from the names and values of the params
     """
-    if not all([isinstance(param, u.Quantity) for param in params]):
-        raise IOError("All params have to be a [astropy.units.Quantity]!")
-
+    params = [param*units[i] for i, param in enumerate(params)]
     return IterNamespace(**dict(zip(labels, params)))
 
 
@@ -505,7 +506,7 @@ def _make_component(name: str, component_name: str,
     if (params is None) and (priors is not None):
         params = _make_params_from_priors(priors, labels)
     if params is not None:
-        params = _make_params(params, labels)
+        params = _make_params(params, units, labels)
 
     mod_labels = ["mod_amp", "mod_angle"]
     mod_units = [u.dimensionless_unscaled, u.deg]
@@ -515,7 +516,7 @@ def _make_component(name: str, component_name: str,
     if (mod_params is None) and (mod_priors is not None):
         mod_params = _make_params_from_priors(mod_priors, mod_labels)
     if mod_params is not None:
-        mod_params = _make_params(mod_params, mod_labels)
+        mod_params = _make_params(mod_params, mod_units, mod_labels)
 
     keys = ["name", "component", "params",
             "priors", "mod_params", "mod_priors"]
@@ -545,7 +546,7 @@ def make_disc_params(priors: List, params: Optional[List] = None) -> IterNamespa
     if params is None:
         params = _make_params_from_priors(priors, labels)
     else:
-        params = _make_params(params, labels)
+        params = _make_params(params, units, labels)
     keys, values = ["params", "priors"], [params, priors]
     return IterNamespace(**dict(zip(keys, values)))
 
@@ -667,7 +668,7 @@ def check_and_convert(params: Union[List[Quantity], IterNamespace],
         if _check_attributes(params, attributes, units):
             return params
     else:
-        return _make_params(params, attributes)
+        return _make_params(params, units, attributes)
 
 
 if __name__ == "__main__":

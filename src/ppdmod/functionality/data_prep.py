@@ -1,12 +1,12 @@
-import os
 import numpy as np
 import astropy.units as u
 
 from pathlib import Path
 from astropy.units import Quantity
-from typing import Tuple, Dict, List, Optional, Union, Callable
+from typing import List, Optional, Callable
 
 from .readout import ReadoutFits
+from .utils import IterNamespace, make_delta_component, make_ring_component
 
 # TODO: For this class implement different methods of polychromatic fitting. At a later
 # time
@@ -17,13 +17,13 @@ class DataHandler:
     """This class handles all the data that is used for the fitting process, the observed
     data as well as the data created by the modelling process"""
     def __init__(self, fits_files: List[Path],
-                 selected_wavelengths: List[float],
+                 wavelengths: List[float],
                  wavelength_window_sizes: Optional[List[float]] = [0.2],
                  flux_file: Optional[Path] = None) -> None:
         """Initialises the class"""
         self.fits_files, self.flux_file = fits_files, flux_file
-        self.selected_wavelengths = selected_wavelengths
-        self.wavelength_window_sizes = wavelength_window_sizes
+        self._wavelengths = wavelengths
+        self._wavelength_window_sizes = wavelength_window_sizes
         self.readout_files = [ReadoutFits(fits_file, self.flux_file)\
                               for fits_file in self.fits_files]
         self.getter_function_dictionary = {"vis": "get_visibilities4wavelength",
@@ -32,24 +32,138 @@ class DataHandler:
                                            "flux": "get_flux4wavelength"}
         # NOTE: This only works if the wl_solution stays the same for all files
         self.wl_ind = self.readout_files[0].\
-            get_wavelength_indices(self.selected_wavelengths, self.wavelength_window_sizes)
+            get_wavelength_indices(self._wavelengths, self._wavelength_window_sizes)
+
+        self.model_components = []
+        self._geometric_priors, self._modulation_priors = None, None
+        self._geometric_params, self._modulation_params = None, None
+        self._priors, self._labels = [], []
 
     def __repr__(self):
         """The DataHandler class' representation"""
         return f"DataHandler contains the information of the ReadoutFits:"\
             f"\n{', '.join([str(i) for i in self.readout_files])}\n and polychromatic"\
-            f"data of {self.selected_wavelengths} with the windows "\
+            f"data of {self.wavelengths} with the windows "\
             f"{self.wavelength_window_sizes}"
 
     def __str__(self):
         """The DataHandler class' string representation"""
         return f"DataHandler contains the information of the ReadoutFits:"\
             f"\n{', '.join([str(i) for i in self.readout_files])}\n and polychromatic"\
-            f"data of {self.selected_wavelengths} with the windows "\
+            f"data of {self.wavelengths} with the windows "\
             f"{self.wavelength_window_sizes}"
 
+    @property
+    def wavelengths(self):
+        if not isinstance(self._wavelengths, u.Quantity):
+            return self._wavelengths*u.um
+        elif self._wavelengths.unit != u.um:
+            raise ValueError
+        else:
+            return self._wavelength_window_sizes
+
+    @property
+    def wavelength_window_sizes(self):
+        if not isinstance(self._wavelength_window_sizes, u.Quantity):
+            return self._wavelength_window_sizes*u.um
+        elif self._wavelength_window_sizes.unit != u.um:
+            raise ValueError
+        else:
+            return self._wavelength_window_sizes
+
+    @property
+    def geometric_priors(self):
+        """Gets the geometric priors"""
+        return self._geometric_priors
+
+    @geometric_priors.setter
+    def geometric_priors(self, value):
+        units = [u.dimensionless_unscaled, u.deg]
+        labels = ["axis_ratio", "pa"]
+        self._geometric_priors = _make_priors(value, units, labels)
+
+    @property
+    def geometric_params(self):
+        return self._geometric_params
+
+    @geometric_params.setter
+    def geometric_params(self, value: List[float]):
+        units = [u.dimensionless_unscaled, u.deg]
+        labels = ["axis_ratio", "pa"]
+        self._geometric_params = _make_params(value, units, labels)
+
+    @property
+    def modulation_priors(self):
+        return self._modulation_priors
+
+    @modulation_priors.setter
+    def modulation_priors(self, value):
+        units = [u.deg, u.dimensionless_unscaled]
+        labels = ["mod_angle", "mod_amp"]
+        self.modulation_priors = _make_priors(value, units, labels)
+
+    @property
+    def modulation_params(self):
+        return self._modulation_params
+
+    @modulation_params.setter
+    def modulation_params(self, value):
+        units = [u.deg, u.dimensionless_unscaled]
+        labels = ["mod_angle", "mod_amp"]
+        self._modulation_params = _make_params(value, units, labels)
+
+    # TODO: Implement this for more components at a later time
+    # TODO: Implement this for different orientations and modulations
+    def _reformat_components_to_priors(self):
+        """Formats priors from the model components """
+        self._priors, self._labels = [], []
+        if self.model_components:
+            if self.geometric_priors is not None:
+                self._priors.extend(self.geometric_priors.value)
+                self._labels.extend(["axis_ratio", "pa"])
+
+            if self.modulation_priors is not None:
+                self._priors.extend(self.modulation_priors.value)
+                self._labels.extend(["mod_amp", "mod_angle"])
+
+            if self.disc_params is not None:
+                self._priors.extend(self.disc_params.value)
+                self._labels.extend(["q", "p"])
+
+            # TODO: Add all possibilities here with the geometric params
+            for component in self.model_components:
+                if component.component == "ring":
+                    if self.geometric_priors is not None:
+                        if not component.priors.inner_radius.all():
+                            self._priors.append(component.priors.inner_radius.value)
+                            self._labels.append(f"{component.name}:ring:inner_radius")
+                        if not component.priors.outer_radius.all():
+                            self._priors.append(component.priors.outer_radius.value)
+                            self._labels.append(f"{component.name}:ring:outer_radius")
+        else:
+            raise ValueError("No model components have been added yet!")
+
+    def _reformat_theta_to_components(self, theta: List[float]):
+        theta_dict = dict(zip(self._labels, theta))
+        model_components = []
+        if self.geometric_priors is not None:
+            self.geometric_params = [theta_dict["axis_ratio"], theta_dict["pa"]]
+        if self.modulation_priors is not None:
+            self.modulation_params = [theta_dict["mod_angle"], theta_dict["mod_amp"]]
+        for component in self.model_components:
+            if component.component == "delta":
+                model_components.append(make_delta_component("star"))
+
+        # FIXME: Think of a way to implement this
+        components_dic = {}
+        for key, value in theta_dict.items():
+            name, component_name, param_name = key.split(":")
+            components_dic[f"{name}:{component_name}"] = {param_name: value}
+
+        raise ValueError("No model components have been added yet!")
+
     def _get_data_type_function(self, readout_file: Callable,
-                               data_keyword: str) -> Callable:
+                                data_keyword: str) -> Callable:
         """This gets a method, to get a certain datatype, to be called from the
         ReadoutFits class via a keyword provided
 
@@ -148,53 +262,13 @@ class DataHandler:
         """
         return self._merge_data(data_type_keyword)[1]**2
 
-    # def do_model(parameters: np.ndarray, model_param_lst: List,
-                            # uv_info_lst: List, vis_lst: List) -> np.ndarray:
-        # """The model image, that is Fourier transformed for the fitting process
-
-        # Parameters
-        # ----------
-        # theta: np.ndarray
-        # model_param_lst: List
-        # uv_info_lst: List
-        # vis_lst: List
-
-        # Returns
-        # -------
-        # amp: np.ndarray
-            # Amplitudes of the model interpolated for the (u, v)-coordinates
-        # cphases: np.ndarray
-            # Closure phases of the model interpolated for the (u, v)-coordinates
-        # """
-        # # TODO: Work this into the class
-        # model, pixel_size, sampling, wavelength,\
-                # zero_padding_order, bb_params, _ = model_param_lst
-        # uvcoords, u, v, t3phi_uvcoords = uv_info_lst
-        # vis, vis2, intp = vis_lst
-
-        # amp_lst, cphase_lst = [], []
-
-        # for i in wavelength:
-            # model_base = model(*bb_params, i)
-            # model_flux = model_base.eval_model(theta, pixel_size, sampling)
-            # fft = FFT(model_flux, i, model_base.pixel_scale,
-                     # zero_padding_order)
-            # amp, cphase, xycoords = fft.get_uv2fft2(uvcoords, t3phi_uvcoords,
-                                                   # corr_flux=vis, vis2=vis2,
-                                                   # intp=intp)
-            # if len(amp) > 6:
-                # flux_ind = np.where([i % 6 == 0 for i, o in
-                                     # enumerate(amp)])[0].tolist()
-                # amp = np.insert(amp, flux_ind, np.sum(model_flux))
-            # else:
-                # amp = np.insert(amp, 0, np.sum(model_flux))
-
-            # amp_lst.append(amp)
-            # cphase_lst.append(cphase)
-
-        # return np.array(amp_lst), np.array(cphase_lst)
+    def add_model_component(self, model_component: IterNamespace):
+        self.model_components.append(model_component)
 
 
 if __name__ == "__main__":
-    ...
+    fits_files = ["../../../assets/data/Test_model.fits"]*2
+    wavelengths = [8.5, 10.0]
+    data = DataHandler(fits_files, wavelengths)
+    print(data._merge_data("vis"))
 
