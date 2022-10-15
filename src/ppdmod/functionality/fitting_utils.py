@@ -13,7 +13,7 @@ from .plotting_utils import plot_txt, plot_amp_phase_comparison,\
         plot_amp_phase_comparison
 
 def calculate_model(theta: np.ndarray, data: DataHandler):
-    data._reformat_theta_to_components(theta)
+    # data._reformat_theta_to_components(theta)
     model = CombinedModel(data.fixed_params, data.disc_params,
                           data.wavelengths, data.geometric_priors,
                           data.modulation_priors)

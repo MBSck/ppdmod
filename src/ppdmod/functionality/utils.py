@@ -409,7 +409,7 @@ def _set_units_for_priors(priors: List, units: List[Quantity]) -> List[Quantity]
     """
     return [u.Quantity(prior, unit=units[i]) for i, prior in enumerate(priors)]
 
-def _set_params_from_priors(priors: IterNamespace) -> List[Quantity]:
+def _set_params_from_priors(priors: List[float]) -> List[float]:
     """Initialises a random float/list via a uniform distribution from the
     bounds provided
 
@@ -427,11 +427,11 @@ def _set_params_from_priors(priors: IterNamespace) -> List[Quantity]:
     """
     params = []
     for prior in priors:
-        quarter_prior_distance = np.diff(prior.value)/4
-        lower_bound, upper_bounds = prior.value[0]+quarter_prior_distance,\
-            prior.value[1]-quarter_prior_distance
+        quarter_prior_distance = np.diff(prior)/4
+        lower_bound, upper_bounds = prior[0]+quarter_prior_distance,\
+            prior[1]-quarter_prior_distance
         param = np.random.uniform(lower_bound, upper_bounds)[0]
-        params.append(param*prior.unit)
+        params.append(param)
     return params
 
 
@@ -453,7 +453,8 @@ def _make_params(params: List[float], units: List[Quantity],
     IterNamespace
         An IterNamespace made up from the names and values of the params
     """
-    params = [param*units[i] for i, param in enumerate(params)]
+    if not all(isinstance(param, u.Quantity) for param in params):
+        params = [param*units[i] for i, param in enumerate(params)]
     return IterNamespace(**dict(zip(labels, params)))
 
 
@@ -461,12 +462,13 @@ def _make_params(params: List[float], units: List[Quantity],
 def _make_priors(priors: List[List[float]], units: List[Quantity],
                 labels: List[str]) -> IterNamespace:
     """Makes the priors"""
-    return _make_params(_set_units_for_priors(priors, units), labels)
+    return _make_params(_set_units_for_priors(priors, units), units, labels)
 
 
-def _make_params_from_priors(priors: IterNamespace, labels: List[str]) -> IterNamespace:
+def _make_params_from_priors(priors: IterNamespace,
+                             units: List[Quantity], labels: List[str]) -> IterNamespace:
     """Makes params from priors"""
-    return _make_params(_set_params_from_priors(priors), labels)
+    return _make_params(_set_params_from_priors(priors), units, labels)
 
 
 # TODO: Implement tests for new functionality
@@ -504,7 +506,7 @@ def _make_component(name: str, component_name: str,
     if priors is not None:
         priors = _make_priors(priors, units, labels)
     if (params is None) and (priors is not None):
-        params = _make_params_from_priors(priors, labels)
+        params = _make_params_from_priors(priors, units, labels)
     if params is not None:
         params = _make_params(params, units, labels)
 
@@ -514,8 +516,8 @@ def _make_component(name: str, component_name: str,
     if mod_priors is not None:
         mod_priors = _make_priors(mod_priors, mod_units, mod_labels)
     if (mod_params is None) and (mod_priors is not None):
-        mod_params = _make_params_from_priors(mod_priors, mod_labels)
-    if mod_params is not None:
+        mod_params = _make_params_from_priors(mod_priors, mod_units, mod_labels)
+    elif mod_params is not None:
         mod_params = _make_params(mod_params, mod_units, mod_labels)
 
     keys = ["name", "component", "params",
@@ -544,7 +546,7 @@ def make_disc_params(priors: List, params: Optional[List] = None) -> IterNamespa
                               f" Needs to be in {units[i]} or unitless!")
 
     if params is None:
-        params = _make_params_from_priors(priors, labels)
+        params = _make_params_from_priors(priors, units, labels)
     else:
         params = _make_params(params, units, labels)
     keys, values = ["params", "priors"], [params, priors]
@@ -637,7 +639,7 @@ def _check_attributes(params: IterNamespace,
         param_name, param = parameter
         if param_name in attributes:
             if not param.unit == units[i]:
-                raise IOError(f"Wrong unit for parameter '{param}' has been input!")
+                raise IOError(f"Wrong unit for parameter '{param_name}' has been input!")
         else:
             raise IOError(f"Check inputs! {param_name} is missing!\n"\
                           f"Required inputs: {attributes}")

@@ -196,6 +196,7 @@ class ReadoutFits:
         return u.Quantity([np.mean(data_slice, axis=0)\
                            for data_slice in polychromatic_data])
 
+    # TODO: Write test for this
     def get_telescope_information(self) -> Union[np.ndarray, Quantity]:
         """Fetches the telescop's array names and stations from the (.fits)-files and
         gives the proper units to the quantities
@@ -225,6 +226,7 @@ class ReadoutFits:
         return station_names, station_indices,\
             station_indices4baselines, station_indices4triangles
 
+    # TODO: Write test for this
     def get_split_uvcoords(self) -> Tuple[Quantity]:
         """Fetches the u, v coordinates from the (.fits)-files and gives the
         quantities the proper units
@@ -236,10 +238,11 @@ class ReadoutFits:
         vcoords: astropy.untis.Quantity
             The v-coordinates [astropy.units.meter]
         """
-        ucoords = np.array(self.get_data("oi_vis", "ucoord"))*u.m
-        vcoords = np.array(self.get_data("oi_vis", "vcoord"))*u.m
-        return ucoords, vcoords
+        ucoords = self.get_data("oi_vis", "ucoord")*u.m
+        vcoords = self.get_data("oi_vis", "vcoord")*u.m
+        return ucoords.squeeze(), vcoords.squeeze()
 
+    # TODO: Write test for this
     def get_uvcoords(self) -> Quantity:
         """Fetches the u, v coordinates from the (.fits)-files, merges them and gives the
         quantities the proper units
@@ -249,8 +252,9 @@ class ReadoutFits:
         uvcoords: astropy.units.Quantity
             The (u, v)-coordinates [astropy.units.m]
         """
-        return np.array([uvcoords for uvcoords in zip(self.get_split_uvcoords())])
+        return np.stack((self.get_split_uvcoords()), axis=1)
 
+    # TODO: Write test for this
     def get_closures_phase_uvcoords(self) -> Tuple[Quantity]:
         """Fetches the (u1, v1), (u2, v2) coordinate of the closure phase triangles from
         the (.fits)-file, calculates the third (u3, v3) coordinate pair and then gives the
@@ -268,8 +272,9 @@ class ReadoutFits:
         u1, v1 = self.get_data("oi_t3", "u1coord", "v1coord")*u.m
         u2, v2 = self.get_data("oi_t3", "u2coord", "v2coord")*u.m
         u3, v3 = -(u1+u2), -(v1+v2)
-        return (u1, u2, u3), (v1, v2, v3)
+        return u.Quantity([u1, u2, u3]), u.Quantity([v1, v2, v3])
 
+    # TODO: Write test for this
     def get_baselines(self) -> Quantity:
         """Calculates the baselines from the uv coordinates
 
@@ -279,6 +284,10 @@ class ReadoutFits:
             The baselines [astropy.units.meter]
         """
         ucoords, vcoords = self.get_split_uvcoords()
+        return np.sqrt(ucoords**2+vcoords**2)
+
+    def get_closure_phases_baselines(self) -> Quantity:
+        ucoords, vcoords = self.get_closures_phase_uvcoords()
         return np.sqrt(ucoords**2+vcoords**2)
 
     def get_visibilities(self) -> Quantity:
@@ -451,5 +460,5 @@ class ReadoutFits:
 
 
 if __name__ == "__main__":
-    ...
+    readout = ReadoutFits("../../../data/tests/test.fits")
 

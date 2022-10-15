@@ -29,7 +29,12 @@ class DataHandler:
         self.getter_function_dictionary = {"vis": "get_visibilities4wavelength",
                                            "vis2": "get_visibilities_squared4wavelength",
                                            "cphases": "get_closure_phases4wavelength",
-                                           "flux": "get_flux4wavelength"}
+                                           "flux": "get_flux4wavelength",
+                                           "uvcoords": "get_uvcoords",
+                                           "uvcoords_cphase": "get_closures_phase_uvcoords",
+                                           "telescope": "get_telescope_information",
+                                           "baselines": "get_baselines",
+                                           "baselines_cphase": "get_closure_phases_baselines"}
         # NOTE: This only works if the wl_solution stays the same for all files
         self.wl_ind = self.readout_files[0].\
             get_wavelength_indices(self._wavelengths, self._wavelength_window_sizes)
@@ -38,6 +43,13 @@ class DataHandler:
         self._geometric_priors, self._modulation_priors = None, None
         self._geometric_params, self._modulation_params = None, None
         self._priors, self._labels = [], []
+
+        self.corr_fluxes = self._merge_data("vis")[0]
+        self.corr_fluxes_sigma_squared = self._get_sigma_square("vis")
+        self.cphases = self._merge_data("cphases")[0]
+        self.cphases_sigma_squared = self._get_sigma_square("cphases")
+        self.total_flux = self._merge_data("flux")
+        self.total_flux_sigma_squared = self._get_sigma_square("flux")
 
     def __repr__(self):
         """The DataHandler class' representation"""
@@ -172,8 +184,9 @@ class DataHandler:
         readout_file: Callable
             The class that is to be checked for the method
         data_type_keyword: str
-            A keyword from "vis", "vis2", "cphases" or "flux" that is used to get the
-            correct function
+            A keyword from "vis", "vis2", "cphases" or "flux", "uvcoords",
+            "uvcoords_cphase", "telescope", "baselines" or "baselines_cphase"
+            that is used to get the specified function
 
         Returns
         -------
@@ -210,7 +223,6 @@ class DataHandler:
 
         return merged_data
 
-    # TODO: Check if this works for the uv-coords as well, if not make another merge_func
     def _merge_data(self, data_type_keyword: str) -> Quantity:
         """Fetches the data from the individual ReadoutFits classes for the selected
         wavelengths and then merges them into new longer arrays for the determined
@@ -230,6 +242,9 @@ class DataHandler:
             The merged datasets, extended by their own length times the amount of
             (.fits)-files passed to the DataHandler class
         """
+        if data_type_keyword in ["uvcoords", "uvcoords_cphase",
+                                 "telescope", "baselines", "baselines_cphase"]:
+            raise IOError("Use the '_merge_simple_data' function for these datatypes")
         for i, readout_file in enumerate(self.readout_files):
             getter_func = self._get_data_type_function(readout_file, data_type_keyword)
             data = getter_func(self.wl_ind)
@@ -262,13 +277,24 @@ class DataHandler:
         """
         return self._merge_data(data_type_keyword)[1]**2
 
+    def _merge_simple_data(self, data_type_keyword):
+        """Merges simple data, like the 'uvcoords', 'uvcoords_cphase', 'telescope',
+        'baselines' or 'baselines_cphase' data"""
+        merged_data = []
+        if data_type_keyword in ["vis", "vis2", "cphases", "flux"]:
+            raise IOError("Use the '_merge_data' function for these datatypes")
+        for readout_file in self.readout_files:
+            getter_func = self._get_data_type_function(readout_file, data_type_keyword)
+            merged_data.append(getter_func())
+        return merged_data
+
     def add_model_component(self, model_component: IterNamespace):
         self.model_components.append(model_component)
 
 
 if __name__ == "__main__":
-    fits_files = ["../../../assets/data/Test_model.fits"]*2
+    fits_files = ["../../../data/tests/test.fits"]*2
     wavelengths = [8.5, 10.0]
     data = DataHandler(fits_files, wavelengths)
-    print(data._merge_data("vis"))
+    print(data._merge_simple_data("uvcoords"))
 

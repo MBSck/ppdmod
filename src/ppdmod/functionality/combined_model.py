@@ -1,11 +1,11 @@
 import numpy as np
 import astropy.units as u
 
+from typing import List
 from astropy.units import Quantity
-from typing import List, Optional
 
 from .utils import IterNamespace, make_fixed_params, make_delta_component,\
-    make_ring_component, _make_priors, _make_params_from_priors, make_disc_params,\
+    make_ring_component, _make_params, make_disc_params,\
     _calculate_sublimation_temperature, temperature_gradient, optical_depth_gradient,\
     flux_per_pixel
 from .plotting_utils import plot
@@ -20,18 +20,16 @@ from ..model_components import DeltaComponent, GaussComponent,\
 class CombinedModel:
     # TODO: Think of how to combine the models
     # TODO: Implement model combine with names of IterNamespace
-    def __init__(self, fixed_params: IterNamespace,
-                 disc_params: IterNamespace,
-                 wavelengths: List[Quantity],
-                 global_geometric_priors: List[List[float]] = None,
-                 global_modulation_priors: List[List[float]] = None) -> None:
+    def __init__(self, fixed_params: IterNamespace, disc_params: IterNamespace,
+                 wavelengths: List[Quantity], geometric_params: IterNamespace,
+                 modulation_params: IterNamespace) -> None:
         """"""
         self._model_init_params = fixed_params[:-1]
         self.tau = fixed_params[-1]
         self._wavelengths = wavelengths
         self._disc_params = disc_params
-        self.geometric_priors = global_geometric_priors
-        self.mod_priors = global_modulation_priors
+        self.geometric_params = geometric_params
+        self.modulation_params = modulation_params
 
         self._components_dic = {"ring": RingComponent, "delta": DeltaComponent,
                                 "gauss": GaussComponent,
@@ -83,9 +81,9 @@ class CombinedModel:
                 self._stellar_flux_func = component.eval_flux
                 continue
             if ("axis_ratio" in component_attrs.params._fields)\
-                    and (self._geometric_params):
-                component_attrs.params.axis_ratio = self._geometric_params.axis_ratio
-                component_attrs.params.pa = self._geometric_params.pa
+                    and (self.geometric_params):
+                component_attrs.params.axis_ratio = self.geometric_params.axis_ratio
+                component_attrs.params.pa = self.geometric_params.pa
 
             # NOTE: Mention that the order has to be kept correctly and add sublimation
             # calculation here radius
@@ -103,11 +101,12 @@ class CombinedModel:
             temp_image = component.eval_model(component_attrs.params)
 
             # TODO: Check if commutative azimuthal modulation
-            # FIXME: Azimuthal modulation is broken fix
-            if self._mod_priors:
-                component_attrs.mod_priors = self._mod_priors
-                component_attrs.mod_params = self._mod_params
-            elif component_attrs.mod_priors:
+            if self.modulation_params:
+                mod_amp = self.modulation_params.mod_amp
+                mod_angle = self.modulation_params.mod_angle
+                temp_image = component._set_azimuthal_modulation(temp_image, mod_amp,
+                                                                 mod_angle)
+            if component_attrs.mod_params:
                 mod_angle, mod_amp = component_attrs.mod_params.mod_angle,\
                     component_attrs.mod_params.mod_amp
                 temp_image = component._set_azimuthal_modulation(temp_image, mod_amp,
@@ -139,6 +138,13 @@ class CombinedModel:
         distribution to the complete brightness [astropy.units.Jy]"""
         return np.sum(self.eval_flux(wavelength))
 
+    def eval_polychromatic_data(self):
+        fluxes, total_fluxes = [], []
+        for wavelength in self._wavelengths:
+            fluxes.append(self.eval_flux(wavelength))
+            total_fluxes.append(self.eval_total_flux(wavelength))
+        return fluxes, total_fluxes
+
     # TODO: Add functionality here
     def plot(self, image: Quantity) -> None:
         plot(image)
@@ -157,13 +163,14 @@ if __name__ == "__main__":
                                                # [[0., 0.], [0, 0], [6., 8.], [0., 0.]])
     delta_component = make_delta_component("star")
 
-    global_geometric_priors = [[0., 1.], [0, 180]]
-    global_modulation_priors = [[0., 1.], [0, 360]]
+    geometric_params = _make_params([0.5, 140], [u.dimensionless_unscaled, u.deg],
+                                    ["axis_ratio", "pa"])
+    modulation_params = _make_params([0.5, 140], [u.dimensionless_unscaled, u.deg],
+                                     ["mod_amp", "mod_angle"])
     model = CombinedModel(fixed_params, disc_params,
-                          wavelengths, global_geometric_priors,
-                          global_modulation_priors, zero_padding_order=2)
+                          wavelengths, geometric_params, modulation_params)
     model.add_component(complete_ring)
     # model.add_component(inner_ring_component)
     # model.add_component(outer_ring_component)
     model.add_component(delta_component)
-    model.fouriers_for_wl[0].get_uv2fft2()
+    model.plot(model.eval_polychromatic_data()[0][0])
