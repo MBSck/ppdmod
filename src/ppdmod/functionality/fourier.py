@@ -50,7 +50,7 @@ import matplotlib.pyplot as plt
 
 from astropy.units import Quantity
 from numpy.fft import fft2, fftshift, ifftshift, fftfreq
-from scipy.interpolate import interp2d
+from scipy.interpolate import interpn
 from typing import List, Optional
 
 
@@ -179,30 +179,30 @@ class FastFourierTransform:
             of the visibilities/correlated fluxes as well as the
             uv-coordinates for the closure phases to overplot on the phase plot
         """
-        real_corr = interp2d(self.grid_m, np.real(self.ft), uvcoords,
+        grid = tuple(axis.value for axis in self.grid_m)
+        real_corr = interpn(grid, np.real(self.ft), uvcoords.value,
                             method='linear', bounds_error=False,
                             fill_value=None)
-        imag_corr = interp2d(self.grid_m, np.imag(self.ft), uvcoords,
+        imag_corr = interpn(grid, np.imag(self.ft), uvcoords.value,
                             method='linear', bounds_error=False,
                             fill_value=None)
 
         amp = np.abs(real_corr + 1j*imag_corr)
+        uvcoords_cphase = tuple(uvcoords.value for uvcoords in uvcoords_cphase)
 
-        real_phase = interp2d(self.grid_m, np.real(self.ft), uvcoords_cphase,
-                              method='linear', bounds_error=False,
-                              fill_value=None)
-        imag_phase = interp2d(self.grid_m, np.imag(self.ft), uvcoords_cphase,
-                              method='linear', bounds_error=False,
-                              fill_value=None)
+        real_phase = interpn(grid, np.real(self.ft), uvcoords_cphase,
+                             method='linear', bounds_error=False,
+                             fill_value=None)
+        imag_phase = interpn(grid, np.imag(self.ft), uvcoords_cphase,
+                             method='linear', bounds_error=False,
+                             fill_value=None)
         cphases = np.angle(real_phase + 1j*imag_phase, deg=True)
         cphases = np.array(cphases).reshape((cphases.flatten()).shape[0]//12, 3, 4)
-
-        xy_coords = [uvcoords, uvcoords_cphase]
 
         cphases = np.array([np.sum(i, axis=0) for i in cphases])
         cphases = cphases.reshape(cphases.shape[0]*cphases.shape[1]).tolist()
         cphases = np.degrees((np.radians(cphases) + np.pi) % (2*np.pi) - np.pi)
-        return amp, cphases, xy_coords
+        return amp, cphases
 
     def get_amp_phase(self) -> List[Quantity]:
         """Gets the amplitude and the phase of the FFT
@@ -291,14 +291,6 @@ class FastFourierTransform:
         cx.set_xlabel("u [m]")
         cx.set_ylabel(r"v [M$\lambda$]")
 
-        if uv_coords is not None:
-            u_coords, v_coords = np.split(uv_coords, 2, axis=1)
-            u_c, v_c = np.split(uv_coords_cphase, 2, axis=1)
-            v, v_c = map(lambda x: x/(self.wl.to(u.m)), [v, v_c])
-
-            bx.scatter(u_coords.value, v_coords.value, color="r")
-            cx.scatter(u_c, v_c, color="r")
-
         bx.axis([-zoom, zoom, -zoom_Mlambda, zoom_Mlambda])
         cx.axis([-zoom, zoom, -zoom_Mlambda, zoom_Mlambda])
 
@@ -307,7 +299,7 @@ class FastFourierTransform:
         if plt_save:
             plt.savefig(f"{self.wl}_FFT_plot.png")
         else:
-            if matplot_axis == []:
+            if not matplot_axis:
                 plt.show()
 
 

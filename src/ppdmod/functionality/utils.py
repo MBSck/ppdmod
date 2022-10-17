@@ -33,6 +33,32 @@ class IterNamespace(SimpleNamespace):
                 yield val
 
 
+def make_inital_guess_from_priors(priors: List[float]) -> List[float]:
+    """Initialises a random float/list via a uniform distribution from the
+    bounds provided
+
+    Parameters
+    -----------
+    priors: IterNamespace
+        Bounds list must be nested list(s) containing the bounds of the form
+        form [lower_bound, upper_bound]
+
+    Returns
+    -------
+    List[float]
+        A list of the parameters corresponding to the priors. Also does not take the full
+        priors but 1/4 from the edges, to avoid emcee problems
+    """
+    params = []
+    for prior in priors:
+        quarter_prior_distance = np.diff(prior)/4
+        lower_bound, upper_bounds = prior[0]+quarter_prior_distance,\
+            prior[1]-quarter_prior_distance
+        param = np.random.uniform(lower_bound, upper_bounds)[0]
+        params.append(param)
+    return np.array(params)
+
+
 def _convert_orbital_radius_to_parallax(orbital_radius: Quantity,
                                         distance: Optional[Quantity] = None
                                         ) -> Quantity:
@@ -97,7 +123,6 @@ def _convert_parallax_to_orbital_radius(parallax: Quantity,
                       "[astropy.units.pc] or unitless!")
 
     return (parallax*distance.to(u.m))/(1*u.rad).to(u.mas)
-
 
 
 def _calculate_stellar_radius(luminosity_star: Quantity,
@@ -392,49 +417,6 @@ def flux_per_pixel(wavelength: Quantity, temperature_distribution: Quantity,
     return (flux_per_pixel.to(u.Jy))*(1-np.exp(-optical_depth))
 
 
-def _set_units_for_priors(priors: List, units: List[Quantity]) -> List[Quantity]:
-    """Sets the [astropy.units] for the priors
-
-    Parameters
-    ----------
-    priors: List
-        The priors
-    units: List[Quantity]
-        The to the priors corresponding units
-
-    Returns
-    -------
-    priors: List[Quantity]
-        A list containing the nested [astropy.units.Quantity] that are the priors
-    """
-    return [u.Quantity(prior, unit=units[i]) for i, prior in enumerate(priors)]
-
-def _set_params_from_priors(priors: List[float]) -> List[float]:
-    """Initialises a random float/list via a uniform distribution from the
-    bounds provided
-
-    Parameters
-    -----------
-    priors: IterNamespace
-        Bounds list must be nested list(s) containing the bounds of the form
-        form [lower_bound, upper_bound]
-
-    Returns
-    -------
-    List[astropy.units.Quantity]
-        A list of the parameters corresponding to the priors. Also does not take the full
-        priors but 1/4 from the edges, to avoid emcee problems
-    """
-    params = []
-    for prior in priors:
-        quarter_prior_distance = np.diff(prior)/4
-        lower_bound, upper_bounds = prior[0]+quarter_prior_distance,\
-            prior[1]-quarter_prior_distance
-        param = np.random.uniform(lower_bound, upper_bounds)[0]
-        params.append(param)
-    return params
-
-
 def _make_params(params: List[float], units: List[Quantity],
                  labels: List[str]) -> SimpleNamespace:
     """Creates an IterNamespace for the params
@@ -453,7 +435,7 @@ def _make_params(params: List[float], units: List[Quantity],
     IterNamespace
         An IterNamespace made up from the names and values of the params
     """
-    if not all(isinstance(param, u.Quantity) for param in params):
+    if not any(isinstance(param, u.Quantity) for param in params):
         params = [param*units[i] for i, param in enumerate(params)]
     return IterNamespace(**dict(zip(labels, params)))
 
@@ -462,13 +444,9 @@ def _make_params(params: List[float], units: List[Quantity],
 def _make_priors(priors: List[List[float]], units: List[Quantity],
                 labels: List[str]) -> IterNamespace:
     """Makes the priors"""
-    return _make_params(_set_units_for_priors(priors, units), units, labels)
-
-
-def _make_params_from_priors(priors: IterNamespace,
-                             units: List[Quantity], labels: List[str]) -> IterNamespace:
-    """Makes params from priors"""
-    return _make_params(_set_params_from_priors(priors), units, labels)
+    if not any(isinstance(prior, u.Quantity) for prior in priors):
+        priors = [u.Quantity(prior, unit=units[i]) for i, prior in enumerate(priors)]
+    return IterNamespace(**dict(zip(labels, priors)))
 
 
 # TODO: Implement tests for new functionality
@@ -505,8 +483,6 @@ def _make_component(name: str, component_name: str,
     """
     if priors is not None:
         priors = _make_priors(priors, units, labels)
-    if (params is None) and (priors is not None):
-        params = _make_params_from_priors(priors, units, labels)
     if params is not None:
         params = _make_params(params, units, labels)
 
@@ -515,41 +491,13 @@ def _make_component(name: str, component_name: str,
 
     if mod_priors is not None:
         mod_priors = _make_priors(mod_priors, mod_units, mod_labels)
-    if (mod_params is None) and (mod_priors is not None):
-        mod_params = _make_params_from_priors(mod_priors, mod_units, mod_labels)
-    elif mod_params is not None:
+    if mod_params is not None:
         mod_params = _make_params(mod_params, mod_units, mod_labels)
 
     keys = ["name", "component", "params",
             "priors", "mod_params", "mod_priors"]
     values = [name, component_name, params,
               priors, mod_params, mod_priors]
-    return IterNamespace(**dict(zip(keys, values)))
-
-
-def make_disc_params(priors: List, params: Optional[List] = None) -> IterNamespace:
-    """Makes the disc param's tuple"""
-    labels, units = ["q", "p"], [u.dimensionless_unscaled, u.dimensionless_unscaled]
-    priors = _make_priors(priors, units, labels)
-
-    for i, prior in enumerate(priors):
-        if not isinstance(prior, u.Quantity):
-            priors[i] = prior*units[i]
-        elif prior.unit != units[i]:
-            raise IOError(f"Wrong unit has been input for priors in {keys[i]}. Needs to"\
-                          f" be in {units[i]} or unitless!")
-        if params:
-            if not isinstance(params[i], u.Quantity):
-                params[i] = params[i]*units[i]
-            elif params[i].unit != units[i]:
-                raise IOError(f"Wrong unit has been input for params in {keys[i]}."\
-                              f" Needs to be in {units[i]} or unitless!")
-
-    if params is None:
-        params = _make_params_from_priors(priors, units, labels)
-    else:
-        params = _make_params(params, units, labels)
-    keys, values = ["params", "priors"], [params, priors]
     return IterNamespace(**dict(zip(keys, values)))
 
 

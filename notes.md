@@ -2,16 +2,18 @@
 ## General
 - The parameters from the priors are maed 1/4 away from the priors borders to avoid errors
 ## Plan
-- Pass everything Model to DataHandler (does the fitting etc.)
-- DataHandler also does the FFT
-- Make example code where the combined models go
-- Rework DataHandler to take
+- CombinedModel also does the FFT
+- Rework DataHandler to take all the data required for the model
+- Make CombinedModel completely modular with DataHandler and fitting
+- Pass all parameters to DataHandler
+- Make CombinedModel do also polychromatic modelling
 ## Things to check
 * Check how the field of view works? Double 30, extends in both directions, half it?
 * Write a fuckton more tests for the important calculation functions -> Thorough tests needed
 * Does temperate gradient get negatively affected by np.inf values?
 * When to modulate the parameters?
 * Check if the FFT zero-padding moves the true centre -> Should be ok tho?
+* Maybe combine the flux and the correlated fluxed for plotting?
 ## Problems
 * Think about what is interpolated? Is Anthony's interpolation correct?? Maybe meshgrid?
 * Think about what the interpolation does??
@@ -37,11 +39,13 @@
 [x] Make tests for utils.py
 [x] Make all theta into named tuples to easily access their values
 [x] Rework fourier.py and implement tests
+[x] Make DataHandler get the priors from the components
+[x] Check readout of uvcoords from fits file
 ## Working-on-ATM
-[] Look through all of Fourier transform and check where the phase error comes from... Only in Phase?!
 [] Make ring component match priors together, so they are not bigger than outer radius and such
+[] Make CombinedModel have the right output for fitting
+[] Look through all of Fourier transform and check where the phase error comes from... Only in Phase?!
 [] Implement parameter length for parameter refactoring with mod params
-[] Implement fitting in DataHandler Class
 ## To-Do
 [] Finish rework of model.py and implement tests
 [] Make tests that compare fluxes to real values (e.g., Jozsef's code see flux values)
@@ -52,3 +56,4 @@
 [] Rework the plotting functionality for the fitted models
 [] Make fits adapt to the new scheme and maybe implement tests here as well
 [] Make function that gives stuff like 'eval_model' automatically docstrings
+[] Make the disc params and the general params setting more modular -> Should be possible

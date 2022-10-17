@@ -5,9 +5,8 @@ from typing import List
 from astropy.units import Quantity
 
 from .utils import IterNamespace, make_fixed_params, make_delta_component,\
-    make_ring_component, _make_params, make_disc_params,\
-    _calculate_sublimation_temperature, temperature_gradient, optical_depth_gradient,\
-    flux_per_pixel
+    make_ring_component, _make_params, _calculate_sublimation_temperature,\
+    temperature_gradient, optical_depth_gradient, flux_per_pixel
 from .plotting_utils import plot
 from ..model_components import DeltaComponent, GaussComponent,\
     RingComponent, UniformDiskComponent
@@ -122,10 +121,10 @@ class CombinedModel:
         """Evaluates the flux for model"""
         # TODO: Implement stellar_flux_func here
         image = self.eval_model()
-        temperature = temperature_gradient(image, self._disc_params.params.q,
+        temperature = temperature_gradient(image, self._disc_params.q,
                                            self._inner_radius, self.inner_temperature)
 
-        optical_depth = optical_depth_gradient(image, self._disc_params.params.p,
+        optical_depth = optical_depth_gradient(image, self._disc_params.p,
                                                self._inner_radius, self.tau)
         flux = flux_per_pixel(wavelength, temperature, optical_depth, self.pixel_scaling)
         flux[flux == np.inf] = 0.*u.Jy
