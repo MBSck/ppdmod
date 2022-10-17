@@ -5,8 +5,6 @@ from astropy.units import Quantity
 from .combined_model import CombinedModel
 from .fourier import FastFourierTransform
 from .data_prep import DataHandler
-from .plotting_utils import plot_txt, plot_amp_phase_comparison,\
-        plot_amp_phase_comparison
 
 
 def calculate_model(theta: np.ndarray, data: DataHandler):
@@ -19,16 +17,18 @@ def calculate_model(theta: np.ndarray, data: DataHandler):
 
     total_flux_mod_chromatic, corr_flux_mod_chromatic, cphases_mod_chromatic_data =\
         [], [], []
-    for wavelength in data.wavelengths:
+    for i, wavelength in enumerate(data.wavelengths):
         image = model.eval_flux(wavelength)
-        total_flux_data = model.eval_total_flux(wavelength)
+        total_flux_data = []
+        for _ in data.total_fluxes[i]:
+             total_flux_data.append(model.eval_total_flux(wavelength).value)
         data.fourier = FastFourierTransform(image, wavelength,
                                             data.pixel_scaling, data.zero_padding_order)
         corr_flux_data, cphases_data = [], []
         corr_flux, cphases = data.fourier.get_uv2fft2(data.uv_coords, data.uv_coords_cphase)
         corr_flux_data.extend(corr_flux)
         cphases_data.extend(cphases)
-        total_flux_mod_chromatic.append(total_flux_data.value)
+        total_flux_mod_chromatic.append(total_flux_data)
         corr_flux_mod_chromatic.append(corr_flux_data)
         cphases_mod_chromatic_data.append(cphases_data)
     return total_flux_mod_chromatic, corr_flux_mod_chromatic, cphases_mod_chromatic_data

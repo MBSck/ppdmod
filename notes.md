@@ -15,11 +15,9 @@
 * Check if the FFT zero-padding moves the true centre -> Should be ok tho?
 * Maybe combine the flux and the correlated fluxed for plotting?
 * Check impact of the FastFourierTransform reforming of the the Cphases? Against wrapping? -> Maybe ask Jacob here?
-## Problems
 * Think about what is interpolated? Is Anthony's interpolation correct?? Maybe meshgrid?
 * Think about what the interpolation does??
-* Reformat priors only for model input not out of models
-* There is a non zero element in the FFT... Where?
+## Problems
 ## Solutions
 - Try to use the FFT standalone and test if this works, if not then check the rest of the code again
 ## Working-on-ATM
@@ -33,6 +31,8 @@
 [] Implement and complete the other components (except delta and ring)
 [] Finish the _set_uv_grid method
 [] Make function that gives stuff like 'eval_model' automatically docstrings
+[] Remove redundancies to improve code speed (for later)
+[] Remove pixel scaling from DataHandler and wavelengths from CombinedModel
 ## Done
 [x] Rework the plotting functionality for the fitted models
 [x] Reworking model.py, methods to implement:

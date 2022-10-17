@@ -20,7 +20,7 @@ class DataHandler:
     """This class handles all the data that is used for the fitting process, the observed
     data as well as the data created by the modelling process"""
     def __init__(self, fits_files: List[Path],
-                 wavelengths: List[float],
+                 wavelengths: List[Quantity],
                  wavelength_window_sizes: Optional[List[float]] = [0.2],
                  flux_file: Optional[Path] = None) -> None:
         """Initialises the class"""
@@ -40,7 +40,7 @@ class DataHandler:
                                            "baselines_cphase": "get_closure_phases_baselines"}
         # NOTE: This only works if the wl_solution stays the same for all files
         self.wl_ind = self.readout_files[0].\
-            get_wavelength_indices(self._wavelengths, self._wavelength_window_sizes)
+            get_wavelength_indices(self.wavelengths, self.wavelength_window_sizes)
 
         self.model_components = []
         self.fixed_params = None
@@ -105,16 +105,25 @@ class DataHandler:
         if not isinstance(self._wavelengths, u.Quantity):
             return self._wavelengths*u.um
         elif self._wavelengths.unit != u.um:
-            raise ValueError
+            raise ValueError("Wrong input unit for the wavelengths!"\
+                             " Needs to be in [astropy.units.um]")
         else:
-            return self._wavelength_window_sizes
+            return self._wavelengths
 
     @property
     def wavelength_window_sizes(self):
         if not isinstance(self._wavelength_window_sizes, u.Quantity):
-            return self._wavelength_window_sizes*u.um
+            self._wavelength_window_sizes *= u.um
         elif self._wavelength_window_sizes.unit != u.um:
-            raise ValueError
+            raise ValueError("Wrong input unit for the wavelength windows!"\
+                             " Needs to be in [astropy.units.um]")
+
+        if len(self._wavelength_window_sizes) == 1\
+                and self.wavelengths.shape[0] != len(self._wavelength_window_sizes):
+            return np.repeat(self._wavelength_window_sizes, self.wavelengths.shape[0])
+        elif len(self._wavelength_window_sizes) != self.wavelengths.shape[0]:
+            raise IOError("The specified wavelength windows have be the same length"\
+                          " as the selected wavelength list!")
         else:
             return self._wavelength_window_sizes
 
@@ -363,11 +372,13 @@ class DataHandler:
         for i, readout_file in enumerate(self.readout_files):
             getter_func = self._get_data_type_function(readout_file, data_type_keyword)
             data = getter_func(self.wl_ind)
-            if i == 0:
+            if i == 0 and len(self.readout_files) > 1:
                 getter_func_next = self._get_data_type_function(self.readout_files[i+1],
                                                                 data_type_keyword)
                 data_next = getter_func_next(self.wl_ind)
                 merged_data = self._iterate_over_data_arrays(data, data_next)
+            elif len(self.readout_files) == 1:
+                merged_data = data
             elif i == 1:
                 continue
             else:
@@ -433,12 +444,14 @@ class DataHandler:
 
 if __name__ == "__main__":
     fits_files = ["../../../data/tests/test.fits"]*2
+    flux_file = "../../../data/tests/HD_142666_timmi2.txt"
     wavelengths = [8.5, 10.0]
     theta = [0.5, 145, 1., 35, 0.5, 0.05, 3., 5., 7.]
-    data = DataHandler(fits_files, wavelengths)
-    print(data.baselines)
-    print(data.corr_fluxes)
-    print(data.longest_baselines)
+    data = DataHandler(fits_files, wavelengths, flux_file=flux_file)
+    print(data.total_fluxes)
+    print(data.wavelengths.shape[0])
+    print(data.wavelengths)
+    print(data.wavelength_window_sizes)
     # data._labels = ["axis_ratio", "pa", "mod_amp", "mod_angle", "q", "p",
                    # "inner:ring:inner_radius", "inner:ring:outer_radius",
                    # "outer:ring:inner_radius"]

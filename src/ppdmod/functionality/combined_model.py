@@ -137,39 +137,27 @@ class CombinedModel:
         distribution to the complete brightness [astropy.units.Jy]"""
         return np.sum(self.eval_flux(wavelength))
 
-    def eval_polychromatic_data(self):
-        fluxes, total_fluxes = [], []
-        for wavelength in self._wavelengths:
-            fluxes.append(self.eval_flux(wavelength))
-            total_fluxes.append(self.eval_total_flux(wavelength))
-        return fluxes, total_fluxes
-
     # TODO: Add functionality here
     def plot(self, image: Quantity) -> None:
         plot(image)
 
 
 if __name__ == "__main__":
-    # TODO: Make ring component maker
     fixed_params = make_fixed_params(30, 128, 1500, 7900, 140, 19, 1)
-    disc_params = make_disc_params([[0., 1.], [0., 1.]])
-    wavelengths = [8*u.um]
-    complete_ring = make_ring_component("inner_ring",
-                                        [[0., 0.], [0, 0], [3., 5.], [0., 0.]])
-    # inner_ring_component = make_ring_component("inner_ring",
-                                               # [[0., 0.], [0, 0], [3., 5.], [5., 6.]])
-    # outer_ring_component = make_ring_component("outer_ring",
-                                               # [[0., 0.], [0, 0], [6., 8.], [0., 0.]])
-    delta_component = make_delta_component("star")
-
+    disc_params = _make_params([1., 1.],
+                               [u.dimensionless_unscaled, u.dimensionless_unscaled],
+                               ["q", "p"])
     geometric_params = _make_params([0.5, 140], [u.dimensionless_unscaled, u.deg],
                                     ["axis_ratio", "pa"])
     modulation_params = _make_params([0.5, 140], [u.dimensionless_unscaled, u.deg],
                                      ["mod_amp", "mod_angle"])
-    model = CombinedModel(fixed_params, disc_params,
-                          wavelengths, geometric_params, modulation_params)
+    wavelengths = [8*u.um]
+    complete_ring = make_ring_component("inner_ring",
+                                        params=[0., 0., 5., 0.])
+    delta_component = make_delta_component("star")
+
+    model = CombinedModel(fixed_params, disc_params, wavelengths,
+                          geometric_params, modulation_params)
     model.add_component(complete_ring)
-    # model.add_component(inner_ring_component)
-    # model.add_component(outer_ring_component)
     model.add_component(delta_component)
-    model.plot(model.eval_polychromatic_data()[0][0])
+

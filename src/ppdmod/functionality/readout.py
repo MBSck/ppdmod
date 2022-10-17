@@ -1,15 +1,11 @@
-import os
 import numpy as np
 import astropy.units as u
 
 from astropy.io import fits
 from pathlib import Path
 from astropy.units import Quantity
-from typing import Tuple, Dict, List, Optional, Union, Callable
+from typing import Tuple, List, Optional, Union
 from scipy.interpolate import CubicSpline
-
-# TODO: Make merge function that merges different readouts
-# TOOD: Make Readout accept more than one file
 
 
 # TODO: Make get_band_information method to check the band
@@ -78,18 +74,17 @@ class ReadoutFits:
         """
         # TODO: Get a better error representation for the flux
         single_dish_data = np.loadtxt(self.flux_file)
-        wavelength_from_single_dish = [wl[0] for wl in single_dish_data]
-        flux_from_single_dish = [flux[1] for flux in single_dish_data]
+        wavelength_from_single_dish = [wl[0] for wl in single_dish_data]*u.um
+        flux_from_single_dish = [flux[1] for flux in single_dish_data]*u.Jy
         mean_wl = np.mean(wavelength_from_single_dish)
 
-        if all([i for i in self.get_wavelength_indices([mean_wl])]):
-            cubic_spline = CubicSpline(wavelength_from_single_dish*u.um,
-                                       flux_from_single_dish*u.Jy)
-            flux = cubic_spline(self.wavelength_solution)*u.Jy
-            return [flux, flux*0.1]
-        else:
-            raise IOError("The flux file seems to be outside of the wavelength solutions"\
-                          " range!")
+        if not all([wl_ind for wl_ind in self.get_wavelength_indices([mean_wl])]):
+            raise IOError("The flux file is outside of the wavelength solutions range!")
+
+        cubic_spline = CubicSpline(wavelength_from_single_dish, flux_from_single_dish)
+        flux = cubic_spline(self.wavelength_solution)
+        flux_shape = self.wavelength_solution.shape[0]
+        return [flux.reshape(1, flux_shape), flux.reshape(1, flux_shape)*0.1]
 
     def get_data(self, header: Union[int, str],
                  *sub_headers: Union[int, str]) -> List[np.array]:
@@ -110,9 +105,9 @@ class ReadoutFits:
         with fits.open(self.fits_file) as header_list:
             return [header_list[header].data[sub_header] for sub_header in sub_headers]
 
-    def get_wavelength_indices(self, selected_wavelengths: List[float],
-                               wavelength_window_sizes:\
-                               List[float] = [0.2]) -> List[List[float]]:
+    def get_wavelength_indices(self, wavelengths: List[Quantity],
+                               wavelength_window_sizes: List[Quantity] = [0.2]
+                               ) -> List[List[float]]:
         """Fetches the wavelength indices of the instrument's wavelength solution for a
         specific wavelength by taking a window around the chosen wavelength. BEWARE: The
         window is divided by 2 and that is taken in both directions
@@ -133,20 +128,16 @@ class ReadoutFits:
             A numpy array of wavelength indices for the input wavelengths around the
             window
         """
-        if (not len(selected_wavelengths) == 1) and (len(wavelength_window_sizes) == 1):
-            # NOTE: If done via normal list multiplication -> Error. Why?! Dunno...
-            wavelength_window_sizes = (np.ones((len(selected_wavelengths)))\
-                                       *wavelength_window_sizes[0]).tolist()
+        if not isinstance(wavelengths, u.Quantity):
+            wavelengths *= u.um
+        if not isinstance(wavelength_window_sizes, u.Quantity):
+            wavelength_window_sizes *= u.um
 
-        if len(wavelength_window_sizes) != len(selected_wavelengths):
-            raise IOError("The specified wavelength windows have be the same length"\
-                          " as the selected wavelength list!")
+        if wavelengths.shape[0] != wavelength_window_sizes.shape[0]:
+            np.repeat(wavelength_window_sizes, wavelengths.shape[0])
 
-        selected_wavelengths *= u.um
-        wavelength_window_sizes *= u.um
-
-        window_top_bound = selected_wavelengths + wavelength_window_sizes/2
-        window_bot_bound = selected_wavelengths - wavelength_window_sizes/2
+        window_top_bound = wavelengths + wavelength_window_sizes/2
+        window_bot_bound = wavelengths - wavelength_window_sizes/2
         windows = [(self.wavelength_solution > bot, self.wavelength_solution < top)\
                    for bot, top in zip(window_bot_bound, window_top_bound)]
 
@@ -467,7 +458,6 @@ class ReadoutFits:
 
 
 if __name__ == "__main__":
-    readout = ReadoutFits("../../../data/tests/test.fits")
-    print(readout.get_closures_phase_uvcoords()[0])
-    print(readout.get_closures_phase_uvcoords_split())
-
+    flux_file = "../../../data/tests/HD_142666_timmi2.txt"
+    readout = ReadoutFits("../../../data/tests/test.fits", flux_file)
+    print(readout.get_flux()[1].shape)

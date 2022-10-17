@@ -20,17 +20,17 @@ def print_results(best_fit_total_fluxes, best_fit_corr_fluxes,
     print("Best fit total fluxes:")
     print(best_fit_total_fluxes)
     print("Best real total fluxes:")
-    print(data.total_fluxes)
+    print(data.total_fluxes[0])
     print("--------------------------------------------------------------")
     print("Best fit correlated fluxes:")
     print(best_fit_corr_fluxes)
     print("Real correlated fluxes:")
-    print(data.corr_fluxes)
+    print(data.corr_fluxes[0])
     print("--------------------------------------------------------------")
     print("Best fit cphase:")
     print(best_fit_cphases)
     print("Real cphase:")
-    print(data.cphases)
+    print(data.cphases[0])
     print("--------------------------------------------------------------")
     print("Theta max:")
     print(data.theta_max)
@@ -60,10 +60,10 @@ def plot_fit_results(best_fit_total_fluxes, best_fit_corr_fluxes,
                  # **hyperparams_dict}
 
     # plot_txt(ax, title_dict, text_dict, text_font_size=10)
-    plot_amp_phase_comparison(data, best_fit_total_fluxes[0],
-                              best_fit_corr_fluxes[0], best_fit_cphases[0],
+    plot_amp_phase_comparison(data, best_fit_total_fluxes,
+                              best_fit_corr_fluxes, best_fit_cphases,
                               matplot_axes=[bx, cx])
-    data.fourier.plot_amp_phase(matplot_axes=[fig, ax2, bx2, cx2])
+    data.fourier.plot_amp_phase(matplot_axes=[fig, ax2, bx2, cx2], zoom=1000)
     plot_name = f"Best-fit-model for {(plot_wl*1e6):.2f}.png"
 
     if save_path is None:
@@ -112,19 +112,24 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
     y_space_cphase = np.sqrt(y_max_cphase**2+y_min_cphase**2)*0.1
     y_lim_cphase = [y_min_cphase-y_space_cphase, y_max_cphase+y_space_cphase]
 
+    # TODO: Add more colors
+    colors = ["r", "b", "g"]
     ax.errorbar(data.baselines.value,
                 data.corr_fluxes.value[0], data.corr_fluxes_error.value[0],
                 color="goldenrod", fmt='o', label="Observed data", alpha=0.6)
-    ax.scatter(data.baselines.value, best_fit_corr_fluxes, marker='X', label="Model data")
+    ax.scatter(data.baselines.value, best_fit_corr_fluxes,
+               marker='X', label="Model data")
+    bx.errorbar(data.longest_baselines.value,
+                data.cphases.value[0], data.cphases_error.value[0],
+                color="goldenrod", fmt='o', label="Observed data", alpha=0.6)
+    bx.scatter(data.longest_baselines.value, best_fit_cphases,
+               marker='X', label="Model data")
+
     ax.set_xlabel("Baselines [m]")
     ax.set_ylabel("Correlated fluxes [Jy]")
     ax.set_ylim(y_lim_amp)
     ax.legend(loc="upper right")
 
-    bx.errorbar(data.longest_baselines.value,
-                data.cphases.value[0], data.cphases_error.value[0],
-                color="goldenrod", fmt='o', label="Observed data", alpha=0.6)
-    bx.scatter(data.longest_baselines.value, best_fit_cphases, marker='X', label="Model data")
     bx.set_xlabel("Longest baselines [m]")
     bx.set_ylabel(fr"Closure Phases [$^\circ$]")
     bx.set_ylim(y_lim_cphase)

@@ -53,6 +53,10 @@ from numpy.fft import fft2, fftshift, ifftshift, fftfreq
 from scipy.interpolate import interpn
 from typing import List, Optional
 
+from .utils import make_fixed_params, make_delta_component,\
+    make_ring_component, _make_params
+from .combined_model import CombinedModel
+
 
 class FastFourierTransform:
     """A collection and build up on the of the FFT-functionality provided by
@@ -301,4 +305,26 @@ class FastFourierTransform:
 
 
 if __name__ == "__main__":
-    ...
+    fixed_params = make_fixed_params(30, 128, 1500, 7900, 140, 19, 1)
+    disc_params = _make_params([1., 1.],
+                               [u.dimensionless_unscaled, u.dimensionless_unscaled],
+                               ["q", "p"])
+    geometric_params = _make_params([0.5, 140], [u.dimensionless_unscaled, u.deg],
+                                    ["axis_ratio", "pa"])
+    modulation_params = _make_params([0.5, 140], [u.dimensionless_unscaled, u.deg],
+                                     ["mod_amp", "mod_angle"])
+    wavelengths = [8*u.um]
+    wavelength = 8*u.um
+    complete_ring = make_ring_component("inner_ring",
+                                        params=[0., 0., 5., 0.])
+    delta_component = make_delta_component("star")
+
+    model = CombinedModel(fixed_params, disc_params, wavelengths,
+                          geometric_params, modulation_params)
+    model.add_component(complete_ring)
+    model.add_component(delta_component)
+    image = model.eval_flux(wavelength)
+    fourier = FastFourierTransform(image, wavelength,
+                                   model.pixel_scaling, 4)
+    fourier.plot_amp_phase(zoom=1000)
+

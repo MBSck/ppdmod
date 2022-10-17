@@ -197,30 +197,28 @@ def run_mcmc(data: DataHandler,
         calculate_model(data.theta_max, data)
     plot_corner(sampler, data)
     plot_chains(sampler, data)
-    plot_fit_results(best_fit_total_fluxes, best_fit_corr_fluxes,
-                     best_fit_cphases, data, save_path=save_path)
+    plot_fit_results(best_fit_total_fluxes[0], best_fit_corr_fluxes[0],
+                     best_fit_cphases[0], data, save_path=save_path)
 
 
 if __name__ == "__main__":
-    fits_files = ["../../../data/tests/test.fits"]*2
+    data_path = "../../../assets/data"
+    fits_files = ["HD_142666_2019-03-24T09_01_46_N_TARGET_FINALCAL_INT.fits"]
+    fits_files = [os.path.join(data_path, file) for file in fits_files]
+    flux_file = "../../../data/tests/HD_142666_timmi2.txt"
     wavelengths = [8.5, 10.0]
-    data = DataHandler(fits_files, wavelengths)
+    data = DataHandler(fits_files, wavelengths, flux_file=flux_file)
     complete_ring = make_ring_component("inner_ring",
                                         [[0., 0.], [0., 0.], [0., 5.], [0., 0.]])
     delta_component = make_delta_component("star")
     data.add_model_component(delta_component)
     data.add_model_component(complete_ring)
-    data.fixed_params = make_fixed_params(30, 128, 1500, 7900, 140, 19, 1)
+    data.zero_padding_order = 2
+    data.fixed_params = make_fixed_params(15, 256, 1500, 7900, 140, 19, 1)
     data.geometric_priors = [[0., 1.], [0, 180]]
     data.modulation_priors = [[0., 1.], [0, 360]]
     data.disc_priors = [[0., 1.], [0., 1.]]
-    print(data.labels)
-    data.reformat_components_to_priors()
-    print(data.model_components)
-    data.reformat_theta_to_components(data.initial)
-    print(data.model_components)
-    print(data.labels)
-    mcmc_params = [32, 500, 1000, 1e-4]
+    mcmc_params = [32, 50, 100, 1e-4]
     data.mcmc = mcmc_params
     run_mcmc(data)
 
