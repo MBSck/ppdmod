@@ -196,7 +196,6 @@ class FastFourierTransform:
                              fill_value=None)
         cphases = np.angle(real_phase + 1j*imag_phase, deg=True)
         cphases = np.array(cphases).reshape(3, uvcoords_cphase.shape[1])
-
         cphases = np.sum(cphases, axis=0)
         # TODO: Check what impact this here has?
         cphases = np.degrees((np.radians(cphases) + np.pi) % (2*np.pi) - np.pi)
@@ -228,7 +227,7 @@ class FastFourierTransform:
         self.ft_centre = self.raw_fft[0][0]
         return fftshift(self.raw_fft)
 
-    def plot_amp_phase(self, matplot_axis: Optional[List] = [],
+    def plot_amp_phase(self, matplot_axes: Optional[List] = [],
                        zoom: Optional[int] = 500,
                        uv_coords: Optional[Quantity] = None,
                        uv_coords_cphase: Optional[Quantity] = None,
@@ -250,8 +249,8 @@ class FastFourierTransform:
         plt_save: bool, optional
             Saves the plot if toggled on
         """
-        if matplot_axis:
-            fig, ax, bx, cx = matplot_axis
+        if matplot_axes:
+            fig, ax, bx, cx = matplot_axes
         else:
             fig, axarr = plt.subplots(1, 3, figsize=(15, 5))
             ax, bx, cx = axarr.flatten()
@@ -297,7 +296,7 @@ class FastFourierTransform:
         if plt_save:
             plt.savefig(f"{self.wl}_FFT_plot.png")
         else:
-            if not matplot_axis:
+            if not matplot_axes:
                 plt.show()
 
 

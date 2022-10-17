@@ -26,6 +26,7 @@
 [] Look through all of Fourier transform and check where the phase error comes from... Only in Phase?!
 [] Write tests for all that has been done
 ## To-Do
+[] Ignore errors at some point, or warnings that is
 [] Finish rework of model.py and implement tests
 [] Make tests that compare fluxes to real values (e.g., Jozsef's code see flux values)
 [] Implement tests for comparisons between analytical and numerical models -> FFT and all

@@ -79,6 +79,13 @@ class DataHandler:
             f"data of {self.wavelengths} with the windows "\
             f"{self.wavelength_window_sizes}"
 
+    # TODO: Finish this function and get the poper baselines
+    @property
+    def longest_baselines(self):
+        # longest_baselines = self.baselines_cphase.flatten().copy()
+        # longest_baselines.sort()
+        return self.baselines_cphase[0]
+
     @property
     def pixel_scaling(self):
         if self.fixed_params is not None:
@@ -429,7 +436,9 @@ if __name__ == "__main__":
     wavelengths = [8.5, 10.0]
     theta = [0.5, 145, 1., 35, 0.5, 0.05, 3., 5., 7.]
     data = DataHandler(fits_files, wavelengths)
-    print(data.uv_coords_cphase.shape)
+    print(data.baselines)
+    print(data.corr_fluxes)
+    print(data.longest_baselines)
     # data._labels = ["axis_ratio", "pa", "mod_amp", "mod_angle", "q", "p",
                    # "inner:ring:inner_radius", "inner:ring:outer_radius",
                    # "outer:ring:inner_radius"]

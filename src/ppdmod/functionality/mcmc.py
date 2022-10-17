@@ -220,7 +220,7 @@ if __name__ == "__main__":
     data.reformat_theta_to_components(data.initial)
     print(data.model_components)
     print(data.labels)
-    mcmc_params = [32, 5, 10, 1e-4]
+    mcmc_params = [32, 500, 1000, 1e-4]
     data.mcmc = mcmc_params
     run_mcmc(data)
 

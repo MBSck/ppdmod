@@ -1,4 +1,4 @@
-from astropy.units.format import base
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -37,7 +37,6 @@ def print_results(best_fit_total_fluxes, best_fit_corr_fluxes,
 
 def plot_fit_results(best_fit_total_fluxes, best_fit_corr_fluxes,
                      best_fit_cphases, data: DataHandler,
-                     plot_px_size: Optional[int] = 1024,
                      save_path: Optional[Path] = None) -> None:
     """Plot the samples to get estimate of the density that has been sampled,
     to test if sampling went well
@@ -61,14 +60,13 @@ def plot_fit_results(best_fit_total_fluxes, best_fit_corr_fluxes,
                  # **hyperparams_dict}
 
     # plot_txt(ax, title_dict, text_dict, text_font_size=10)
-    plot_amp_phase_comparison(data, best_fit_total_fluxes,
-                              best_fit_corr_fluxes, best_fit_cphases)
-    data.fourier.plot_amp_phase(data, best_fit_total_fluxes,
-                                best_fit_corr_fluxes, best_fit_cphases,
-                                matplot_axes=[fig, ax2, bx2, cx2])
+    plot_amp_phase_comparison(data, best_fit_total_fluxes[0],
+                              best_fit_corr_fluxes[0], best_fit_cphases[0],
+                              matplot_axes=[bx, cx])
+    data.fourier.plot_amp_phase(matplot_axes=[fig, ax2, bx2, cx2])
     plot_name = f"Best-fit-model for {(plot_wl*1e6):.2f}.png"
 
-    if save_path == "":
+    if save_path is None:
         plt.savefig(plot_name)
     else:
         plt.savefig(os.path.join(save_path, plot_name))
@@ -104,32 +102,29 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
         fig, axarr = plt.subplots(1, 2, figsize=(10, 5))
         ax, bx = axarr.flatten()
 
-    all_amp = np.concatenate((data.corr_fluxes.value, best_fit_corr_fluxes))
+    all_amp = np.concatenate((data.corr_fluxes.value[0], best_fit_corr_fluxes))
     y_min_amp, y_max_amp = 0, np.max(all_amp)
     y_space_amp = np.sqrt(y_max_amp**2+y_min_amp**2)*0.1
     y_lim_amp = [y_min_amp-y_space_amp, y_max_amp+y_space_amp]
 
-    all_cphase = np.concatenate((data.cphases.value, best_fit_cphases))
+    all_cphase = np.concatenate((data.cphases.value[0], best_fit_cphases))
     y_min_cphase, y_max_cphase = np.min(all_cphase), np.max(all_cphase)
     y_space_cphase = np.sqrt(y_max_cphase**2+y_min_cphase**2)*0.1
     y_lim_cphase = [y_min_cphase-y_space_cphase, y_max_cphase+y_space_cphase]
 
-    # TODO: Make this into a quantity immedieatly?
-    baselines = [baseline.value for baseline in data.baselines]
-
-    ax.errorbar(baselines, data.corr_fluxes.value, data.corr_fluxes_error.value,
+    ax.errorbar(data.baselines.value,
+                data.corr_fluxes.value[0], data.corr_fluxes_error.value[0],
                 color="goldenrod", fmt='o', label="Observed data", alpha=0.6)
-    ax.scatter(baselines.value, best_fit_corr_fluxes, marker='X', label="Model data")
+    ax.scatter(data.baselines.value, best_fit_corr_fluxes, marker='X', label="Model data")
     ax.set_xlabel("Baselines [m]")
     ax.set_ylabel("Correlated fluxes [Jy]")
     ax.set_ylim(y_lim_amp)
     ax.legend(loc="upper right")
 
-    longest_baselines = np.array([np.sort(baselines.value.flatten())[::-1][:4]\
-                                  for baselines in data.uvcoords_cphase])
-    bx.errorbar(longest_baselines, data.cphases.value, data.cphases_error.value,
+    bx.errorbar(data.longest_baselines.value,
+                data.cphases.value[0], data.cphases_error.value[0],
                 color="goldenrod", fmt='o', label="Observed data", alpha=0.6)
-    bx.scatter(longest_baselines, best_fit_cphases, marker='X', label="Model data")
+    bx.scatter(data.longest_baselines.value, best_fit_cphases, marker='X', label="Model data")
     bx.set_xlabel("Longest baselines [m]")
     bx.set_ylabel(fr"Closure Phases [$^\circ$]")
     bx.set_ylim(y_lim_cphase)
