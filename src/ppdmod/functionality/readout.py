@@ -223,8 +223,8 @@ class ReadoutFits:
         station_indices4triangles = self.get_data("oi_t3", "sta_index")[0]*\
             u.dimensionless_unscaled
 
-        return station_names, station_indices,\
-            station_indices4baselines, station_indices4triangles
+        return np.array([station_names, station_indices,\
+            station_indices4baselines, station_indices4triangles], dtype=object)
 
     # TODO: Write test for this
     def get_split_uvcoords(self) -> Tuple[Quantity]:
@@ -255,7 +255,7 @@ class ReadoutFits:
         return np.stack((self.get_split_uvcoords()), axis=1)
 
     # TODO: Write test for this
-    def get_closures_phase_uvcoords(self) -> Tuple[Quantity]:
+    def get_closures_phase_uvcoords_split(self) -> Quantity:
         """Fetches the (u1, v1), (u2, v2) coordinate of the closure phase triangles from
         the (.fits)-file, calculates the third (u3, v3) coordinate pair and then gives the
         quantities the proper units
@@ -269,10 +269,17 @@ class ReadoutFits:
             The three v-coordinate pairs of the closure phase triangles
             [astropy.unit.meter]
         """
-        u1, v1 = self.get_data("oi_t3", "u1coord", "v1coord")*u.m
-        u2, v2 = self.get_data("oi_t3", "u2coord", "v2coord")*u.m
+        u1, v1 = self.get_data("oi_t3", "u1coord", "v1coord")
+        u2, v2 = self.get_data("oi_t3", "u2coord", "v2coord")
         u3, v3 = -(u1+u2), -(v1+v2)
-        return u.Quantity([u1, u2, u3]), u.Quantity([v1, v2, v3])
+        return ([u1, u2, u3], [v1, v2, v3])*u.m
+
+    def get_closures_phase_uvcoords(self) -> Quantity:
+        ucoords, vcoords = self.get_closures_phase_uvcoords_split()
+        uv_coords = [[], [], []]
+        for i, ucoord in enumerate(ucoords):
+            uv_coords[i] = np.stack((ucoord, vcoords[i]), axis=1)
+        return u.Quantity(uv_coords)
 
     # TODO: Write test for this
     def get_baselines(self) -> Quantity:
@@ -287,7 +294,7 @@ class ReadoutFits:
         return np.sqrt(ucoords**2+vcoords**2)
 
     def get_closure_phases_baselines(self) -> Quantity:
-        ucoords, vcoords = self.get_closures_phase_uvcoords()
+        ucoords, vcoords = self.get_closures_phase_uvcoords_split()
         return np.sqrt(ucoords**2+vcoords**2)
 
     def get_visibilities(self) -> Quantity:
@@ -461,4 +468,6 @@ class ReadoutFits:
 
 if __name__ == "__main__":
     readout = ReadoutFits("../../../data/tests/test.fits")
+    print(readout.get_closures_phase_uvcoords()[0])
+    print(readout.get_closures_phase_uvcoords_split())
 

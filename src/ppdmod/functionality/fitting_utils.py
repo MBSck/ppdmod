@@ -25,11 +25,9 @@ def calculate_model(theta: np.ndarray, data: DataHandler):
         data.fourier = FastFourierTransform(image, wavelength,
                                             data.pixel_scaling, data.zero_padding_order)
         corr_flux_data, cphases_data = [], []
-        for i, uv_coords in enumerate(data.uv_coords):
-            corr_flux, cphases = data.fourier.get_uv2fft2(uv_coords,
-                                                          data.uv_coords_cphase[i])
-            corr_flux_data.extend(corr_flux)
-            cphases_data.extend(cphases)
+        corr_flux, cphases = data.fourier.get_uv2fft2(data.uv_coords, data.uv_coords_cphase)
+        corr_flux_data.extend(corr_flux)
+        cphases_data.extend(cphases)
         total_flux_mod_chromatic.append(total_flux_data.value)
         corr_flux_mod_chromatic.append(corr_flux_data)
         cphases_mod_chromatic_data.append(cphases_data)

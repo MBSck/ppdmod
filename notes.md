@@ -14,6 +14,7 @@
 * When to modulate the parameters?
 * Check if the FFT zero-padding moves the true centre -> Should be ok tho?
 * Maybe combine the flux and the correlated fluxed for plotting?
+* Check impact of the FastFourierTransform reforming of the the Cphases? Against wrapping? -> Maybe ask Jacob here?
 ## Problems
 * Think about what is interpolated? Is Anthony's interpolation correct?? Maybe meshgrid?
 * Think about what the interpolation does??
@@ -21,7 +22,18 @@
 * There is a non zero element in the FFT... Where?
 ## Solutions
 - Try to use the FFT standalone and test if this works, if not then check the rest of the code again
+## Working-on-ATM
+[] Look through all of Fourier transform and check where the phase error comes from... Only in Phase?!
+[] Write tests for all that has been done
+## To-Do
+[] Finish rework of model.py and implement tests
+[] Make tests that compare fluxes to real values (e.g., Jozsef's code see flux values)
+[] Implement tests for comparisons between analytical and numerical models -> FFT and all
+[] Implement and complete the other components (except delta and ring)
+[] Finish the _set_uv_grid method
+[] Make function that gives stuff like 'eval_model' automatically docstrings
 ## Done
+[x] Rework the plotting functionality for the fitted models
 [x] Reworking model.py, methods to implement:
 [x] Reworking model_components
 [x] Implemented utils and IterNamespace class
@@ -41,19 +53,8 @@
 [x] Rework fourier.py and implement tests
 [x] Make DataHandler get the priors from the components
 [x] Check readout of uvcoords from fits file
-## Working-on-ATM
-[] Make ring component match priors together, so they are not bigger than outer radius and such
-[] Make CombinedModel have the right output for fitting
-[] Look through all of Fourier transform and check where the phase error comes from... Only in Phase?!
-[] Implement parameter length for parameter refactoring with mod params
-## To-Do
-[] Finish rework of model.py and implement tests
-[] Make tests that compare fluxes to real values (e.g., Jozsef's code see flux values)
-[] Implement tests for comparisons between analytical and numerical models -> FFT and all
-[] Implement and complete the other components (except delta and ring)
-[] Finish the _set_uv_grid method
-[] Make the composite model class output in a way that can be taken by the DataHandler class
-[] Rework the plotting functionality for the fitted models
-[] Make fits adapt to the new scheme and maybe implement tests here as well
-[] Make function that gives stuff like 'eval_model' automatically docstrings
-[] Make the disc params and the general params setting more modular -> Should be possible
+[x] Make ring component match priors together, so they are not bigger than outer radius and such
+[x] Make FastFourierTransform have the right output for fitting
+[x] Make the composite model class output in a way that can be taken by the DataHandler class
+[x] Make fits adapt to the new scheme
+[x] Make the disc params and the general params setting more modular -> Should be possible

@@ -1,3 +1,4 @@
+from astropy.time.core import enum
 import numpy as np
 import astropy.units as u
 import warnings
@@ -220,25 +221,28 @@ class DataHandler:
             # TODO: Add all possibilities here with the geometric params
             for component in self.model_components:
                 if component.component == "ring":
+                    # TODO: Implement geometric priors adding here
                     if self.geometric_priors is not None:
-                        if component.priors.inner_radius.value.all():
-                            self._priors.append(component.priors.inner_radius.value.tolist())
-                            self._labels.append(f"{component.name}:ring:inner_radius")
-                        if component.priors.outer_radius.value.all():
-                            self._priors.append(component.priors.outer_radius.value.tolist())
-                            self._labels.append(f"{component.name}:ring:outer_radius")
+                        ...
+                    if component.priors.inner_radius.value.any():
+                        self._priors.append(component.priors.inner_radius.value.tolist())
+                        self._labels.append(f"{component.name}:ring:inner_radius")
+                    if component.priors.outer_radius.value.any():
+                        self._priors.append(component.priors.outer_radius.value.tolist())
+                        self._labels.append(f"{component.name}:ring:outer_radius")
         else:
             raise ValueError("No model components have been added yet!")
 
     def reformat_theta_to_components(self, theta: List[float]):
         """Sets the model component list anew from the input theta"""
         model_components = []
+        theta_dict = dict(zip(self.labels, theta))
         for component in self.model_components:
             if component.component == "delta":
-                model_components.append(make_delta_component("star"))
+                model_components.append(component)
+                break
 
         self.model_components = []
-        theta_dict = dict(zip(self._labels, theta))
         if "axis_ratio" in theta_dict:
             self.geometric_params = [theta_dict["axis_ratio"], theta_dict["pa"]]
         if "mod_angle" in theta_dict:
@@ -246,7 +250,6 @@ class DataHandler:
         if "q" in theta_dict:
             self.disc_params = [theta_dict["q"], theta_dict["p"]]
 
-        # FIXME: Think of a way to implement this
         component_params_dict = {}
         for key, value in theta_dict.items():
             if ":" not in key:
@@ -319,7 +322,6 @@ class DataHandler:
             for j, polychromatic_data in enumerate(dataset):
                 unit = polychromatic_data.unit
                 if not np.any(merged_data[i]):
-
                     merged_data[i] = np.zeros((dataset.shape[0],
                                               polychromatic_data.shape[0]+\
                                               data_other[i][j].shape[0]))
@@ -386,13 +388,37 @@ class DataHandler:
     def _merge_simple_data(self, data_type_keyword):
         """Merges simple data, like the 'uvcoords', 'uvcoords_cphase', 'telescope',
         'baselines' or 'baselines_cphase' data"""
-        merged_data = []
+        merged_data = np.array([])
         if data_type_keyword in ["vis", "vis2", "cphases", "flux"]:
             raise IOError("Use the '_merge_data' function for these datatypes")
         for readout_file in self.readout_files:
             getter_func = self._get_data_type_function(readout_file, data_type_keyword)
-            merged_data.append(getter_func())
-        return merged_data
+            data = getter_func()
+            if merged_data.size == 0:
+                merged_data = data
+            else:
+                if data_type_keyword == "uvcoords_cphase":
+                    temp_data_lst = [[], [], []]
+                    for i, uv_coords in enumerate(data):
+                            temp_data_lst[i] = np.concatenate((merged_data[i], uv_coords))
+                    merged_data = temp_data_lst.copy()
+                elif data_type_keyword == "baselines_cphase":
+                    temp_data_lst = [[], [], []]
+                    for i, baseline in enumerate(data):
+                        temp_data_lst[i] = np.concatenate((merged_data[i], baseline))
+                    merged_data = temp_data_lst.copy()
+                elif data_type_keyword == "telescope":
+                    temp_data_lst = [[], [], [], []]
+                    for i, dataset in enumerate(data):
+                        temp_data_lst[i] = np.concatenate((merged_data[i], dataset))
+                    merged_data = temp_data_lst.copy()
+                else:
+                    merged_data = np.concatenate((merged_data, data))
+
+        if not data_type_keyword == "telescope":
+            return u.Quantity(merged_data)
+        else:
+            return merged_data
 
     def add_model_component(self, model_component: IterNamespace):
         self.model_components.append(model_component)
@@ -403,30 +429,32 @@ if __name__ == "__main__":
     wavelengths = [8.5, 10.0]
     theta = [0.5, 145, 1., 35, 0.5, 0.05, 3., 5., 7.]
     data = DataHandler(fits_files, wavelengths)
-    data._labels = ["axis_ratio", "pa", "mod_amp", "mod_angle", "q", "p",
-                   "inner:ring:inner_radius", "inner:ring:outer_radius",
-                   "outer:ring:inner_radius"]
-    print(data.model_components)
-    data.reformat_theta_to_components(theta)
-    print(data.disc_params.q)
-    print(data.model_components)
+    print(data.uv_coords_cphase.shape)
+    # data._labels = ["axis_ratio", "pa", "mod_amp", "mod_angle", "q", "p",
+                   # "inner:ring:inner_radius", "inner:ring:outer_radius",
+                   # "outer:ring:inner_radius"]
+    # # print(data.model_components)
+    # data.reformat_theta_to_components(theta)
+    # # print(data.disc_params.q)
+    # # print(data.model_components)
+    # print(data.uv_coords)
 
-    data2 = DataHandler(fits_files, wavelengths)
-    data2.geometric_priors = [[0., 1.], [0, 180]]
-    data2.modulation_priors = [[0., 1.], [0, 360]]
-    data2.disc_priors = [[0., 1.], [0., 1.]]
-    data2.zero_padding_order = 2
-    data2.fixed_params = make_fixed_params(30, 128, 1500, 7900, 140, 19, 1)
-    complete_ring = make_ring_component("inner_ring",
-                                        [[0., 0.], [0., 0.], [3., 5.], [0., 0.]])
-    delta_component = make_delta_component("star")
-    data2.add_model_component(delta_component)
-    data2.add_model_component(complete_ring)
-    data2.reformat_components_to_priors()
-    print(data2.total_fluxes.value)
-    print(data2.corr_fluxes.value)
-    print(data2.cphases_sigma_squared.value)
+    # data2 = DataHandler(fits_files, wavelengths)
+    # data2.geometric_priors = [[0., 1.], [0, 180]]
+    # data2.modulation_priors = [[0., 1.], [0, 360]]
+    # data2.disc_priors = [[0., 1.], [0., 1.]]
+    # data2.zero_padding_order = 2
+    # data2.fixed_params = make_fixed_params(30, 128, 1500, 7900, 140, 19, 1)
+    # complete_ring = make_ring_component("inner_ring",
+                                        # [[0., 0.], [0., 0.], [3., 5.], [0., 0.]])
+    # delta_component = make_delta_component("star")
+    # data2.add_model_component(delta_component)
+    # data2.add_model_component(complete_ring)
+    # data2.reformat_components_to_priors()
+    # # print(data2.total_fluxes.value)
+    # # print(data2.corr_fluxes.value)
+    # # print(data2.cphases_sigma_squared.value)
 
-    values = [32, 1000, 5000, 1e-4]
-    data2.mcmc = values
-    print(data2.pixel_scaling)
+    # values = [32, 1000, 5000, 1e-4]
+    # data2.mcmc = values
+    # # print(data2.pixel_scaling)

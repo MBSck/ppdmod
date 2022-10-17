@@ -188,19 +188,17 @@ class FastFourierTransform:
                             fill_value=None)
 
         amp = np.abs(real_corr + 1j*imag_corr)
-        uvcoords_cphase = tuple(uvcoords.value for uvcoords in uvcoords_cphase)
-
-        real_phase = interpn(grid, np.real(self.ft), uvcoords_cphase,
+        real_phase = interpn(grid, np.real(self.ft), uvcoords_cphase.value,
                              method='linear', bounds_error=False,
                              fill_value=None)
-        imag_phase = interpn(grid, np.imag(self.ft), uvcoords_cphase,
+        imag_phase = interpn(grid, np.imag(self.ft), uvcoords_cphase.value,
                              method='linear', bounds_error=False,
                              fill_value=None)
         cphases = np.angle(real_phase + 1j*imag_phase, deg=True)
-        cphases = np.array(cphases).reshape((cphases.flatten()).shape[0]//12, 3, 4)
+        cphases = np.array(cphases).reshape(3, uvcoords_cphase.shape[1])
 
-        cphases = np.array([np.sum(i, axis=0) for i in cphases])
-        cphases = cphases.reshape(cphases.shape[0]*cphases.shape[1]).tolist()
+        cphases = np.sum(cphases, axis=0)
+        # TODO: Check what impact this here has?
         cphases = np.degrees((np.radians(cphases) + np.pi) % (2*np.pi) - np.pi)
         return amp, cphases
 
@@ -272,7 +270,7 @@ class FastFourierTransform:
                                      -fftaxis_Mlambda_end, fftaxis_Mlambda_end-1],
                         interpolation="None", aspect=(self.wl.to(u.m)).value)
         ccx = cx.imshow(phase, extent=[-fftaxis_m_end, fftaxis_m_end-1,
-                                             -fftaxis_Mlambda_end, fftaxis_Mlambda_end-1],
+                                       -fftaxis_Mlambda_end, fftaxis_Mlambda_end-1],
                         interpolation="None", aspect=(self.wl.to(u.m)).value)
 
         fig.colorbar(cbx, fraction=0.046, pad=0.04, ax=bx, label="Flux [Jy]")
