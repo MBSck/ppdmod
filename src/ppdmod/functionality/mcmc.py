@@ -40,6 +40,7 @@ This calls the MCMC fitting
 
 """
 import os
+import time
 import emcee
 import corner
 import warnings
@@ -91,7 +92,7 @@ def plot_corner(sampler: np.ndarray, data: DataHandler,
     samples = sampler.get_chain(flat=True)
     corner.corner(samples, show_titles=True, labels=data.labels,
                   plot_datapoints=True, quantiles=[0.16, 0.5, 0.84])
-    plot_name = f"Corner_plot_{(data.wavelengths[0]):.2f}.png"
+    plot_name = f"Corner-plot_{data.wavelengths[0]}.png"
 
     if save_path == "":
         plt.savefig(plot_name)
@@ -112,7 +113,7 @@ def plot_chains(sampler: np.ndarray, data: DataHandler,
         ax.yaxis.set_label_coords(-0.1, 0.5)
 
     axes[-1].set_xlabel("step number");
-    plot_name = f"Chain_plot_{(data.wavelengths[0]):.2f}.png"
+    plot_name = f"Chain-plot_{data.wavelengths[0]}.png"
 
     if save_path == "":
         plt.savefig(plot_name)
@@ -165,9 +166,9 @@ def run_mcmc(data: DataHandler,
             if not pool.is_master():
                 pool.wait()
                 sys.exit(0)
-
+            moves = emcee.moves.StretchMove(2.0)
             sampler = emcee.EnsembleSampler(data.mcmc.nwalkers, data.mcmc.ndim,
-                                            lnprob, args=[data], pool=pool)
+                                            lnprob, args=[data], pool=pool, moves=moves)
 
             print("Running burn-in...")
             p0, _, _ = sampler.run_mcmc(p0, data.mcmc.nburn, progress=True)
@@ -181,8 +182,9 @@ def run_mcmc(data: DataHandler,
     else:
         with Pool() as pool:
             print(f"Executing MCMC with {cpu_count()} cores.")
+            moves = emcee.moves.StretchMove(2.0)
             sampler = emcee.EnsembleSampler(data.mcmc.nwalkers, data.mcmc.ndim,
-                                            lnprob, args=[data], pool=pool)
+                                            lnprob, args=[data], pool=pool, moves=moves)
 
             print("Running burn-in...")
             p0, _, _ = sampler.run_mcmc(p0, data.mcmc.nburn, progress=True)
@@ -195,10 +197,15 @@ def run_mcmc(data: DataHandler,
     data.theta_max = (sampler.flatchain)[np.argmax(sampler.flatlnprobability)]
     best_fit_total_fluxes, best_fit_corr_fluxes, best_fit_cphases =\
         calculate_model(data.theta_max, data)
-    plot_corner(sampler, data)
-    plot_chains(sampler, data)
+
+    output_path = f"{time.time()}_results_fit"
+    if save_path:
+        output_path = os.path.join(save_path, output_path)
+    os.makedirs(output_path)
+    plot_corner(sampler, data, save_path=output_path)
+    plot_chains(sampler, data, save_path=output_path)
     plot_fit_results(best_fit_total_fluxes[0], best_fit_corr_fluxes[0],
-                     best_fit_cphases[0], data, save_path=save_path)
+                     best_fit_cphases[0], data, save_path=output_path)
 
 
 if __name__ == "__main__":
@@ -206,19 +213,19 @@ if __name__ == "__main__":
     fits_files = ["HD_142666_2019-03-24T09_01_46_N_TARGET_FINALCAL_INT.fits"]
     fits_files = [os.path.join(data_path, file) for file in fits_files]
     flux_file = "../../../data/tests/HD_142666_timmi2.txt"
-    wavelengths = [8.5, 10.0]
+    save_path = "../../../assets/model_results"
+    wavelengths = [8.5]
     data = DataHandler(fits_files, wavelengths, flux_file=flux_file)
     complete_ring = make_ring_component("inner_ring",
-                                        [[0., 0.], [0., 0.], [0., 5.], [0., 0.]])
+                                        [[0., 0.], [0., 0.], [1., 6.], [0., 0.]])
     delta_component = make_delta_component("star")
     data.add_model_component(delta_component)
     data.add_model_component(complete_ring)
-    data.zero_padding_order = 2
-    data.fixed_params = make_fixed_params(15, 256, 1500, 7900, 140, 19, 1)
-    data.geometric_priors = [[0., 1.], [0, 180]]
-    data.modulation_priors = [[0., 1.], [0, 360]]
+    data.fixed_params = make_fixed_params(35, 128, 1500, 7900, 140, 19, 1)
+    data.geometric_priors = [[0.1, 1.], [0, 180]]
+    data.modulation_priors = [[0.1, 1.], [0, 360]]
     data.disc_priors = [[0., 1.], [0., 1.]]
-    mcmc_params = [32, 50, 100, 1e-4]
-    data.mcmc = mcmc_params
-    run_mcmc(data)
+    data.mcmc = [100, 5, 5, 1e-4]
+    data.zero_padding_order = 1
+    run_mcmc(data, save_path=save_path)
 

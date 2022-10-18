@@ -452,6 +452,7 @@ if __name__ == "__main__":
     print(data.wavelengths.shape[0])
     print(data.wavelengths)
     print(data.wavelength_window_sizes)
+    print([uv_coords[:, ::2].squeeze() for uv_coords in data.uv_coords_cphase])
     # data._labels = ["axis_ratio", "pa", "mod_amp", "mod_angle", "q", "p",
                    # "inner:ring:inner_radius", "inner:ring:outer_radius",
                    # "outer:ring:inner_radius"]

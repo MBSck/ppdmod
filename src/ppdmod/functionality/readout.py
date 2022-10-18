@@ -262,7 +262,9 @@ class ReadoutFits:
         """
         u1, v1 = self.get_data("oi_t3", "u1coord", "v1coord")
         u2, v2 = self.get_data("oi_t3", "u2coord", "v2coord")
-        u3, v3 = -(u1+u2), -(v1+v2)
+        # NOTE: After Jozsef this does not make good closure phases
+        # u3, v3 = -(u1+u2), -(v1+v2)
+        u3, v3 = (u1+u2), (v1+v2)
         return ([u1, u2, u3], [v1, v2, v3])*u.m
 
     def get_closures_phase_uvcoords(self) -> Quantity:

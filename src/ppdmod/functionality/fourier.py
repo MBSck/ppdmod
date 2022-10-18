@@ -49,8 +49,8 @@ import astropy.units as u
 import matplotlib.pyplot as plt
 
 from astropy.units import Quantity
-from numpy.fft import fft2, fftshift, ifftshift, fftfreq
 from scipy.interpolate import interpn
+from numpy.fft import fft2, fftshift, ifftshift, fftfreq
 from typing import List, Optional
 
 from .utils import make_fixed_params, make_delta_component,\
@@ -104,12 +104,12 @@ class FastFourierTransform:
     def fftscaling2m(self):
         """Fetches the FFT's scaling in meters"""
         cycles_per_rad = np.diff(self.freq_axis)[0].to(1/u.rad)
-        return (cycles_per_rad*self.wl.to(u.m)).to(u.m, equivalencies=u.dimensionless_angles())
+        return cycles_per_rad.value*self.wl.to(u.m)
 
     @property
     def fftscaling2Mlambda(self):
         """Fetches the FFT's scaling in mega lambda"""
-        return self.fftscaling2m/self.wl.to(u.m)
+        return self.fftscaling2m/self.wl
 
     @property
     def fftaxis_m_end(self):
@@ -227,9 +227,9 @@ class FastFourierTransform:
         ft: np.ndarray
         """
         self.model = self.zero_pad_model()
-        self.raw_fft = fft2(ifftshift(self.model))
+        self.raw_fft = fft2(fftshift(self.model))
         self.ft_centre = self.raw_fft[0][0]
-        return fftshift(self.raw_fft)
+        return ifftshift(self.raw_fft)
 
     def plot_amp_phase(self, matplot_axes: Optional[List] = [],
                        zoom: Optional[int] = 500,
@@ -262,7 +262,7 @@ class FastFourierTransform:
         fov_scale = (self.pixel_scale*self.model_unpadded_dim).value
         fftaxis_m_end = self.fftaxis_m_end.value
         fftaxis_Mlambda_end = self.fftaxis_Mlambda_end.value
-        zoom_Mlambda = ((zoom*u.dimensionless_unscaled)/(self.wl.to(u.m))).value
+        zoom_Mlambda = (zoom*u.dimensionless_unscaled)/self.wl.value
 
         vmax = (np.sort(self.unpadded_model.flatten())[::-1][1]).value
 
@@ -271,10 +271,10 @@ class FastFourierTransform:
                   extent=[-fov_scale, fov_scale, -fov_scale, fov_scale])
         cbx = bx.imshow(amp, extent=[-fftaxis_m_end, fftaxis_m_end-1,
                                      -fftaxis_Mlambda_end, fftaxis_Mlambda_end-1],
-                        interpolation="None", aspect=(self.wl.to(u.m)).value)
+                        interpolation="None", aspect=self.wl.value)
         ccx = cx.imshow(phase, extent=[-fftaxis_m_end, fftaxis_m_end-1,
                                        -fftaxis_Mlambda_end, fftaxis_Mlambda_end-1],
-                        interpolation="None", aspect=(self.wl.to(u.m)).value)
+                        interpolation="None", aspect=self.wl.value)
 
         fig.colorbar(cbx, fraction=0.046, pad=0.04, ax=bx, label="Flux [Jy]")
         fig.colorbar(ccx, fraction=0.046, pad=0.04, ax=cx, label="Phase [°]")
@@ -296,6 +296,17 @@ class FastFourierTransform:
         cx.axis([-zoom, zoom, -zoom_Mlambda, zoom_Mlambda])
 
         fig.tight_layout()
+
+        if uv_coords is not None:
+            ucoord, vcoord = uv_coords[:, ::2].squeeze(), uv_coords[:, 1::2].squeeze()
+            ucoord_cphase = [ucoords[:, ::2].squeeze() for ucoords in uv_coords_cphase]
+            vcoord_cphase = [vcoords[:, 1::2].squeeze() for vcoords in uv_coords_cphase]
+            vcoord, vcoord_cphase = map(lambda x: x/self.wl.value, [vcoord, vcoord_cphase])
+
+            colors = np.array(["r", "g", "y"])
+            bx.scatter(ucoord, vcoord, color="r")
+            for i, ucoord in enumerate(ucoord_cphase):
+                cx.scatter(ucoord, vcoord_cphase[i], color=colors[i])
 
         if plt_save:
             plt.savefig(f"{self.wl}_FFT_plot.png")
@@ -324,7 +335,9 @@ if __name__ == "__main__":
     model.add_component(complete_ring)
     model.add_component(delta_component)
     image = model.eval_flux(wavelength)
+    np.save("model.npy", image.value)
     fourier = FastFourierTransform(image, wavelength,
-                                   model.pixel_scaling, 4)
-    fourier.plot_amp_phase(zoom=1000)
+                                   model.pixel_scaling, 3)
+    print(model.eval_total_flux(wavelength))
+    fourier.plot_amp_phase(zoom=500)
 

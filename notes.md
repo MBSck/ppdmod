@@ -17,7 +17,12 @@
 * Check impact of the FastFourierTransform reforming of the the Cphases? Against wrapping? -> Maybe ask Jacob here?
 * Think about what is interpolated? Is Anthony's interpolation correct?? Maybe meshgrid?
 * Think about what the interpolation does??
+* How does the triangle come together (uv coords for cphases), look at what Jozsef does
+* Check conversion into meters from frequency scale
 ## Problems
+* Check if sublimation temperature is calculated properly
+## Ideas
+* Switch to pyFFTW at some time maybe?
 ## Solutions
 - Try to use the FFT standalone and test if this works, if not then check the rest of the code again
 ## Working-on-ATM

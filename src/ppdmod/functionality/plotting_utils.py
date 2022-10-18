@@ -35,6 +35,20 @@ def print_results(best_fit_total_fluxes, best_fit_corr_fluxes,
     print("Theta max:")
     print(data.theta_max)
 
+# def _make_string_from_dict(self, dict: Dict) -> str:
+    # ...
+
+# def write_txt(data: DataHandler):
+    # # title_dict = {"Model Fit Parameters": ""}
+    # # text_dict = { "FOV": pixel_size, "npx": sampling,
+                 # # "zero pad order": zero_padding_order, "wavelength": plot_wl,
+                 # # "": "", "blackbody params": "", "---------------------": "",
+                 # # **bb_params_dict, "": "", "best fit values": "",
+                 # # "---------------------": "", **theta_max_dict, "": "",
+                 # # "hyperparams": "", "---------------------": "",
+                 # # **hyperparams_dict}
+
+
 def plot_fit_results(best_fit_total_fluxes, best_fit_corr_fluxes,
                      best_fit_cphases, data: DataHandler,
                      save_path: Optional[Path] = None) -> None:
@@ -63,8 +77,10 @@ def plot_fit_results(best_fit_total_fluxes, best_fit_corr_fluxes,
     plot_amp_phase_comparison(data, best_fit_total_fluxes,
                               best_fit_corr_fluxes, best_fit_cphases,
                               matplot_axes=[bx, cx])
-    data.fourier.plot_amp_phase(matplot_axes=[fig, ax2, bx2, cx2], zoom=1000)
-    plot_name = f"Best-fit-model for {(plot_wl*1e6):.2f}.png"
+    data.fourier.plot_amp_phase(matplot_axes=[fig, ax2, bx2, cx2],
+                                zoom=500, uv_coords=data.uv_coords,
+                                uv_coords_cphase=data.uv_coords_cphase)
+    plot_name = f"Best-fit-model_{plot_wl}.png"
 
     if save_path is None:
         plt.savefig(plot_name)
@@ -113,7 +129,6 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
     y_lim_cphase = [y_min_cphase-y_space_cphase, y_max_cphase+y_space_cphase]
 
     # TODO: Add more colors
-    colors = ["r", "b", "g"]
     ax.errorbar(data.baselines.value,
                 data.corr_fluxes.value[0], data.corr_fluxes_error.value[0],
                 color="goldenrod", fmt='o', label="Observed data", alpha=0.6)

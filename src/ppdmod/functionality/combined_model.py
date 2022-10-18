@@ -66,6 +66,11 @@ class CombinedModel:
         else:
             return self._model_init_params.sub_temp
 
+    def _set_ones(self, image: Quantity) -> Quantity:
+        """Sets and image grid to all ones"""
+        image[image != 0.] = 1.*image.unit
+        return image
+
     def add_component(self, value: IterNamespace) -> None:
         """Adds components to the model"""
         self._components.append(self._components_dic[value.component])
@@ -116,6 +121,9 @@ class CombinedModel:
             else:
                 image += temp_image
         return image
+
+    def eval_object(self) -> Quantity:
+        return self._set_ones(self.eval_model()).value*u.dimensionless_unscaled
 
     def eval_flux(self, wavelength: Quantity) -> Quantity:
         """Evaluates the flux for model"""
