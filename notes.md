@@ -18,6 +18,7 @@
 * Think about what is interpolated? Is Anthony's interpolation correct?? Maybe meshgrid?
 * Think about what the interpolation does??
 * How does the triangle come together (uv coords for cphases), look at what Jozsef does
+* Check the calulation operation after the triangle conversion
 * Check conversion into meters from frequency scale
 ## Problems
 * Check if sublimation temperature is calculated properly

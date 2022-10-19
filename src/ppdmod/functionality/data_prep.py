@@ -52,12 +52,12 @@ class DataHandler:
         self._priors, self._labels = [], []
         self._mcmc = None
 
+        self.total_fluxes, self.total_fluxes_error = self._merge_data("flux")
+        self.total_fluxes_sigma_squared = self._get_sigma_square("flux")
         self.corr_fluxes, self.corr_fluxes_error = self._merge_data("vis")
         self.corr_fluxes_sigma_squared = self._get_sigma_square("vis")
         self.cphases, self.cphases_error = self._merge_data("cphases")
         self.cphases_sigma_squared = self._get_sigma_square("cphases")
-        self.total_fluxes, self.tota_fluxes_error = self._merge_data("flux")
-        self.total_fluxes_sigma_squared = self._get_sigma_square("flux")
 
         self.uv_coords = self._merge_simple_data("uvcoords")
         self.uv_coords_cphase = self._merge_simple_data("uvcoords_cphase")
@@ -449,10 +449,13 @@ if __name__ == "__main__":
     theta = [0.5, 145, 1., 35, 0.5, 0.05, 3., 5., 7.]
     data = DataHandler(fits_files, wavelengths, flux_file=flux_file)
     print(data.total_fluxes)
-    print(data.wavelengths.shape[0])
-    print(data.wavelengths)
-    print(data.wavelength_window_sizes)
-    print([uv_coords[:, ::2].squeeze() for uv_coords in data.uv_coords_cphase])
+    complete_ring = make_ring_component("inner_ring",
+                                        [[0., 0.], [0., 0.], [1., 6.], [0., 0.]])
+    delta_component = make_delta_component("star")
+    data.add_model_component(delta_component)
+    data.add_model_component(complete_ring)
+    data.mcmc = [100, 5, 5, 1e-4]
+    print(*data.mcmc)
     # data._labels = ["axis_ratio", "pa", "mod_amp", "mod_angle", "q", "p",
                    # "inner:ring:inner_radius", "inner:ring:outer_radius",
                    # "outer:ring:inner_radius"]

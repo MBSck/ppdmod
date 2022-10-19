@@ -6,6 +6,7 @@ from pathlib import Path
 from astropy.units import Quantity
 from typing import Dict, List, Optional
 
+from .utils import IterNamespace
 from .data_prep import DataHandler
 
 
@@ -14,8 +15,8 @@ def plot(image: Quantity) -> None:
     plt.imshow(image.value)
     plt.show()
 
-def print_results(best_fit_total_fluxes, best_fit_corr_fluxes,
-                  best_fit_cphases, data: DataHandler) -> None:
+def print_results(data: DataHandler, best_fit_total_fluxes,
+                  best_fit_corr_fluxes, best_fit_cphases) -> None:
     """Prints the model's values"""
     print("Best fit total fluxes:")
     print(best_fit_total_fluxes)
@@ -35,18 +36,51 @@ def print_results(best_fit_total_fluxes, best_fit_corr_fluxes,
     print("Theta max:")
     print(data.theta_max)
 
-# def _make_string_from_dict(self, dict: Dict) -> str:
-    # ...
+def _make_string_list_from_dict(dic: Dict) -> str:
+    return [": ".join([key, str(value)]) for key, value in dic.items()]
 
-# def write_txt(data: DataHandler):
-    # # title_dict = {"Model Fit Parameters": ""}
-    # # text_dict = { "FOV": pixel_size, "npx": sampling,
-                 # # "zero pad order": zero_padding_order, "wavelength": plot_wl,
-                 # # "": "", "blackbody params": "", "---------------------": "",
-                 # # **bb_params_dict, "": "", "best fit values": "",
-                 # # "---------------------": "", **theta_max_dict, "": "",
-                 # # "hyperparams": "", "---------------------": "",
-                 # # **hyperparams_dict}
+def write_data_txt(data: DataHandler, best_fit_total_fluxes,
+                   best_fit_corr_fluxes, best_fit_cphases, save_path = "") -> None:
+    delimiter = "--------------------"
+    real_data_dict = {"Real total fluxes": data.total_fluxes,
+                      "Real total fluxes error": data.total_fluxes_error,
+                      "Real total fluxes sigma squared": data.total_fluxes_sigma_squared,
+                      "Real correlated fluxes": data.corr_fluxes,
+                      "Real correlated fluxes errors": data.corr_fluxes_error,
+                      "Real correlated fluxes sigma squared": data.corr_fluxes_sigma_squared,
+                      "Real closure phases": data.cphases,
+                      "Real closure phases errors": data.cphases_error,
+                      "Real closure phases sigma squared": data.cphases_sigma_squared}
+    best_fit_data_dict = {"Best fit total fluxes": best_fit_total_fluxes,
+                          "Best fit correlated fluxes": best_fit_corr_fluxes,
+                          "Best fit closure phases": best_fit_cphases}
+    miscellaneous_dict = {"wavelengths": data.wavelengths,
+                          "uvcoords": data.uv_coords,
+                          "uvcoords closure phases": data.uv_coords_cphase,
+                          "telescope information": data.telescope_info}
+    mcmc_string = "\n".join(_make_string_list_from_dict(data.mcmc.to_string_dict()))
+    fixed_params_string = "\n".join(_make_string_list_from_dict(data.fixed_params.to_string_dict()))
+    real_data_string = "\n".join(_make_string_list_from_dict(real_data_dict))
+    best_fit_data_string = "\n".join(_make_string_list_from_dict(best_fit_data_dict))
+    miscellaneous_string = "\n".join(_make_string_list_from_dict(miscellaneous_dict))
+    best_fit_parameters_dict = IterNamespace(**dict(zip(data.labels, data.theta_max))).to_string_dict()
+    best_fit_parameters_string = "\n".join(_make_string_list_from_dict(best_fit_parameters_dict))
+    string_list = ["Model Fit Parameters", delimiter, "Hyperparams emcee", delimiter,
+                   mcmc_string, delimiter, "Fixed params", delimiter, fixed_params_string,
+                   delimiter, "Real data", delimiter, real_data_string, delimiter,
+                   "Best fit data", delimiter, best_fit_data_string, delimiter,
+                   "Best fit parameters", delimiter, best_fit_parameters_string, delimiter,
+                   "More parameters", delimiter, miscellaneous_string]
+
+    final_string = "\n".join(string_list)
+    file_name = "model_info.txt"
+    if save_path is None:
+        save_path = file_name
+    else:
+        save_path = os.path.join(save_path, file_name)
+
+    with open(save_path, "w+") as f:
+        f.write(final_string)
 
 
 def plot_fit_results(best_fit_total_fluxes, best_fit_corr_fluxes,
@@ -58,7 +92,7 @@ def plot_fit_results(best_fit_total_fluxes, best_fit_corr_fluxes,
     Parameters
     ----------
     """
-    print_results(best_fit_total_fluxes, best_fit_corr_fluxes, best_fit_cphases, data)
+    print_results(data, best_fit_total_fluxes, best_fit_corr_fluxes, best_fit_cphases)
     plot_wl = data.wavelengths[0]
     fig, axarr = plt.subplots(2, 3, figsize=(20, 10))
     ax, bx, cx = axarr[0].flatten()
