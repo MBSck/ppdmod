@@ -9,7 +9,7 @@ from typing import List, Optional, Callable
 
 from .readout import ReadoutFits
 from .utils import IterNamespace, _make_params, make_delta_component,\
-    make_ring_component, make_fixed_params, _make_priors, make_inital_guess_from_priors
+    make_ring_component, _make_priors, make_inital_guess_from_priors
 
 # TODO: For this class implement different methods of polychromatic fitting. At a later
 # time
@@ -19,8 +19,7 @@ from .utils import IterNamespace, _make_params, make_delta_component,\
 class DataHandler:
     """This class handles all the data that is used for the fitting process, the observed
     data as well as the data created by the modelling process"""
-    def __init__(self, fits_files: List[Path],
-                 wavelengths: List[Quantity],
+    def __init__(self, fits_files: List[Path], wavelengths: List[Quantity],
                  wavelength_window_sizes: Optional[List[float]] = [0.2],
                  flux_file: Optional[Path] = None) -> None:
         """Initialises the class"""
@@ -79,6 +78,11 @@ class DataHandler:
             f"\n{', '.join([str(file) for file in self.readout_files])}\n and polychromatic"\
             f"data of {self.wavelengths} with the windows "\
             f"{self.wavelength_window_sizes}"
+
+    @property
+    def rebin_factor(self):
+        factor = self.fixed_params.pixel_sampling/self.fixed_params.image_size
+        return factor, factor
 
     @property
     def tau_initial(self):

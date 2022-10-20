@@ -1,5 +1,7 @@
 import os
 import numpy as np
+import configparser
+import astropy.units as u
 import matplotlib.pyplot as plt
 
 from pathlib import Path
@@ -36,52 +38,63 @@ def print_results(data: DataHandler, best_fit_total_fluxes,
     print("Theta max:")
     print(data.theta_max)
 
-def _make_string_list_from_dict(dic: Dict) -> str:
-    return [": ".join([key, str(value)]) for key, value in dic.items()]
+def _make_dict_value_to_string(dic: Dict) -> str:
+    return {key: (np.array2string(value)\
+            if (isinstance(value, u.Quantity) or isinstance(value, np.ndarray))\
+            else np.array2string(np.array(value))) for (key, value) in dic.items()}
 
-def write_data_txt(data: DataHandler, best_fit_total_fluxes,
-                   best_fit_corr_fluxes, best_fit_cphases, save_path = "") -> None:
-    delimiter = "--------------------"
-    real_data_dict = {"Real total fluxes": data.total_fluxes,
-                      "Real total fluxes error": data.total_fluxes_error,
-                      "Real total fluxes sigma squared": data.total_fluxes_sigma_squared,
-                      "Real correlated fluxes": data.corr_fluxes,
-                      "Real correlated fluxes errors": data.corr_fluxes_error,
-                      "Real correlated fluxes sigma squared": data.corr_fluxes_sigma_squared,
-                      "Real closure phases": data.cphases,
-                      "Real closure phases errors": data.cphases_error,
-                      "Real closure phases sigma squared": data.cphases_sigma_squared}
-    best_fit_data_dict = {"Best fit total fluxes": best_fit_total_fluxes,
-                          "Best fit correlated fluxes": best_fit_corr_fluxes,
-                          "Best fit closure phases": best_fit_cphases}
-    miscellaneous_dict = {"wavelengths": data.wavelengths,
+def write_data_to_ini(data: DataHandler, best_fit_total_fluxes,
+                      best_fit_corr_fluxes, best_fit_cphases, save_path = "") -> None:
+    """Writes the all the data about the model fit into a (.toml)-file"""
+    real_data_dict = {"total_fluxes": data.total_fluxes,
+                      "total_fluxes_error": data.total_fluxes_error,
+                      "total_fluxes_sigma_squared": data.total_fluxes_sigma_squared,
+                      "correlated_fluxes": data.corr_fluxes,
+                      "correlated_fluxes_errors": data.corr_fluxes_error,
+                      "correlated_fluxes_sigma squared": data.corr_fluxes_sigma_squared,
+                      "closure_phases": data.cphases,
+                      "closure_phases_errors": data.cphases_error,
+                      "closure_phases_sigma_squared": data.cphases_sigma_squared}
+    best_fit_data_dict = {"total_fluxes": best_fit_total_fluxes,
+                          "fluxes": best_fit_corr_fluxes,
+                          "fit_closure_phases": best_fit_cphases}
+    miscellaneous_dict = {"tau": data.tau_initial,
+                          "rebin_factor": data.rebin_factor,
+                          "wavelengths": data.wavelengths,
                           "uvcoords": data.uv_coords,
-                          "uvcoords closure phases": data.uv_coords_cphase,
-                          "telescope information": data.telescope_info}
-    mcmc_string = "\n".join(_make_string_list_from_dict(data.mcmc.to_string_dict()))
-    fixed_params_string = "\n".join(_make_string_list_from_dict(data.fixed_params.to_string_dict()))
-    real_data_string = "\n".join(_make_string_list_from_dict(real_data_dict))
-    best_fit_data_string = "\n".join(_make_string_list_from_dict(best_fit_data_dict))
-    miscellaneous_string = "\n".join(_make_string_list_from_dict(miscellaneous_dict))
-    best_fit_parameters_dict = IterNamespace(**dict(zip(data.labels, data.theta_max))).to_string_dict()
-    best_fit_parameters_string = "\n".join(_make_string_list_from_dict(best_fit_parameters_dict))
-    string_list = ["Model Fit Parameters", delimiter, "Hyperparams emcee", delimiter,
-                   mcmc_string, delimiter, "Fixed params", delimiter, fixed_params_string,
-                   delimiter, "Real data", delimiter, real_data_string, delimiter,
-                   "Best fit data", delimiter, best_fit_data_string, delimiter,
-                   "Best fit parameters", delimiter, best_fit_parameters_string, delimiter,
-                   "More parameters", delimiter, miscellaneous_string]
+                          "uvcoords_closure_phases": data.uv_coords_cphase,
+                          "telescope_information": data.telescope_info}
 
-    final_string = "\n".join(string_list)
-    file_name = "model_info.txt"
+    mcmc_dict = data.mcmc.to_string_dict()
+    fixed_params_dict = data.fixed_params.to_string_dict()
+    real_data_dict_string = _make_dict_value_to_string(real_data_dict)
+    best_fit_data_dict_string = _make_dict_value_to_string(best_fit_data_dict)
+    miscellaneous_dict_string = _make_dict_value_to_string(miscellaneous_dict)
+    best_fit_parameters_dict = IterNamespace(**dict(zip(data.labels, data.theta_max))).to_string_dict()
+
+    # FIXME: This won't work fix it! Maybe add string __repr__ for the subclasses
+    # components_list = []
+    # for component in data.model_components:
+        # temp_component_list = _make_string_list_from_dict(component.to_string_dict()[1:])
+        # temp_component_list.insert(0, f"\n[components.{component.component}]")
+        # temp_components_string = "\n".join(temp_component_list)
+        # components_list.append(temp_components_string)
+    config = configparser.ConfigParser()
+    config["params.emcee"] = mcmc_dict
+    config["params.fixed"] = fixed_params_dict
+    config["params.fitted"] = best_fit_parameters_dict
+    config["params.miscellaneous"] = miscellaneous_dict
+    config["data.observed"] = real_data_dict
+    config["data.fitted"] = best_fit_data_dict_string
+
+    file_name = "model_info.ini"
     if save_path is None:
         save_path = file_name
     else:
         save_path = os.path.join(save_path, file_name)
 
-    with open(save_path, "w+") as f:
-        f.write(final_string)
-
+    with open(save_path, "w+") as configfile:
+        config.write(configfile)
 
 def plot_fit_results(best_fit_total_fluxes, best_fit_corr_fluxes,
                      best_fit_cphases, data: DataHandler,
@@ -152,6 +165,7 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
         fig, axarr = plt.subplots(1, 2, figsize=(10, 5))
         ax, bx = axarr.flatten()
 
+    # TODO: Add the total flux to the limit estimation, and check that generally as well
     all_amp = np.concatenate((data.corr_fluxes.value[0], best_fit_corr_fluxes))
     y_min_amp, y_max_amp = 0, np.max(all_amp)
     y_space_amp = np.sqrt(y_max_amp**2+y_min_amp**2)*0.1
@@ -166,13 +180,16 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
     ax.errorbar(data.baselines.value,
                 data.corr_fluxes.value[0], data.corr_fluxes_error.value[0],
                 color="goldenrod", fmt='o', label="Observed data", alpha=0.6)
+    ax.errorbar(0, data.total_fluxes[0], data.total_fluxes_error[0],
+                color="goldenrod", fmt='o', alpha=0.6)
     ax.scatter(data.baselines.value, best_fit_corr_fluxes,
-               marker='X', label="Model data")
+               color="b", marker='X', label="Model data")
+    ax.scatter(0, best_fit_total_fluxes, marker='X', color="b")
     bx.errorbar(data.longest_baselines.value,
                 data.cphases.value[0], data.cphases_error.value[0],
                 color="goldenrod", fmt='o', label="Observed data", alpha=0.6)
     bx.scatter(data.longest_baselines.value, best_fit_cphases,
-               marker='X', label="Model data")
+               color="b", marker='X', label="Model data")
 
     ax.set_xlabel("Baselines [m]")
     ax.set_ylabel("Correlated fluxes [Jy]")

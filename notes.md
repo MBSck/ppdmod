@@ -33,10 +33,19 @@
 ## Solutions
 - Try to use the FFT standalone and test if this works, if not then check the rest of the code again
 ## Working-on-ATM
-[] Implement rebinning from high resolution to low -> Check that rebinning works as planned
-[] Check what FOV is neede, automatically calculate it for highest wl?
+
+### Plotting
+[] Fix scaling of correlated flux plotting
+[] Check the plotting for the different epochs
+
+### Data output
+[] Add data about the time the model took to run and when it started
+
+### Model coding
 [] Look through all of Fourier transform and check where the phase error comes from... Only in Phase?!
 [] Write tests for all that has been done
+[] Check what FOV is neede, automatically calculate it for highest wl?
+
 ## To-Do
 [] Ignore errors at some point, or warnings that is
 [] Finish rework of model.py and implement tests
@@ -47,7 +56,11 @@
 [] Make function that gives stuff like 'eval_model' automatically docstrings
 [] Remove redundancies to improve code speed (for later)
 [] Remove pixel scaling from DataHandler and wavelengths from CombinedModel
+
 ## Done
+[x] Add total fluxes to plotting in same plot
+[x] Write all in a ini file
+[x] Implement rebinning from high resolution to low -> Check that rebinning works as planned
 [x] Rework the plotting functionality for the fitted models
 [x] Reworking model.py, methods to implement:
 [x] Reworking model_components
