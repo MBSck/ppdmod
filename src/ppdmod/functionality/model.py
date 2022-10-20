@@ -35,30 +35,25 @@ class Model:
         """"""
         self.field_of_view = field_of_view
         self.image_size = image_size
-        self.pixel_sampling = pixel_sampling
         self.sublimation_temperature = sublimation_temperature
         self.effective_temperature = effective_temperature
         self.luminosity_star = luminosity_star
         self.distance = distance
+        self.pixel_sampling = pixel_sampling
 
-        # TODO: Maybe make a specific save name for the model also
         self.component_name = None
+        # TODO: Check why this is a thing?
         self.axes_image, self.axes_complex_image = [], []
         self.polar_angle = np.array([])
-
-        self.params_count = 0
-        self.non_zero_params_count = 0
-
-        if self.pixel_sampling > self.image_size:
-            self._rebin = True
-        else:
-            self._rebin = False
 
     # TODO: Add docs
     @property
     def image_centre(self) -> Tuple:
         """Returns index"""
-        return (self.image_size//2, self.image_size//2)
+        if self.component_name == "delta":
+            return (self.image_size//2, self.image_size//2)
+        else:
+            return (self.pixel_sampling//2, self.pixel_sampling//2)
 
     @property
     def pixel_scaling(self):

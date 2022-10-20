@@ -550,7 +550,7 @@ def make_fixed_params(field_of_view: int, image_size: int,
                       sublimation_temperature: int,
                       effective_temperature: int,
                       distance: int, luminosity_star: int,
-                      tau: float, pixel_sampling: Optional[int] = None) -> IterNamespace:
+                      pixel_sampling: Optional[int] = None) -> IterNamespace:
     """Crates a dictionary of the fixed params
 
     Parameters
@@ -561,24 +561,28 @@ def make_fixed_params(field_of_view: int, image_size: int,
     effective_temperature: int
     distance: int
     luminosity_star: int
-    tau: float
     pixel_sampling: int, optional
     """
     keys = ["fov", "image_size", "sub_temp", "eff_temp",
-              "distance", "lum_star", "pixel_sampling", "tau"]
+              "distance", "lum_star", "pixel_sampling"]
     values = [field_of_view, image_size, sublimation_temperature,
-              effective_temperature, distance, luminosity_star, pixel_sampling, tau]
+              effective_temperature, distance, luminosity_star, pixel_sampling]
     units = [u.mas, u.dimensionless_unscaled, u.K, u.K,
-             u.pc, u.W, u.dimensionless_unscaled, u.dimensionless_unscaled]
+             u.pc, u.W, u.dimensionless_unscaled]
     fixed_param_dict = dict(zip(keys, values))
 
     for i, (key, value) in enumerate(fixed_param_dict.items()):
-        if (key == "pixel_sampling") and (value is None):
-            fixed_param_dict[key] = fixed_param_dict["image_size"]
         if not isinstance(value, u.Quantity):
             if key == "image_size":
                 fixed_param_dict[key] = u.Quantity(value, unit=u.dimensionless_unscaled,
                                                    dtype=int)
+            elif key == "pixel_sampling":
+                if value is None:
+                    fixed_param_dict[key] = fixed_param_dict["image_size"]
+                else:
+                    fixed_param_dict[key] = u.Quantity(value,
+                                                        unit=u.dimensionless_unscaled,
+                                                        dtype=int)
             elif key == "lum_star":
                 fixed_param_dict[key] *= c.L_sun
             else:

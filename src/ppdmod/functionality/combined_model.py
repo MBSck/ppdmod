@@ -1,15 +1,14 @@
 import numpy as np
 import astropy.units as u
+import matplotlib.pyplot as plt
 
 from typing import List
-from astropy.units import Quantity
+from astropy.units import Quantity, dimensionless_unscaled
 
 from .utils import IterNamespace, make_fixed_params, make_delta_component,\
     make_ring_component, _make_params, _calculate_sublimation_temperature,\
     temperature_gradient, optical_depth_gradient, flux_per_pixel, rebin_image
-from .plotting_utils import plot
-from ..model_components import DeltaComponent, GaussComponent,\
-    RingComponent, UniformDiskComponent
+from ..model_components import DeltaComponent, GaussComponent, RingComponent
 
 
 class CombinedModel:
@@ -17,8 +16,7 @@ class CombinedModel:
                  wavelengths: List[Quantity], geometric_params: IterNamespace,
                  modulation_params: IterNamespace) -> None:
         """"""
-        self._model_init_params = fixed_params[:-1]
-        self.tau = fixed_params[-1]
+        self._model_init_params = fixed_params
         self._wavelengths = wavelengths
         self._disc_params = disc_params
         self.geometric_params = geometric_params
@@ -26,14 +24,15 @@ class CombinedModel:
 
         self._components_dic = {"ring": RingComponent,
                                 "delta": DeltaComponent,
-                                "gauss": GaussComponent,
-                                "uniform_disk": UniformDiskComponent}
+                                "gauss": GaussComponent}
 
         self._components = []
         self._components_attrs = []
 
+        self._tau = None
         self._stellar_flux_func = None
         self._inner_radius = None
+        self.rebin_factor = None
 
     @property
     def components(self):
@@ -63,6 +62,20 @@ class CombinedModel:
         """Sets and image grid to all ones"""
         image[image != 0.] = 1.*image.unit
         return image
+
+    @property
+    def tau(self):
+        if self._tau is None:
+            raise ValueError("The value for tau has not been set yet!")
+        return self._tau
+
+    @tau.setter
+    def tau(self, value):
+        if not isinstance(value, u.Quantity):
+            self._tau = value*u.dimensionless_unscaled
+        elif value.unit != dimensionless_unscaled:
+            raise IOError(f"Wrong unit has been input for tau. Needs to"\
+                          f" be in [astropy.units.dimensionless_unscaled] or unitless!")
 
     def add_component(self, value: IterNamespace) -> None:
         """Adds components to the model"""
@@ -130,6 +143,10 @@ class CombinedModel:
         flux = flux_per_pixel(wavelength, temperature, optical_depth, self.pixel_scaling)
         flux[flux == np.inf] = 0.*u.Jy
         # TOOD: Implement here rebinning
+        if self._model_init_params.pixel_sampling > self._model_init_params.image_size:
+            new_shape = (self._model_init_params.image_size,
+                         self._model_init_params.image_size)
+            flux, self.rebin_factor = rebin_image(flux, new_shape, rfactor=True)
         # TODO: Think of better implementation of stellar flux with rebinning
         if self._stellar_flux_func is not None:
             flux += self._stellar_flux_func(wavelength)
@@ -140,13 +157,9 @@ class CombinedModel:
         distribution to the complete brightness [astropy.units.Jy]"""
         return np.sum(self.eval_flux(wavelength))
 
-    # TODO: Add functionality here
-    def plot(self, image: Quantity) -> None:
-        plot(image)
-
 
 if __name__ == "__main__":
-    fixed_params = make_fixed_params(30, 4096, 1500, 7900, 140, 19, 1)
+    fixed_params = make_fixed_params(30, 128, 1500, 7900, 140, 19, 128)
     disc_params = _make_params([1., 1.],
                                [u.dimensionless_unscaled, u.dimensionless_unscaled],
                                ["q", "p"])
@@ -156,12 +169,22 @@ if __name__ == "__main__":
                                      ["mod_amp", "mod_angle"])
     wavelengths = [8*u.um]
     complete_ring = make_ring_component("inner_ring",
-                                        params=[0., 0., 5., 0.])
+                                        params=[0., 0., 2., 0.])
     delta_component = make_delta_component("star")
 
     model = CombinedModel(fixed_params, disc_params, wavelengths,
                           geometric_params, modulation_params)
     model.add_component(complete_ring)
-    model.add_component(delta_component)
-    plot(model.eval_flux(wavelengths[0]))
+    # model.add_component(delta_component)
+    fixed_params2 = make_fixed_params(30, 128, 1500, 7900, 140, 19, 4096)
+    model2 = CombinedModel(fixed_params2, disc_params, wavelengths,
+                           geometric_params, modulation_params)
+    model2.add_component(complete_ring)
+    model.tau, model2.tau = 1, 1
+    fig, (ax, bx) = plt.subplots(1, 2)
+    ax.imshow(model.eval_flux(wavelengths[0]).value)
+    bx.imshow(model2.eval_flux(wavelengths[0]).value)
+    print(model.rebin_factor)
+    print(model2.rebin_factor)
+    plt.show()
 
