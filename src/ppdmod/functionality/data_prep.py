@@ -82,13 +82,15 @@ class DataHandler:
 
     @property
     def tau_initial(self):
+        if self._tau_initial is None:
+            raise ValueError("The value for tau has not been set yet!")
         return self._tau_initial
 
     @tau_initial.setter
     def tau_initial(self, value):
         if not isinstance(value, u.Quantity):
             self._tau_initial = value*u.dimensionless_unscaled
-        elif value.unit != dimensionless_unscaled:
+        elif value.unit != u.dimensionless_unscaled:
             raise IOError(f"Wrong unit has been input for tau initial. Needs to"\
                           f" be in [astropy.units.dimensionless_unscaled] or unitless!")
 

@@ -29,7 +29,7 @@ class CombinedModel:
         self._components = []
         self._components_attrs = []
 
-        self._tau = None
+        self.tau = None
         self._stellar_flux_func = None
         self._inner_radius = None
         self.rebin_factor = None
@@ -37,6 +37,7 @@ class CombinedModel:
     @property
     def components(self):
         """Initialises the model's components"""
+        # TODO: See that this gets only initialised once?! Huge memory leak
         if self._components:
             components = [component(*self._model_init_params)\
                           for component in self._components]
@@ -57,20 +58,6 @@ class CombinedModel:
                                                       self._model_init_params.lum_star)
         else:
             return self._model_init_params.sub_temp
-
-    @property
-    def tau(self):
-        if self._tau is None:
-            raise ValueError("The value for tau has not been set yet!")
-        return self._tau
-
-    @tau.setter
-    def tau(self, value):
-        if not isinstance(value, u.Quantity):
-            self._tau_initial = value*u.dimensionless_unscaled
-        elif value.unit != dimensionless_unscaled:
-            raise IOError(f"Wrong unit has been input for tau. Needs to"\
-                          f" be in [astropy.units.dimensionless_unscaled] or unitless!")
 
     def add_component(self, value: IterNamespace) -> None:
         """Adds components to the model"""
@@ -171,11 +158,12 @@ if __name__ == "__main__":
     # model = CombinedModel(fixed_params, disc_params, wavelengths,
                           # geometric_params, modulation_params)
     # model.add_component(complete_ring)
-    # # model.add_component(delta_component)
+    # model.add_component(delta_component)
     # fixed_params2 = make_fixed_params(30, 128, 1500, 7900, 140, 19, 2048)
     # model2 = CombinedModel(fixed_params2, disc_params, wavelengths,
                            # geometric_params, modulation_params)
     # model2.add_component(complete_ring)
+    # model2.add_component(delta_component)
     # model.tau, model2.tau = 1, 1
     # fig, (ax, bx) = plt.subplots(1, 2)
     # ax.imshow(model.eval_flux(wavelengths[0]).value)
@@ -184,7 +172,7 @@ if __name__ == "__main__":
     # print(model2.rebin_factor)
     # plt.show()
     # NOTE: This checks the total flux for a certain wavelength
-    fixed_params = make_fixed_params(30, 128, 1500, 7900, 140, 19, 128)
+    fixed_params = make_fixed_params(30, 512, 1500, 7900, 140, 19, 4096)
     disc_params = _make_params([1., 1.],
                                [u.dimensionless_unscaled, u.dimensionless_unscaled],
                                ["q", "p"])
@@ -192,7 +180,7 @@ if __name__ == "__main__":
                                     ["axis_ratio", "pa"])
     modulation_params = _make_params([0.5, 140], [u.dimensionless_unscaled, u.deg],
                                      ["mod_amp", "mod_angle"])
-    wavelengths = [8*u.um]
+    wavelengths = [12]*u.um
     complete_ring = make_ring_component("inner_ring",
                                         params=[0., 0., 2., 0.])
     delta_component = make_delta_component("star")
@@ -201,4 +189,10 @@ if __name__ == "__main__":
                           geometric_params, modulation_params)
     model.add_component(complete_ring)
     model.tau = 1
-    # model.add_component(delta_component)
+    fields_of_view = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
+                      110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220,
+                      230, 240, 250, 260, 270, 280, 290, 300, 310, 320]*u.mas
+    max_wl = np.max(wavelengths)
+    for fov in fields_of_view:
+        model._model_init_params.fov = fov
+        print("total_flux", model.eval_total_flux(max_wl), "fov", fov)

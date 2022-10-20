@@ -20,13 +20,21 @@
 * How does the triangle come together (uv coords for cphases), look at what Jozsef does
 * Check the calulation operation after the triangle conversion
 * Check conversion into meters from frequency scale
-## Problems
+* Check what rebinning factor to use (What is sufficient?)
 * Check if sublimation temperature is calculated properly
+## Problems
+* Improve calculation times of the modelling!
+* Memory leak in the model component initialisation!
+* Code too slow! Make it faster by far? Faster array calculation? Other approaches?
 ## Ideas
 * Switch to pyFFTW at some time maybe?
+* Switch to a faster array calculation?
+* Recode all of this in Rust?
 ## Solutions
 - Try to use the FFT standalone and test if this works, if not then check the rest of the code again
 ## Working-on-ATM
+[] Implement rebinning from high resolution to low -> Check that rebinning works as planned
+[] Check what FOV is neede, automatically calculate it for highest wl?
 [] Look through all of Fourier transform and check where the phase error comes from... Only in Phase?!
 [] Write tests for all that has been done
 ## To-Do

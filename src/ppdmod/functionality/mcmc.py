@@ -218,23 +218,24 @@ if __name__ == "__main__":
     save_path = "../../../assets/model_results"
     wavelengths = [8.5, 10.0]
     data = DataHandler(fits_files, wavelengths, flux_file=flux_file)
-    # complete_ring = make_ring_component("inner_ring",
-                                        # [[0., 0.], [0., 0.], [1., 6.], [0., 0.]])
+    complete_ring = make_ring_component("inner_ring",
+                                        [[0., 0.], [0., 0.], [1., 6.], [0., 0.]])
     inner_ring = make_ring_component("inner_ring",
                                      [[0., 0.], [0., 0.], [1., 6.], [3., 11.]])
     outer_ring = make_ring_component("outer_ring",
                                      [[0., 0.], [0., 0.], [5., 15.], [0., 0.]])
     delta_component = make_delta_component("star")
     data.add_model_component(delta_component)
-    # data.add_model_component(complete_ring)
-    data.add_model_component(inner_ring)
-    data.add_model_component(outer_ring)
-    data.fixed_params = make_fixed_params(25, 128, 1500, 7900, 140, 19, 1)
+    data.add_model_component(complete_ring)
+    # data.add_model_component(inner_ring)
+    # data.add_model_component(outer_ring)
+    data.fixed_params = make_fixed_params(30, 256, 1500, 7900, 140, 19, 1024)
+    data.tau_initial = 1
     data.geometric_priors = [[0.1, 1.], [0, 180]]
     data.modulation_priors = [[0.1, 1.], [0, 360]]
     data.disc_priors = [[0., 1.], [0., 1.]]
-    data.mcmc = [100, 250, 500, 1e-4]
-    data.tau_initial = 1.
-    data.zero_padding_order = 1
+    data.mcmc = [35, 200, 500, 1e-4]
+    # NOTE: This means no zero-padding is added
+    data.zero_padding_order = 2
     run_mcmc(data, save_path=save_path)
 

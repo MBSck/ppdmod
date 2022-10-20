@@ -324,7 +324,7 @@ if __name__ == "__main__":
                                     ["axis_ratio", "pa"])
     modulation_params = _make_params([0.5, 140], [u.dimensionless_unscaled, u.deg],
                                      ["mod_amp", "mod_angle"])
-    wavelengths = [8*u.um]
+    wavelengths = [8]*u.um
     wavelength = 8*u.um
     complete_ring = make_ring_component("inner_ring",
                                         params=[0., 0., 5., 0.])
