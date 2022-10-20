@@ -69,14 +69,6 @@ class CombinedModel:
             raise ValueError("The value for tau has not been set yet!")
         return self._tau
 
-    @tau.setter
-    def tau(self, value):
-        if not isinstance(value, u.Quantity):
-            self._tau = value*u.dimensionless_unscaled
-        elif value.unit != dimensionless_unscaled:
-            raise IOError(f"Wrong unit has been input for tau. Needs to"\
-                          f" be in [astropy.units.dimensionless_unscaled] or unitless!")
-
     def add_component(self, value: IterNamespace) -> None:
         """Adds components to the model"""
         self._components.append(self._components_dic[value.component])
@@ -159,6 +151,36 @@ class CombinedModel:
 
 
 if __name__ == "__main__":
+    # NOTE: This checks and shows the rebinning of the flux
+    # fixed_params = make_fixed_params(30, 128, 1500, 7900, 140, 19, 128)
+    # disc_params = _make_params([1., 1.],
+                               # [u.dimensionless_unscaled, u.dimensionless_unscaled],
+                               # ["q", "p"])
+    # geometric_params = _make_params([0.5, 140], [u.dimensionless_unscaled, u.deg],
+                                    # ["axis_ratio", "pa"])
+    # modulation_params = _make_params([0.5, 140], [u.dimensionless_unscaled, u.deg],
+                                     # ["mod_amp", "mod_angle"])
+    # wavelengths = [8*u.um]
+    # complete_ring = make_ring_component("inner_ring",
+                                        # params=[0., 0., 2., 0.])
+    # delta_component = make_delta_component("star")
+
+    # model = CombinedModel(fixed_params, disc_params, wavelengths,
+                          # geometric_params, modulation_params)
+    # model.add_component(complete_ring)
+    # # model.add_component(delta_component)
+    # fixed_params2 = make_fixed_params(30, 128, 1500, 7900, 140, 19, 2048)
+    # model2 = CombinedModel(fixed_params2, disc_params, wavelengths,
+                           # geometric_params, modulation_params)
+    # model2.add_component(complete_ring)
+    # model.tau, model2.tau = 1, 1
+    # fig, (ax, bx) = plt.subplots(1, 2)
+    # ax.imshow(model.eval_flux(wavelengths[0]).value)
+    # bx.imshow(model2.eval_flux(wavelengths[0]).value)
+    # print(model.rebin_factor)
+    # print(model2.rebin_factor)
+    # plt.show()
+    # NOTE: This checks the total flux for a certain wavelength
     fixed_params = make_fixed_params(30, 128, 1500, 7900, 140, 19, 128)
     disc_params = _make_params([1., 1.],
                                [u.dimensionless_unscaled, u.dimensionless_unscaled],
@@ -175,16 +197,5 @@ if __name__ == "__main__":
     model = CombinedModel(fixed_params, disc_params, wavelengths,
                           geometric_params, modulation_params)
     model.add_component(complete_ring)
+    model.tau = 1
     # model.add_component(delta_component)
-    fixed_params2 = make_fixed_params(30, 128, 1500, 7900, 140, 19, 4096)
-    model2 = CombinedModel(fixed_params2, disc_params, wavelengths,
-                           geometric_params, modulation_params)
-    model2.add_component(complete_ring)
-    model.tau, model2.tau = 1, 1
-    fig, (ax, bx) = plt.subplots(1, 2)
-    ax.imshow(model.eval_flux(wavelengths[0]).value)
-    bx.imshow(model2.eval_flux(wavelengths[0]).value)
-    print(model.rebin_factor)
-    print(model2.rebin_factor)
-    plt.show()
-

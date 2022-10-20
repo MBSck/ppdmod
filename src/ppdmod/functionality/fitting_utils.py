@@ -12,6 +12,7 @@ def calculate_model(theta: np.ndarray, data: DataHandler):
     model = CombinedModel(data.fixed_params, data.disc_params,
                           data.wavelengths, data.geometric_params,
                           data.modulation_params)
+    model.tau = data.tau_initial
     for component in data.model_components:
         model.add_component(component)
 

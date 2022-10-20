@@ -49,6 +49,7 @@ class DataHandler:
             None, None, None
         self._disc_params, self._geometric_params, self._modulation_params =\
             None, None, None
+        self._tau_initial = None
         self._priors, self._labels = [], []
         self._mcmc = None
 
@@ -78,6 +79,18 @@ class DataHandler:
             f"\n{', '.join([str(file) for file in self.readout_files])}\n and polychromatic"\
             f"data of {self.wavelengths} with the windows "\
             f"{self.wavelength_window_sizes}"
+
+    @property
+    def tau_initial(self):
+        return self._tau_initial
+
+    @tau_initial.setter
+    def tau_initial(self, value):
+        if not isinstance(value, u.Quantity):
+            self._tau_initial = value*u.dimensionless_unscaled
+        elif value.unit != dimensionless_unscaled:
+            raise IOError(f"Wrong unit has been input for tau. Needs to"\
+                          f" be in [astropy.units.dimensionless_unscaled] or unitless!")
 
     # TODO: Finish this function and get the poper baselines
     @property

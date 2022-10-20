@@ -670,10 +670,10 @@ def check_and_convert(params: Union[List[Quantity], IterNamespace],
 
 
 if __name__ == "__main__":
-    fixed_params = make_fixed_params(50, 128, 1500, 7900*u.K, 140*u.pc, 19*c.L_sun, 1)
+    fixed_params = make_fixed_params(50, 128, 1500, 7900*u.K, 140*u.pc, 19*c.L_sun)
     print([value for value in fixed_params])
     print(fixed_params.fov.value)
     print(fixed_params._fields)
-    print(fixed_params[-1])
+    print(fixed_params)
     print(fixed_params.to_string_dict())
 
