@@ -3,11 +3,11 @@ import astropy.units as u
 import matplotlib.pyplot as plt
 
 from typing import List
-from astropy.units import Quantity, dimensionless_unscaled
+from astropy.units import Quantity
 
 from .utils import IterNamespace, make_fixed_params, make_delta_component,\
     make_ring_component, _make_params, _calculate_sublimation_temperature,\
-    temperature_gradient, optical_depth_gradient, flux_per_pixel, rebin_image
+    temperature_gradient, optical_depth_gradient, flux_per_pixel, rebin_image, _set_ones
 from ..model_components import DeltaComponent, GaussComponent, RingComponent
 
 
@@ -58,16 +58,19 @@ class CombinedModel:
         else:
             return self._model_init_params.sub_temp
 
-    def _set_ones(self, image: Quantity) -> Quantity:
-        """Sets and image grid to all ones"""
-        image[image != 0.] = 1.*image.unit
-        return image
-
     @property
     def tau(self):
         if self._tau is None:
             raise ValueError("The value for tau has not been set yet!")
         return self._tau
+
+    @tau.setter
+    def tau(self, value):
+        if not isinstance(value, u.Quantity):
+            self._tau_initial = value*u.dimensionless_unscaled
+        elif value.unit != dimensionless_unscaled:
+            raise IOError(f"Wrong unit has been input for tau. Needs to"\
+                          f" be in [astropy.units.dimensionless_unscaled] or unitless!")
 
     def add_component(self, value: IterNamespace) -> None:
         """Adds components to the model"""
@@ -121,7 +124,7 @@ class CombinedModel:
         return image
 
     def eval_object(self) -> Quantity:
-        return self._set_ones(self.eval_model()).value*u.dimensionless_unscaled
+        return _set_ones(self.eval_model()).value*u.dimensionless_unscaled
 
     def eval_flux(self, wavelength: Quantity) -> Quantity:
         """Evaluates the flux for model"""

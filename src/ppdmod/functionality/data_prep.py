@@ -89,7 +89,7 @@ class DataHandler:
         if not isinstance(value, u.Quantity):
             self._tau_initial = value*u.dimensionless_unscaled
         elif value.unit != dimensionless_unscaled:
-            raise IOError(f"Wrong unit has been input for tau. Needs to"\
+            raise IOError(f"Wrong unit has been input for tau initial. Needs to"\
                           f" be in [astropy.units.dimensionless_unscaled] or unitless!")
 
     # TODO: Finish this function and get the poper baselines

@@ -5,16 +5,10 @@ import astropy.units as u
 from astropy.units import Quantity
 from typing import Tuple, List, Optional
 
+from .utils import _set_ones
 
-# NOTE: Implement FFT as a part of the base_model_class, maybe?
-# NOTE: Think about calling FFT class in model class to evaluate model
-
-# TODO: Add checks for right unit input in all the files
-# TODO: Make sure all is tested!
-# TODO: Make docstrings proper
-# TODO: Write test for set_ones and improve all tests
-
-
+# TODO: Make sure all is tested! Write test for set_ones and improve all tests
+# TODO: Make good docstrings
 class Model:
     """Model
 
@@ -42,11 +36,10 @@ class Model:
         self.pixel_sampling = pixel_sampling
 
         self.component_name = None
-        # TODO: Check why this is a thing?
+        # TODO: Check why this is a thing? The axes...
         self.axes_image, self.axes_complex_image = [], []
         self.polar_angle = np.array([])
 
-    # TODO: Add docs
     @property
     def image_centre(self) -> Tuple:
         """Returns index"""
@@ -241,15 +234,6 @@ class Model:
         image.value[image.value < 0.] = 0.
         return image
 
-    def _set_zeros(self, image: Quantity) -> Quantity:
-        """Sets an image grid to all zeros"""
-        return image*0
-
-    def _set_ones(self, image: Quantity) -> Quantity:
-        """Sets and image grid to all ones"""
-        image[image != 0.] = 1.*image.unit
-        return image
-
     def eval_model(self) -> Quantity:
         """Evaluates the model image's radius
 
@@ -268,7 +252,7 @@ class Model:
         image: Quantity
             A two-dimensional model image [astropy.units.dimensionless_unscaled]
         """
-        return self._set_ones(self.eval_model(params)).value*u.dimensionless_unscaled
+        return _set_ones(self.eval_model(params)).value*u.dimensionless_unscaled
 
     def eval_flux(self) -> Quantity:
         """Evaluates the complex visibility function of the model.

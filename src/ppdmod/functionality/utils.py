@@ -49,6 +49,45 @@ class IterNamespace(SimpleNamespace):
         return dict(zip(self._fields, self.to_string()))
 
 
+def _set_zeros(image: Union[np.ndarray, Quantity]) -> Union[np.ndarray, Quantity]:
+    """Sets an image grid to all zeros
+
+    Parameters
+    ----------
+    image: np.ndarray | astropy.units.Quantity
+        The input image
+
+    Returns
+    -------
+    image_all_ones: np.ndarray | astropy.units.Quantity
+        The output image with every value set to 0.
+    """
+    if not (isinstance(image, u.Quantity) or isinstance(image, np.ndarray)):
+        raise IOError("Input image must be either [np.ndarray]"\
+                      " or [astropy.units.Quantity]")
+    return image*0
+
+
+def _set_ones(image: Union[np.ndarray, Quantity]) -> Union[np.ndarray, Quantity]:
+    """Sets and image grid to all ones
+
+    Parameters
+    ----------
+    image: np.ndarray | astropy.units.Quantity
+        The input image
+
+    Returns
+    -------
+    image_all_ones: np.ndarray | astropy.units.Quantity
+        The output image with every value set to 1.
+    """
+    if not (isinstance(image, u.Quantity) or isinstance(image, np.ndarray)):
+        raise IOError("Input image must be either [np.ndarray]"\
+                      " or [astropy.units.Quantity]")
+    image[image != 0.] = 1.
+    return image
+
+
 def rebin_image(image: Quantity, new_shape: Tuple, rfactor: Optional[bool] = False):
     """Rebins a 2D-image to a new input shape
 

@@ -6,7 +6,7 @@ from typing import Union
 from astropy.units import Quantity
 
 from ..functionality.model import Model
-from ..functionality.utils import IterNamespace, check_and_convert
+from ..functionality.utils import IterNamespace
 
 
 class BinaryComponent(Model):
