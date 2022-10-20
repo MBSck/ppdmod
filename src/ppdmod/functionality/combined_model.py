@@ -6,19 +6,13 @@ from astropy.units import Quantity
 
 from .utils import IterNamespace, make_fixed_params, make_delta_component,\
     make_ring_component, _make_params, _calculate_sublimation_temperature,\
-    temperature_gradient, optical_depth_gradient, flux_per_pixel
+    temperature_gradient, optical_depth_gradient, flux_per_pixel, rebin_image
 from .plotting_utils import plot
 from ..model_components import DeltaComponent, GaussComponent,\
     RingComponent, UniformDiskComponent
 
 
-# TODO: Make this class combine individual models
-# TODO: Add FFT to this class
-# TODO: Implement fitting to DataHandler
-# TODO: Add refactor from long line of priors to model, components, len-wise
 class CombinedModel:
-    # TODO: Think of how to combine the models
-    # TODO: Implement model combine with names of IterNamespace
     def __init__(self, fixed_params: IterNamespace, disc_params: IterNamespace,
                  wavelengths: List[Quantity], geometric_params: IterNamespace,
                  modulation_params: IterNamespace) -> None:
@@ -30,7 +24,8 @@ class CombinedModel:
         self.geometric_params = geometric_params
         self.modulation_params = modulation_params
 
-        self._components_dic = {"ring": RingComponent, "delta": DeltaComponent,
+        self._components_dic = {"ring": RingComponent,
+                                "delta": DeltaComponent,
                                 "gauss": GaussComponent,
                                 "uniform_disk": UniformDiskComponent}
 
@@ -52,9 +47,7 @@ class CombinedModel:
 
     @property
     def pixel_scaling(self):
-        if self._model_init_params.pixel_sampling is None:
-            return self._model_init_params.fov/self._model_init_params.image_size
-        return self._model_init_params.fov/self._model_init_params.pixel_sampling
+        return self._model_init_params.fov/self._model_init_params.image_size
 
     @property
     def inner_temperature(self):
@@ -136,6 +129,8 @@ class CombinedModel:
                                                self._inner_radius, self.tau)
         flux = flux_per_pixel(wavelength, temperature, optical_depth, self.pixel_scaling)
         flux[flux == np.inf] = 0.*u.Jy
+        # TOOD: Implement here rebinning
+        # TODO: Think of better implementation of stellar flux with rebinning
         if self._stellar_flux_func is not None:
             flux += self._stellar_flux_func(wavelength)
         return flux
@@ -151,7 +146,7 @@ class CombinedModel:
 
 
 if __name__ == "__main__":
-    fixed_params = make_fixed_params(30, 128, 1500, 7900, 140, 19, 1)
+    fixed_params = make_fixed_params(30, 4096, 1500, 7900, 140, 19, 1)
     disc_params = _make_params([1., 1.],
                                [u.dimensionless_unscaled, u.dimensionless_unscaled],
                                ["q", "p"])
@@ -168,4 +163,5 @@ if __name__ == "__main__":
                           geometric_params, modulation_params)
     model.add_component(complete_ring)
     model.add_component(delta_component)
+    plot(model.eval_flux(wavelengths[0]))
 

@@ -13,7 +13,7 @@ class BinaryComponent(Model):
     """..."""
     def __init__(self, *args):
         super().__init__(*args)
-        self.name = "Binary"
+        self.component_name = "binary"
         self._pos_star1, self._pos_star2 = None, None
         self._flux1, self._flux2 = None, None
         self._image_seperation = None

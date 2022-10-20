@@ -22,7 +22,7 @@ class DeltaComponent(Model):
     """
     def __init__(self, *args):
         super().__init__(*args)
-        self.name = "Delta"
+        self.component_name = "delta"
 
     def eval_flux(self, wavelength: Quantity) -> Quantity:
         return self.eval_model().value*stellar_flux(wavelength,

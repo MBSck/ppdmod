@@ -42,12 +42,17 @@ class Model:
         self.distance = distance
 
         # TODO: Maybe make a specific save name for the model also
-        self.name = None
+        self.component_name = None
         self.axes_image, self.axes_complex_image = [], []
         self.polar_angle = np.array([])
 
         self.params_count = 0
         self.non_zero_params_count = 0
+
+        if self.pixel_sampling > self.image_size:
+            self._rebin = True
+        else:
+            self._rebin = False
 
     # TODO: Add docs
     @property
@@ -57,7 +62,7 @@ class Model:
 
     @property
     def pixel_scaling(self):
-        return self.field_of_view/self.pixel_sampling
+        return self.field_of_view/self.image_size
 
     def _set_grid(self, incline_params: Optional[List[float]] = None) -> Quantity:
         """Sets the size of the model and its centre. Returns the polar coordinates
@@ -81,8 +86,12 @@ class Model:
             The radius [astropy.units.mas/px]
         """
         # TODO: Does center shift, xc, yc need to be applied?
-        x = np.linspace(-self.image_size//2, self.image_size//2,
-                        self.pixel_sampling, endpoint=False)*self.pixel_scaling
+        if self.component_name == "delta":
+            x = np.linspace(-self.image_size//2, self.image_size//2,
+                            self.image_size, endpoint=False)*self.pixel_scaling
+        else:
+            x = np.linspace(-self.image_size//2, self.image_size//2,
+                            self.pixel_sampling, endpoint=False)*self.pixel_scaling
         y = x[:, np.newaxis]
 
         if incline_params:

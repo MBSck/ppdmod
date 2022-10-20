@@ -1,14 +1,14 @@
 import inspect
 import astropy.units as u
 import astropy.constants as c
+import matplotlib.pyplot as plt
 
 # from scipy.special import j0
 from astropy.units import Quantity
 from typing import List, Union
 
 from ..functionality.model import Model
-from ..functionality.utils import IterNamespace, check_and_convert
-from ..functionality.plotting_utils import plot
+from ..functionality.utils import IterNamespace, check_and_convert, rebin_image
 
 # TODO: Make function that automatically greps the docstrings of functions that need to be
 # implemented
@@ -34,7 +34,7 @@ class RingComponent(Model):
     """
     def __init__(self, *args):
         super().__init__(*args)
-        self.name = "Ring"
+        self.component_name = "ring"
 
     def eval_model(self, params: Union[IterNamespace, List]) -> Quantity:
         """Evaluates the model's radius
@@ -111,10 +111,21 @@ class RingComponent(Model):
         # return j0(2*np.pi*r_max*B)
 
 if __name__ == "__main__":
-    params_model = [50*u.mas, u.Quantity(128, unit=u.dimensionless_unscaled, dtype=int),
-                    1500*u.K, 7900*u.K, 140*u.pc, 19*c.L_sun, 1*u.dimensionless_unscaled,
-                    u.Quantity(128, unit=u.dimensionless_unscaled, dtype=int)]
+    params_model = [10*u.mas, u.Quantity(128, unit=u.dimensionless_unscaled, dtype=int),
+                    1500*u.K, 7900*u.K, 140*u.pc, 19*c.L_sun,
+                    u.Quantity(4096, unit=u.dimensionless_unscaled, dtype=int)]
     ring = RingComponent(*params_model)
+    params_model2 = params_model.copy()
+    params_model2[-1] = u.Quantity(128, unit=u.dimensionless_unscaled, dtype=int)
+    ring2 = RingComponent(*params_model2)
     params = [0.5*u.dimensionless_unscaled, 145*u.deg, 1*u.mas, 0*u.mas]
-    plot(ring.eval_model(params))
+    image = ring.eval_model(params)
+    image_low_res_no_rebin = ring2.eval_model(params)
+    image_rebin, factor = rebin_image(image, (128, 128), rfactor=True)
+    print(factor)
+    fig, (ax, bx, cx) = plt.subplots(1, 3)
+    ax.imshow(image.value)
+    bx.imshow(image_rebin.value)
+    cx.imshow(image_low_res_no_rebin.value)
+    plt.show()
 
