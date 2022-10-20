@@ -4,7 +4,7 @@ import astropy.constants as c
 
 from astropy.modeling import models
 from types import SimpleNamespace
-from typing import List, Union, Optional
+from typing import List, Tuple, Union, Optional
 from astropy.units import Quantity
 
 
@@ -26,11 +26,55 @@ class IterNamespace(SimpleNamespace):
         else:
             return values
 
-
     def __iter__(self):
         for attr, val in self.__dict__.items():
             if not (attr.startswith("__") or attr.startswith("_")):
                 yield val
+
+    def to_string(self):
+        values = []
+        for value in self.__iter__():
+            if isinstance(value, u.Quantity):
+                value = np.array2string(value)
+            elif isinstance(value, np.ndarray):
+                value = np.array2string(value)
+            elif isinstance(value, list):
+                value = np.array2string(np.array(value))
+            else:
+                value = str(value)
+            values.append(value)
+        return values
+
+    def to_string_dict(self):
+        return dict(zip(self._fields, self.to_string()))
+
+
+def rebin_image(image: Quantity, new_shape: Tuple, rfactor: Optional[bool] = False):
+    """Rebins a 2D-image to a new input shape
+
+    Parameters
+    ----------
+    image: astropy.units.quantity
+        The image to be rebinned
+    new_shape: Tuple
+        The shape the image is to be rebinned to
+    rfactor: bool, optional
+        Returns the rebinning factor of the image
+
+    Returns
+    -------
+    rebinned_image: np.ndarray | astropy.units.Quantity
+        The rebinned image
+    rebinning_factor: Tuple, optional
+        The rebinning factor of the image
+    """
+    shape = (new_shape[0], image.shape[0] // new_shape[0],
+             new_shape[1], image.shape[1] // new_shape[1])
+    rebinned_image = image.reshape(shape).mean(-1).mean(1)
+    if rfactor:
+        factor = tuple(x//y for x, y in zip(image.shape, new_shape))
+        return rebinned_image, factor
+    return rebinned_image
 
 
 def make_inital_guess_from_priors(priors: List[float]) -> List[float]:
@@ -411,7 +455,7 @@ def flux_per_pixel(wavelength: Quantity, temperature_distribution: Quantity,
         raise IOError("Enter the pixel scaling in [astropy.units.mas] or unitless!")
 
     plancks_law = models.BlackBody(temperature=temperature_distribution)
-    # NOTE: Convert sr to mas**2. Field of view = sr or mas**2
+    # NOTE: Converts sr to mas**2. Field of view = sr or mas**2
     spectral_radiance = plancks_law(wavelength).to(u.erg/(u.cm**2*u.Hz*u.s*u.mas**2))
     flux_per_pixel = spectral_radiance*pixel_scaling**2
     return (flux_per_pixel.to(u.Jy))*(1-np.exp(-optical_depth))
@@ -622,9 +666,10 @@ def check_and_convert(params: Union[List[Quantity], IterNamespace],
 
 
 if __name__ == "__main__":
-    fixed_params = make_fixed_params(50, 128, 1500,
-                                     7900*u.K, 140*u.pc, 19*c.L_sun, 1)
+    fixed_params = make_fixed_params(50, 128, 1500, 7900*u.K, 140*u.pc, 19*c.L_sun, 1)
     print([value for value in fixed_params])
     print(fixed_params.fov.value)
+    print(fixed_params._fields)
     print(fixed_params[-1])
+    print(fixed_params.to_string_dict())
 
