@@ -47,9 +47,8 @@ import warnings
 import numpy as np
 import matplotlib.pyplot as plt
 
-from schwimmbad import MPIPool
-from multiprocessing import Pool, cpu_count
 from typing import Optional
+from multiprocessing import Pool, cpu_count
 
 from .data_prep import DataHandler
 from .plotting_utils import plot_fit_results, write_data_to_ini
@@ -161,38 +160,28 @@ def run_mcmc(data: DataHandler,
     print(data.mcmc.initial)
     print("--------------------------------------------------------------")
     if cluster:
-        with MPIPool as pool:
-            if not pool.is_master():
-                pool.wait()
-                sys.exit(0)
-            moves = emcee.moves.StretchMove(2.0)
-            sampler = emcee.EnsembleSampler(data.mcmc.nwalkers, data.mcmc.ndim,
-                                            lnprob, args=[data], pool=pool, moves=moves)
-
-            print("Running burn-in...")
-            p0, _, _ = sampler.run_mcmc(p0, data.mcmc.nburn, progress=True)
-            sampler.reset()
-
-            print("--------------------------------------------------------------")
-            print("Running production...")
-            sampler.run_mcmc(p0, data.mcmc.niter, progress=True)
-            print("--------------------------------------------------------------")
-
+        cpus_to_be_used = 32
     else:
-        with Pool() as pool:
-            print(f"Executing MCMC with {cpu_count()} cores.")
-            moves = emcee.moves.StretchMove(2.0)
-            sampler = emcee.EnsembleSampler(data.mcmc.nwalkers, data.mcmc.ndim,
-                                            lnprob, args=[data], pool=pool, moves=moves)
+        cpus_to_be_used = 6
 
-            print("Running burn-in...")
-            p0, _, _ = sampler.run_mcmc(p0, data.mcmc.nburn, progress=True)
-            sampler.reset()
+    if cpus_to_be_used > cpu_count():
+        raise IOError("More cpus specified than available on this node!\n"\
+                      f" Cpus specified #{cpus_to_be_used} > Cpus available #{cpu_count()}")
+    with Pool(cpus_to_be_used) as pool:
+        print(f"Executing MCMC with {cpus_to_be_used} cores.")
+        moves = emcee.moves.StretchMove(2.0)
+        sampler = emcee.EnsembleSampler(data.mcmc.nwalkers, data.mcmc.ndim,
+                                        lnprob, args=[data], pool=pool, moves=moves)
 
-            print("--------------------------------------------------------------")
-            print("Running production...")
-            sampler.run_mcmc(p0, data.mcmc.niter, progress=True)
-            print("--------------------------------------------------------------")
+        print("Running burn-in...")
+        p0, _, _ = sampler.run_mcmc(p0, data.mcmc.nburn, progress=True)
+        sampler.reset()
+
+        print("--------------------------------------------------------------")
+        print("Running production...")
+        sampler.run_mcmc(p0, data.mcmc.niter, progress=True)
+        print("--------------------------------------------------------------")
+
     data.theta_max = (sampler.flatchain)[np.argmax(sampler.flatlnprobability)]
     best_fit_total_fluxes, best_fit_corr_fluxes, best_fit_cphases =\
         calculate_model(data.theta_max, data)
@@ -210,10 +199,10 @@ def run_mcmc(data: DataHandler,
 
 
 if __name__ == "__main__":
-    data_path = "../../../assets/data"
+    data_path = "../../../data/tests"
     fits_files = ["HD_142666_2019-03-24T09_01_46_N_TARGET_FINALCAL_INT.fits"]
     fits_files = [os.path.join(data_path, file) for file in fits_files]
-    flux_file = "../../../data/tests/HD_142666_timmi2.txt"
+    flux_file = os.path.join(data_path, "HD_142666_timmi2.txt")
     save_path = "../../../assets/model_results"
     wavelengths = [12.0]
     data = DataHandler(fits_files, wavelengths, flux_file=flux_file)
@@ -228,12 +217,12 @@ if __name__ == "__main__":
     data.add_model_component(complete_ring)
     # data.add_model_component(inner_ring)
     # data.add_model_component(outer_ring)
-    data.fixed_params = make_fixed_params(30, 128, 1500, 7900, 140, 19, 128)
+    data.fixed_params = make_fixed_params(30, 128, 1500, 7900, 140, 19, 1024)
     data.geometric_priors = [[0.1, 1.], [0, 180]]
     data.modulation_priors = [[0.1, 1.], [0, 360]]
     data.disc_priors = [[0., 1.], [0., 1.]]
-    data.mcmc = [35, 2, 5, 1e-4]
+    data.mcmc = [50, 200, 500, 1e-4]
     data.zero_padding_order = 2
     data.tau_initial = 1
-    run_mcmc(data, save_path=save_path)
+    run_mcmc(data, save_path=save_path, cluster=False)
 
