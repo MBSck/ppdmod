@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import configparser
-import astropy.units as u
+import itertools
 import matplotlib.pyplot as plt
 
 from pathlib import Path
@@ -16,6 +16,7 @@ def plot(image: Quantity) -> None:
     """Plots and image"""
     plt.imshow(image.value)
     plt.show()
+
 
 def print_results(data: DataHandler, best_fit_total_fluxes,
                   best_fit_corr_fluxes, best_fit_cphases) -> None:
@@ -38,14 +39,16 @@ def print_results(data: DataHandler, best_fit_total_fluxes,
     print("Theta max:")
     print(data.theta_max)
 
-def _make_dict_value_to_string(dic: Dict) -> str:
-    return {key: (np.array2string(value)\
-            if (isinstance(value, u.Quantity) or isinstance(value, np.ndarray))\
-            else np.array2string(np.array(value))) for (key, value) in dic.items()}
 
 def write_data_to_ini(data: DataHandler, best_fit_total_fluxes,
                       best_fit_corr_fluxes, best_fit_cphases, save_path = "") -> None:
     """Writes the all the data about the model fit into a (.toml)-file"""
+    miscellaneous_dict = {"tau": data.tau_initial,
+                          "rebin_factor": data.rebin_factor,
+                          "wavelengths": data.wavelengths,
+                          "uvcoords": data.uv_coords,
+                          "uvcoords_closure_phases": data.uv_coords_cphase,
+                          "telescope_information": data.telescope_info}
     real_data_dict = {"total_fluxes": data.total_fluxes,
                       "total_fluxes_error": data.total_fluxes_error,
                       "total_fluxes_sigma_squared": data.total_fluxes_sigma_squared,
@@ -56,36 +59,26 @@ def write_data_to_ini(data: DataHandler, best_fit_total_fluxes,
                       "closure_phases_errors": data.cphases_error,
                       "closure_phases_sigma_squared": data.cphases_sigma_squared}
     best_fit_data_dict = {"total_fluxes": best_fit_total_fluxes,
-                          "fluxes": best_fit_corr_fluxes,
-                          "fit_closure_phases": best_fit_cphases}
-    miscellaneous_dict = {"tau": data.tau_initial,
-                          "rebin_factor": data.rebin_factor,
-                          "wavelengths": data.wavelengths,
-                          "uvcoords": data.uv_coords,
-                          "uvcoords_closure_phases": data.uv_coords_cphase,
-                          "telescope_information": data.telescope_info}
+                          "correlated_fluxes": best_fit_corr_fluxes,
+                          "closure_phases": best_fit_cphases}
 
     mcmc_dict = data.mcmc.to_string_dict()
     fixed_params_dict = data.fixed_params.to_string_dict()
-    real_data_dict_string = _make_dict_value_to_string(real_data_dict)
-    best_fit_data_dict_string = _make_dict_value_to_string(best_fit_data_dict)
-    miscellaneous_dict_string = _make_dict_value_to_string(miscellaneous_dict)
     best_fit_parameters_dict = IterNamespace(**dict(zip(data.labels, data.theta_max))).to_string_dict()
 
-    # FIXME: This won't work fix it! Maybe add string __repr__ for the subclasses
-    # components_list = []
-    # for component in data.model_components:
-        # temp_component_list = _make_string_list_from_dict(component.to_string_dict()[1:])
-        # temp_component_list.insert(0, f"\n[components.{component.component}]")
-        # temp_components_string = "\n".join(temp_component_list)
-        # components_list.append(temp_components_string)
     config = configparser.ConfigParser()
     config["params.emcee"] = mcmc_dict
     config["params.fixed"] = fixed_params_dict
     config["params.fitted"] = best_fit_parameters_dict
+
+    for component in data.model_components:
+        component_dict = component.to_string_dict()
+        del component_dict[next(itertools.islice(component_dict, 1, None))]
+        config[f"params.components.{component.name}"] = component_dict
+
     config["params.miscellaneous"] = miscellaneous_dict
     config["data.observed"] = real_data_dict
-    config["data.fitted"] = best_fit_data_dict_string
+    config["data.fitted"] = best_fit_data_dict
 
     file_name = "model_info.ini"
     if save_path is None:

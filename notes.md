@@ -58,6 +58,7 @@
 [] Remove pixel scaling from DataHandler and wavelengths from CombinedModel
 
 ## Done
+[x] Add the component info to the write_out
 [x] Add total fluxes to plotting in same plot
 [x] Write all in a ini file
 [x] Implement rebinning from high resolution to low -> Check that rebinning works as planned
