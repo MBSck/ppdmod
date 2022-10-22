@@ -145,10 +145,10 @@ def run_mcmc(data: DataHandler,
     print("--------------------------------------------------------------")
     if cpu_amount > cpu_count():
         raise IOError("More cpus specified than available on this node!\n"\
-                      f" Cpus specified #{cpus_to_be_used} > Cpus available #{cpu_count()}")
+                      f" Cpus specified #{cpu_amount} > Cpus available #{cpu_count()}")
 
     with Pool(processes=cpu_amount) as pool:
-        print(f"Executing MCMC with {cpus_to_be_used} cores.")
+        print(f"Executing MCMC with {cpu_amount} cores.")
         moves = emcee.moves.StretchMove(2.0)
         sampler = emcee.EnsembleSampler(data.mcmc.nwalkers, data.mcmc.ndim,
                                         lnprob, args=[data], pool=pool, moves=moves)
@@ -206,5 +206,5 @@ if __name__ == "__main__":
     data.mcmc = [50, 200, 500, 1e-4]
     data.zero_padding_order = 2
     data.tau_initial = 1
-    run_mcmc(data, save_path=save_path, cluster=False)
+    run_mcmc(data, save_path=save_path)
 
