@@ -35,8 +35,8 @@
 ## Working-on-ATM
 
 ### Plotting
-[] Fix scaling of correlated flux plotting
-[] Check the plotting for the different epochs
+[] Make better uv coordinate plotting colors for different epochs
+[] Implement more colors for plotting
 [] Fix FOV plotting (reduce the FOV or check the scaling of the fourier axis?)
 
 ### Data output
@@ -63,8 +63,9 @@
 [] Remove redundancies to improve code speed (for later)
 [] Remove pixel scaling from DataHandler and wavelengths from CombinedModel
 
-
 ## Done
+[x] Fix scaling of correlated flux plotting
+[x] Check the plotting for the different epochs
 [x] Add the component info to the write_out
 [x] Add total fluxes to plotting in same plot
 [x] Write all in a ini file
