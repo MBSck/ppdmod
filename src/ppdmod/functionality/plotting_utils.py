@@ -149,7 +149,7 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
         ax, bx = axarr.flatten()
 
     # TODO: Add the total flux to the limit estimation, and check that generally as well
-    all_amp = np.concatenate((data.corr_fluxes.value[0], best_fit_corr_fluxes))
+    all_amp = np.concatenate((data.total_fluxes.value[0], best_fit_total_fluxes))
     y_min_amp, y_max_amp = 0, np.max(all_amp)
     y_space_amp = np.sqrt(y_max_amp**2+y_min_amp**2)*0.1
     y_lim_amp = [y_min_amp-y_space_amp, y_max_amp+y_space_amp]
