@@ -4,4 +4,5 @@ __pycache__
 
 # Ignored folders
 assets/
+data/
 ppdmod.egg-info/
