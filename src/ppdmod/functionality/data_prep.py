@@ -1,4 +1,5 @@
 from astropy.time.core import enum
+from astropy.utils.metadata import merge
 import numpy as np
 import astropy.units as u
 import warnings
@@ -21,13 +22,13 @@ class DataHandler:
     data as well as the data created by the modelling process"""
     def __init__(self, fits_files: List[Path], wavelengths: List[Quantity],
                  wavelength_window_sizes: Optional[List[float]] = [0.2],
-                 flux_file: Optional[Path] = None) -> None:
+                 flux_files: Optional[List[Path]] = None) -> None:
         """Initialises the class"""
-        self.fits_files, self.flux_file = fits_files, flux_file
+        self.fits_files, self.flux_files = fits_files, flux_files
         self._wavelengths = wavelengths
         self._wavelength_window_sizes = wavelength_window_sizes
-        self.readout_files = [ReadoutFits(fits_file, self.flux_file)\
-                              for fits_file in self.fits_files]
+        self.readout_files = [ReadoutFits(fits_file, self.flux_files[i])\
+                              for i, fits_file in enumerate(self.fits_files)]
         self.getter_function_dictionary = {"vis": "get_visibilities4wavelength",
                                            "vis2": "get_visibilities_squared4wavelength",
                                            "cphases": "get_closure_phases4wavelength",
@@ -38,6 +39,7 @@ class DataHandler:
                                            "baselines": "get_baselines",
                                            "baselines_cphase": "get_closure_phases_baselines"}
         # NOTE: This only works if the wl_solution stays the same for all files
+        # TODO: Change this later for multiple wavelength files that have to be fitted
         self.wl_ind = self.readout_files[0].\
             get_wavelength_indices(self.wavelengths, self.wavelength_window_sizes)
 
@@ -425,13 +427,13 @@ class DataHandler:
     def _merge_simple_data(self, data_type_keyword):
         """Merges simple data, like the 'uvcoords', 'uvcoords_cphase', 'telescope',
         'baselines' or 'baselines_cphase' data"""
-        merged_data = np.array([])
+        merged_data = []
         if data_type_keyword in ["vis", "vis2", "cphases", "flux"]:
             raise IOError("Use the '_merge_data' function for these datatypes")
         for readout_file in self.readout_files:
             getter_func = self._get_data_type_function(readout_file, data_type_keyword)
             data = getter_func()
-            if merged_data.size == 0:
+            if not any(isinstance(elem, u.Quantity) for elem in merged_data):
                 merged_data = data
             else:
                 if data_type_keyword == "uvcoords_cphase":
@@ -463,18 +465,18 @@ class DataHandler:
 
 if __name__ == "__main__":
     fits_files = ["../../../data/tests/test.fits"]*2
-    flux_file = "../../../data/tests/HD_142666_timmi2.txt"
+    flux_files = ["../../../data/tests/HD_142666_timmi2.txt", None]
     wavelengths = [8.5, 10.0]
     theta = [0.5, 145, 1., 35, 0.5, 0.05, 3., 5., 7.]
-    data = DataHandler(fits_files, wavelengths, flux_file=flux_file)
-    print(data.total_fluxes)
-    complete_ring = make_ring_component("inner_ring",
-                                        [[0., 0.], [0., 0.], [1., 6.], [0., 0.]])
-    delta_component = make_delta_component("star")
-    data.add_model_component(delta_component)
-    data.add_model_component(complete_ring)
-    data.mcmc = [100, 5, 5, 1e-4]
-    print(*data.mcmc)
+    data = DataHandler(fits_files, wavelengths, flux_files=flux_files)
+    print(data.uv_coords_cphase)
+    # complete_ring = make_ring_component("inner_ring",
+                                        # [[0., 0.], [0., 0.], [1., 6.], [0., 0.]])
+    # delta_component = make_delta_component("star")
+    # data.add_model_component(delta_component)
+    # data.add_model_component(complete_ring)
+    # data.mcmc = [100, 5, 5, 1e-4]
+    # print(*data.mcmc)
     # data._labels = ["axis_ratio", "pa", "mod_amp", "mod_angle", "q", "p",
                    # "inner:ring:inner_radius", "inner:ring:outer_radius",
                    # "outer:ring:inner_radius"]

@@ -365,7 +365,7 @@ class ReadoutFits:
         # TODO: Check how to handle if there is additional flux data -> Maybe only for one
         # dataset the flux
         if self.flux_file:
-            return self._get_flux_file_data()
+            return self._get_flux_file_data()*u.Jy
         else:
             return list(map(lambda x: x*u.Jy,
                             self.get_data("oi_flux", "fluxdata", "fluxerr")))
@@ -461,5 +461,6 @@ class ReadoutFits:
 
 if __name__ == "__main__":
     flux_file = "../../../data/tests/HD_142666_timmi2.txt"
+    fits_file = "../../../data/hd_142666_jozsef/nband/HD_142666_2022-04-21T07_18_22_N_TARGET_FINALCAL_INT.fits"
     readout = ReadoutFits("../../../data/tests/test.fits", flux_file)
-    print(readout.get_flux()[1].shape)
+    print(readout.get_closures_phase_uvcoords())

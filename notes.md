@@ -37,9 +37,11 @@
 ### Plotting
 [] Fix scaling of correlated flux plotting
 [] Check the plotting for the different epochs
+[] Fix FOV plotting (reduce the FOV or check the scaling of the fourier axis?)
 
 ### Data output
 [] Add data about the time the model took to run and when it started
+[] Save the best fit data (theta, best_total_fluxes, best_correlated_fluxes, etc.) as data-files as well
 
 ### Model coding
 [] Look through all of Fourier transform and check where the phase error comes from... Only in Phase?!
@@ -47,6 +49,10 @@
 [] Check what FOV is neede, automatically calculate it for highest wl?
 
 ## To-Do
+[] Look up parallelisation
+[] Drop ifs for parallelisation
+- Instead of if, multiply result with 0 instead of return or break
+[] SIMDI Instructions for faster code? GPU coding?
 [] Ignore errors at some point, or warnings that is
 [] Finish rework of model.py and implement tests
 [] Make tests that compare fluxes to real values (e.g., Jozsef's code see flux values)
@@ -56,6 +62,7 @@
 [] Make function that gives stuff like 'eval_model' automatically docstrings
 [] Remove redundancies to improve code speed (for later)
 [] Remove pixel scaling from DataHandler and wavelengths from CombinedModel
+
 
 ## Done
 [x] Add the component info to the write_out

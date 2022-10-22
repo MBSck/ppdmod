@@ -43,10 +43,10 @@ import os
 import time
 import emcee
 import corner
-import warnings
 import numpy as np
 import matplotlib.pyplot as plt
 
+from pathlib import Path
 from typing import Optional
 from multiprocessing import Pool, cpu_count
 
@@ -55,8 +55,6 @@ from .plotting_utils import plot_fit_results, write_data_to_ini
 from .fitting_utils import lnprob, calculate_model
 from .utils import make_fixed_params, make_delta_component, make_ring_component
 
-# TODO: Implement global parameter search algorithm (genetic algorithm)?
-# TODO: Implement optimizer algorithm?
 
 def generate_valid_guess(data: DataHandler) -> np.ndarray:
     """Generates a valid guess that is in the bounds of the priors for the
@@ -120,9 +118,8 @@ def plot_chains(sampler: np.ndarray, data: DataHandler,
         plt.savefig(os.path.join(save_path, plot_name))
 
 def run_mcmc(data: DataHandler,
-             cluster: Optional[bool] = False,
-             synthetic: Optional[bool] = False,
-             save_path: Optional[str] = None) -> np.array:
+             cpu_amount: Optional[int] = 6,
+             save_path: Optional[Path] = None) -> np.array:
     """Runs the emcee Hastings Metropolitan sampler
 
     The EnsambleSampler recieves the parameters and the args are passed to
@@ -139,35 +136,18 @@ def run_mcmc(data: DataHandler,
     Parameters
     ----------
     data: DataHandler
-    frac: float, optional
-    cluster: bool, optional
-    synthetic: bool, optional
+    cpu_amount: int, optional
     save_path: str, optional
     """
-    if synthetic:
-        try:
-            print("Loaded perfect parameters from the synthetic dataset")
-            print(np.load("assets/theta.npy"))
-        except FileNotFoundError:
-            warnings.warn("No 'theta.npy' file could be located!",
-                          category=FileNotFoundError)
-        finally:
-            print("File search done.")
-
     p0 = generate_valid_guess(data)
-
     print("Inital parameters")
     print(data.mcmc.initial)
     print("--------------------------------------------------------------")
-    if cluster:
-        cpus_to_be_used = 32
-    else:
-        cpus_to_be_used = 6
-
-    if cpus_to_be_used > cpu_count():
+    if cpu_amount > cpu_count():
         raise IOError("More cpus specified than available on this node!\n"\
                       f" Cpus specified #{cpus_to_be_used} > Cpus available #{cpu_count()}")
-    with Pool(cpus_to_be_used) as pool:
+
+    with Pool(processes=cpu_amount) as pool:
         print(f"Executing MCMC with {cpus_to_be_used} cores.")
         moves = emcee.moves.StretchMove(2.0)
         sampler = emcee.EnsembleSampler(data.mcmc.nwalkers, data.mcmc.ndim,
@@ -199,13 +179,15 @@ def run_mcmc(data: DataHandler,
 
 
 if __name__ == "__main__":
-    data_path = "../../../data/tests"
-    fits_files = ["HD_142666_2019-03-24T09_01_46_N_TARGET_FINALCAL_INT.fits"]
+    data_path = "../../../data/hd_142666_jozsef/nband"
+    fits_files = ["HD_142666_2019-03-24T09_01_46_N_TARGET_FINALCAL_INT.fits",
+                  "HD_142666_2022-04-21T07_18_22_N_TARGET_FINALCAL_INT.fits",
+                  "HD_142666_2022-04-23T03_05_25_N_TARGET_FINALCAL_INT.fits"]
     fits_files = [os.path.join(data_path, file) for file in fits_files]
-    flux_file = os.path.join(data_path, "HD_142666_timmi2.txt")
+    flux_files = ["../../../data/tests/HD_142666_timmi2.txt", None, None]
     save_path = "../../../assets/model_results"
-    wavelengths = [12.0]
-    data = DataHandler(fits_files, wavelengths, flux_file=flux_file)
+    wavelengths = [8.5, 12.0]
+    data = DataHandler(fits_files, wavelengths, flux_files=flux_files)
     complete_ring = make_ring_component("inner_ring",
                                         [[0., 0.], [0., 0.], [1., 6.], [0., 0.]])
     inner_ring = make_ring_component("inner_ring",
