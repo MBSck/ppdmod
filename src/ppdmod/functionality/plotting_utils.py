@@ -104,16 +104,6 @@ def plot_fit_results(best_fit_total_fluxes, best_fit_corr_fluxes,
     ax, bx, cx = axarr[0].flatten()
     ax2, bx2, cx2 = axarr[1].flatten()
 
-    # title_dict = {"Model Fit Parameters": ""}
-    # text_dict = { "FOV": pixel_size, "npx": sampling,
-                 # "zero pad order": zero_padding_order, "wavelength": plot_wl,
-                 # "": "", "blackbody params": "", "---------------------": "",
-                 # **bb_params_dict, "": "", "best fit values": "",
-                 # "---------------------": "", **theta_max_dict, "": "",
-                 # "hyperparams": "", "---------------------": "",
-                 # **hyperparams_dict}
-
-    # plot_txt(ax, title_dict, text_dict, text_font_size=10)
     plot_amp_phase_comparison(data, best_fit_total_fluxes,
                               best_fit_corr_fluxes, best_fit_cphases,
                               matplot_axes=[bx, cx])
@@ -169,20 +159,35 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
     y_space_cphase = np.sqrt(y_max_cphase**2+y_min_cphase**2)*0.1
     y_lim_cphase = [y_min_cphase-y_space_cphase, y_max_cphase+y_space_cphase]
 
+    count_epochs = data.corr_fluxes[0].shape[0] // 6
+
     # TODO: Add more colors
-    ax.errorbar(data.baselines.value,
-                data.corr_fluxes.value[0], data.corr_fluxes_error.value[0],
-                color="goldenrod", fmt='o', label="Observed data", alpha=0.6)
-    ax.errorbar(0, data.total_fluxes[0], data.total_fluxes_error[0],
-                color="goldenrod", fmt='o', alpha=0.6)
-    ax.scatter(data.baselines.value, best_fit_corr_fluxes,
-               color="b", marker='X', label="Model data")
-    ax.scatter(0, best_fit_total_fluxes, marker='X', color="b")
-    bx.errorbar(data.longest_baselines.value,
-                data.cphases.value[0], data.cphases_error.value[0],
-                color="goldenrod", fmt='o', label="Observed data", alpha=0.6)
-    bx.scatter(data.longest_baselines.value, best_fit_cphases,
-               color="b", marker='X', label="Model data")
+    color_real_data = ["goldenrod", "darkgoldenrod", "gold"]
+    color_fit_data = ["midnightblue", "darkblue", "blue"]
+    for epochs in range(count_epochs):
+        if epochs == count_epochs:
+            break
+        ax.errorbar(data.baselines.value[epochs*6:(epochs+1)*6],
+                    data.corr_fluxes.value[0][epochs*6:(epochs+1)*6],
+                    data.corr_fluxes_error.value[0][epochs*6:(epochs+1)*6],
+                    color=color_real_data[epochs],
+                    fmt='o', label="Observed data", alpha=0.6)
+        ax.errorbar(np.array([0]), data.total_fluxes[0][epochs],
+                    data.total_fluxes_error[0][epochs],
+                    color=color_real_data[epochs], fmt='o', alpha=0.6)
+        ax.scatter(data.baselines.value[epochs*6:(epochs+1)*6],
+                   best_fit_corr_fluxes[epochs*6:(epochs+1)*6],
+                   color=color_fit_data[epochs], marker='X', label="Model data")
+        ax.scatter(np.array([0]), best_fit_total_fluxes[epochs],
+                   marker='X', color=color_fit_data[epochs])
+        bx.errorbar(data.longest_baselines.value[epochs*4:(epochs+1)*4],
+                    data.cphases.value[0][epochs*4:(epochs+1)*4],
+                    data.cphases_error.value[0][epochs*4:(epochs+1)*4],
+                    color=color_real_data[epochs], fmt='o',
+                    label="Observed data", alpha=0.6)
+        bx.scatter(data.longest_baselines.value[epochs*4:(epochs+1)*4],
+                   best_fit_cphases[epochs*4:(epochs+1)*4],
+                   color=color_fit_data[epochs], marker='X', label="Model data")
 
     ax.set_xlabel("Baselines [m]")
     ax.set_ylabel("Correlated fluxes [Jy]")

@@ -180,7 +180,7 @@ def run_mcmc(data: DataHandler,
 
 if __name__ == "__main__":
     data_path = "../../../data/hd_142666_jozsef/nband"
-    fits_files = ["HD_142666_2019-03-24T09_01_46_N_TARGET_FINALCAL_INT.fits",
+    fits_files = ["HD_142666_2019-05-14T05_28_03_N_TARGET_FINALCAL_INT.fits",
                   "HD_142666_2022-04-21T07_18_22_N_TARGET_FINALCAL_INT.fits",
                   "HD_142666_2022-04-23T03_05_25_N_TARGET_FINALCAL_INT.fits"]
     fits_files = [os.path.join(data_path, file) for file in fits_files]
@@ -199,12 +199,12 @@ if __name__ == "__main__":
     data.add_model_component(complete_ring)
     # data.add_model_component(inner_ring)
     # data.add_model_component(outer_ring)
-    data.fixed_params = make_fixed_params(30, 128, 1500, 7900, 140, 19, 1024)
+    data.fixed_params = make_fixed_params(50, 128, 1500, 7900, 140, 19, 128)
     data.geometric_priors = [[0.1, 1.], [0, 180]]
     data.modulation_priors = [[0.1, 1.], [0, 360]]
     data.disc_priors = [[0., 1.], [0., 1.]]
-    data.mcmc = [50, 200, 500, 1e-4]
-    data.zero_padding_order = 2
+    data.mcmc = [50, 2, 5, 1e-4]
+    data.zero_padding_order = 0
     data.tau_initial = 1
-    run_mcmc(data, save_path=save_path)
+    run_mcmc(data, save_path=save_path, cpu_amount=6)
 
