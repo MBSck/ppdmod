@@ -1,0 +1,2 @@
+Add multiple flux files for every readout (as to not use all)
+Change the multiprocessing for the cluster
