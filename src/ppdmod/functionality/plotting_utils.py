@@ -62,8 +62,8 @@ def write_data_to_ini(data: DataHandler, best_fit_total_fluxes,
                           "correlated_fluxes": best_fit_corr_fluxes,
                           "closure_phases": best_fit_cphases}
 
-    mcmc_dict = data.mcmc.to_string_dict()
-    dynesty_dict = data.dynesty.to_string_dict()
+    mcmc_dict = {} if data.mcmc is None else data.mcmc.to_string_dict()
+    dynesty_dict = {} if data.dynesty is None else data.dynesty.to_string_dict()
     fixed_params_dict = data.fixed_params.to_string_dict()
     best_fit_parameters_dict = IterNamespace(**dict(zip(data.labels, data.theta_max))).to_string_dict()
 
