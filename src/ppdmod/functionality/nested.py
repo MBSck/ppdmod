@@ -1,3 +1,4 @@
+import os
 import dynesty
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,6 +11,7 @@ from dynesty import plotting as dyplot
 from .data_prep import DataHandler
 
 from .fitting_utils import lnlike
+from .utils import make_delta_component, make_ring_component, make_fixed_params
 from .plotting_utils import plot_fit_results, write_data_to_ini
 
 
@@ -144,8 +146,8 @@ def run_dynesty(data: DataHandler,
                                                                 quantiles)
 
     data.theta_max = medians
-    best_fit_total_fluxes, best_fit_corr_fluxes, best_fit_cphases =\
-        calculate_model(data.theta_max, data)
+    best_fit_total_fluxes, best_fit_corr_fluxes, best_fit_cphases, fourier =\
+        calculate_model(data.theta_max, data, rfourier=True)
 
     output_path = f"{time.time()}_results_fit"
     if save_path:
@@ -158,7 +160,7 @@ def run_dynesty(data: DataHandler,
     plot_trace(results, data.dynesty.ndim, save_path=output_path)
     plot_corner(results, data.dynesty.ndim, data.labels, quantiles, save_path=output_path)
     plot_fit_results(best_fit_total_fluxes[0], best_fit_corr_fluxes[0],
-                     best_fit_cphases[0], data, save_path=output_path)
+                     best_fit_cphases[0], data, fourier, save_path=output_path)
 
 
 if __name__ == "__main__":

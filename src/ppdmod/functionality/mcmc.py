@@ -163,8 +163,8 @@ def run_mcmc(data: DataHandler,
         print("--------------------------------------------------------------")
 
     data.theta_max = (sampler.flatchain)[np.argmax(sampler.flatlnprobability)]
-    best_fit_total_fluxes, best_fit_corr_fluxes, best_fit_cphases =\
-        calculate_model(data.theta_max, data)
+    best_fit_total_fluxes, best_fit_corr_fluxes, best_fit_cphases, fourier =\
+        calculate_model(data.theta_max, data, rfourier=True)
 
     output_path = f"{time.time()}_results_fit"
     if save_path:
@@ -175,7 +175,7 @@ def run_mcmc(data: DataHandler,
     plot_corner(sampler, data, save_path=output_path)
     plot_chains(sampler, data, save_path=output_path)
     plot_fit_results(best_fit_total_fluxes[0], best_fit_corr_fluxes[0],
-                     best_fit_cphases[0], data, save_path=output_path)
+                     best_fit_cphases[0], data, fourier, save_path=output_path)
 
 
 if __name__ == "__main__":

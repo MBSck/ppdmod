@@ -93,7 +93,7 @@ def write_data_to_ini(data: DataHandler, best_fit_total_fluxes,
         config.write(configfile)
 
 def plot_fit_results(best_fit_total_fluxes, best_fit_corr_fluxes,
-                     best_fit_cphases, data: DataHandler,
+                     best_fit_cphases, data: DataHandler, fourier,
                      save_path: Optional[Path] = None) -> None:
     """Plot the samples to get estimate of the density that has been sampled,
     to test if sampling went well
@@ -101,7 +101,8 @@ def plot_fit_results(best_fit_total_fluxes, best_fit_corr_fluxes,
     Parameters
     ----------
     """
-    print_results(data, best_fit_total_fluxes, best_fit_corr_fluxes, best_fit_cphases)
+    print_results(data, best_fit_total_fluxes,
+                  best_fit_corr_fluxes, best_fit_cphases, fourier)
     plot_wl = data.wavelengths[0]
     fig, axarr = plt.subplots(2, 3, figsize=(20, 10))
     ax, bx, cx = axarr[0].flatten()
@@ -110,9 +111,9 @@ def plot_fit_results(best_fit_total_fluxes, best_fit_corr_fluxes,
     plot_amp_phase_comparison(data, best_fit_total_fluxes,
                               best_fit_corr_fluxes, best_fit_cphases,
                               matplot_axes=[bx, cx])
-    data.fourier.plot_amp_phase(matplot_axes=[fig, ax2, bx2, cx2],
-                                zoom=500, uv_coords=data.uv_coords,
-                                uv_coords_cphase=data.uv_coords_cphase)
+    fourier.plot_amp_phase(matplot_axes=[fig, ax2, bx2, cx2],
+                           zoom=500, uv_coords=data.uv_coords,
+                           uv_coords_cphase=data.uv_coords_cphase)
     plot_name = f"Best-fit-model_{plot_wl}.png"
 
     if save_path is None:
