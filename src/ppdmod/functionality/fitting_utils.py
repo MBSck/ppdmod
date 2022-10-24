@@ -37,7 +37,7 @@ def calculate_model(theta: np.ndarray, data: DataHandler,
     model_data = [total_flux_mod_chromatic,
                   corr_flux_mod_chromatic, cphases_mod_chromatic_data]
     if rfourier:
-        model_info.insert(len(model_data), fourier)
+        model_data.insert(len(model_data), fourier)
     return model_data
 
 
