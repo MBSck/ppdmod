@@ -63,13 +63,16 @@ def write_data_to_ini(data: DataHandler, best_fit_total_fluxes,
                           "closure_phases": best_fit_cphases}
 
     mcmc_dict = data.mcmc.to_string_dict()
+    dynesty_dict = data.dynesty.to_string_dict()
     fixed_params_dict = data.fixed_params.to_string_dict()
     best_fit_parameters_dict = IterNamespace(**dict(zip(data.labels, data.theta_max))).to_string_dict()
 
     config = configparser.ConfigParser()
-    config["params.emcee"] = mcmc_dict
     config["params.fixed"] = fixed_params_dict
     config["params.fitted"] = best_fit_parameters_dict
+
+    config["params.fit.emcee"] = mcmc_dict
+    config["params.fit.dynesty"] = dynesty_dict
 
     for component in data.model_components:
         component_dict = component.to_string_dict()

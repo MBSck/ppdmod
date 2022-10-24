@@ -39,12 +39,14 @@
 [] Don't pass the data-handler class as often -> Check
 
 ### Plotting
+[] Add the wavelengths to the dynesty plots
 [] Implement more colors for plotting
 [] Make better uv coordinate plotting colors for different epochs
 [] Fix plotting of the mas (also add offset) for both axes in the model image
 - [] Fix FOV plotting (reduce the FOV or check the scaling of the fourier axis?)
 
 ### Data output
+[] Add fitting method used
 [] Add data about the time the model took to run and when it started
 [] Add the name of the object that is saved
 [] Change the folder names accordingly

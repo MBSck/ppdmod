@@ -172,7 +172,7 @@ class DataHandler:
 
     @dynesty.setter
     def dynesty(self, value: List[float]):
-        key = ["ndim", "frac"]
+        key = ["ndim", "nlive", "method", "sampling_method", "bounding_method", "frac"]
         ndim = len(self.initial)
         value.insert(0, ndim)
         self._dynesty = IterNamespace(**dict(zip(key, value)))
