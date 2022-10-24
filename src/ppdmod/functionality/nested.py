@@ -7,7 +7,7 @@ from typing import List, Optional
 from dynesty import utils as dyfunc
 from dynesty import plotting as dyplot
 
-from .functionality.data_prep import DataHandler
+from .data_prep import DataHandler
 
 from .fitting_utils import lnlike, plot_fit_results
 from .plotting_utils import plot_fit_results, write_data_to_ini
