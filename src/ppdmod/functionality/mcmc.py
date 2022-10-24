@@ -180,12 +180,11 @@ def run_mcmc(data: DataHandler,
 
 if __name__ == "__main__":
     data_path = "../../../data/hd_142666_jozsef/nband"
-    fits_files = [ "HD_142666_2022-04-21T07_18_22_N_TARGET_FINALCAL_INT.fits",
-                  "HD_142666_2022-04-23T03_05_25_N_TARGET_FINALCAL_INT.fits"]
+    fits_files = ["HD_142666_2022-04-23T03_05_25_N_TARGET_FINALCAL_INT.fits"]
     fits_files = [os.path.join(data_path, file) for file in fits_files]
     flux_files = [None, None]
     save_path = "../../../assets/model_results"
-    wavelengths = [8.5, 12.0]
+    wavelengths = [12.0]
     data = DataHandler(fits_files, wavelengths, flux_files=flux_files)
     complete_ring = make_ring_component("inner_ring",
                                         [[0., 0.], [0., 0.], [1.5, 4.], [0., 0.]])

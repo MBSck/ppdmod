@@ -3,9 +3,9 @@ import numpy as np
 from typing import Optional, List
 from astropy.units import Quantity
 
+from .data_prep import DataHandler
 from .combined_model import CombinedModel
 from .fourier import FastFourierTransform
-from .data_prep import DataHandler
 
 
 def calculate_model(theta: np.ndarray, data: DataHandler,
@@ -22,22 +22,22 @@ def calculate_model(theta: np.ndarray, data: DataHandler,
         [], [], []
     for i, wavelength in enumerate(data.wavelengths):
         image = model.eval_flux(wavelength)
-        total_flux_data = []
-        for _ in data.total_fluxes[i]:
-             total_flux_data.append(model.eval_total_flux(wavelength).value)
+        # total_flux_data = []
+        # for _ in data.total_fluxes[i]:
+             # total_flux_data.append(model.eval_total_flux(wavelength).value)
         fourier = FastFourierTransform(image, wavelength,
                                             data.pixel_scaling, data.zero_padding_order)
         corr_flux_data, cphases_data = [], []
         corr_flux, cphases = fourier.get_uv2fft2(data.uv_coords, data.uv_coords_cphase)
         corr_flux_data.extend(corr_flux)
-        cphases_data.extend(cphases)
-        total_flux_mod_chromatic.append(total_flux_data)
-        corr_flux_mod_chromatic.append(corr_flux_data)
-        cphases_mod_chromatic_data.append(cphases_data)
+        # cphases_data.extend(cphases)
+        # total_flux_mod_chromatic.append(total_flux_data)
+        # corr_flux_mod_chromatic.append(corr_flux_data)
+        # cphases_mod_chromatic_data.append(cphases_data)
     model_data = [total_flux_mod_chromatic,
                   corr_flux_mod_chromatic, cphases_mod_chromatic_data]
     if rfourier:
-        model_info.insert(-1, fourier)
+        model_info.insert(len(model_data), fourier)
     return model_data
 
 
@@ -59,14 +59,15 @@ def lnlike(theta: np.ndarray, data: DataHandler) -> float:
         The goodness of the fitted model (will be minimised)
     """
     total_flux_mod, corr_flux_mod, cphases_mod = calculate_model(theta, data)
-    total_flux_chi_sq = chi_sq(data.total_fluxes.value,
-                               data.total_fluxes_sigma_squared.value, total_flux_mod)
+    # total_flux_chi_sq = chi_sq(data.total_fluxes.value,
+                               # data.total_fluxes_sigma_squared.value, total_flux_mod)
     corr_flux_chi_sq = chi_sq(data.corr_fluxes.value,
                               data.corr_fluxes_sigma_squared.value, corr_flux_mod)
-    cphases_chi_sq = chi_sq(data.cphases.value,
-                            data.cphases_sigma_squared.value, cphases_mod)
-    return np.array(-0.5*(total_flux_chi_sq +\
-                          corr_flux_chi_sq + cphases_chi_sq), dtype=float)
+    # cphases_chi_sq = chi_sq(data.cphases.value,
+                            # data.cphases_sigma_squared.value, cphases_mod)
+    # return np.array(-0.5*(total_flux_chi_sq +\
+                          # corr_flux_chi_sq + cphases_chi_sq), dtype=float)
+    return np.array(-0.5*corr_flux_chi_sq)
 
 def lnprior(theta: np.ndarray, priors: List[List[float]]) -> float:
     """Checks if all variables are within their priors (as well as

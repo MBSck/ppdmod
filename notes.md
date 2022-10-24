@@ -20,6 +20,7 @@
 - The interpolation?
 - The closure phases calculation? Calulation operation after the triangle conversion?
 - The scaling of the axes? Conversion into meters from frequency scale?
+- The zero division could be a problem?
 
 ## Problems
 * Improve calculation times of the modelling!
@@ -35,6 +36,8 @@
 - Try to use the FFT standalone and test if this works, if not then check the rest of the code again
 
 ## Working-on-ATM
+[] Ignore the error outputs for zero division
+
 ### Slow Calculations
 [] Rework of reformat theta to components function
 [] Remove passing of the data class
