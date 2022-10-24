@@ -1,67 +1,74 @@
 # Notes
 ## General
 - The parameters from the priors are maed 1/4 away from the priors borders to avoid errors
+
 ## Plan
-- CombinedModel also does the FFT
-- Rework DataHandler to take all the data required for the model
-- Make CombinedModel completely modular with DataHandler and fitting
-- Pass all parameters to DataHandler
-- Make CombinedModel do also polychromatic modelling
+
 ## Things to check
-* Check how the field of view works? Double 30, extends in both directions, half it?
 * Write a fuckton more tests for the important calculation functions -> Thorough tests needed
 * Does temperate gradient get negatively affected by np.inf values?
-* When to modulate the parameters?
-* Check if the FFT zero-padding moves the true centre -> Should be ok tho?
-* Maybe combine the flux and the correlated fluxed for plotting?
 * Check impact of the FastFourierTransform reforming of the the Cphases? Against wrapping? -> Maybe ask Jacob here?
 * Think about what is interpolated? Is Anthony's interpolation correct?? Maybe meshgrid?
-* Think about what the interpolation does??
 * How does the triangle come together (uv coords for cphases), look at what Jozsef does
-* Check the calulation operation after the triangle conversion
-* Check conversion into meters from frequency scale
 * Check what rebinning factor to use (What is sufficient?)
 * Check if sublimation temperature is calculated properly
+* Is FFT completely correct?
+- The Phases?
+- The interpolation?
+- The closure phases calculation? Calulation operation after the triangle conversion?
+- The scaling of the axes? Conversion into meters from frequency scale?
+
 ## Problems
 * Improve calculation times of the modelling!
 * Memory leak in the model component initialisation!
 * Code too slow! Make it faster by far? Faster array calculation? Other approaches?
+
 ## Ideas
 * Switch to pyFFTW at some time maybe?
 * Switch to a faster array calculation?
 * Recode all of this in Rust?
+
 ## Solutions
 - Try to use the FFT standalone and test if this works, if not then check the rest of the code again
+
 ## Working-on-ATM
+### Slow Calculations
+[] Remove as many ifs as possible
+- [] Instead of if, multiply result with 0 instead of return or break
+[] Run a profiler over the code to check what takes longest
+[] Don't pass the data-handler class as often -> Check
 
 ### Plotting
-[] Make better uv coordinate plotting colors for different epochs
 [] Implement more colors for plotting
-[] Fix FOV plotting (reduce the FOV or check the scaling of the fourier axis?)
+[] Make better uv coordinate plotting colors for different epochs
+[] Fix plotting of the mas (also add offset) for both axes in the model image
+- [] Fix FOV plotting (reduce the FOV or check the scaling of the fourier axis?)
 
 ### Data output
 [] Add data about the time the model took to run and when it started
+[] Add the name of the object that is saved
+[] Change the folder names accordingly
 [] Save the best fit data (theta, best_total_fluxes, best_correlated_fluxes, etc.) as data-files as well
 
+### Fitting
+[] Implement dynesty fitting again
+
 ### Model coding
-[] Look through all of Fourier transform and check where the phase error comes from... Only in Phase?!
 [] Write tests for all that has been done
-[] Check what FOV is neede, automatically calculate it for highest wl?
+[] Check what FOV is needed, automatically calculate it for highest wl?
+[] Check what pixel scaling is needed as well?
 
 ## To-Do
-[] Look up parallelisation
-[] Drop ifs for parallelisation
-- Instead of if, multiply result with 0 instead of return or break
+[] Reproduce models from Jozsef (HD163296), use the data from his paper
 [] SIMDI Instructions for faster code? GPU coding?
 [] Ignore errors at some point, or warnings that is
-[] Finish rework of model.py and implement tests
 [] Make tests that compare fluxes to real values (e.g., Jozsef's code see flux values)
 [] Implement tests for comparisons between analytical and numerical models -> FFT and all
-[] Implement and complete the other components (except delta and ring)
 [] Finish the _set_uv_grid method
-[] Make function that gives stuff like 'eval_model' automatically docstrings
 [] Remove redundancies to improve code speed (for later)
 [] Remove pixel scaling from DataHandler and wavelengths from CombinedModel
+[] Implement and complete the other components (except delta and ring)
+[] Make function that gives stuff like 'eval_model' automatically docstrings
 
 ## Done
 [x] Fix scaling of correlated flux plotting
@@ -95,3 +102,11 @@
 [x] Make the composite model class output in a way that can be taken by the DataHandler class
 [x] Make fits adapt to the new scheme
 [x] Make the disc params and the general params setting more modular -> Should be possible
+
+## Things-already-checked
+* Field of view checked
+- Should be ok as it is radius, just in the plotting at the end there is a plotting mistake
+* When to modulate the parameters?
+- Should not matter
+* Check if the FFT zero-padding moves the true centre
+- Should be ok tho?

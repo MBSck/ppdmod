@@ -52,7 +52,7 @@ class DataHandler:
             None, None, None
         self._tau_initial = None
         self._priors, self._labels = [], []
-        self._mcmc = None
+        self._mcmc, self._dynesty = None, None
 
         self.total_fluxes, self.total_fluxes_error = self._merge_data("flux")
         self.total_fluxes_sigma_squared = self._get_sigma_square("flux")
@@ -162,6 +162,20 @@ class DataHandler:
         value.insert(0, initial)
         value.insert(1, initial.shape[0])
         self._mcmc = IterNamespace(**dict(zip(key, value)))
+
+    @property
+    def dynesty(self):
+        if self._dynesty is None:
+            warnings.warn("The hyperparams for the dynesty-fitting have not been set."\
+                          " Defaults to None!")
+        return self._dynesty
+
+    @dynesty.setter
+    def dynesty(self, value: List[float]):
+        key = ["ndim", "frac"]
+        ndim = len(self.initial)
+        value.insert(0, ndim)
+        self._dynesty = IterNamespace(**dict(zip(key, value)))
 
     @property
     def priors(self):
