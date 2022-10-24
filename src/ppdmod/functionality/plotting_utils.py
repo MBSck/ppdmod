@@ -102,7 +102,7 @@ def plot_fit_results(best_fit_total_fluxes, best_fit_corr_fluxes,
     ----------
     """
     print_results(data, best_fit_total_fluxes,
-                  best_fit_corr_fluxes, best_fit_cphases, fourier)
+                  best_fit_corr_fluxes, best_fit_cphases)
     plot_wl = data.wavelengths[0]
     fig, axarr = plt.subplots(2, 3, figsize=(20, 10))
     ax, bx, cx = axarr[0].flatten()
