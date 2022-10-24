@@ -9,7 +9,7 @@ from dynesty import plotting as dyplot
 
 from .data_prep import DataHandler
 
-from .fitting_utils import lnlike, plot_fit_results
+from .fitting_utils import lnlike
 from .plotting_utils import plot_fit_results, write_data_to_ini
 
 
