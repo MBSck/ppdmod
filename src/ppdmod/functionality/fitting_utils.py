@@ -1,6 +1,6 @@
-from typing import Optional
 import numpy as np
 
+from typing import Optional, List
 from astropy.units import Quantity
 
 from .combined_model import CombinedModel

@@ -126,7 +126,7 @@ def run_dynesty(data: DataHandler,
                                                    queue_size=cpu_amount)
         else:
             sampler = dynesty.NestedSampler(lnlike, ptform, data.dynesty.ndim,
-                                            logl_args=data,
+                                            logl_args=[data],
                                             ptform_args=[data.priors],
                                             update_interval=float(data.dynesty.ndim),
                                             sample=data.dynesty.sampling_method,
