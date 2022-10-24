@@ -26,9 +26,9 @@ def calculate_model(theta: np.ndarray, data: DataHandler,
         for _ in data.total_fluxes[i]:
              total_flux_data.append(model.eval_total_flux(wavelength).value)
         fourier = FastFourierTransform(image, wavelength,
-                                       data.pixel_scaling, data.zero_padding_order)
+                                            data.pixel_scaling, data.zero_padding_order)
         corr_flux_data, cphases_data = [], []
-        corr_flux, cphases = data.get_uv2fft2(data.uv_coords, data.uv_coords_cphase)
+        corr_flux, cphases = fourier.get_uv2fft2(data.uv_coords, data.uv_coords_cphase)
         corr_flux_data.extend(corr_flux)
         cphases_data.extend(cphases)
         total_flux_mod_chromatic.append(total_flux_data)
@@ -37,7 +37,7 @@ def calculate_model(theta: np.ndarray, data: DataHandler,
     model_data = [total_flux_mod_chromatic,
                   corr_flux_mod_chromatic, cphases_mod_chromatic_data]
     if rfourier:
-        model_info.insert(len(model_data), fourier)
+        model_info.insert(-1, fourier)
     return model_data
 
 
@@ -68,7 +68,7 @@ def lnlike(theta: np.ndarray, data: DataHandler) -> float:
     return np.array(-0.5*(total_flux_chi_sq +\
                           corr_flux_chi_sq + cphases_chi_sq), dtype=float)
 
-def lnprior(theta: np.ndarray, data: DataHandler) -> float:
+def lnprior(theta: np.ndarray, priors: List[List[float]]) -> float:
     """Checks if all variables are within their priors (as well as
     determining them setting the same).
 
@@ -80,30 +80,18 @@ def lnprior(theta: np.ndarray, data: DataHandler) -> float:
     ----------
     theta: np.ndarray
         A list of all the parameters that ought to be fitted
-    priors: List
-        A list containing all the prior's bounds
+    priors: List[List[float]]
+        A list containing all the priors' bounds
 
     Returns
     -------
     float
-        Return-code 0.0 for within bounds and -np.inf for out of bound
-        priors
+        Return-code 0.0 for within bounds and -np.inf for out of bound priors
     """
-    check_conditons = []
-
-    for i, o in enumerate(data.priors):
-        if o[1] is None:
-            if o[0] < theta[i]:
-                check_conditons.append(True)
-            else:
-                check_conditons.append(False)
-        else:
-            if o[0] < theta[i] < o[1]:
-                check_conditons.append(True)
-            else:
-                check_conditons.append(False)
-
-    return 0.0 if all(check_conditons) else -np.inf
+    for i, o in enumerate(priors):
+        if not (o[0] < theta[i] < o[1]):
+            return -np.inf
+    return 0.
 
 def lnprob(theta: np.ndarray, data: DataHandler) -> np.ndarray:
     """This function runs the lnprior and checks if it returned -np.inf, and
@@ -120,12 +108,7 @@ def lnprob(theta: np.ndarray, data: DataHandler) -> np.ndarray:
     float
         The minimisation value or -np.inf if it fails
     """
-    lp = lnprior(theta, data)
-
-    if not np.isfinite(lp):
-        return -np.inf
-
-    return lp + lnlike(theta, data)
+    return lnlike(theta, data) if np.isfinite(lnprior(theta, data.priors)) else -np.inf
 
 def chi_sq(real_data: Quantity, sigma_sq: Quantity, model_data: Quantity) -> float:
     """The chi square minimisation"""

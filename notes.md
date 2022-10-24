@@ -3,6 +3,9 @@
 - The parameters from the priors are maed 1/4 away from the priors borders to avoid errors
 
 ## Plan
+- Implement nested fitting
+- Speed up the general code in speed, remove all passes of data
+- Use Py-Spy to check what takes the code long to run
 
 ## Things to check
 * Write a fuckton more tests for the important calculation functions -> Thorough tests needed
@@ -33,6 +36,8 @@
 
 ## Working-on-ATM
 ### Slow Calculations
+[] Rework of reformat theta to components function
+[] Remove passing of the data class
 [] Remove as many ifs as possible
 - [] Instead of if, multiply result with 0 instead of return or break
 [] Run a profiler over the code to check what takes longest

@@ -286,6 +286,8 @@ class DataHandler:
 
     def reformat_theta_to_components(self, theta: List[float]):
         """Sets the model component list anew from the input theta"""
+        # TODO: Figure out way to do this during the modelling
+        # TODO: Make this into independent function
         model_components = []
         theta_dict = dict(zip(self.labels, theta))
         for component in self.model_components:
@@ -312,6 +314,7 @@ class DataHandler:
                 component_params_dict[name]["params"] = {}
             component_params_dict[name]["component"] = component_name
             if component_name == "ring":
+                # TODO: Find a way to get around this parameter checking
                 if self.geometric_params is not None:
                     component_params_dict[name]["params"]["axis_ratio"] =\
                         theta_dict["axis_ratio"]
