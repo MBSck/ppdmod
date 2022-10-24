@@ -22,18 +22,18 @@ def calculate_model(theta: np.ndarray, data: DataHandler,
         [], [], []
     for i, wavelength in enumerate(data.wavelengths):
         image = model.eval_flux(wavelength)
-        # total_flux_data = []
-        # for _ in data.total_fluxes[i]:
-             # total_flux_data.append(model.eval_total_flux(wavelength).value)
+        total_flux_data = []
+        for _ in data.total_fluxes[i]:
+             total_flux_data.append(model.eval_total_flux(wavelength).value)
         fourier = FastFourierTransform(image, wavelength,
                                             data.pixel_scaling, data.zero_padding_order)
         corr_flux_data, cphases_data = [], []
         corr_flux, cphases = fourier.get_uv2fft2(data.uv_coords, data.uv_coords_cphase)
         corr_flux_data.extend(corr_flux)
-        # cphases_data.extend(cphases)
-        # total_flux_mod_chromatic.append(total_flux_data)
-        # corr_flux_mod_chromatic.append(corr_flux_data)
-        # cphases_mod_chromatic_data.append(cphases_data)
+        cphases_data.extend(cphases)
+        total_flux_mod_chromatic.append(total_flux_data)
+        corr_flux_mod_chromatic.append(corr_flux_data)
+        cphases_mod_chromatic_data.append(cphases_data)
     model_data = [total_flux_mod_chromatic,
                   corr_flux_mod_chromatic, cphases_mod_chromatic_data]
     if rfourier:
