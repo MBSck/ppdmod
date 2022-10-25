@@ -4,41 +4,21 @@ import astropy.units as u
 from astropy.units import Quantity
 from typing import Tuple, List, Optional
 
-from .utils import _set_ones
+from .utils import IterNamespace, _set_ones
 
 # TODO: Make sure all is tested! Write test for set_ones and improve all tests
 # TODO: Make good docstrings
 class Model:
-    """Model
-
-    ...
-
-    Methods
-    -------
-    eval_model():
-        Evaluates the model
-    eval_vis2():
-        Evaluates the visibilities of the model
-    """
-    def __init__(self, field_of_view: Quantity, image_size: int,
-                 sublimation_temperature: Quantity,
-                 effective_temperature: Quantity,
-                 distance: Quantity, luminosity_star: Quantity,
-                 pixel_sampling: Quantity) -> None:
-        """"""
+    """Model baseclass """
+    def __init__(self, fixed_params: IterNamespace) -> None:
         self.fixed_params = fixed_params
-        self.field_of_view = field_of_view
-        self.image_size = image_size
-        self.sublimation_temperature = sublimation_temperature
-        self.effective_temperature = effective_temperature
-        self.luminosity_star = luminosity_star
-        self.distance = distance
-        self.pixel_sampling = pixel_sampling
+
+        self.pixel_scaling = self.fixed_params.fov/self.fixed_params.image_size
 
         self.component_name = None
-        # TODO: Check why this is a thing? The axes...
+        # TODO: Check why this is a thing? The axes... Why were they implemented
         self.axes_image, self.axes_complex_image = [], []
-        self.polar_angle = np.array([])
+        self.polar_angle = None
 
     @property
     def image_centre(self) -> Tuple:
@@ -48,10 +28,6 @@ class Model:
         else:
             return (self.fixed_params.pixel_sampling//2,
                     self.fixed_params.pixel_sampling//2)
-
-    @property
-    def pixel_scaling(self):
-        return self.fixed_params.field_of_view/self.fixed_params.image_size
 
     def _set_grid(self, incline_params: Optional[List[float]] = None) -> Quantity:
         """Sets the size of the model and its centre. Returns the polar coordinates
@@ -79,85 +55,18 @@ class Model:
                             self.fixed_params.pixel_sampling, endpoint=False)*self.pixel_scaling
         y = x[:, np.newaxis]
 
-        axis_ratio, pos_angle = incline_params
-        pos_angle = pos_angle.to(u.rad)
+        if incline_params is not None:
+            axis_ratio, pos_angle = incline_params
+            pos_angle = pos_angle.to(u.rad)
+        else:
+            axis_ratio, pos_angle = 0.*u.dimensionless_unscaled, 0.*u.rad
+
         # NOTE: This was taken from Jozsef's code and until here output is equal
         xr, yr = (x*np.cos(pos_angle)-y*np.sin(pos_angle))/axis_ratio,\
             x*np.sin(pos_angle)+y*np.cos(pos_angle)
-        radius = np.sqrt(xr**2+yr**2)
         self.axes_image, self.polar_angle = [xr, yr], np.arctan2(xr, yr)
+        radius = np.sqrt(xr**2+yr**2)
         return radius
-
-    # TODO: Rework this function alike the others
-    # def _set_uv_grid(self, wavelength: float,
-                     # incline_params: List[float] = None,
-                     # uvcoords: np.ndarray = None,
-                     # vector: Optional[bool] = True) -> Quantity:
-        # """Sets the uv coords for visibility modelling
-
-        # Parameters
-        # ----------
-        # incline_params: List[float], optional
-            # A list of the three angles [axis_ratio, pos_angle, inc_angle]
-        # uvcoords: List[float], optional
-            # If uv-coords are given, then the visibilities are calculated for them
-        # vector: bool, optional
-            # Returns the baseline vector if toggled true, else the baselines
-
-        # Returns
-        # -------
-        # baselines: astropy.units.Quantity
-            # The baselines for the uvcoords [astropy.units.m]
-        # uvcoords: astropy.units.Quantity
-            # The axis used to calculate the baselines [astropy.units.m]
-        # """
-        # if not isinstance(wavelength, u.Quantity):
-            # wavelength *= u.um
-        # elif wavelength.unit != u.um:
-            # raise IOError("Enter the wavelength in [astropy.units.um] or unitless!")
-
-        # if uvcoords is None:
-            # axis = np.linspace(-self.image_size, size, sampling, endpoint=False)*u.m
-
-            # # Star overhead sin(theta_0)=1 position
-            # u, v = axis/wavelength.to(u.m),\
-                # axis[:, np.newaxis]/wavelength.to(u.m)
-
-        # else:
-            # axis = uvcoords/wavelength.to(u.m)
-            # u, v = np.array([uvcoord[0] for uvcoord in uvcoords]), \
-                    # np.array([uvcoord[1] for uvcoord in uvcoords])
-
-        # if angles is not None:
-            # try:
-                # if len(angles) == 2:
-                    # axis_ratio, pos_angle = incline_params
-                # else:
-                    # axis_ratio = incline_params[0]
-                    # pos_angle, inc_angle = map(lambda x: (x*u.deg).to(u.rad),
-                                               # incline_params[1:])
-
-                # u_inclined, v_inclined = u*np.cos(pos_angle)+v*np.sin(pos_angle),\
-                        # v*np.cos(pos_angle)-u*np.sin(pos_angle)
-
-                # if len(angles) > 2:
-                    # v_inclined = v_inclined*np.cos(inc_angle)
-
-                # baselines = np.sqrt(u_inclined**2+v_inclined**2)
-                # baseline_vector = baselines*wavelength.to(u.m)
-                # self.axes_complex_image = [u_inclined, v_inclined]
-            # except:
-                # raise IOError(f"{inspect.stack()[0][3]}(): Check input"
-                              # " arguments, ellipsis_angles must be of the form"
-                              # " either [pos_angle] or "
-                              # " [ellipsis_angle, pos_angle, inc_angle]")
-
-        # else:
-            # baselines = np.sqrt(u**2+v**2)
-            # baseline_vector = baselines*wavelength.to(u.m)
-            # self.axes_complex_image = [u, v]
-
-        # return baseline_vector if vector else baselines
 
     def _set_azimuthal_modulation(self, image: Quantity,
                                   amplitude: Quantity,
@@ -167,7 +76,7 @@ class Model:
         Parameters
         ----------
         image: astropy.units.Quantity
-            The model's image [astropy.units.Jy/px]
+            The model's image [astropy.units.Jy/px] or any image to modulate
         amplitude: Quantity
             The 'c'-amplitude [astropy.units.dimensionless_unscaled]
         polar_angle: astropy.units.Quantity
@@ -178,58 +87,12 @@ class Model:
         azimuthal_modulation: astropy.units.Quantity
             The azimuthal modulation [astropy.units.dimensionless_unscaled]
         """
-        if not isinstance(amplitude, u.Quantity):
-            amplitude *= u.dimensionless_unscaled
-        elif amplitude.unit != u.dimensionless_unscaled:
-            raise IOError("Enter the modulation amplitude in [astropy.units.deg]"\
-                          " or unitless!")
-
-        if not isinstance(modulation_angle, u.Quantity):
-            modulation_angle *= u.deg
-        elif modulation_angle.unit != u.deg:
-            raise IOError("Enter the modulation angle in [astropy.units.deg]"\
-                          " or unitless!")
-
         # TODO: Implement Modulation field like Jozsef?
         modulation_angle = modulation_angle.to(u.rad)
-        if self.polar_angle.size == 0:
-            raise ValueError("Evaluate the model or create a grid to access the"\
-                             " polar angle!")
-        else:
-            total_mod = amplitude*np.cos(self.polar_angle-modulation_angle)
+        total_mod = amplitude*np.cos(self.polar_angle-modulation_angle)
         image *= 1 + total_mod
         image.value[image.value < 0.] = 0.
         return image
-
-    def eval_model(self) -> Quantity:
-        """Evaluates the model image's radius
-
-        Returns
-        --------
-        image: Quantity
-            A two-dimensional model image [astropy.units.mas]
-        """
-        pass
-
-    def eval_object(self) -> Quantity:
-        """Evaluates the model image's object
-
-        Returns
-        --------
-        image: Quantity
-            A two-dimensional model image [astropy.units.dimensionless_unscaled]
-        """
-        return _set_ones(self.eval_model(params)).value*u.dimensionless_unscaled
-
-    def eval_flux(self) -> Quantity:
-        """Evaluates the complex visibility function of the model.
-
-        Returns
-        -------
-        complex_visibility_function: Quantity
-            A two-dimensional complex visibility function [astropy.units.m]
-        """
-        pass
 
 
 if __name__ == "__main__":

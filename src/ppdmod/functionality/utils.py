@@ -271,6 +271,8 @@ def _calculate_sublimation_temperature(inner_radius: Quantity,
     sublimation_temperature: astropy.units.Quantity
         The sublimation temperature [astropy.units.K]
     """
+    if inner_radius.unit == u.mas:
+        inner_radius = _convert_parallax_to_orbital_radius(inner_radius, distance)
     return (luminosity_star/(4*np.pi*c.sigma_sb*inner_radius**2))**(1/4)
 
 
@@ -520,6 +522,7 @@ def make_delta_component(name: str):
     return _make_component(name, component_name="delta")
 
 
+# TODO: Make test for this function. Seems broken?
 if __name__ == "__main__":
     fixed_params = make_fixed_params(50, 128, 1500, 7900*u.K, 140*u.pc, 19*c.L_sun)
     print([value for value in fixed_params])

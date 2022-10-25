@@ -12,7 +12,7 @@ from ppdmod.functionality.model import Model
 ################################### Fixtures #############################################
 
 @pytest.fixture
-def mock_init_values(mock_fixed_params):
+def mock_fixed_params_namespace(mock_fixed_params):
     """The sublimation temp [astropy.units.K], the eff_temp [astropy.units.K], the
     distance of the star [astropy.units.pc], the luminosity [astropy.units.L_sun] and
     the wavelength [u.um]"""
@@ -31,14 +31,14 @@ def mock_ab_aur():
     return [10000*u.K, 139*u.pc, 60*c.L_sun]
 
 @pytest.fixture
-def mock_temp_grad_input(mock_init_values):
-    model = Model(*mock_init_values)
+def mock_temp_grad_input(mock_fixed_params_namespace):
+    model = Model(mock_fixed_params_namespace)
     radius = model._set_grid()
     return [radius, 0.55*u.dimensionless_unscaled, 1*u.mas, 1500*u.K]
 
 @pytest.fixture
-def mock_optical_depth_grad_input(mock_init_values):
-    model = Model(*mock_init_values)
+def mock_optical_depth_grad_input(mock_fixed_params_namespace):
+    model = Model(mock_fixed_params_namespace)
     radius = model._set_grid()
     return [radius, 0.55*u.dimensionless_unscaled, 1.*u.mas, 1.*u.dimensionless_unscaled]
 
@@ -94,13 +94,20 @@ def test_stellar_flux(mock_ab_aur, mock_wavelength):
     flux = utils.stellar_flux(mock_wavelength, *mock_ab_aur)
     assert flux.unit == u.Jy
 
-def test_calculate_sublimation_radius(mock_sublimation_radius_input):
-    sublimation_radius = utils._calculate_sublimation_radius(*mock_sublimation_radius_input)
+def test_calculate_sublimation_radius(mock_fixed_params_namespace):
+    fixed_params = mock_fixed_params_namespace
+    sublimation_radius = utils._calculate_sublimation_radius(fixed_params.sub_temp,
+                                                             fixed_params.distance,
+                                                             fixed_params.lum_star)
     assert sublimation_radius.unit == u.mas
 
-def test_calculate_sublimation_temperature(mock_sublimation_temp_input):
+def test_calculate_sublimation_temperature(mock_fixed_params_namespace):
+    fixed_params = mock_fixed_params_namespace
+    inner_radius = 2.14*u.mas
     sublimation_temperature =\
-        utils._calculate_sublimation_temperature(*mock_sublimation_temp_input)
+        utils._calculate_sublimation_temperature(inner_radius,
+                                                 fixed_params.distance,
+                                                 fixed_params.lum_star)
     assert sublimation_temperature.unit == u.K
 
 # TODO: Test for real values
