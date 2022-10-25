@@ -72,10 +72,8 @@ def generate_valid_guess(data: DataHandler) -> np.ndarray:
         dimensions
     """
     proposal = np.array(data.initial)
-    print(proposal)
     prior_dynamic = np.array([np.ptp(prior) for prior in data.priors])
     dyn = 1/prior_dynamic
-    print(prior_dynamic)
 
     guess_lst = []
     for _ in range(data.mcmc.nwalkers):
