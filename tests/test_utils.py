@@ -164,6 +164,26 @@ def test_IterNamespace(mock_labels, mock_params):
     assert mock_namespace.pa == mock_params[1]
 
 
+# TODO: Implement this test
+def test_set_zeros():
+    ...
+
+
+# TODO: Implement this test
+def test_set_ones():
+    ...
+
+
+# TODO: Implement this test
+def test_rebin_image():
+    ...
+
+
+# TODO: Implement this test
+def make_inital_guess_from_priors():
+    ...
+
+
 def test_make_params(mock_params, mock_units, mock_labels):
     params = utils._make_params(mock_params, mock_units, mock_labels)
     assert params.axis_ratio.unit == u.dimensionless_unscaled

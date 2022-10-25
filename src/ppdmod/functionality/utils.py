@@ -4,143 +4,11 @@ import astropy.constants as c
 
 from astropy.modeling import models
 from types import SimpleNamespace
-from typing import List, Tuple, Union, Optional, Any
+from typing import List, Tuple, Union, Optional
 from astropy.units import Quantity
 
 
-class IterNamespace(SimpleNamespace):
-    """Contains the functionality of a SimpleNamespace with the addition of a '_fields'
-    attribute and the ability to iterate over the values of the '__dict__'"""
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._fields = tuple(attr for attr in self.__dict__.keys())
-
-    def __len__(self):
-        return len(self._fields)
-
-    def __getitem__(self, __index):
-        keys = self._fields[__index]
-        values = [value for value in self.__iter__()][__index]
-        if isinstance(values, list):
-            return IterNamespace(**dict(zip(keys, values)))
-        else:
-            return values
-
-    def __iter__(self):
-        for attr, val in self.__dict__.items():
-            if not (attr.startswith("__") or attr.startswith("_")):
-                yield val
-
-    def to_string(self):
-        values = []
-        for value in self.__iter__():
-            if isinstance(value, u.Quantity):
-                value = np.array2string(value)
-            elif isinstance(value, np.ndarray):
-                value = np.array2string(value)
-            elif isinstance(value, list):
-                value = np.array2string(np.array(value))
-            else:
-                value = str(value)
-            values.append(value)
-        return values
-
-    def to_string_dict(self):
-        return dict(zip(self._fields, self.to_string()))
-
-
-def _set_zeros(image: Union[np.ndarray, Quantity]) -> Union[np.ndarray, Quantity]:
-    """Sets an image grid to all zeros
-
-    Parameters
-    ----------
-    image: np.ndarray | astropy.units.Quantity
-        The input image
-
-    Returns
-    -------
-    image_all_ones: np.ndarray | astropy.units.Quantity
-        The output image with every value set to 0.
-    """
-    if not (isinstance(image, u.Quantity) or isinstance(image, np.ndarray)):
-        raise IOError("Input image must be either [np.ndarray]"\
-                      " or [astropy.units.Quantity]")
-    return image*0
-
-
-def _set_ones(image: Union[np.ndarray, Quantity]) -> Union[np.ndarray, Quantity]:
-    """Sets and image grid to all ones
-
-    Parameters
-    ----------
-    image: np.ndarray | astropy.units.Quantity
-        The input image
-
-    Returns
-    -------
-    image_all_ones: np.ndarray | astropy.units.Quantity
-        The output image with every value set to 1.
-    """
-    if not (isinstance(image, u.Quantity) or isinstance(image, np.ndarray)):
-        raise IOError("Input image must be either [np.ndarray]"\
-                      " or [astropy.units.Quantity]")
-    image[image != 0.] = 1.
-    return image
-
-
-def rebin_image(image: Quantity, new_shape: Tuple, rfactor: Optional[bool] = False):
-    """Rebins a 2D-image to a new input shape
-
-    Parameters
-    ----------
-    image: astropy.units.quantity
-        The image to be rebinned
-    new_shape: Tuple
-        The shape the image is to be rebinned to
-    rfactor: bool, optional
-        Returns the rebinning factor of the image
-
-    Returns
-    -------
-    rebinned_image: np.ndarray | astropy.units.Quantity
-        The rebinned image
-    rebinning_factor: Tuple, optional
-        The rebinning factor of the image
-    """
-    shape = (new_shape[0], image.shape[0] // new_shape[0],
-             new_shape[1], image.shape[1] // new_shape[1])
-    rebinned_image = image.reshape(shape).mean(-1).mean(1)
-    if rfactor:
-        factor = tuple(x//y for x, y in zip(image.shape, new_shape))
-        return rebinned_image, factor
-    return rebinned_image
-
-
-def make_inital_guess_from_priors(priors: List[float]) -> List[float]:
-    """Initialises a random float/list via a uniform distribution from the
-    bounds provided
-
-    Parameters
-    -----------
-    priors: IterNamespace
-        Bounds list must be nested list(s) containing the bounds of the form
-        form [lower_bound, upper_bound]
-
-    Returns
-    -------
-    List[float]
-        A list of the parameters corresponding to the priors. Also does not take the full
-        priors but 1/4 from the edges, to avoid emcee problems
-    """
-    params = []
-    for prior in priors:
-        quarter_prior_distance = np.diff(prior)/4
-        lower_bound, upper_bounds = prior[0]+quarter_prior_distance,\
-            prior[1]-quarter_prior_distance
-        param = np.random.uniform(lower_bound, upper_bounds)[0]
-        params.append(param)
-    return np.array(params)
-
+################################ PHYSICS #################################################
 
 def _convert_orbital_radius_to_parallax(orbital_radius: Quantity,
                                         distance: Optional[Quantity] = None
@@ -328,7 +196,6 @@ def optical_depth_gradient(radius: Quantity,
                                         inner_radius, power_law_exponent)
 
 
-# TODO: Fix the tests here
 def flux_per_pixel(wavelength: Quantity, temperature_distribution: Quantity,
                    optical_depth: Quantity, pixel_scaling: Quantity) -> Quantity:
     """Calculates the total flux of the model
@@ -354,6 +221,141 @@ def flux_per_pixel(wavelength: Quantity, temperature_distribution: Quantity,
     spectral_radiance = plancks_law(wavelength).to(u.erg/(u.cm**2*u.Hz*u.s*u.mas**2))
     flux_per_pixel = spectral_radiance*pixel_scaling**2
     return (flux_per_pixel.to(u.Jy))*(1-np.exp(-optical_depth))
+
+################################ GENERAL UTILITY #########################################
+
+class IterNamespace(SimpleNamespace):
+    """Contains the functionality of a SimpleNamespace with the addition of a '_fields'
+    attribute and the ability to iterate over the values of the '__dict__'"""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._fields = tuple(attr for attr in self.__dict__.keys())
+
+    def __len__(self):
+        return len(self._fields)
+
+    def __getitem__(self, __index):
+        keys = self._fields[__index]
+        values = [value for value in self.__iter__()][__index]
+        if isinstance(values, list):
+            return IterNamespace(**dict(zip(keys, values)))
+        else:
+            return values
+
+    def __iter__(self):
+        for attr, val in self.__dict__.items():
+            if not (attr.startswith("__") or attr.startswith("_")):
+                yield val
+
+    def to_string(self):
+        values = []
+        for value in self.__iter__():
+            if isinstance(value, u.Quantity):
+                value = np.array2string(value)
+            elif isinstance(value, np.ndarray):
+                value = np.array2string(value)
+            elif isinstance(value, list):
+                value = np.array2string(np.array(value))
+            else:
+                value = str(value)
+            values.append(value)
+        return values
+
+    def to_string_dict(self):
+        return dict(zip(self._fields, self.to_string()))
+
+
+def _set_zeros(image: Union[np.ndarray, Quantity]) -> Union[np.ndarray, Quantity]:
+    """Sets an image grid to all zeros
+
+    Parameters
+    ----------
+    image: np.ndarray | astropy.units.Quantity
+        The input image
+
+    Returns
+    -------
+    image_all_ones: np.ndarray | astropy.units.Quantity
+        The output image with every value set to 0.
+    """
+    if not (isinstance(image, u.Quantity) or isinstance(image, np.ndarray)):
+        raise IOError("Input image must be either [np.ndarray]"\
+                      " or [astropy.units.Quantity]")
+    return image*0
+
+
+def _set_ones(image: Union[np.ndarray, Quantity]) -> Union[np.ndarray, Quantity]:
+    """Sets and image grid to all ones
+
+    Parameters
+    ----------
+    image: np.ndarray | astropy.units.Quantity
+        The input image
+
+    Returns
+    -------
+    image_all_ones: np.ndarray | astropy.units.Quantity
+        The output image with every value set to 1.
+    """
+    if not (isinstance(image, u.Quantity) or isinstance(image, np.ndarray)):
+        raise IOError("Input image must be either [np.ndarray]"\
+                      " or [astropy.units.Quantity]")
+    image[image != 0.] = 1.
+    return image
+
+
+def rebin_image(image: Quantity, new_shape: Tuple, rfactor: Optional[bool] = False):
+    """Rebins a 2D-image to a new input shape
+
+    Parameters
+    ----------
+    image: astropy.units.quantity
+        The image to be rebinned
+    new_shape: Tuple
+        The shape the image is to be rebinned to
+    rfactor: bool, optional
+        Returns the rebinning factor of the image
+
+    Returns
+    -------
+    rebinned_image: np.ndarray | astropy.units.Quantity
+        The rebinned image
+    rebinning_factor: Tuple, optional
+        The rebinning factor of the image
+    """
+    shape = (new_shape[0], image.shape[0] // new_shape[0],
+             new_shape[1], image.shape[1] // new_shape[1])
+    rebinned_image = image.reshape(shape).mean(-1).mean(1)
+    if rfactor:
+        factor = tuple(x//y for x, y in zip(image.shape, new_shape))
+        return rebinned_image, factor
+    return rebinned_image
+
+
+def make_inital_guess_from_priors(priors: List[float]) -> List[float]:
+    """Initialises a random float/list via a uniform distribution from the
+    bounds provided
+
+    Parameters
+    -----------
+    priors: IterNamespace
+        Bounds list must be nested list(s) containing the bounds of the form
+        form [lower_bound, upper_bound]
+
+    Returns
+    -------
+    List[float]
+        A list of the parameters corresponding to the priors. Also does not take the full
+        priors but 1/4 from the edges, to avoid emcee problems
+    """
+    params = []
+    for prior in priors:
+        quarter_prior_distance = np.diff(prior)/4
+        lower_bound, upper_bounds = prior[0]+quarter_prior_distance,\
+            prior[1]-quarter_prior_distance
+        param = np.random.uniform(lower_bound, upper_bounds)[0]
+        params.append(param)
+    return np.array(params)
 
 
 def _make_params(params: List[float], units: List[Quantity],
