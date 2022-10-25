@@ -55,6 +55,7 @@ from .plotting_utils import plot_fit_results, write_data_to_ini
 from .fitting_utils import lnprob, calculate_model
 from .utils import make_fixed_params, make_delta_component, make_ring_component
 
+np.seterr(divide='ignore')
 
 def generate_valid_guess(data: DataHandler) -> np.ndarray:
     """Generates a valid guess that is in the bounds of the priors for the
@@ -203,6 +204,6 @@ if __name__ == "__main__":
     data.disc_priors = [[0., 1.], [0., 1.]]
     data.mcmc = [35, 2, 5, 1e-4]
     data.zero_padding_order = 2
-    data.tau_initial = 1
+    data.tau_initial = 0.1
     run_mcmc(data, save_path=save_path, cpu_amount=6)
 

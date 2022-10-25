@@ -4,7 +4,7 @@ import astropy.constants as c
 
 from astropy.modeling import models
 from types import SimpleNamespace
-from typing import List, Tuple, Union, Optional
+from typing import List, Tuple, Union, Optional, Any
 from astropy.units import Quantity
 
 
@@ -18,9 +18,9 @@ class IterNamespace(SimpleNamespace):
     def __len__(self):
         return len(self._fields)
 
-    def __getitem__(self, index):
-        keys = self._fields[index]
-        values = [value for value in self.__iter__()][index]
+    def __getitem__(self, __index):
+        keys = self._fields[__index]
+        values = [value for value in self.__iter__()][__index]
         if isinstance(values, list):
             return IterNamespace(**dict(zip(keys, values)))
         else:

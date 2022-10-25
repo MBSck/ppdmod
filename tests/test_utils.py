@@ -1,6 +1,5 @@
 import pytest
 
-import numpy as np
 import astropy.units as u
 import astropy.constants as c
 
@@ -51,14 +50,6 @@ def mock_optical_depth_gradient(mock_optical_depth_grad_input):
     return utils.optical_depth_gradient(*mock_optical_depth_grad_input)
 
 ################################ UTILS: PHYSICS- TESTS ###################################
-
-def test_IterNamespace(mock_labels, mock_params):
-    mock_dict = dict(zip(mock_labels, mock_params))
-    mock_namespace = utils.IterNamespace(**mock_dict)
-    assert mock_namespace._fields == mock_labels
-    assert tuple(value for value in mock_namespace) == mock_params
-    assert mock_namespace.axis_ratio == mock_params[0]
-    assert mock_namespace.pa == mock_params[1]
 
 def test_convert_orbital_radius_to_parallax():
     orbital_radius = utils._convert_orbital_radius_to_parallax(1*u.au, 1*u.pc)
@@ -162,6 +153,16 @@ def component_names():
     return "Ring", "Gauss"
 
 ################################ UTILS: TOOLS - TESTS ####################################
+
+# TODO: Add tests for all subfunctionality of this class here
+def test_IterNamespace(mock_labels, mock_params):
+    mock_dict = dict(zip(mock_labels, mock_params))
+    mock_namespace = utils.IterNamespace(**mock_dict)
+    assert mock_namespace._fields == mock_labels
+    assert tuple(value for value in mock_namespace) == mock_params
+    assert mock_namespace.axis_ratio == mock_params[0]
+    assert mock_namespace.pa == mock_params[1]
+
 
 def test_make_params(mock_params, mock_units, mock_labels):
     params = utils._make_params(mock_params, mock_units, mock_labels)

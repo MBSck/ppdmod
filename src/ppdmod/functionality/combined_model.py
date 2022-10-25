@@ -39,7 +39,7 @@ class CombinedModel:
         """Initialises the model's components"""
         # TODO: See that this gets only initialised once?! Huge memory leak
         if self._components:
-            components = [component(*self._model_init_params)\
+            components = [component(self._model_init_params)\
                           for component in self._components]
             return components
         else:
@@ -120,16 +120,18 @@ class CombinedModel:
         temperature = temperature_gradient(image, self._disc_params.q,
                                            self._inner_radius, self.inner_temperature)
 
-        optical_depth = optical_depth_gradient(image, self._disc_params.p,
-                                               self._inner_radius, self.tau)
+        # optical_depth = optical_depth_gradient(image, self._disc_params.p,
+                                               # self._inner_radius, self.tau)
+        optical_depth = self.tau
         flux = flux_per_pixel(wavelength, temperature, optical_depth, self.pixel_scaling)
         flux[flux == np.inf] = 0.*u.Jy
+
         # TOOD: Implement here rebinning
         if self._model_init_params.pixel_sampling > self._model_init_params.image_size:
             new_shape = (self._model_init_params.image_size,
                          self._model_init_params.image_size)
             flux, self.rebin_factor = rebin_image(flux, new_shape, rfactor=True)
-        # TODO: Think of better implementation of stellar flux with rebinning
+
         if self._stellar_flux_func is not None:
             flux += self._stellar_flux_func(wavelength)
         return flux

@@ -24,10 +24,9 @@ class DeltaComponent(Model):
         self.component_name = "delta"
 
     def eval_flux(self, wavelength: Quantity) -> Quantity:
-        return self.eval_model().value*stellar_flux(wavelength,
-                                                    self.effective_temperature,
-                                                    self.distance,
-                                                    self.luminosity_star)
+        flux = stellar_flux(wavelength, self.fixed_params.eff_temp,
+                            self.fixed_params.distance, self.fixed_params.lum_star)
+        return self.eval_model().value*flux
 
     def eval_model(self) -> Quantity:
         """Evaluates the model

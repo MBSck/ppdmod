@@ -74,11 +74,7 @@ class FastFourierTransform:
 
         self.model_unpadded_dim = self.model.shape[0]
         self.model_unpadded_centre = self.model_unpadded_dim//2
-
-    @property
-    def ft(self):
-        """Does the fourier tranform"""
-        return self.do_fft2()
+        self.ft = self.do_fft2()
 
     @property
     def model_shape(self):
