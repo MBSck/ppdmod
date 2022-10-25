@@ -1,4 +1,3 @@
-import inspect
 import numpy as np
 import astropy.units as u
 
@@ -27,6 +26,7 @@ class Model:
                  distance: Quantity, luminosity_star: Quantity,
                  pixel_sampling: Quantity) -> None:
         """"""
+        self.fixed_params = fixed_params
         self.field_of_view = field_of_view
         self.image_size = image_size
         self.sublimation_temperature = sublimation_temperature
@@ -44,29 +44,24 @@ class Model:
     def image_centre(self) -> Tuple:
         """Returns index"""
         if self.component_name == "delta":
-            return (self.image_size//2, self.image_size//2)
+            return (self.fixed_params.image_size//2, self.fixed_params.image_size//2)
         else:
-            return (self.pixel_sampling//2, self.pixel_sampling//2)
+            return (self.fixed_params.pixel_sampling//2,
+                    self.fixed_params.pixel_sampling//2)
 
     @property
     def pixel_scaling(self):
-        return self.field_of_view/self.image_size
+        return self.fixed_params.field_of_view/self.fixed_params.image_size
 
     def _set_grid(self, incline_params: Optional[List[float]] = None) -> Quantity:
         """Sets the size of the model and its centre. Returns the polar coordinates
 
         Parameters
         ----------
-        mas_size: int
-            Sets the size of the image [astropy.units.mas]
-        size: int
-            Sets the range of the model image and implicitly the x-, y-axis.
-            Size change for simple models functions like zero-padding
-        pixel_sampling: int, optional
-            The pixel sampling [px]
         incline_params: List[float], optional
             A list of the inclination parameters [axis_ratio, pos_angle]
-            [None, astropy.units.rad]
+            [astropy.units.dimensionless_unscaled, astropy.units.deg]
+            DISCLAIMER: The axis_ratio should be in [0., 1.] and the pos_angle in [0, 180]
 
         Returns
         -------
@@ -75,50 +70,22 @@ class Model:
         """
         # TODO: Does center shift, xc, yc need to be applied?
         if self.component_name == "delta":
-            x = np.linspace(-self.image_size//2, self.image_size//2,
-                            self.image_size, endpoint=False)*self.pixel_scaling
+            x = np.linspace(-self.fixed_params.image_size//2,
+                            self.fixed_params.image_size//2,
+                            self.fixed_params.image_size, endpoint=False)*self.pixel_scaling
         else:
-            x = np.linspace(-self.image_size//2, self.image_size//2,
-                            self.pixel_sampling, endpoint=False)*self.pixel_scaling
+            x = np.linspace(-self.fixed_params.image_size//2,
+                            self.fixed_params.image_size//2,
+                            self.fixed_params.pixel_sampling, endpoint=False)*self.pixel_scaling
         y = x[:, np.newaxis]
 
-        if incline_params:
-            try:
-                axis_ratio, pos_angle = incline_params
-            except:
-                raise IOError(f"{inspect.stack()[0][3]}(): Check input"
-                              " arguments, 'incline_params' must be of the"
-                              " form [axis_ratio, pos_angle]")
-
-            if not isinstance(axis_ratio, u.Quantity):
-                axis_ratio *= u.dimensionless_unscaled
-            elif axis_ratio.unit != u.dimensionless_unscaled:
-                raise IOError("Enter the axis ratio in"\
-                              " [astropy.units.dimensionless_unscaled] or unitless!")
-
-            if not isinstance(pos_angle, u.Quantity):
-                pos_angle *= u.deg
-            elif pos_angle.unit != u.deg:
-                raise IOError("Enter the positional angle in [astropy.units.deg] or"\
-                              " unitless!")
-
-            if (axis_ratio.value < 0.) or (axis_ratio.value > 1.):
-                raise ValueError("The axis ratio must be between [0., 1.]")
-
-            if (pos_angle.value < 0) or (pos_angle.value > 180):
-                raise ValueError("The positional angle must be between [0, 180]")
-
-            pos_angle = pos_angle.to(u.rad)
-
-            # NOTE: This was taken from Jozsef's code and until here output is equal
-            xr, yr = (x*np.cos(pos_angle)-y*np.sin(pos_angle))/axis_ratio,\
-                x*np.sin(pos_angle)+y*np.cos(pos_angle)
-            radius = np.sqrt(xr**2+yr**2)
-            self.axes_image, self.polar_angle = [xr, yr], np.arctan2(xr, yr)
-        else:
-            radius = np.sqrt(x**2+y**2)
-            self.axes_image, self.polar_angle = [x, y], np.arctan2(x, y)
-
+        axis_ratio, pos_angle = incline_params
+        pos_angle = pos_angle.to(u.rad)
+        # NOTE: This was taken from Jozsef's code and until here output is equal
+        xr, yr = (x*np.cos(pos_angle)-y*np.sin(pos_angle))/axis_ratio,\
+            x*np.sin(pos_angle)+y*np.cos(pos_angle)
+        radius = np.sqrt(xr**2+yr**2)
+        self.axes_image, self.polar_angle = [xr, yr], np.arctan2(xr, yr)
         return radius
 
     # TODO: Rework this function alike the others

@@ -74,7 +74,11 @@ class FastFourierTransform:
 
         self.model_unpadded_dim = self.model.shape[0]
         self.model_unpadded_centre = self.model_unpadded_dim//2
-        self.ft = self.do_fft2()
+
+    @property
+    def ft(self):
+        """Does the fourier tranform"""
+        return self.do_fft2()
 
     @property
     def model_shape(self):
@@ -226,10 +230,9 @@ class FastFourierTransform:
         --------
         ft: np.ndarray
         """
+        # TODO: Think of making this more local
         self.model = self.zero_pad_model()
-        self.raw_fft = fft2(fftshift(self.model))
-        self.ft_centre = self.raw_fft[0][0]
-        return ifftshift(self.raw_fft)
+        return ifftshift(fft2(fftshift(self.model)))
 
     def plot_amp_phase(self, matplot_axes: Optional[List] = [],
                        zoom: Optional[int] = 500,

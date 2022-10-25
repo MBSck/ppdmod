@@ -1,4 +1,3 @@
-import inspect
 import astropy.units as u
 import astropy.constants as c
 import matplotlib.pyplot as plt

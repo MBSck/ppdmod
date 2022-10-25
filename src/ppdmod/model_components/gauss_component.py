@@ -1,11 +1,10 @@
-import inspect
 import numpy as np
 import astropy.units as u
 
 from astropy.units import Quantity
 
 from ..functionality.model import Model
-from ..functionality.utils import IterNamespace, check_and_convert
+from ..functionality.utils import IterNamespace
 
 
 class GaussComponent(Model):

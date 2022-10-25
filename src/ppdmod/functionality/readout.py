@@ -307,11 +307,7 @@ class ReadoutFits:
             [astropy.units.dimensionless_unscaled]
         """
         vis, viserr = self.get_data("oi_vis", "visamp", "visamperr")
-
-        if np.max(vis) > 1.:
-            vis, viserr = map(lambda x: x*u.Jy, (vis, viserr))
-        else:
-            vis, viserr = map(lambda x: x*u.dimensionless_unscaled, (vis, viserr))
+        vis, viserr = map(lambda x: x*u.Jy, (vis, viserr))
         return vis, viserr
 
     def get_visibilities_squared(self) -> Quantity:

@@ -13,6 +13,7 @@
 * Check impact of the FastFourierTransform reforming of the the Cphases? Against wrapping? -> Maybe ask Jacob here?
 * Think about what is interpolated? Is Anthony's interpolation correct?? Maybe meshgrid?
 * How does the triangle come together (uv coords for cphases), look at what Jozsef does
+- Negative or positive closure phases?
 * Check what rebinning factor to use (What is sufficient?)
 * Check if sublimation temperature is calculated properly
 * Is FFT completely correct?

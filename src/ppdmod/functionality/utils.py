@@ -520,37 +520,6 @@ def make_delta_component(name: str):
     return _make_component(name, component_name="delta")
 
 
-# TODO: Maybe rename this function?
-def _check_attributes(params: IterNamespace,
-                      attributes: List[str], units: List[Quantity]) -> bool:
-    """Checks the attributes contained in an IterNamespace with them of the model class.
-    Returns 'True' if the attributes exist and are in the right [astropy.units]
-
-    Parameters
-    ----------
-    params: IterNamespace
-        A IterNamespace containing the parameters and their values
-    attributes: List[str]
-        The names of the parameters
-    units: List[Quantity]
-        A list containing the required units for the respective parameters
-
-    Returns
-    -------
-    bool
-    """
-    for i, parameter in enumerate(zip(params._fields, params)):
-        param_name, param = parameter
-        if param_name in attributes:
-            if not param.unit == units[i]:
-                raise IOError(f"Wrong unit for parameter '{param_name}' has been input!")
-        else:
-            raise IOError(f"Check inputs! {param_name} is missing!\n"\
-                          f"Required inputs: {attributes}")
-    return True
-
-
-# TODO: Make test for this function. Seems broken?
 if __name__ == "__main__":
     fixed_params = make_fixed_params(50, 128, 1500, 7900*u.K, 140*u.pc, 19*c.L_sun)
     print([value for value in fixed_params])
