@@ -325,11 +325,13 @@ class DataHandler:
             component_params_dict[name]["params"][param_name] = value
 
         for name, values in component_params_dict.items():
+            mod_params = None
             if values["component"] == "ring":
                 params = [value for value in values["params"].values()]
                 if "outer_radius" not in values["params"]:
                     params.append(0.)
-                mod_params = [value for value in values["mod_params"]]
+                if "mod_params" in values:
+                    mod_params = [value for value in values["mod_params"]]
                 component = make_ring_component(name, params=params,
                                                 mod_params=mod_params)
             model_components.append(component)

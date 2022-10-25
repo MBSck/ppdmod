@@ -187,7 +187,7 @@ if __name__ == "__main__":
     wavelengths = [12.0]
     data = DataHandler(fits_files, wavelengths, flux_files=flux_files)
     complete_ring = make_ring_component("inner_ring",
-                                        [[0., 0.], [0., 0.], [1.5, 4.], [0., 0.]])
+                                        [[0., 0.], [0., 0.], [0.1, 6.], [0., 0.]])
     inner_ring = make_ring_component("inner_ring",
                                      [[0., 0.], [0., 0.], [1., 4.], [1., 6.]])
     outer_ring = make_ring_component("outer_ring",
@@ -199,10 +199,10 @@ if __name__ == "__main__":
     # data.add_model_component(outer_ring)
     data.fixed_params = make_fixed_params(45, 512, 1500, 7900, 140, 19, 1024)
     data.geometric_priors = [[0., 1.], [0, 180]]
-    data.modulation_priors = [[0., 1.], [0, 360]]
+    # data.modulation_priors = [[0., 1.], [0, 360]]
     data.disc_priors = [[0., 1.], [0., 1.]]
     data.mcmc = [35, 2, 5, 1e-4]
-    data.zero_padding_order = 0
+    data.zero_padding_order = 2
     data.tau_initial = 1
     run_mcmc(data, save_path=save_path, cpu_amount=6)
 
