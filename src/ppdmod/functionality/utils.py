@@ -160,18 +160,6 @@ def _convert_orbital_radius_to_parallax(orbital_radius: Quantity,
     parallax: astropy.units.Quantity
         The angle of the orbital radius [astropy.units.mas]
     """
-    if not isinstance(orbital_radius, u.Quantity):
-        orbital_radius *= u.m
-    elif orbital_radius.unit not in [u.m, u.au]:
-        raise IOError("Wrong unit has been input, orbital radius needs to be in"\
-                      "[astropy.units.m], [astropy.units.au] or unitless!")
-
-    if not isinstance(distance, u.Quantity):
-        distance *= u.pc
-    elif distance.unit != u.pc:
-        raise IOError("Wrong unit has been input, distance needs to be in"\
-                      "[astropy.units.pc] or unitless!")
-
     return (1*u.rad).to(u.mas)*(orbital_radius.to(u.m)/distance.to(u.m))
 
 
@@ -193,18 +181,6 @@ def _convert_parallax_to_orbital_radius(parallax: Quantity,
     orbital_radius: astropy.units.Quantity
         The orbital radius [astropy.units.m]
     """
-    if not isinstance(parallax, u.Quantity):
-        parallax *= u.mas
-    elif parallax.unit != u.mas:
-        raise IOError("Wrong unit has been input, parallax needs to be in"\
-                      "[astropy.units.mas] or unitless!")
-
-    if not isinstance(distance, u.Quantity):
-        distance *= u.pc
-    elif distance.unit != u.pc:
-        raise IOError("Wrong unit has been input, distance needs to be in"\
-                      "[astropy.units.pc] or unitless!")
-
     return (parallax*distance.to(u.m))/(1*u.rad).to(u.mas)
 
 
@@ -252,29 +228,6 @@ def stellar_flux(wavelength: Quantity,
     stellar_flux: astropy.units.Quantity
         The star's flux [astropy.units.Jy]
     """
-    if not isinstance(wavelength, u.Quantity):
-        wavelength = (wavelength*u.um).to(u.AA)
-    elif wavelength.unit == u.um:
-        wavelength = wavelength.to(u.AA)
-    else:
-        raise IOError("Enter the wavelength in [astropy.units.um] or unitless!")
-
-    if not isinstance(effective_temperature, u.Quantity):
-        effective_temperature *= u.K
-    elif effective_temperature.unit != u.K:
-        raise IOError("Enter the effective temperature in [astropy.units.K] or unitless!")
-
-    if not isinstance(distance, u.Quantity):
-        distance *= u.pc
-    elif distance.unit != u.pc:
-        raise IOError("Enter the distance in [astropy.units.pc] or unitless!")
-
-    if not isinstance(luminosity_star, u.Quantity):
-        luminosity_star *= u.W
-    elif luminosity_star.unit != u.W:
-        raise IOError("Enter the luminosity of the star in [astropy.units.W]"\
-                      " or unitless!")
-
     plancks_law = models.BlackBody(temperature=effective_temperature)
     spectral_radiance = plancks_law(wavelength).to(u.erg/(u.cm**2*u.Hz*u.s*u.mas**2))
     stellar_radius = _calculate_stellar_radius(luminosity_star, effective_temperature)
@@ -297,22 +250,6 @@ def _calculate_sublimation_radius(inner_temperature: Quantity,
     luminosity_star: astropy.units.Quantity
         The luminosity of the star [astropy.units.W]
     """
-    if not isinstance(inner_temperature, u.Quantity):
-        inner_temperature *= u.K
-    elif inner_temperature.unit != u.K:
-        raise IOError("Enter the inner temperature in [astropy.units.K] or unitless!")
-
-    if not isinstance(distance, u.Quantity):
-        distance *= u.pc
-    elif distance.unit != u.pc:
-        raise IOError("Enter the distance in [astropy.units.pc] or unitless!")
-
-    if not isinstance(luminosity_star, u.Quantity):
-        luminosity_star *= u.W
-    elif luminosity_star.unit != u.W:
-        raise IOError("Enter the luminosity of the star in [astropy.units.W]"\
-                      " or unitless!")
-
     radius = np.sqrt(luminosity_star/(4*np.pi*c.sigma_sb*inner_temperature**4))
     return _convert_orbital_radius_to_parallax(radius, distance)
 
@@ -334,22 +271,6 @@ def _calculate_sublimation_temperature(inner_radius: Quantity,
     sublimation_temperature: astropy.units.Quantity
         The sublimation temperature [astropy.units.K]
     """
-    if not isinstance(distance, u.Quantity):
-        distance *= u.pc
-    elif distance.unit != u.pc:
-        raise IOError("Enter the distance in [astropy.units.pc] or unitless!")
-
-    if not isinstance(luminosity_star, u.Quantity):
-        luminosity_star *= u.W
-    elif luminosity_star.unit != u.W:
-        raise IOError("Enter the luminosity of the star in [astropy.units.W]"\
-                      " or unitless!")
-    if inner_radius.unit == u.mas:
-        inner_radius = _convert_parallax_to_orbital_radius(inner_radius, distance)
-    elif inner_radius.unit != u.mas:
-        raise IOError("Enter the inner radius in [astropy.units.mas]"\
-                      " or unitless!")
-
     return (luminosity_star/(4*np.pi*c.sigma_sb*inner_radius**2))**(1/4)
 
 
@@ -369,34 +290,13 @@ def temperature_gradient(radius: Quantity, power_law_exponent: float,
         The inner radius of the object, if not given then the sublimation radius is
         used [astropy.units.mas]
     inner_temperature: astropy.units.Quantity
+        The temperature of the inner rim [astropy.units.K]
 
     Returns
     -------
     temperature_gradient: astropy.units.Quantity
         The temperature gradient [astropy.units.K]
     """
-    if not isinstance(radius, u.Quantity):
-        radius *= u.mas
-    elif radius.unit != u.mas:
-        raise IOError("Enter the radius in [astropy.units.mas] or unitless!")
-
-    if not isinstance(power_law_exponent, u.Quantity):
-        power_law_exponent *= u.dimensionless_unscaled
-    elif power_law_exponent.unit != u.dimensionless_unscaled:
-        raise IOError("Enter the inner temperature in"\
-                      " [astropy.units.dimensionless_unscaled] or unitless!")
-
-    if not isinstance(inner_radius, u.Quantity):
-        inner_radius *= u.mas
-    elif inner_radius.unit != u.mas:
-        raise IOError("Enter the inner radius in [astropy.units.mas] or unitless!")
-
-    if not isinstance(inner_temperature, u.Quantity):
-        inner_temperature *= u.K
-    elif inner_temperature.unit != u.K:
-        raise IOError("Enter the inner temperature in [astropy.units.K] or unitless!")
-
-
     return models.PowerLaw1D().evaluate(radius, inner_temperature,
                                         inner_radius, power_law_exponent)
 
@@ -422,28 +322,6 @@ def optical_depth_gradient(radius: Quantity,
     Returns
     -------
     """
-    if not isinstance(radius, u.Quantity):
-        radius *= u.mas
-    elif radius.unit != u.mas:
-        raise IOError("Enter the radius in [astropy.units.mas] or unitless!")
-
-    if not isinstance(power_law_exponent, u.Quantity):
-        power_law_exponent *= u.dimensionless_unscaled
-    elif power_law_exponent.unit != u.dimensionless_unscaled:
-        raise IOError("Enter the inner temperature in"\
-                      " [astropy.units.dimensionless_unscaled] or unitless!")
-
-    if not isinstance(inner_radius, u.Quantity):
-        inner_radius *= u.mas
-    elif inner_radius.unit != u.mas:
-        raise IOError("Enter the inner radius in [astropy.units.mas] or unitless!")
-
-    if not isinstance(inner_optical_depth, u.Quantity):
-        inner_optical_depth *= u.dimensionless_unscaled
-    elif inner_optical_depth.unit != u.dimensionless_unscaled:
-        raise IOError("Enter the inner optical depth in"\
-                      " [astropy.units.dimensionless_unscaled] or unitless!")
-
     return models.PowerLaw1D().evaluate(radius, inner_optical_depth,
                                         inner_radius, power_law_exponent)
 
@@ -469,30 +347,6 @@ def flux_per_pixel(wavelength: Quantity, temperature_distribution: Quantity,
     flux: astropy.units.Quantity
         The object's flux per pixel [astropy.units.Jy]/px
     """
-    if not isinstance(wavelength, u.Quantity):
-        wavelength = (wavelength*u.um).to(u.AA)
-    elif wavelength.unit == u.um:
-        wavelength = wavelength.to(u.AA)
-    else:
-        raise IOError("Enter the wavelength in [astropy.units.um] or unitless!")
-
-    if not isinstance(temperature_distribution, u.Quantity):
-        temperature_distribution *= u.K
-    elif temperature_distribution.unit != u.K:
-        raise IOError("Enter the temperature distribution in"\
-                      " [astropy.units.K] or unitless!")
-
-    if not isinstance(optical_depth, u.Quantity):
-        optical_depth *= u.dimensionless_unscaled
-    elif optical_depth.unit != u.dimensionless_unscaled:
-        raise IOError("Enter the optical depth distribution in"\
-                      " [astropy.units.dimensionless_unscaled] or unitless!")
-
-    if not isinstance(pixel_scaling, u.Quantity):
-        pixel_scaling *= u.mas
-    elif pixel_scaling.unit != u.mas:
-        raise IOError("Enter the pixel scaling in [astropy.units.mas] or unitless!")
-
     plancks_law = models.BlackBody(temperature=temperature_distribution)
     # NOTE: Converts sr to mas**2. Field of view = sr or mas**2
     spectral_radiance = plancks_law(wavelength).to(u.erg/(u.cm**2*u.Hz*u.s*u.mas**2))
@@ -516,30 +370,43 @@ def _make_params(params: List[float], units: List[Quantity],
     Returns
     -------
     IterNamespace
-        An IterNamespace made up from the names and values of the params
+        A namespace containing the parameters as astropy.units.Quantities
     """
-    if not any(isinstance(param, u.Quantity) for param in params):
-        params = [param*units[i] for i, param in enumerate(params)]
+    params = [param*units[i] for i, param in enumerate(params)]
     return IterNamespace(**dict(zip(labels, params)))
 
 
 # TODO: Add docs
 def _make_priors(priors: List[List[float]], units: List[Quantity],
                 labels: List[str]) -> IterNamespace:
-    """Makes the priors"""
-    if not any(isinstance(prior, u.Quantity) for prior in priors):
-        priors = [u.Quantity(prior, unit=units[i]) for i, prior in enumerate(priors)]
+    """Makes the priors
+
+    Parameters
+    ----------
+    params: List[float]
+        The parameters's values
+    units: List[astropy.units.Quantity]
+        The parameter's units
+    labels: List[str]
+        The parameter's names
+
+    Returns
+    -------
+    IterNamespace
+        A namespace containing the priors as astropy.units.Quantities
+    """
+    priors = [u.Quantity(prior, unit=units[i]) for i, prior in enumerate(priors)]
     return IterNamespace(**dict(zip(labels, priors)))
 
 
 # TODO: Implement tests for new functionality
 def _make_component(name: str, component_name: str,
-                    priors: List[List[Quantity]] = None,
-                    labels: List[str] = None,
-                    units: List[Quantity] = None,
-                    mod_priors: List[Quantity] = None,
-                    mod_params: List[Quantity] = None,
-                    params: List[Quantity] = None) -> IterNamespace:
+                    priors: Optional[List[List[Quantity]]] = None,
+                    labels: Optional[List[str]] = None,
+                    units: Optional[List[Quantity]] = None,
+                    mod_priors: Optional[List[Quantity]] = None,
+                    mod_params: Optional[List[Quantity]] = None,
+                    params: Optional[List[Quantity]] = None) -> IterNamespace:
     """Creates an IterNamespace for a component of a model
 
     Parameters
@@ -549,20 +416,22 @@ def _make_component(name: str, component_name: str,
     component_name: str
         The model component's name that is being used
     priors: List[List[Quantity], optional
-        The priors for the parameters space
+        The priors for the parameters space as astropy.units.Quantity
     labels: List[str], optional
         The parameter's names
     units: List[astropy.units.Quantity], optional
-        The units corresponding to the priors
+        The units corresponding to the priors as astropy.units.Quantity
     mod_priors: List[List[Quantity], optional
+        The modulation priors for the parameters space as astropy.units.Quantity
     mod_params: List[astropy.units.Quantity], optional
+        The modulation params as astropy.units.Quantity
     params: List[astropy.units.Quantity], optional
-        The parameters's values
+        The parameters's values as astropy.units.Quantity
 
     Returns
     -------
     IterNamespace
-        An IterNamespace containing the components info and its params
+        An IterNamespace containing the components info and its parameters
     """
     if priors is not None:
         priors = _make_priors(priors, units, labels)
@@ -682,32 +551,6 @@ def _check_attributes(params: IterNamespace,
 
 
 # TODO: Make test for this function. Seems broken?
-def check_and_convert(params: Union[List[Quantity], IterNamespace],
-                      attributes: List[str], units: List[Quantity]) -> IterNamespace:
-    """Checks if 'params' is a IterNamespace and if not converts it to one. Also checks if
-    the provided IterNamespace contains all needed parameters
-
-    Parameters
-    ----------
-    params: Union[List, IterNamespace]
-        Either a list or a IterNamespace of params
-    attributes: List[str]
-        The labels that are being checked for in the IterNamespace -> Parameter checks
-    units: List[Quantity]
-        The units that are being checked for in the params
-
-    Returns
-    -------
-    params: IterNamespace
-    """
-    if isinstance(params, IterNamespace):
-        # NOTE: Raises error if wrong input
-        if _check_attributes(params, attributes, units):
-            return params
-    else:
-        return _make_params(params, units, attributes)
-
-
 if __name__ == "__main__":
     fixed_params = make_fixed_params(50, 128, 1500, 7900*u.K, 140*u.pc, 19*c.L_sun)
     print([value for value in fixed_params])

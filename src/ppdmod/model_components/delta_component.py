@@ -47,30 +47,6 @@ class DeltaComponent(Model):
         image[self.image_centre] = 1.*u.mas
         return image
 
-    # def eval_vis(self, theta: List, sampling: int) -> np.array:
-        # """Evaluates the visibilities of the model
-
-        # Parameters
-        # ----------
-        # flux: float
-            # The flux of the object
-        # sampling: int
-            # The sampling of the uv-plane
-
-        # Returns
-        # -------
-        # visibility: np.array
-        # """
-        # try:
-            # flux = float(theta[0])
-        # except:
-            # raise IOError(f"{self.name}.{inspect.stack()[0][3]}():"
-                          # " Check input arguments, theta must"
-                          # " be of the form [flux]")
-
-        # self._sampling = self._size = sampling
-
-        # return flux*np.ones((sampling, sampling))
 
 if __name__ == "__main__":
     image_size = u.Quantity(128, unit=u.dimensionless_unscaled, dtype=int)
