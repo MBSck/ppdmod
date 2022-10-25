@@ -526,7 +526,7 @@ def make_delta_component(name: str):
 
 # TODO: Make test for this function. Seems broken?
 if __name__ == "__main__":
-    fixed_params = make_fixed_params(50, 128, 1500, 7900*u.K, 140*u.pc, 19*c.L_sun)
+    fixed_params = make_fixed_params(50, 128, 1500, 7900, 140, 19)
     print([value for value in fixed_params])
     print(fixed_params.fov.value)
     print(fixed_params._fields)

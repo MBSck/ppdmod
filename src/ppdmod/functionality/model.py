@@ -4,7 +4,7 @@ import astropy.units as u
 from astropy.units import Quantity
 from typing import Tuple, List, Optional
 
-from .utils import IterNamespace, _set_ones
+from .utils import IterNamespace, make_fixed_params
 
 # TODO: Make sure all is tested! Write test for set_ones and improve all tests
 # TODO: Make good docstrings
@@ -55,17 +55,17 @@ class Model:
                             self.fixed_params.pixel_sampling, endpoint=False)*self.pixel_scaling
         y = x[:, np.newaxis]
 
+        # NOTE: This was taken from Jozsef's code and until here output is equal
         if incline_params is not None:
             axis_ratio, pos_angle = incline_params
             pos_angle = pos_angle.to(u.rad)
+            xr, yr = (x*np.cos(pos_angle)-y*np.sin(pos_angle))/axis_ratio,\
+                x*np.sin(pos_angle)+y*np.cos(pos_angle)
+            self.axes_image, self.polar_angle = [xr, yr], np.arctan2(xr, yr)
+            radius = np.sqrt(xr**2+yr**2)
         else:
-            axis_ratio, pos_angle = 0.*u.dimensionless_unscaled, 0.*u.rad
-
-        # NOTE: This was taken from Jozsef's code and until here output is equal
-        xr, yr = (x*np.cos(pos_angle)-y*np.sin(pos_angle))/axis_ratio,\
-            x*np.sin(pos_angle)+y*np.cos(pos_angle)
-        self.axes_image, self.polar_angle = [xr, yr], np.arctan2(xr, yr)
-        radius = np.sqrt(xr**2+yr**2)
+            self.axes_image, self.polar_angle = [x, y], np.arctan2(x, y)
+            radius = np.sqrt(x**2+y**2)
         return radius
 
     def _set_azimuthal_modulation(self, image: Quantity,
@@ -90,10 +90,12 @@ class Model:
         # TODO: Implement Modulation field like Jozsef?
         modulation_angle = modulation_angle.to(u.rad)
         total_mod = amplitude*np.cos(self.polar_angle-modulation_angle)
-        image *= 1 + total_mod
+        image *= 1.*total_mod.unit + total_mod
         image.value[image.value < 0.] = 0.
         return image
 
 
 if __name__ == "__main__":
-    ...
+    fixed_params = make_fixed_params(50, 128, 1500, 7900, 140, 19)
+    model = Model(fixed_params)
+    print(model._set_grid())
