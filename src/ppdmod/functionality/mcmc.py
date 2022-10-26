@@ -203,13 +203,13 @@ if __name__ == "__main__":
     data.add_model_component(complete_ring)
     # data.add_model_component(inner_ring)
     # data.add_model_component(outer_ring)
-    data.fixed_params = make_fixed_params(45, 512, 1500, 7900, 140, 19, 1024)
-    data.geometric_priors = [[0., 1.], [0, 180]]
+    data.fixed_params = make_fixed_params(30, 512, 1500, 7900, 140, 19, 1024)
+    data.geometric_priors = [[0.4, 1.], [0, 180]]
     # data.modulation_priors = [[0., 1.], [0, 360]]
     data.disc_priors = [[0., 1.], [0., 1.]]
-    data.lnf_priors = [-10., 7.]
-    data.mcmc = [35, 2, 5, 1e-4]
+    data.lnf_priors = [-10., 10.]
+    data.mcmc = [50, 50, 100, 1e-4]
     data.zero_padding_order = 2
-    data.tau_initial = 0.1
+    data.tau_initial = 1.
     run_mcmc(data, save_path=save_path, cpu_amount=6, show_plots=True)
 
