@@ -142,18 +142,15 @@ class FastFourierTransform:
         """The new size of the image in [px] to be applied with zero padding"""
         return 2**int(np.log2(self.model_unpadded_dim)+self.zero_padding_order)
 
-    def zero_pad_model(self):
+    def zero_pad_model(self, image: Quantity):
         """This adds zero padding to the model image before it is transformed
         to increase the sampling in the FFT image
         """
         # TODO: Check if the zero padding moves the centre of the image -> Should be ok?
         padded_image = np.zeros((self.zero_padding, self.zero_padding))
-        self.pad_centre = padded_image.shape[0]//2
-        self.mod_min, self.mod_max = self.pad_centre-self.model_centre,\
-                self.pad_centre+self.model_centre
-
-        padded_image[self.mod_min:self.mod_max,
-                     self.mod_min:self.mod_max] = self.model
+        pad_centre = padded_image.shape[0]//2
+        mod_min, mod_max = pad_centre-self.model_centre, pad_centre+self.model_centre
+        padded_image[mod_min:mod_max, mod_min:mod_max] = image
         return padded_image
 
     def get_uv2fft2(self, uvcoords: Quantity, uvcoords_cphase: Quantity) -> Quantity:
@@ -227,7 +224,7 @@ class FastFourierTransform:
         ft: np.ndarray
         """
         # TODO: Think of making this more local
-        self.model = self.zero_pad_model()
+        self.model = self.zero_pad_model(self.model)
         return ifftshift(fft2(fftshift(self.model)))
 
     def plot_amp_phase(self, matplot_axes: Optional[List] = [],
