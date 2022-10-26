@@ -58,16 +58,18 @@ def lnlike(theta: np.ndarray, data: DataHandler) -> float:
     float
         The goodness of the fitted model (will be minimised)
     """
-    total_flux_mod, corr_flux_mod, cphases_mod = calculate_model(theta, data)
+    lnf = theta[-1]
+    total_flux_mod, corr_flux_mod, cphases_mod = calculate_model(theta[:-1], data)
     # total_flux_chi_sq = chi_sq(data.total_fluxes.value,
-                               # data.total_fluxes_sigma_squared.value, total_flux_mod)
+                               # data.total_fluxes_error.value,
+                               # total_flux_mod, lnf)
     corr_flux_chi_sq = chi_sq(data.corr_fluxes.value,
-                              data.corr_fluxes_sigma_squared.value, corr_flux_mod)
+                              data.corr_fluxes_error.value,
+                              corr_flux_mod, lnf)
     # cphases_chi_sq = chi_sq(data.cphases.value,
-                            # data.cphases_sigma_squared.value, cphases_mod)
-    # return np.array(-0.5*(total_flux_chi_sq +\
-                          # corr_flux_chi_sq + cphases_chi_sq), dtype=float)
-    return np.array(-0.5*corr_flux_chi_sq)
+                            # data.cphases_error.value,
+                            # cphases_mod, lnf)
+    return np.array(corr_flux_chi_sq)
 
 def lnprior(theta: np.ndarray, priors: List[List[float]]) -> float:
     """Checks if all variables are within their priors (as well as
@@ -111,9 +113,24 @@ def lnprob(theta: np.ndarray, data: DataHandler) -> np.ndarray:
     """
     return lnlike(theta, data) if np.isfinite(lnprior(theta, data.priors)) else -np.inf
 
-def chi_sq(real_data: Quantity, sigma_sq: Quantity, model_data: Quantity) -> float:
-    """The chi square minimisation"""
-    return np.sum(np.log(2*np.pi*sigma_sq) + (real_data-model_data)**2/sigma_sq)
+def chi_sq(real_data: Quantity, data_error: Quantity,
+           data_model: Quantity, lnf: float) -> float:
+    """The chi square minimisation
+
+    Parameters
+    ----------
+    real_data: astropy.units.Quantity
+    data_error: astropy.units.Quantity
+    data_model: astropy.units.Quantity
+    lnf: float, optional
+
+    Returns
+    -------
+    float
+    """
+    inv_sigma_squared = 1./(data_error**2+data_model**2*np.exp(2*lnf))
+    return -0.5*np.sum((real_data-data_model)**2*inv_sigma_squared\
+                       - np.log(inv_sigma_squared))
 
 
 if __name__ == "__main__":

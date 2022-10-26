@@ -46,6 +46,7 @@ import corner
 import numpy as np
 import matplotlib.pyplot as plt
 
+from warnings import warn
 from pathlib import Path
 from typing import Optional
 from multiprocessing import Pool, cpu_count
@@ -118,6 +119,7 @@ def plot_chains(sampler: np.ndarray, data: DataHandler,
 
 def run_mcmc(data: DataHandler,
              cpu_amount: Optional[int] = 6,
+             show_plots: Optional[bool] = False,
              save_path: Optional[Path] = None) -> np.array:
     """Runs the emcee Hastings Metropolitan sampler
 
@@ -136,8 +138,12 @@ def run_mcmc(data: DataHandler,
     ----------
     data: DataHandler
     cpu_amount: int, optional
+    show_plots: bool, optional
     save_path: str, optional
     """
+    if data.lnf_priors is None:
+        warn("Set the lnf_priors before fitting to estimate errors better!")
+
     p0 = generate_valid_guess(data)
     print("Inital parameters")
     print(data.mcmc.initial)
@@ -175,6 +181,10 @@ def run_mcmc(data: DataHandler,
     plot_chains(sampler, data, save_path=output_path)
     plot_fit_results(best_fit_total_fluxes[0], best_fit_corr_fluxes[0],
                      best_fit_cphases[0], data, fourier, save_path=output_path)
+
+    if show_plots:
+        plt.tight_layout()
+        plt.show()
 
 
 if __name__ == "__main__":

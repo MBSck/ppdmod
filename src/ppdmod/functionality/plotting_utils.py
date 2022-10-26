@@ -120,8 +120,6 @@ def plot_fit_results(best_fit_total_fluxes, best_fit_corr_fluxes,
         plt.savefig(plot_name)
     else:
         plt.savefig(os.path.join(save_path, plot_name))
-    plt.tight_layout()
-    plt.show()
 
 
 def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,

@@ -45,6 +45,7 @@ class DataHandler:
 
         self.model_components = []
         self.fixed_params = None
+        self.lnf_priors = None
         self.zero_padding_order = 1
         self._disc_priors, self._geometric_priors, self._modulation_priors =\
             None, None, None
@@ -55,11 +56,8 @@ class DataHandler:
         self._mcmc, self._dynesty = None, None
 
         self.total_fluxes, self.total_fluxes_error = self._merge_data("flux")
-        self.total_fluxes_sigma_squared = self._get_sigma_square("flux")
         self.corr_fluxes, self.corr_fluxes_error = self._merge_data("vis")
-        self.corr_fluxes_sigma_squared = self._get_sigma_square("vis")
         self.cphases, self.cphases_error = self._merge_data("cphases")
-        self.cphases_sigma_squared = self._get_sigma_square("cphases")
 
         self.uv_coords = self._merge_simple_data("uvcoords")
         self.uv_coords_cphase = self._merge_simple_data("uvcoords_cphase")
@@ -281,6 +279,15 @@ class DataHandler:
                     if component.priors.outer_radius.value.any():
                         self._priors.append(component.priors.outer_radius.value.tolist())
                         self._labels.append(f"{component.name}:ring:outer_radius")
+
+            if self.lnf_priors is not None:
+                lnf_priors = self.lnf_priors
+            else:
+                lnf_priors = [0., 0.]
+
+            self._priors.append(lnf_priors)
+            self._labels.append("lnf")
+
         else:
             raise ValueError("No model components have been added yet!")
 
@@ -426,23 +433,6 @@ class DataHandler:
 
         return merged_data
 
-    # TODO: Write function that combines flux and vis, but leave it alone for now
-    def _get_sigma_square(self, data_type_keyword: str) -> Quantity:
-        """Fetches the errors from the datatype and then squares them
-
-        Parameters
-        ----------
-        data_type_keyword: str
-            A keyword from "vis", "vis2", "cphases" or "flux" that is used to get the
-            correct function
-
-        Returns
-        -------
-        sigma_square: astropy.units.Quantity
-            The squared error of the corresponding datatype
-        """
-        return self._merge_data(data_type_keyword)[1]**2
-
     def _merge_simple_data(self, data_type_keyword):
         """Merges simple data, like the 'uvcoords', 'uvcoords_cphase', 'telescope',
         'baselines' or 'baselines_cphase' data"""
@@ -488,7 +478,6 @@ if __name__ == "__main__":
     wavelengths = [8.5, 10.0]
     theta = [0.5, 145, 1., 35, 0.5, 0.05, 3., 5., 7.]
     data = DataHandler(fits_files, wavelengths, flux_files=flux_files)
-    print(data.uv_coords_cphase)
     # complete_ring = make_ring_component("inner_ring",
                                         # [[0., 0.], [0., 0.], [1., 6.], [0., 0.]])
     # delta_component = make_delta_component("star")
