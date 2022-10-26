@@ -1,4 +1,5 @@
 import numpy as np
+import astropy.units as u
 
 from typing import Optional, List
 from astropy.units import Quantity
@@ -8,6 +9,7 @@ from .combined_model import CombinedModel
 from .fourier import FastFourierTransform
 
 
+# TODO: Write tests for this funciton
 def calculate_model(theta: np.ndarray, data: DataHandler,
                     rfourier: Optional[bool] = False):
     data.reformat_theta_to_components(theta)
@@ -34,8 +36,8 @@ def calculate_model(theta: np.ndarray, data: DataHandler,
         total_flux_mod_chromatic.append(total_flux_data)
         corr_flux_mod_chromatic.append(corr_flux_data)
         cphases_mod_chromatic_data.append(cphases_data)
-    model_data = [total_flux_mod_chromatic,
-                  corr_flux_mod_chromatic, cphases_mod_chromatic_data]
+    model_data = [total_flux_mod_chromatic*u.Jy,
+                  corr_flux_mod_chromatic*u.Jy, cphases_mod_chromatic_data*u.deg]
     if rfourier:
         model_data.insert(len(model_data), fourier)
     return model_data
@@ -65,7 +67,7 @@ def lnlike(theta: np.ndarray, data: DataHandler) -> float:
                                # total_flux_mod, lnf)
     corr_flux_chi_sq = chi_sq(data.corr_fluxes.value,
                               data.corr_fluxes_error.value,
-                              corr_flux_mod, lnf)
+                              corr_flux_mod.value, lnf)
     # cphases_chi_sq = chi_sq(data.cphases.value,
                             # data.cphases_error.value,
                             # cphases_mod, lnf)
@@ -128,7 +130,7 @@ def chi_sq(real_data: Quantity, data_error: Quantity,
     -------
     float
     """
-    inv_sigma_squared = 1./(data_error**2+data_model**2*np.exp(2*lnf))
+    inv_sigma_squared = 1./np.sum(data_error**2+data_model**2*np.exp(2*lnf))
     return -0.5*np.sum((real_data-data_model)**2*inv_sigma_squared\
                        - np.log(inv_sigma_squared))
 

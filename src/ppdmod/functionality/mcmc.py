@@ -141,9 +141,6 @@ def run_mcmc(data: DataHandler,
     show_plots: bool, optional
     save_path: str, optional
     """
-    if data.lnf_priors is None:
-        warn("Set the lnf_priors before fitting to estimate errors better!")
-
     p0 = generate_valid_guess(data)
     print("Inital parameters")
     print(data.mcmc.initial)
@@ -210,8 +207,9 @@ if __name__ == "__main__":
     data.geometric_priors = [[0., 1.], [0, 180]]
     # data.modulation_priors = [[0., 1.], [0, 360]]
     data.disc_priors = [[0., 1.], [0., 1.]]
+    data.lnf_priors = [-10., 7.]
     data.mcmc = [35, 2, 5, 1e-4]
     data.zero_padding_order = 2
     data.tau_initial = 0.1
-    run_mcmc(data, save_path=save_path, cpu_amount=6)
+    run_mcmc(data, save_path=save_path, cpu_amount=6, show_plots=True)
 

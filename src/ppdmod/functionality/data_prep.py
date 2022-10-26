@@ -1,8 +1,6 @@
-from astropy.time.core import enum
-from astropy.utils.metadata import merge
+import warnings
 import numpy as np
 import astropy.units as u
-import warnings
 
 from pathlib import Path
 from astropy.units import Quantity
@@ -46,7 +44,9 @@ class DataHandler:
         self.model_components = []
         self.fixed_params = None
         self.lnf_priors = None
+        self.lnf = None
         self.zero_padding_order = 1
+
         self._disc_priors, self._geometric_priors, self._modulation_priors =\
             None, None, None
         self._disc_params, self._geometric_params, self._modulation_params =\
@@ -309,6 +309,8 @@ class DataHandler:
             self.modulation_params = [theta_dict["mod_angle"], theta_dict["mod_amp"]]
         if "q" in theta_dict:
             self.disc_params = [theta_dict["q"], theta_dict["p"]]
+        if "lnf" in theta_dict:
+            self.lnf = theta_dict["lnf"]
 
         component_params_dict = {}
         for key, value in theta_dict.items():
@@ -430,7 +432,6 @@ class DataHandler:
                 continue
             else:
                 merged_data = self._iterate_over_data_arrays(merged_data, data)
-
         return merged_data
 
     def _merge_simple_data(self, data_type_keyword):
@@ -473,11 +474,12 @@ class DataHandler:
 
 
 if __name__ == "__main__":
-    fits_files = ["../../../data/tests/test.fits"]*2
+    fits_files = ["../../../data/tests/test.fits"]
     flux_files = ["../../../data/tests/HD_142666_timmi2.txt", None]
     wavelengths = [8.5, 10.0]
     theta = [0.5, 145, 1., 35, 0.5, 0.05, 3., 5., 7.]
     data = DataHandler(fits_files, wavelengths, flux_files=flux_files)
+    print(data.corr_fluxes_error)
     # complete_ring = make_ring_component("inner_ring",
                                         # [[0., 0.], [0., 0.], [1., 6.], [0., 0.]])
     # delta_component = make_delta_component("star")

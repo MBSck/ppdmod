@@ -51,13 +51,10 @@ def write_data_to_ini(data: DataHandler, best_fit_total_fluxes,
                           "telescope_information": data.telescope_info}
     real_data_dict = {"total_fluxes": data.total_fluxes,
                       "total_fluxes_error": data.total_fluxes_error,
-                      "total_fluxes_sigma_squared": data.total_fluxes_sigma_squared,
                       "correlated_fluxes": data.corr_fluxes,
                       "correlated_fluxes_errors": data.corr_fluxes_error,
-                      "correlated_fluxes_sigma squared": data.corr_fluxes_sigma_squared,
                       "closure_phases": data.cphases,
-                      "closure_phases_errors": data.cphases_error,
-                      "closure_phases_sigma_squared": data.cphases_sigma_squared}
+                      "closure_phases_errors": data.cphases_error}
     best_fit_data_dict = {"total_fluxes": best_fit_total_fluxes,
                           "correlated_fluxes": best_fit_corr_fluxes,
                           "closure_phases": best_fit_cphases}
@@ -151,7 +148,7 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
         ax, bx = axarr.flatten()
 
     # TODO: Add the total flux to the limit estimation, and check that generally as well
-    all_amp = np.concatenate((data.total_fluxes.value[0], best_fit_total_fluxes))
+    all_amp = np.concatenate((data.total_fluxes.value[0], best_fit_total_fluxes.value))
     y_min_amp, y_max_amp = 0, np.max(all_amp)
     y_space_amp = np.sqrt(y_max_amp**2+y_min_amp**2)*0.1
     y_lim_amp = [y_min_amp-y_space_amp, y_max_amp+y_space_amp]
@@ -178,9 +175,9 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
                     # data.total_fluxes_error[0][epochs],
                     # color=color_real_data[epochs], fmt='o', alpha=0.6)
         ax.scatter(data.baselines.value[epochs*6:(epochs+1)*6],
-                   best_fit_corr_fluxes[epochs*6:(epochs+1)*6],
+                   best_fit_corr_fluxes.value[epochs*6:(epochs+1)*6],
                    color=color_fit_data[epochs], marker='X', label="Model data")
-        # ax.scatter(np.array([0]), best_fit_total_fluxes[epochs],
+        # ax.scatter(np.array([0]), best_fit_total_fluxes.value[epochs],
                    # marker='X', color=color_fit_data[epochs])
         # bx.errorbar(data.longest_baselines.value[epochs*4:(epochs+1)*4],
                     # data.cphases.value[0][epochs*4:(epochs+1)*4],
@@ -188,7 +185,7 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
                     # color=color_real_data[epochs], fmt='o',
                     # label="Observed data", alpha=0.6)
         # bx.scatter(data.longest_baselines.value[epochs*4:(epochs+1)*4],
-                   # best_fit_cphases[epochs*4:(epochs+1)*4],
+                   # best_fit_cphases.value[epochs*4:(epochs+1)*4],
                    # color=color_fit_data[epochs], marker='X', label="Model data")
 
     ax.set_xlabel("Baselines [m]")
