@@ -1,6 +1,5 @@
 import numpy as np
 import astropy.units as u
-import matplotlib.pyplot as plt
 
 from typing import List
 from astropy.units import Quantity
@@ -26,7 +25,7 @@ class CombinedModel:
                                 "delta": DeltaComponent,
                                 "gauss": GaussComponent}
 
-        self._components = []
+        self._components, self._components_initialised = [], []
         self._components_attrs = []
 
         self.tau = None
@@ -37,13 +36,12 @@ class CombinedModel:
     @property
     def components(self):
         """Initialises the model's components"""
-        # TODO: See that this gets only initialised once?! Huge memory leak
-        if self._components:
-            components = [component(self._model_init_params)\
-                          for component in self._components]
-            return components
+        if self._components_initialised is None:
+            self._components_initialised = [component(self._model_init_params)\
+                                            for component in self._components]
         else:
             raise ValueError("Add components before accessing the class's functions!")
+        return self._components_initialised
 
     @property
     def pixel_scaling(self):
