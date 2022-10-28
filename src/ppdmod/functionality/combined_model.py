@@ -36,11 +36,11 @@ class CombinedModel:
     @property
     def components(self):
         """Initialises the model's components"""
+        if not self._components:
+            raise ValueError("Add components before accessing the class's functions!")
         if self._components_initialised is None:
             self._components_initialised = [component(self._model_init_params)\
                                             for component in self._components]
-        else:
-            raise ValueError("Add components before accessing the class's functions!")
         return self._components_initialised
 
     @property
