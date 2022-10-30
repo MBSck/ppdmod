@@ -2,7 +2,6 @@ import astropy.units as u
 import astropy.constants as c
 import matplotlib.pyplot as plt
 
-# from scipy.special import j0
 from astropy.units import Quantity
 from typing import List, Union
 

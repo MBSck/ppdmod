@@ -1,6 +1,7 @@
 import numpy as np
 import astropy.units as u
 
+from tqdm import tqdm
 from typing import Optional, List
 from astropy.units import Quantity
 
@@ -9,9 +10,23 @@ from .combined_model import CombinedModel
 from .fourier import FastFourierTransform
 
 
+def loop_model(model: CombinedModel, data: DataHandler,
+               wavelength: Quantity, rfourier: Optional[bool] = False):
+    image = model.eval_flux(wavelength)
+    total_flux = model.eval_total_flux(wavelength).value
+    total_flux_arr = np.array([total_flux for _ in range(data.corr_fluxes.shape[1] // 6)])
+    fourier = FastFourierTransform(image, wavelength,
+                                        data.pixel_scaling, data.zero_padding_order)
+    corr_flux_arr, cphases_arr = fourier.get_uv2fft2(data.uv_coords, data.uv_coords_cphase)
+    if rfourier:
+        return total_flux_arr, corr_flux_arr, cphases_arr, rfourier
+    else:
+        return total_flux_arr, corr_flux_arr, cphases_arr
+
 # TODO: Write tests for this funciton
+# TODO: Check if the functionality works as thought
 def calculate_model(theta: np.ndarray, data: DataHandler,
-                    rfourier: Optional[bool] = False):
+                    rfourier: Optional[bool] = False, debug: Optional[bool] = False):
     data.reformat_theta_to_components(theta)
     model = CombinedModel(data.fixed_params, data.disc_params,
                           data.wavelengths, data.geometric_params,
@@ -22,25 +37,24 @@ def calculate_model(theta: np.ndarray, data: DataHandler,
 
     total_flux_mod_chromatic, corr_flux_mod_chromatic, cphases_mod_chromatic_data =\
         [], [], []
-    for i, wavelength in enumerate(data.wavelengths):
-        image = model.eval_flux(wavelength)
-        total_flux_data = []
-        for _ in data.total_fluxes[i]:
-             total_flux_data.append(model.eval_total_flux(wavelength).value)
-        fourier = FastFourierTransform(image, wavelength,
-                                            data.pixel_scaling, data.zero_padding_order)
-        corr_flux_data, cphases_data = [], []
-        corr_flux, cphases = fourier.get_uv2fft2(data.uv_coords, data.uv_coords_cphase)
-        corr_flux_data.extend(corr_flux)
-        cphases_data.extend(cphases)
-        total_flux_mod_chromatic.append(total_flux_data)
-        corr_flux_mod_chromatic.append(corr_flux_data)
-        cphases_mod_chromatic_data.append(cphases_data)
-    model_data = [total_flux_mod_chromatic*u.Jy,
-                  corr_flux_mod_chromatic*u.Jy, cphases_mod_chromatic_data*u.deg]
+    if debug:
+        for wavelength in tqdm(data.wavelengths, "Calculating polychromatic model..."):
+            model_data = loop_model(model, data, wavelength, rfourier)
+            total_flux_mod_chromatic.append(model_data[0])
+            corr_flux_mod_chromatic.append(model_data[1])
+            cphases_mod_chromatic_data.append(model_data[2])
+    else:
+        for wavelength in data.wavelengths:
+            model_data = loop_model(model, data, wavelength, rfourier)
+            total_flux_mod_chromatic.append(total_flux_data)
+            corr_flux_mod_chromatic.append(corr_flux_data)
+            cphases_mod_chromatic_data.append(cphases_data)
+
     if rfourier:
-        model_data.insert(len(model_data), fourier)
-    return model_data
+        return total_flux_mod_chromatic*u.Jy, corr_flux_mod_chromatic*u.Jy,\
+            cphases_mod_chromatic_data*u.deg, fourier
+    return total_flux_mod_chromatic*u.Jy, corr_flux_mod_chromatic*u.Jy,\
+        cphases_mod_chromatic_data*u.deg
 
 
 def lnlike(theta: np.ndarray, data: DataHandler) -> float:
@@ -62,14 +76,14 @@ def lnlike(theta: np.ndarray, data: DataHandler) -> float:
     """
     lnf = theta[-1]
     total_flux_mod, corr_flux_mod, cphases_mod = calculate_model(theta[:-1], data)
-    # total_flux_chi_sq = chi_sq(data.total_fluxes.value,
-                               # data.total_fluxes_error.value,
+    # total_flux_chi_sq = chi_sq(data.total_fluxes,
+                               # data.total_fluxes_error,
                                # total_flux_mod, lnf)
-    corr_flux_chi_sq = chi_sq(data.corr_fluxes.value,
-                              data.corr_fluxes_error.value,
-                              corr_flux_mod.value, lnf)
-    # cphases_chi_sq = chi_sq(data.cphases.value,
-                            # data.cphases_error.value,
+    corr_flux_chi_sq = chi_sq(data.corr_fluxes,
+                              data.corr_fluxes_error,
+                              corr_flux_mod, lnf)
+    # cphases_chi_sq = chi_sq(data.cphases,
+                            # data.cphases_error,
                             # cphases_mod, lnf)
     return np.array(corr_flux_chi_sq)
 
@@ -130,8 +144,9 @@ def chi_sq(real_data: Quantity, data_error: Quantity,
     -------
     float
     """
-    inv_sigma_squared = 1./np.sum(data_error**2+data_model**2*np.exp(2*lnf))
-    return -0.5*np.sum((real_data-data_model)**2*inv_sigma_squared\
+    inv_sigma_squared = 1./np.sum(data_error.value**2+\
+                                  data_model.value**2*np.exp(2*lnf))
+    return -0.5*np.sum((real_data.value-data_model.value)**2*inv_sigma_squared\
                        - np.log(inv_sigma_squared))
 
 

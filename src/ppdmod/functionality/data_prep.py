@@ -22,11 +22,16 @@ class DataHandler:
                  wavelength_window_sizes: Optional[List[float]] = [0.2],
                  flux_files: Optional[List[Path]] = None) -> None:
         """Initialises the class"""
-        self.fits_files, self.flux_files = fits_files, flux_files
+        self.flux_files = flux_files
+        self.fits_files = fits_files
+
+        if self.flux_files is None:
+            self.flux_files = [None]*len(fits_files)
+
         self._wavelengths = wavelengths
         self._wavelength_window_sizes = wavelength_window_sizes
-        self.readout_files = [ReadoutFits(fits_file, self.flux_files[i])\
-                              for i, fits_file in enumerate(self.fits_files)]
+        self.readouts = [ReadoutFits(fits_file, self.flux_files[i])\
+                         for i, fits_file in enumerate(fits_files)]
         self.getter_function_dictionary = {"vis": "get_visibilities4wavelength",
                                            "vis2": "get_visibilities_squared4wavelength",
                                            "cphases": "get_closure_phases4wavelength",
@@ -38,7 +43,7 @@ class DataHandler:
                                            "baselines_cphase": "get_closure_phases_baselines"}
         # NOTE: This only works if the wl_solution stays the same for all files
         # TODO: Change this later for multiple wavelength files that have to be fitted
-        self.wl_ind = self.readout_files[0].\
+        self.wl_ind = self.readouts[0].\
             get_wavelength_indices(self.wavelengths, self.wavelength_window_sizes)
 
         self.model_components = []
@@ -68,14 +73,14 @@ class DataHandler:
     def __repr__(self):
         """The DataHandler class' representation"""
         return f"DataHandler contains the information of the ReadoutFits:"\
-            f"\n{', '.join([str(file) for file in self.readout_files])}\n and polychromatic"\
+            f"\n{', '.join([str(file) for file in self.readouts])}\n and polychromatic"\
             f"data of {self.wavelengths} with the windows "\
             f"{self.wavelength_window_sizes}"
 
     def __str__(self):
         """The DataHandler class' string representation"""
         return f"DataHandler contains the information of the ReadoutFits:"\
-            f"\n{', '.join([str(file) for file in self.readout_files])}\n and polychromatic"\
+            f"\n{', '.join([str(file) for file in self.readouts])}\n and polychromatic"\
             f"data of {self.wavelengths} with the windows "\
             f"{self.wavelength_window_sizes}"
 
@@ -128,6 +133,11 @@ class DataHandler:
                              " Needs to be in [astropy.units.um]")
         else:
             return self._wavelengths
+
+    @wavelengths.setter
+    def wavelengths(self, value):
+        warnings.warn("BEWARE: This value should only be set for synthetic data purposes!")
+        self._wavelengths = value
 
     @property
     def wavelength_window_sizes(self):
@@ -418,15 +428,15 @@ class DataHandler:
         if data_type_keyword in ["uvcoords", "uvcoords_cphase",
                                  "telescope", "baselines", "baselines_cphase"]:
             raise IOError("Use the '_merge_simple_data' function for these datatypes")
-        for i, readout_file in enumerate(self.readout_files):
+        for i, readout_file in enumerate(self.readouts):
             getter_func = self._get_data_type_function(readout_file, data_type_keyword)
             data = getter_func(self.wl_ind)
-            if i == 0 and len(self.readout_files) > 1:
-                getter_func_next = self._get_data_type_function(self.readout_files[i+1],
+            if i == 0 and len(self.readouts) > 1:
+                getter_func_next = self._get_data_type_function(self.readouts[i+1],
                                                                 data_type_keyword)
                 data_next = getter_func_next(self.wl_ind)
                 merged_data = self._iterate_over_data_arrays(data, data_next)
-            elif len(self.readout_files) == 1:
+            elif len(self.readouts) == 1:
                 merged_data = data
             elif i == 1:
                 continue
@@ -440,7 +450,7 @@ class DataHandler:
         merged_data = []
         if data_type_keyword in ["vis", "vis2", "cphases", "flux"]:
             raise IOError("Use the '_merge_data' function for these datatypes")
-        for readout_file in self.readout_files:
+        for readout_file in self.readouts:
             getter_func = self._get_data_type_function(readout_file, data_type_keyword)
             data = getter_func()
             if not any(isinstance(elem, u.Quantity) for elem in merged_data):
@@ -474,12 +484,14 @@ class DataHandler:
 
 
 if __name__ == "__main__":
-    fits_files = ["../../../data/tests/test.fits"]
-    flux_files = ["../../../data/tests/HD_142666_timmi2.txt", None]
+    test_mul = 2
+    fits_files = ["../../../data/hd_142666_jozsef/nband/HD_142666_2019-05-06T06_37_56_N_TARGET_FINALCAL_INT.fits"]*test_mul
+    flux_files = ["../../../data/tests/HD_142666_timmi2.txt"]*test_mul
     wavelengths = [8.5, 10.0]
     theta = [0.5, 145, 1., 35, 0.5, 0.05, 3., 5., 7.]
     data = DataHandler(fits_files, wavelengths, flux_files=flux_files)
-    print(data.corr_fluxes_error)
+    print(data.corr_fluxes)
+    print(data.corr_fluxes.shape)
     # complete_ring = make_ring_component("inner_ring",
                                         # [[0., 0.], [0., 0.], [1., 6.], [0., 0.]])
     # delta_component = make_delta_component("star")

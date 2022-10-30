@@ -38,7 +38,7 @@ class CombinedModel:
         """Initialises the model's components"""
         if not self._components:
             raise ValueError("Add components before accessing the class's functions!")
-        if self._components_initialised is None:
+        if not self._components_initialised:
             self._components_initialised = [component(self._model_init_params)\
                                             for component in self._components]
         return self._components_initialised
@@ -123,7 +123,6 @@ class CombinedModel:
         flux = flux_per_pixel(wavelength, temperature, optical_depth, self.pixel_scaling)
         flux[flux == np.inf] = 0.*u.Jy
 
-        # TOOD: Implement here rebinning
         if self._model_init_params.pixel_sampling > self._model_init_params.image_size:
             new_shape = (self._model_init_params.image_size,
                          self._model_init_params.image_size)

@@ -41,7 +41,8 @@ def print_results(data: DataHandler, best_fit_total_fluxes,
 
 
 def write_data_to_ini(data: DataHandler, best_fit_total_fluxes,
-                      best_fit_corr_fluxes, best_fit_cphases, save_path = "") -> None:
+                      best_fit_corr_fluxes, best_fit_cphases,
+                      save_path: Optional[Path] = "") -> None:
     """Writes the all the data about the model fit into a (.toml)-file"""
     miscellaneous_dict = {"tau": data.tau_initial,
                           "rebin_factor": data.rebin_factor,

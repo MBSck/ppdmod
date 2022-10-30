@@ -1,52 +1,10 @@
-"""Test file for a 2D-Gaussian PPD model, that is fit with MCMC; The emcee
-package
-
-...
-
-Initial sets the theta
-
->>> initial = np.array([1.5, 135, 1., 1., 100., 3., 0.01, 0.7])
->>> priors = [[1., 2.], [0, 180], [0., 2.], [0., 2.], [0., 180.], [1., 10.],
-              [0., 1.], [0., 1.]]
->>> labels = ["AXIS_RATIO", "P_A", "C_AMP", "S_AMP", "MOD_ANGLE", "R_INNER",
-              "TAU", "Q"]
->>> bb_params = [1500, 7900, 19, 140]
-
-File to read data from
-
->>> f = "../../assets/Final_CAL.fits"
->>> out_path = "../../assets"
-
-sws is for L-band flux; timmi2 for the N-band flux
-
->>> flux_file = "../../assets/HD_142666_timmi2.txt"
-
-Set the data, the wavelength has to be the fourth argument [3]
-
->>> data = set_data(fits_file=f, flux_file=flux_file, pixel_size=100,
-                    sampling=128, wl_ind=38, zero_padding_order=3, vis2=False)
-
-Set the mcmc parameters and the data to be fitted.
-
->>> mc_params = set_mc_params(initial=initial, nwalkers=50, niter_burn=100,
-                              niter=250)
-
-This calls the MCMC fitting
-
->>> fitting = ModelFitting(CompoundModel, data, mc_params, priors, labels,
-                           numerical=True, vis=True, modulation=True,
-                           bb_params=bb_params, out_path=out_path)
->>> fitting.pipeline()
-
-"""
 import os
-import time
 import emcee
 import corner
 import numpy as np
 import matplotlib.pyplot as plt
 
-from warnings import warn
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from multiprocessing import Pool, cpu_count
@@ -168,7 +126,7 @@ def run_mcmc(data: DataHandler,
     best_fit_total_fluxes, best_fit_corr_fluxes, best_fit_cphases, fourier =\
         calculate_model(data.theta_max, data, rfourier=True)
 
-    output_path = f"{time.time()}_results_fit"
+    output_path = f"{datetime.datetime.now()}_model_fit"
     if save_path:
         output_path = os.path.join(save_path, output_path)
     os.makedirs(output_path)
