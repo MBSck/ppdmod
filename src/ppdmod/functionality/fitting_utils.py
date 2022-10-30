@@ -46,9 +46,9 @@ def calculate_model(theta: np.ndarray, data: DataHandler,
     else:
         for wavelength in data.wavelengths:
             model_data = loop_model(model, data, wavelength, rfourier)
-            total_flux_mod_chromatic.append(total_flux_data)
-            corr_flux_mod_chromatic.append(corr_flux_data)
-            cphases_mod_chromatic_data.append(cphases_data)
+            total_flux_mod_chromatic.append(model_data[0])
+            corr_flux_mod_chromatic.append(model_data[1])
+            cphases_mod_chromatic_data.append(model_data[2])
 
     if rfourier:
         return total_flux_mod_chromatic*u.Jy, corr_flux_mod_chromatic*u.Jy,\
