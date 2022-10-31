@@ -126,7 +126,7 @@ def run_mcmc(data: DataHandler,
     best_fit_total_fluxes, best_fit_corr_fluxes, best_fit_cphases, fourier =\
         calculate_model(data.theta_max, data, rfourier=True)
 
-    output_path = f"{datetime.datetime.now()}_model_fit"
+    output_path = f"{datetime.now()}_model_fit"
     if save_path:
         output_path = os.path.join(save_path, output_path)
     os.makedirs(output_path)
@@ -143,13 +143,14 @@ def run_mcmc(data: DataHandler,
 
 
 if __name__ == "__main__":
-    data_path = "../../../data/hd_142666_jozsef/nband"
-    fits_files = ["HD_142666_2022-04-23T03_05_25_N_TARGET_FINALCAL_INT.fits"]
-    fits_files = [os.path.join(data_path, file) for file in fits_files]
-    flux_files = [None, None]
+    # data_path = "../../../data/hd_142666_jozsef/nband"
+    # fits_files = ["HD_142666_2022-04-23T03_05_25_N_TARGET_FINALCAL_INT.fits"]
+    # fits_files = [os.path.join(data_path, file) for file in fits_files]
+    # flux_files = [None, None]
+    fits_files = ["../../../assets/synthetic/2022-10-30 21:28:43.746652_model_synthetic/synthetic_fit_0.fits"]
     save_path = "../../../assets/model_results"
     wavelengths = [12.0]
-    data = DataHandler(fits_files, wavelengths, flux_files=flux_files)
+    data = DataHandler(fits_files, wavelengths)
     complete_ring = make_ring_component("inner_ring",
                                         [[0., 0.], [0., 0.], [0.1, 6.], [0., 0.]])
     inner_ring = make_ring_component("inner_ring",
@@ -166,7 +167,7 @@ if __name__ == "__main__":
     # data.modulation_priors = [[0., 1.], [0, 360]]
     data.disc_priors = [[0., 1.], [0., 1.]]
     data.lnf_priors = [-10., 10.]
-    data.mcmc = [50, 50, 100, 1e-4]
+    data.mcmc = [50, 1, 1, 1e-4]
     data.zero_padding_order = 2
     data.tau_initial = 1.
     run_mcmc(data, save_path=save_path, cpu_amount=6, show_plots=True)

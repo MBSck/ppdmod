@@ -19,7 +19,7 @@ def loop_model(model: CombinedModel, data: DataHandler,
                                         data.pixel_scaling, data.zero_padding_order)
     corr_flux_arr, cphases_arr = fourier.get_uv2fft2(data.uv_coords, data.uv_coords_cphase)
     if rfourier:
-        return total_flux_arr, corr_flux_arr, cphases_arr, rfourier
+        return total_flux_arr, corr_flux_arr, cphases_arr, fourier
     else:
         return total_flux_arr, corr_flux_arr, cphases_arr
 
@@ -52,7 +52,7 @@ def calculate_model(theta: np.ndarray, data: DataHandler,
 
     if rfourier:
         return total_flux_mod_chromatic*u.Jy, corr_flux_mod_chromatic*u.Jy,\
-            cphases_mod_chromatic_data*u.deg, fourier
+            cphases_mod_chromatic_data*u.deg, model_data[-1]
     return total_flux_mod_chromatic*u.Jy, corr_flux_mod_chromatic*u.Jy,\
         cphases_mod_chromatic_data*u.deg
 
