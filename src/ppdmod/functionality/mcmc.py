@@ -126,7 +126,8 @@ def run_mcmc(data: DataHandler,
     best_fit_total_fluxes, best_fit_corr_fluxes, best_fit_cphases, fourier =\
         calculate_model(data.theta_max, data, rfourier=True)
 
-    output_path = f"{datetime.now()}_model_fit"
+    this_instant = datetime.now()
+    output_path = f"{this_instant.date()}_{this_instant.time()}_model_fit"
     if save_path:
         output_path = os.path.join(save_path, output_path)
     os.makedirs(output_path)

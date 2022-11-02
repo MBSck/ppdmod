@@ -62,7 +62,9 @@ def create_model(data: DataHandler, save_path: Optional[Path] = "") -> None:
 
     if not os.path.exists(synthetic_path):
         os.makedirs(synthetic_path)
-    model_path = os.path.join(synthetic_path, f"{datetime.now()}_model_synthetic")
+    this_instant = datetime.now()
+    model_path = os.path.join(synthetic_path,
+                              f"{this_instant.date()}_{this_instant.time()}_model_synthetic")
     os.makedirs(model_path)
     np.save(os.path.join(model_path, "theta.npy"), data.initial)
 
