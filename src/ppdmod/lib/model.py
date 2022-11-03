@@ -4,7 +4,7 @@ import astropy.units as u
 from astropy.units import Quantity
 from typing import Tuple, List, Optional
 
-from .utils import IterNamespace, make_fixed_params
+from .utils import IterNamespace, make_fixed_params, _set_ones
 
 # TODO: Make sure all is tested! Write test for set_ones and improve all tests
 # TODO: Make good docstrings
@@ -12,18 +12,20 @@ class Model:
     """Model baseclass """
     def __init__(self, fixed_params: IterNamespace) -> None:
         self.fixed_params = fixed_params
-
         self.pixel_scaling = self.fixed_params.fov/self.fixed_params.image_size
-
-        self.component_name = None
-        # TODO: Check why this is a thing? The axes... Why were they implemented
-        self.axes_image, self.axes_complex_image = [], []
-        self.polar_angle = None
+        self._component_name = None
+        self._polar_angle = None
 
     @property
     def image_centre(self) -> Tuple:
-        """Returns index"""
-        if self.component_name == "delta":
+        """Returns a tuple containing the indicies for the centre of the the model image
+
+        Returns
+        -------
+        image_centre: Tuple[astropy.units.Quantity]
+            The model image's centre [astropy.units.dimensionless_unscaled]
+        """
+        if self._component_name == "delta":
             return (self.fixed_params.image_size//2, self.fixed_params.image_size//2)
         else:
             return (self.fixed_params.pixel_sampling//2,
@@ -45,7 +47,7 @@ class Model:
             The radius [astropy.units.mas/px]
         """
         # TODO: Does center shift, xc, yc need to be applied?
-        if self.component_name == "delta":
+        if self._component_name == "delta":
             x = np.linspace(-self.fixed_params.image_size//2,
                             self.fixed_params.image_size//2,
                             self.fixed_params.image_size, endpoint=False)*self.pixel_scaling
@@ -61,10 +63,10 @@ class Model:
             pos_angle = pos_angle.to(u.rad)
             xr, yr = (x*np.cos(pos_angle)-y*np.sin(pos_angle))/axis_ratio,\
                 x*np.sin(pos_angle)+y*np.cos(pos_angle)
-            self.axes_image, self.polar_angle = [xr, yr], np.arctan2(xr, yr)
+            self._polar_angle = np.arctan2(xr, yr)
             radius = np.sqrt(xr**2+yr**2)
         else:
-            self.axes_image, self.polar_angle = [x, y], np.arctan2(x, y)
+            self._polar_angle = np.arctan2(x, y)
             radius = np.sqrt(x**2+y**2)
         return radius
 
@@ -89,10 +91,13 @@ class Model:
         """
         # TODO: Implement Modulation field like Jozsef?
         modulation_angle = modulation_angle.to(u.rad)
-        total_mod = amplitude*np.cos(self.polar_angle-modulation_angle)
+        total_mod = amplitude*np.cos(self._polar_angle-modulation_angle)
         image *= 1.*total_mod.unit + total_mod
         image.value[image.value < 0.] = 0.
         return image
+
+    def eval_object(self, params: IterNamespace) -> Quantity:
+        return _set_ones(self.eval_model(params).value)*u.dimensionless_unscaled
 
 
 if __name__ == "__main__":

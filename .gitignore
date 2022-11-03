@@ -1,6 +1,7 @@
 # General files to ignore
 __pycache__
 .DS_Store
+scratch.py
 
 # Ignored folders
 assets/

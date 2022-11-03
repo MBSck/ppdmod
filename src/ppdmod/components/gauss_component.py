@@ -3,8 +3,8 @@ import astropy.units as u
 
 from astropy.units import Quantity
 
-from ..functionality.model import Model
-from ..functionality.utils import IterNamespace
+from ..lib.model import Model
+from ..lib.utils import IterNamespace
 
 
 class GaussComponent(Model):

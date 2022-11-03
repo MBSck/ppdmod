@@ -6,7 +6,7 @@ import astropy.units as u
 from astropy.io import fits
 from collections import namedtuple
 
-from ppdmod.functionality.readout import ReadoutFits
+from ppdmod.lib.readout import ReadoutFits
 
 
 ################################### Fixtures #############################################

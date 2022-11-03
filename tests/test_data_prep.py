@@ -1,50 +1,37 @@
 import pytest
 import random
-import numpy as np
 
-from ppdmod.functionality.data_prep import DataHandler
+from ppdmod.lib.data_prep import DataHandler
 
 ################################### Fixtures #############################################
 
 @pytest.fixture
-def example_fits_file_path():
-    """This is an N-band file"""
+def mock_fits_file():
+    """This is an N-band test (.fits)-file"""
     return "../data/tests/test.fits"
 
 @pytest.fixture
-def example_fits_files_lists(example_fits_file_path):
-    two_fits_files = [example_fits_file_path]*2
-    three_fits_files = [example_fits_file_path]*3
-    return two_fits_files, three_fits_files
+def mock_two_fits_files(mock_fits_file):
+    return [mock_fits_file]*2
 
 @pytest.fixture
 def selected_wavelengths():
-    return [8.5], [8.5, 10.0], [8.5]*random.randint(1, 10)
-
-@pytest.fixture
-def mock_priors():
-    return [1.5, 180, 2, 180]
-
-@pytest.fixture
-def mock_lables():
-    return ["axis_ratio", "positional_angle", "mod_amplitude", "mod_angle"]
+    return [8.5]*u.um, [8.5, 10.0]*u.um, [8.5]*random.randint(1, 10)*u.um
 
 ################################ DataDandler - TESTS #####################################
 
-def test_data_handler_init(example_fits_files_lists, selected_wavelengths):
+def test_data_handler_init(mock_fits_file, mock_two_fits_files, selected_wavelengths):
     selected_wl_solo, selected_wl, _ = selected_wavelengths
-    two_fits_files, three_fits_files = example_fits_files_lists
     # Note: This also tests the initalisation with one or more wavelengths
-    data_handler_two = DataHandler(two_fits_files, selected_wl_solo)
-    data_handler_three = DataHandler(three_fits_files, selected_wl)
-    assert len(data_handler_two.readout_files) == 2
-    assert len(data_handler_three.readout_files) == 3
+    data_handler_two = DataHandler(mock_fits_file, selected_wl_solo)
+    data_handler_three = DataHandler(mock_two_fits_files, selected_wl)
+    assert len(data_handler_two.readouts) == 1
+    assert len(data_handler_three.readouts) == 2
 
-def test_get_data_type_function(example_fits_files_lists, selected_wavelengths):
+def test_get_data_type_function(mock_fits_file, mock_two_fits_files, selected_wavelengths):
     selected_wl_solo, selected_wl, _ = selected_wavelengths
-    two_fits_files, _ = example_fits_files_lists
-    data_handler = DataHandler(two_fits_files, selected_wl)
-    readout = data_handler.readout_files[0]
+    data_handler = DataHandler(mock_two_fits_files, selected_wl)
+    readout = data_handler.readouts[0]
     assert readout.get_visibilities4wavelength ==\
         data_handler._get_data_type_function(readout, "vis")
     assert readout.get_visibilities_squared4wavelength ==\
@@ -54,20 +41,19 @@ def test_get_data_type_function(example_fits_files_lists, selected_wavelengths):
     assert readout.get_flux4wavelength ==\
         data_handler._get_data_type_function(readout, "flux")
 
-def test_iterate_over_data_arrays(example_fits_files_lists, selected_wavelengths):
+def test_iterate_over_data_arrays(mock_fits_file, mock_two_fits_files, selected_wavelengths):
     selected_wl_solo, selected_wl, selected_wl_multi = selected_wavelengths
-    two_fits_files, three_fits_files = example_fits_files_lists
     len_selected_wl, len_selected_wl_multi = len(selected_wl), len(selected_wl_multi)
     # Note: This also tests the initalisation with one or more wavelengths
-    data_handler_two_solo = DataHandler(two_fits_files, selected_wl_solo)
+    data_handler = DataHandler(two_fits_files, selected_wl_solo)
     data_handler_two = DataHandler(two_fits_files, selected_wl)
     data_handler_two_multi = DataHandler(two_fits_files, selected_wl_multi)
 
     visdata_solo = data_handler_two_solo.readout_files[0].\
         get_visibilities4wavelength(data_handler_two_solo.wl_ind)
-    visdata = data_handler_two.readout_files[0].\
+    visdata = data_handler_two.readouts[0].\
         get_visibilities4wavelength(data_handler_two.wl_ind)
-    visdata_multi = data_handler_two_multi.readout_files[0].\
+    visdata_multi = data_handler_two_multi.readouts[0].\
         get_visibilities4wavelength(data_handler_two_multi.wl_ind)
     merged_data_vis_solo = data_handler_two_solo.\
         _iterate_over_data_arrays(visdata_solo, visdata_solo.copy())
@@ -77,9 +63,9 @@ def test_iterate_over_data_arrays(example_fits_files_lists, selected_wavelengths
 
     cphasesdata_solo = data_handler_two_solo.readout_files[0].\
         get_closure_phases4wavelength(data_handler_two_solo.wl_ind)
-    cphasesdata = data_handler_two.readout_files[0].\
+    cphasesdata = data_handler_two.readouts[0].\
         get_closure_phases4wavelength(data_handler_two.wl_ind)
-    cphasesdata_multi = data_handler_two_multi.readout_files[0].\
+    cphasesdata_multi = data_handler_two_multi.readouts[0].\
         get_closure_phases4wavelength(data_handler_two_multi.wl_ind)
     merged_data_cphases_solo = data_handler_two_solo.\
         _iterate_over_data_arrays(cphasesdata_solo, cphasesdata_solo.copy())
@@ -90,9 +76,9 @@ def test_iterate_over_data_arrays(example_fits_files_lists, selected_wavelengths
 
     fluxdata_solo = data_handler_two_solo.readout_files[0].\
         get_flux4wavelength(data_handler_two_solo.wl_ind)
-    fluxdata = data_handler_two.readout_files[0].\
+    fluxdata = data_handler_two.readouts[0].\
         get_flux4wavelength(data_handler_two.wl_ind)
-    fluxdata_multi = data_handler_two_multi.readout_files[0].\
+    fluxdata_multi = data_handler_two_multi.readouts[0].\
         get_flux4wavelength(data_handler_two_multi.wl_ind)
     merged_data_fluxdata_solo = data_handler_two_solo.\
         _iterate_over_data_arrays(fluxdata_solo, fluxdata_solo.copy())

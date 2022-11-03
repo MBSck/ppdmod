@@ -9,7 +9,6 @@ from dynesty import utils as dyfunc
 from dynesty import plotting as dyplot
 
 from .data_prep import DataHandler
-
 from .fitting_utils import lnlike
 from .utils import make_delta_component, make_ring_component, make_fixed_params
 from .plotting_utils import plot_fit_results, write_data_to_ini

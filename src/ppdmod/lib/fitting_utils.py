@@ -12,6 +12,7 @@ from .fourier import FastFourierTransform
 
 def loop_model(model: CombinedModel, data: DataHandler,
                wavelength: Quantity, rfourier: Optional[bool] = False):
+    """"""
     image = model.eval_flux(wavelength)
     total_flux = model.eval_total_flux(wavelength).value
     total_flux_arr = np.array([total_flux for _ in range(data.corr_fluxes.shape[1] // 6)])
@@ -27,6 +28,7 @@ def loop_model(model: CombinedModel, data: DataHandler,
 # TODO: Check if the functionality works as thought
 def calculate_model(theta: np.ndarray, data: DataHandler,
                     rfourier: Optional[bool] = False, debug: Optional[bool] = False):
+    """"""
     data.reformat_theta_to_components(theta)
     model = CombinedModel(data.fixed_params, data.disc_params,
                           data.wavelengths, data.geometric_params,
@@ -76,16 +78,16 @@ def lnlike(theta: np.ndarray, data: DataHandler) -> float:
     """
     lnf = theta[-1]
     total_flux_mod, corr_flux_mod, cphases_mod = calculate_model(theta[:-1], data)
-    # total_flux_chi_sq = chi_sq(data.total_fluxes,
-                               # data.total_fluxes_error,
-                               # total_flux_mod, lnf)
+    total_flux_chi_sq = chi_sq(data.total_fluxes,
+                               data.total_fluxes_error,
+                               total_flux_mod, lnf)
     corr_flux_chi_sq = chi_sq(data.corr_fluxes,
                               data.corr_fluxes_error,
                               corr_flux_mod, lnf)
-    # cphases_chi_sq = chi_sq(data.cphases,
-                            # data.cphases_error,
-                            # cphases_mod, lnf)
-    return np.array(corr_flux_chi_sq)
+    cphases_chi_sq = chi_sq(data.cphases,
+                            data.cphases_error,
+                            cphases_mod, lnf)
+    return np.array(total_flux_chi_sq+corr_flux_chi_sq+cphases_chi_sq)
 
 def lnprior(theta: np.ndarray, priors: List[List[float]]) -> float:
     """Checks if all variables are within their priors (as well as

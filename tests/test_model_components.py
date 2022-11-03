@@ -3,8 +3,8 @@ import pytest
 import astropy.units as u
 import astropy.constants as c
 
-from ppdmod.model_components import DeltaComponent, RingComponent
-from ppdmod.functionality.utils import _make_params
+from ppdmod.components import DeltaComponent, RingComponent
+from ppdmod.lib.utils import _make_params
 
 ################################### Fixtures #############################################
 

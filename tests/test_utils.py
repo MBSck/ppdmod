@@ -3,9 +3,9 @@ import pytest
 import astropy.units as u
 import astropy.constants as c
 
-import ppdmod.functionality.utils as utils
+import ppdmod.lib.utils as utils
 
-from ppdmod.functionality.model import Model
+from ppdmod.lib.model import Model
 
 
 ################################### Fixtures #############################################

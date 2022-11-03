@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 from astropy.units import Quantity
 from typing import List, Union
 
-from ..functionality.model import Model
-from ..functionality.utils import IterNamespace, rebin_image
+from ..lib.model import Model
+from ..lib.utils import IterNamespace, rebin_image
 
 # TODO: Make function that automatically greps the docstrings of functions that need to be
 # implemented

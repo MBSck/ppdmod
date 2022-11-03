@@ -6,11 +6,13 @@ from astropy.units import Quantity
 
 from .utils import IterNamespace, make_fixed_params, make_delta_component,\
     make_ring_component, _make_params, _calculate_sublimation_temperature,\
-    temperature_gradient, optical_depth_gradient, flux_per_pixel, rebin_image, _set_ones
-from ..model_components import DeltaComponent, GaussComponent, RingComponent
+    temperature_gradient, optical_depth_gradient, flux_per_pixel, rebin_image
+from ..components import DeltaComponent, GaussComponent, RingComponent
 
 
+# TODO: Add docstrings and tests
 class CombinedModel:
+    """"""
     def __init__(self, fixed_params: IterNamespace, disc_params: IterNamespace,
                  wavelengths: List[Quantity], geometric_params: IterNamespace,
                  modulation_params: IterNamespace) -> None:
@@ -108,12 +110,8 @@ class CombinedModel:
                 image += temp_image
         return image
 
-    def eval_object(self) -> Quantity:
-        return _set_ones(self.eval_model()).value*u.dimensionless_unscaled
-
     def eval_flux(self, wavelength: Quantity) -> Quantity:
         """Evaluates the flux for model"""
-        # TODO: Implement stellar_flux_func here
         image = self.eval_model()
         temperature = temperature_gradient(image, self._disc_params.q,
                                            self._inner_radius, self.inner_temperature)

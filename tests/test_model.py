@@ -1,9 +1,9 @@
 import pytest
 import astropy.units as u
 
-import ppdmod.functionality.utils as utils
+import ppdmod.lib.utils as utils
 
-from ppdmod.functionality.model import Model
+from ppdmod.lib.model import Model
 
 # TODO: Improve a lot of theses tests and check how to test properly
 
@@ -25,22 +25,35 @@ def mock_incline_params():
 
 def test_init_model(mock_fixed_params_namespace):
     # TODO: Maybe extend this text
-    assert Model(mock_fixed_params_namespace)
+    model = Model(mock_fixed_params_namespace)
+    assert model
+    assert model.fixed_params == mock_fixed_params_namespace
+    assert model.pixel_scaling ==\
+        mock_fixed_params_namespace.fov/mock_fixed_params_namespace.pixel_sampling
+    assert model._component_name == None
+    assert model._polar_angle == None
 
 # TODO: Implement test
-def test_image_centre_property():
-    ...
+def test_image_centre_property(mock_fixed_params_namespace):
+    model_delta = Model(mock_fixed_params_namespace)
+    model = Model(mock_fixed_params_namespace)
+    model_delta._component_name = "delta"
+    model_delta.fixed_params.pixel_sampling = 1024
+    model_delta.fixed_params.pixel_sampling = 1024
+    assert model_delta.image_centre == (64, 64)
+    assert model.image_centre == (512, 512)
 
 # TODO: Improve this test for units and such
 # TODO: Also for the inclination
 # TODO: Make tests for borders of inputs
 def test_set_grid(mock_fixed_params_namespace, mock_incline_params):
     model = Model(mock_fixed_params_namespace)
-    grid_multiple_pixels = model._set_grid()
-    grid_multiple_pixels_inclined = model._set_grid(mock_incline_params)
-    assert grid_multiple_pixels.unit == u.mas
-    assert grid_multiple_pixels_inclined.unit == u.mas
-
+    model_delta = Model(mock_fixed_params_namespace)
+    model_delta._component_name = "delta"
+    grid = model._set_grid()
+    grid_inclined = model._set_grid(mock_incline_params)
+    assert grid.unit == u.mas
+    assert grid_inclined.unit == u.mas
     model.fixed_params.image_size = u.Quantity(1, unit=u.dimensionless_unscaled,
                                                     dtype=int)
     model.fixed_params.pixel_sampling = u.Quantity(1, unit=u.dimensionless_unscaled,

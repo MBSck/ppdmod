@@ -3,7 +3,7 @@ import pytest
 import astropy.units as u
 import astropy.constants as c
 
-from ppdmod.functionality.model import Model
+from ppdmod.lib.model import Model
 
 ################################### Fixtures #############################################
 
