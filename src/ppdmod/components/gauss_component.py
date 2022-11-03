@@ -23,7 +23,7 @@ class GaussComponent(Model):
     """
     def __init__(self, *args):
         super().__init__(*args)
-        self.component_name = "gauss"
+        self._component_name = "gauss"
 
     def eval_model(self, params: IterNamespace) -> Quantity:
         """Evaluates the model's radius

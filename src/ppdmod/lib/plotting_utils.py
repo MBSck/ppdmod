@@ -154,10 +154,10 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
     y_space_amp = np.sqrt(y_max_amp**2+y_min_amp**2)*0.1
     y_lim_amp = [y_min_amp-y_space_amp, y_max_amp+y_space_amp]
 
-    # all_cphase = np.concatenate((data.cphases.value[0], best_fit_cphases))
-    # y_min_cphase, y_max_cphase = np.min(all_cphase), np.max(all_cphase)
-    # y_space_cphase = np.sqrt(y_max_cphase**2+y_min_cphase**2)*0.1
-    # y_lim_cphase = [y_min_cphase-y_space_cphase, y_max_cphase+y_space_cphase]
+    all_cphase = np.concatenate((data.cphases.value[0], best_fit_cphases.value))
+    y_min_cphase, y_max_cphase = np.min(all_cphase), np.max(all_cphase)
+    y_space_cphase = np.sqrt(y_max_cphase**2+y_min_cphase**2)*0.1
+    y_lim_cphase = [y_min_cphase-y_space_cphase, y_max_cphase+y_space_cphase]
 
     count_epochs = data.corr_fluxes[0].shape[0] // 6
 
@@ -172,32 +172,32 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
                     data.corr_fluxes_error.value[0][epochs*6:(epochs+1)*6],
                     color=color_real_data[epochs],
                     fmt='o', label="Observed data", alpha=0.6)
-        # ax.errorbar(np.array([0]), data.total_fluxes[0][epochs],
-                    # data.total_fluxes_error[0][epochs],
-                    # color=color_real_data[epochs], fmt='o', alpha=0.6)
+        ax.errorbar(np.array([0]), data.total_fluxes[0][epochs],
+                    data.total_fluxes_error[0][epochs],
+                    color=color_real_data[epochs], fmt='o', alpha=0.6)
         ax.scatter(data.baselines.value[epochs*6:(epochs+1)*6],
                    best_fit_corr_fluxes.value[epochs*6:(epochs+1)*6],
                    color=color_fit_data[epochs], marker='X', label="Model data")
-        # ax.scatter(np.array([0]), best_fit_total_fluxes.value[epochs],
-                   # marker='X', color=color_fit_data[epochs])
-        # bx.errorbar(data.longest_baselines.value[epochs*4:(epochs+1)*4],
-                    # data.cphases.value[0][epochs*4:(epochs+1)*4],
-                    # data.cphases_error.value[0][epochs*4:(epochs+1)*4],
-                    # color=color_real_data[epochs], fmt='o',
-                    # label="Observed data", alpha=0.6)
-        # bx.scatter(data.longest_baselines.value[epochs*4:(epochs+1)*4],
-                   # best_fit_cphases.value[epochs*4:(epochs+1)*4],
-                   # color=color_fit_data[epochs], marker='X', label="Model data")
+        ax.scatter(np.array([0]), best_fit_total_fluxes.value[epochs],
+                   marker='X', color=color_fit_data[epochs])
+        bx.errorbar(data.longest_baselines.value[epochs*4:(epochs+1)*4],
+                    data.cphases.value[0][epochs*4:(epochs+1)*4],
+                    data.cphases_error.value[0][epochs*4:(epochs+1)*4],
+                    color=color_real_data[epochs], fmt='o',
+                    label="Observed data", alpha=0.6)
+        bx.scatter(data.longest_baselines.value[epochs*4:(epochs+1)*4],
+                   best_fit_cphases.value[epochs*4:(epochs+1)*4],
+                   color=color_fit_data[epochs], marker='X', label="Model data")
 
     ax.set_xlabel("Baselines [m]")
     ax.set_ylabel("Correlated fluxes [Jy]")
     ax.set_ylim(y_lim_amp)
     ax.legend(loc="upper right")
 
-    # bx.set_xlabel("Longest baselines [m]")
-    # bx.set_ylabel(fr"Closure Phases [$^\circ$]")
-    # bx.set_ylim(y_lim_cphase)
-    # bx.legend(loc="upper right")
+    bx.set_xlabel("Longest baselines [m]")
+    bx.set_ylabel(fr"Closure Phases [$^\circ$]")
+    bx.set_ylim(y_lim_cphase)
+    bx.legend(loc="upper right")
 
 def plot_txt(ax, title_dict: Dict, text_dict: Dict,
              text_font_size: Optional[int] = 12) -> None:

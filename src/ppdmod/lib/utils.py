@@ -265,43 +265,47 @@ class IterNamespace(SimpleNamespace):
         return dict(zip(self._fields, self.to_string()))
 
 
-def _set_zeros(image: Union[np.ndarray, Quantity]) -> Union[np.ndarray, Quantity]:
+def _set_zeros(image: Quantity,
+               rvalue: Optional[bool] = False) -> Union[np.ndarray, Quantity]:
     """Sets an image grid to all zeros
 
     Parameters
     ----------
-    image: np.ndarray | astropy.units.Quantity
+    image: astropy.units.Quantity
         The input image
+    rvalue: bool, optional
+        If 'True' returns the value of the Quantity as a np.ndarray
 
     Returns
     -------
     image_all_ones: np.ndarray | astropy.units.Quantity
         The output image with every value set to 0.
     """
-    if not (isinstance(image, u.Quantity) or isinstance(image, np.ndarray)):
-        raise IOError("Input image must be either [np.ndarray]"\
-                      " or [astropy.units.Quantity]")
-    return image*0
+    if not isinstance(image, u.Quantity):
+        raise IOError("Input image must be [astropy.units.Quantity]")
+    return image.value*0 if rvalue else image*0
 
 
-def _set_ones(image: Union[np.ndarray, Quantity]) -> Union[np.ndarray, Quantity]:
+def _set_ones(image: Quantity,
+              rvalue: Optional[bool] = False) -> Union[np.ndarray, Quantity]:
     """Sets and image grid to all ones
 
     Parameters
     ----------
     image: np.ndarray | astropy.units.Quantity
         The input image
+    rvalue: bool, optional
+        If 'True' returns the value of the Quantity as a np.ndarray
 
     Returns
     -------
     image_all_ones: np.ndarray | astropy.units.Quantity
         The output image with every value set to 1.
     """
-    if not (isinstance(image, u.Quantity) or isinstance(image, np.ndarray)):
-        raise IOError("Input image must be either [np.ndarray]"\
-                      " or [astropy.units.Quantity]")
+    if not isinstance(image, u.Quantity):
+        raise IOError("Input image must be [astropy.units.Quantity]")
     image[image != 0.] = 1.
-    return image
+    return image.value if rvalue else image
 
 
 def rebin_image(image: Quantity, new_shape: Tuple, rfactor: Optional[bool] = False):

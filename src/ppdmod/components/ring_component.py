@@ -32,7 +32,7 @@ class RingComponent(Model):
     """
     def __init__(self, *args):
         super().__init__(*args)
-        self.component_name = "ring"
+        self._component_name = "ring"
 
     def eval_model(self, params: Union[IterNamespace, List]) -> Quantity:
         """Evaluates the model's radius
@@ -49,10 +49,10 @@ class RingComponent(Model):
             The image's radius [astropy.units.mas]
         """
         image = self._set_grid([params.axis_ratio, params.pa])
-        image[image < params.inner_radius] = 0.*u.mas
+        image[image < params.inner_radius] = 0.
 
         if params.outer_radius != 0.:
-            image[image > params.outer_radius] = 0.*u.mas
+            image[image > params.outer_radius] = 0.
         return image
 
 

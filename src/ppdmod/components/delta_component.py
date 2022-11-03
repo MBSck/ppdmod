@@ -21,7 +21,7 @@ class DeltaComponent(Model):
     """
     def __init__(self, *args):
         super().__init__(*args)
-        self.component_name = "delta"
+        self._component_name = "delta"
 
     def eval_flux(self, wavelength: Quantity) -> Quantity:
         flux = stellar_flux(wavelength, self.fixed_params.eff_temp,
@@ -42,9 +42,9 @@ class DeltaComponent(Model):
         --------
         model: np.array
         """
-        image = _set_zeros(self._set_grid())
-        image[self.image_centre] = 1.*u.mas
-        return image
+        image = _set_zeros(self._set_grid(), rvalue=True)
+        image[self.image_centre] = 1.
+        return image*u.mas
 
 
 if __name__ == "__main__":

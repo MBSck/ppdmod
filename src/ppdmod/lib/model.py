@@ -97,7 +97,7 @@ class Model:
         return image
 
     def eval_object(self, params: IterNamespace) -> Quantity:
-        return _set_ones(self.eval_model(params).value)*u.dimensionless_unscaled
+        return _set_ones(self.eval_model(params), rvalue=True)*u.dimensionless_unscaled
 
 
 if __name__ == "__main__":
