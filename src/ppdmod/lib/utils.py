@@ -167,8 +167,10 @@ def temperature_gradient(radius: Quantity, power_law_exponent: float,
     temperature_gradient: astropy.units.Quantity
         The temperature gradient [astropy.units.K]
     """
-    return models.PowerLaw1D().evaluate(radius, inner_temperature,
-                                        inner_radius, power_law_exponent)
+    temperature = models.PowerLaw1D().evaluate(radius, inner_temperature,
+                                               inner_radius, power_law_exponent)
+    temperature[temperature == np.inf] = 0.*temperature.unit
+    return temperature
 
 
 def optical_depth_gradient(radius: Quantity,
@@ -192,8 +194,10 @@ def optical_depth_gradient(radius: Quantity,
     Returns
     -------
     """
-    return models.PowerLaw1D().evaluate(radius, inner_optical_depth,
-                                        inner_radius, power_law_exponent)
+    optical_depth = models.PowerLaw1D().evaluate(radius, inner_optical_depth,
+                                                 inner_radius, power_law_exponent)
+    optical_depth[optical_depth == np.inf] = 0.*optical_depth.unit
+    return optical_depth
 
 
 def flux_per_pixel(wavelength: Quantity, temperature_distribution: Quantity,
@@ -304,7 +308,7 @@ def _set_ones(image: Quantity,
     """
     if not isinstance(image, u.Quantity):
         raise IOError("Input image must be [astropy.units.Quantity]")
-    image[image != 0.] = 1.
+    image[image != 0.] = 1.*image.unit
     return image.value if rvalue else image
 
 

@@ -119,7 +119,6 @@ class CombinedModel:
         optical_depth = optical_depth_gradient(image, self._disc_params.p,
                                                self._inner_radius, self.tau)
         flux = flux_per_pixel(wavelength, temperature, optical_depth, self.pixel_scaling)
-        flux[flux == np.inf] = 0.*u.Jy
 
         if self._model_init_params.pixel_sampling > self._model_init_params.image_size:
             new_shape = (self._model_init_params.image_size,
