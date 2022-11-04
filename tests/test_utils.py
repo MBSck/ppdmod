@@ -1,5 +1,5 @@
 import pytest
-
+import numpy as np
 import astropy.units as u
 import astropy.constants as c
 
@@ -52,23 +52,19 @@ def mock_optical_depth_gradient(mock_optical_depth_grad_input):
 ################################ UTILS: PHYSICS- TESTS ###################################
 
 def test_convert_orbital_radius_to_parallax():
-    orbital_radius = utils._convert_orbital_radius_to_parallax(1*u.au, 1*u.pc)
+    orbital_radius_one = utils._convert_orbital_radius_to_parallax(1*u.au, 1*u.pc)
     orbital_radius_hundred_pc = utils._convert_orbital_radius_to_parallax(1*u.au, 100*u.pc)
-    assert orbital_radius.unit == u.mas
+    assert orbital_radius_one.unit == u.mas
     # These values have been adapted for u.mas instead of u.arcsec
-    assert (orbital_radius.value <= 1e3)\
-        and (orbital_radius.value > (1e3 - 0.1))
-    assert (orbital_radius_hundred_pc.value < 0.01e3)\
-        and (orbital_radius_hundred_pc.value > (0.01e3 - 0.1))
+    assert np.isclose(orbital_radius_one.value, 1e3)
+    assert np.isclose(orbital_radius_hundred_pc.value, 0.01e3)
 
 def test_convert_parallax_to_orbital_radius():
-    orbital_radius = utils._convert_parallax_to_orbital_radius(1e3*u.mas, 1*u.pc)
+    orbital_radius_one = utils._convert_parallax_to_orbital_radius(1e3*u.mas, 1*u.pc)
     orbital_radius_hundred_pc = utils._convert_parallax_to_orbital_radius(1e3*u.mas, 100*u.pc)
-    assert orbital_radius.unit == u.m
-    assert orbital_radius.value == c.au.value
-    # FIXME: Is this test correct?
-    assert (orbital_radius_hundred_pc.value <= (1e2*c.au.value + 0.1))\
-        and (orbital_radius_hundred_pc.value > (1e2*c.au.value - 1e6))
+    assert orbital_radius_one.unit == u.m
+    assert orbital_radius_one.value == c.au.value
+    assert np.isclose(orbital_radius_hundred_pc.value, 1e2*c.au.value)
 
 def test_calculate_stellar_radius(mock_ab_aur):
     # TODO: Check if the radius calculation is accurate enough, AB Aur etc.
@@ -77,14 +73,16 @@ def test_calculate_stellar_radius(mock_ab_aur):
     stellar_radius_ab_aur = utils._calculate_stellar_radius(lum_star,
                                                       effective_temp).to(u.R_sun)
     assert stellar_radius_ab_aur.unit == u.R_sun
+    # TODO: Check if this calculation is correct
     assert (stellar_radius_ab_aur.value <= (2.4+0.2))\
         and (stellar_radius_ab_aur.value >= (2.4-0.2))
 
+# TODO: Write testes that check the flux value against values of real stars
 def test_stellar_flux(mock_ab_aur, mock_wavelength):
-    # TODO: Write testes that check the flux value against values of real stars
     flux = utils.stellar_flux(mock_wavelength, *mock_ab_aur)
     assert flux.unit == u.Jy
 
+# TODO: Write testes that check the sublimation radius value against real values
 def test_calculate_sublimation_radius(mock_fixed_params_namespace):
     fixed_params = mock_fixed_params_namespace
     sublimation_radius = utils._calculate_sublimation_radius(fixed_params.sub_temp,
@@ -92,6 +90,7 @@ def test_calculate_sublimation_radius(mock_fixed_params_namespace):
                                                              fixed_params.lum_star)
     assert sublimation_radius.unit == u.mas
 
+# TODO: Write testes that check the sublimation temperature value against real values
 def test_calculate_sublimation_temperature(mock_fixed_params_namespace):
     fixed_params = mock_fixed_params_namespace
     inner_radius = 2.14*u.mas
@@ -101,12 +100,12 @@ def test_calculate_sublimation_temperature(mock_fixed_params_namespace):
                                                  fixed_params.lum_star)
     assert sublimation_temperature.unit == u.K
 
-# TODO: Test for real values
+# NOTE: Astropy-function already tested there. Test only to check input
 def test_temperature_gradient(mock_temp_grad_input):
     temperature = utils.temperature_gradient(*mock_temp_grad_input)
     assert temperature.unit == u.K
 
-# TODO: Test for real values
+# NOTE: Astropy-function already tested there. Test only to check input
 def test_optical_depth_gradient(mock_optical_depth_grad_input):
     optical_depth = utils.optical_depth_gradient(*mock_optical_depth_grad_input)
     assert optical_depth.unit == u.dimensionless_unscaled
@@ -164,14 +163,24 @@ def test_IterNamespace(mock_labels, mock_params):
     assert mock_namespace.pa == mock_params[1]
 
 
-# TODO: Implement this test
-def test_set_zeros():
-    ...
+def test_set_zeros(mock_fixed_params_namespace):
+    model = Model(mock_fixed_params_namespace)
+    grid = model._set_grid()
+    zeros_w_unit = utils._set_zeros(grid)
+    zeros_wo_unit = utils._set_zeros(grid, rvalue=True)
+    assert not np.any(zeros_w_unit.value)
+    assert not np.any(zeros_wo_unit)
+    assert isinstance(zeros_w_unit, u.Quantity)
+    assert isinstance(zeros_wo_unit, np.ndarray)
 
 
-# TODO: Implement this test
-def test_set_ones():
-    ...
+def test_set_ones(mock_fixed_params_namespace):
+    model = Model(mock_fixed_params_namespace)
+    grid = model._set_grid()
+    zeros_w_unit = utils._set_ones(grid)
+    zeros_wo_unit = utils._set_ones(grid, rvalue=True)
+    assert isinstance(zeros_w_unit, u.Quantity)
+    assert isinstance(zeros_wo_unit, np.ndarray)
 
 
 # TODO: Implement this test
