@@ -3,8 +3,10 @@ import astropy.units as u
 
 from astropy.units import Quantity
 
+import matplotlib.pyplot as plt
+
 from ..lib.model import Model
-from ..lib.utils import IterNamespace
+from ..lib.utils import IterNamespace, make_fixed_params, _make_params
 
 
 class GaussComponent(Model):
@@ -41,7 +43,9 @@ class GaussComponent(Model):
 
 
 if __name__ == "__main__":
-    gauss = GaussComponent(10, 128, 1500, 7900, 140, 19)
-    params = [4*u.mas]
-    gauss.plot(gauss.eval_model(params))
+    fixed_params = make_fixed_params(10, 128, 1500, 7900, 140, 19)
+    gauss = GaussComponent(fixed_params)
+    params = _make_params([4.], [u.mas], ["fwhm"])
+    plt.imshow(gauss.eval_model(params).value)
+    plt.show()
 

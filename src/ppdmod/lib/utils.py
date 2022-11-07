@@ -269,6 +269,25 @@ class IterNamespace(SimpleNamespace):
         return dict(zip(self._fields, self.to_string()))
 
 
+def _make_axis(axis_end: int, steps: int):
+    """Makes an axis from a negative to a postive value, with the endpoint removed to give
+    an even signal for a Fourier transform
+
+    Parameters
+    ----------
+    axis_end: int
+        The negative/positive endpoint
+    steps: int
+        The steps used to get from one end to another, should be an even multiple of
+        the distance between positive and negative axis_end for fourier transforms
+
+    Returns
+    -------
+    axis: np.ndarray
+    """
+    return np.linspace(-axis_end, axis_end, steps, endpoint=False)
+
+
 def _set_zeros(image: Quantity,
                rvalue: Optional[bool] = False) -> Union[np.ndarray, Quantity]:
     """Sets an image grid to all zeros
@@ -531,13 +550,15 @@ def make_ring_component(name: str, priors: List[List[float]] = None,
 def make_delta_component(name: str):
     return _make_component(name, component_name="delta")
 
+def make_gaussian_component(name: str, priors: List[List[float]] = None,
+                            params: List[Quantity] = None) -> IterNamespace:
+    component_name = "gaussian"
+    labels, units = ["fwhm"], [u.mas]
+    return _make_component(name, component_name, priors, labels, units, params=params)
+
 
 # TODO: Make test for this function. Seems broken?
 if __name__ == "__main__":
     fixed_params = make_fixed_params(50, 128, 1500, 7900, 140, 19)
-    print([value for value in fixed_params])
-    print(fixed_params.fov.value)
-    print(fixed_params._fields)
-    print(fixed_params)
-    print(fixed_params.to_string_dict())
-
+    gaussian = make_gaussian_component("gaussian_kernel", [[0., 5.]])
+    print(gaussian)

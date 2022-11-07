@@ -1,13 +1,12 @@
+import scipy
 import numpy as np
 import astropy.units as u
 import matplotlib.pyplot as plt
 
 from astropy.units import Quantity
-from scipy.interpolate import interpn
-from numpy.fft import fft2, fftshift, ifftshift, fftfreq
 from typing import List, Optional
 
-from .utils import make_fixed_params, make_delta_component,\
+from .utils import _make_axis, make_fixed_params, make_delta_component,\
     make_ring_component, _make_params
 from .combined_model import CombinedModel
 
@@ -19,93 +18,104 @@ class FastFourierTransform:
     ...
     """
     def __init__(self, image: Quantity, wavelength: Quantity,
-                 pixel_scaling: float, zero_padding_order: Optional[int] = 1) -> None:
-        self.model = image.value
-        self.unpadded_model = image.copy()
+                 pixel_scaling: Quantity, zero_padding_order: Optional[int] = 0) -> None:
+        """"""
         self.wl = wavelength
-        self.pixel_scale = pixel_scaling
-        self.zero_padding_order = zero_padding_order
+        self.pixel_scaling = pixel_scaling
 
-        self.model_unpadded_dim = self.model.shape[0]
-        self.model_unpadded_centre = self.model_unpadded_dim//2
-        self.ft = self.do_fft2()
+        # TODO: Check how long copying takes?
+        self.unpadded_model = image.copy()
+        self.unpadded_dim = image.shape[0]
+        self.unpadded_centre = self.unpadded_dim//2
 
-    @property
-    def model_shape(self):
-        """Fetches the model's x, and y shape"""
-        return self.model.shape
+        self.fov_scale = (self.pixel_scaling*self.unpadded_centre).value
 
-    @property
-    def dim(self):
-        """Fetches the model's x-dimension.
-        DISCLAIMER: Both dimensions are and need to be identical
+        if zero_padding_order < 0:
+            raise ValueError("Zero padding order cannot be negative!")
+        else:
+            self.dim = 2**int(np.log2(self.unpadded_dim)+zero_padding_order)
+
+        self.model_centre = self.dim//2
+        self.model = self.zero_pad(image)
+
+        self.ft = self.get_fft()
+        self.fftfreq_axis = self._get_fftfreq_axis(self.dim, self.pixel_scaling)
+        self.meter_scaling = self.calculate_meter_scaling(self.fftfreq_axis)
+        self.axis_meter_endpoint = self.meter_scaling*self.model_centre
+        self.axis_Mlambda_endpoint = (self.meter_scaling/self.wl)*self.model_centre
+        self.axis_m = _make_axis(self.axis_meter_endpoint, self.dim)
+        self.axis_Mlambda = _make_axis(self.axis_Mlambda_endpoint, self.dim)
+        self.grid_m = (self.axis_m, self.axis_m)
+
+    # TODO: Finish docstring
+    def _get_fftfreq_axis(self, dimension: int, sample_spacing: Quantity) -> Quantity:
+        """Gets the winding frequency's axis
+
+        Parameters
+        ----------
+        dimension: int
+            The length of the input axis
+        sample_spacing: astropy.units.Quantity
+            The number of cycles that are passed with the winding frequency. The sampling
+            spacing
+
+        Returns
+        -------
+        freq_axis: Quantity
+            The winding-frequency axis of the FFT [cycles/scaling.unit]
         """
-        return self.model_shape[0]
+        return np.fft.ifftshift(np.fft.fftfreq(dimension, d=sample_spacing))
 
-    @property
-    def model_centre(self):
-        """Fetches the model's centre"""
-        return self.dim//2
+    # TODO: Finish docstring
+    def calculate_meter_scaling(self, fft_frequency_axis: Quantity) -> Quantity:
+        """Calculates the meter scaling from the frequency axis given
 
-    @property
-    def freq_axis(self):
-        """Fetches the FFT's frequency axis, scaled according to the
-        pixel_scale (determined by the sampling and the FOV) as well as the
-        zero padding factor"""
-        return fftshift(fftfreq(self.zero_padding, self.pixel_scale))
+        Parameters
+        ----------
+        fft_frequency_axis: Quantity
+            The FFT frequency axis [cycles/astropy.units.m]
 
-    @property
-    def fftscaling2m(self):
-        """Fetches the FFT's scaling in meters"""
-        cycles_per_rad = np.diff(self.freq_axis)[0].to(1/u.rad)
-        return cycles_per_rad.value*self.wl.to(u.m)
+        Returns
+        -------
+        meter_scaling: astropy.units.Quantity
+        """
+        return (np.diff(fft_frequency_axis)[0].to(1/u.rad)).value*self.wl.to(u.m)
 
-    @property
-    def fftscaling2Mlambda(self):
-        """Fetches the FFT's scaling in mega lambda"""
-        return self.fftscaling2m/self.wl
-
-    @property
-    def fftaxis_m_end(self):
-        """Fetches the endpoint of the FFT's axis in meters"""
-        return self.fftscaling2m*self.model_centre
-
-    @property
-    def fftaxis_Mlambda_end(self):
-        """Fetches the endpoint of the FFT's axis in mega lambdas"""
-        return self.fftscaling2Mlambda*self.model_centre
-
-    @property
-    def fftaxis_m(self):
-        """Gets the FFT's axis's in [m]"""
-        return np.linspace(-self.fftaxis_m_end, self.fftaxis_m_end,
-                           self.dim, endpoint=False)
-
-    @property
-    def fftaxis_Mlambda(self):
-        """Gets the FFT's axis's endpoints in [Mlambdas]"""
-        return np.linspace(-self.fftaxis_Mlambda_end, self.fftaxis_Mlambda_end,
-                           self.dim, endpoint=False)
-
-    @property
-    def grid_m(self):
-        return self.fftaxis_m, self.fftaxis_m
-
-    @property
-    def zero_padding(self):
-        """The new size of the image in [px] to be applied with zero padding"""
-        return 2**int(np.log2(self.model_unpadded_dim)+self.zero_padding_order)
-
-    def zero_pad_model(self, image: Quantity):
+    def zero_pad(self, image: Quantity):
         """This adds zero padding to the model image before it is transformed
         to increase the sampling in the FFT image
         """
         # TODO: Check if the zero padding moves the centre of the image -> Should be ok?
-        padded_image = np.zeros((self.zero_padding, self.zero_padding))
-        pad_centre = padded_image.shape[0]//2
-        mod_min, mod_max = pad_centre-self.model_centre, pad_centre+self.model_centre
-        padded_image[mod_min:mod_max, mod_min:mod_max] = image
+        padded_image = np.zeros((self.dim, self.dim))
+        mod_min = self.model_centre-self.unpadded_centre
+        mod_max = self.model_centre+self.unpadded_centre
+        padded_image[mod_min:mod_max, mod_min:mod_max] = image.value
         return padded_image
+
+    def window(self):
+        ...
+
+    def get_fft(self) -> np.ndarray:
+        """Shifts the middle of the image to the top left and then vvaluates the two
+        dimensional FFT before shifting it back
+
+        Returns
+        --------
+        fourier_transform: np.ndarray
+        """
+        return np.fft.ifftshift(np.fft.fft2(np.fft.fftshift(self.model)))
+
+    def get_amp_phase(self) -> List[Quantity]:
+        """Gets the amplitude and the phase of the FFT
+        Returns
+        --------
+        amp: astropy.units.Quantity
+            The correlated fluxes or normed visibilities or visibilities
+            squared pertaining to the function's settings
+        phase: astropy.units.Quantity
+            The phase information of the image after FFT
+        """
+        return np.abs(self.ft), np.angle(self.ft, deg=True)
 
     def get_uv2fft2(self, uvcoords: Quantity, uvcoords_cphase: Quantity) -> Quantity:
         """Interpolates the input (u, v)-coordinates to the grid of the FFT
@@ -135,51 +145,30 @@ class FastFourierTransform:
             uv-coordinates for the closure phases to overplot on the phase plot
         """
         grid = tuple(axis.value for axis in self.grid_m)
-        real_corr = interpn(grid, np.real(self.ft), uvcoords.value,
-                            method='linear', bounds_error=False,
-                            fill_value=None)
-        imag_corr = interpn(grid, np.imag(self.ft), uvcoords.value,
-                            method='linear', bounds_error=False,
-                            fill_value=None)
+        real_corr = scipy.interpolate.interpn(grid, np.real(self.ft),
+                                              uvcoords.value,
+                                              method='linear', bounds_error=False,
+                                              fill_value=None)
+        imag_corr = scipy.interpolate.interpn(grid, np.imag(self.ft),
+                                              uvcoords.value,
+                                              method='linear', bounds_error=False,
+                                              fill_value=None)
 
         amp = np.abs(real_corr + 1j*imag_corr)
-        real_phase = interpn(grid, np.real(self.ft), uvcoords_cphase.value,
-                             method='linear', bounds_error=False,
-                             fill_value=None)
-        imag_phase = interpn(grid, np.imag(self.ft), uvcoords_cphase.value,
-                             method='linear', bounds_error=False,
-                             fill_value=None)
+        real_phase = scipy.interpolate.interpn(grid, np.real(self.ft),
+                                               uvcoords_cphase.value,
+                                               method='linear', bounds_error=False,
+                                               fill_value=None)
+        imag_phase = scipy.interpolate.interpn(grid, np.imag(self.ft),
+                                               uvcoords_cphase.value,
+                                               method='linear', bounds_error=False,
+                                               fill_value=None)
         cphases = np.angle(real_phase + 1j*imag_phase, deg=True)
         cphases = np.array(cphases).reshape(3, uvcoords_cphase.shape[1])
         cphases = np.sum(cphases, axis=0)
         # TODO: Check what impact this here has?
         cphases = np.degrees((np.radians(cphases) + np.pi) % (2*np.pi) - np.pi)
         return amp, cphases
-
-    def get_amp_phase(self) -> List[Quantity]:
-        """Gets the amplitude and the phase of the FFT
-
-        Returns
-        --------
-        amp: astropy.units.Quantity
-            The correlated fluxes or normed visibilities or visibilities
-            squared pertaining to the function's settings
-        phase: astropy.units.Quantity
-            The phase information of the image after FFT
-        """
-        return np.abs(self.ft), np.angle(self.ft, deg=True)
-
-    def do_fft2(self) -> Quantity:
-        """Does the 2D-FFT and returns the 2D-FFT and shifts the centre to the
-        middle
-
-        Returns
-        --------
-        ft: np.ndarray
-        """
-        # TODO: Think of making this more local
-        self.model = self.zero_pad_model(self.model)
-        return ifftshift(fft2(fftshift(self.model)))
 
     def plot_amp_phase(self, matplot_axes: Optional[List] = [],
                        zoom: Optional[int] = 500,
@@ -201,7 +190,7 @@ class FastFourierTransform:
             If not empty then the plots will be overplotted with the
             given (u, v)-coordinates
         plt_save: bool, optional
-            Saves the plot if toggled on
+            Saves the plot if toggled on, else if not part of another plot, will show it
         """
         if matplot_axes:
             fig, ax, bx, cx = matplot_axes
@@ -209,21 +198,20 @@ class FastFourierTransform:
             fig, axarr = plt.subplots(1, 3, figsize=(15, 5))
             ax, bx, cx = axarr.flatten()
 
-        fov_scale = (self.pixel_scale*self.model_unpadded_dim).value
-        fftaxis_m_end = self.fftaxis_m_end.value
-        fftaxis_Mlambda_end = self.fftaxis_Mlambda_end.value
-        zoom_Mlambda = (zoom*u.dimensionless_unscaled)/self.wl.value
+        axis_meter_endpoint = self.axis_meter_endpoint.value
+        axis_Mlambda_endpoint = self.axis_Mlambda_endpoint.value
+        zoom_Mlambda = zoom/self.wl.value
 
         vmax = (np.sort(self.unpadded_model.flatten())[::-1][1]).value
 
         amp, phase = self.get_amp_phase()
         ax.imshow(self.unpadded_model.value, vmax=vmax, interpolation="None",
-                  extent=[-fov_scale, fov_scale, -fov_scale, fov_scale])
-        cbx = bx.imshow(amp, extent=[-fftaxis_m_end, fftaxis_m_end-1,
-                                     -fftaxis_Mlambda_end, fftaxis_Mlambda_end-1],
+                  extent=[-self.fov_scale, self.fov_scale, -self.fov_scale, self.fov_scale])
+        cbx = bx.imshow(amp, extent=[-axis_meter_endpoint, axis_meter_endpoint,
+                                     -axis_Mlambda_endpoint, axis_Mlambda_endpoint],
                         interpolation="None", aspect=self.wl.value)
-        ccx = cx.imshow(phase, extent=[-fftaxis_m_end, fftaxis_m_end-1,
-                                       -fftaxis_Mlambda_end, fftaxis_Mlambda_end-1],
+        ccx = cx.imshow(phase, extent=[-axis_meter_endpoint, axis_meter_endpoint,
+                                       -axis_Mlambda_endpoint, axis_Mlambda_endpoint],
                         interpolation="None", aspect=self.wl.value)
 
         fig.colorbar(cbx, fraction=0.046, pad=0.04, ax=bx, label="Flux [Jy]")
@@ -259,7 +247,7 @@ class FastFourierTransform:
                 cx.scatter(ucoord, vcoord_cphase[i], color=colors[i])
 
         if plt_save:
-            plt.savefig(f"{self.wl}_FFT_plot.png")
+            plt.savefig(f"{self.wl.value}-{self.wl.unit}_FFT_plot.png")
         else:
             if not matplot_axes:
                 plt.show()

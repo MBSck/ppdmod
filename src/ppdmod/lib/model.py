@@ -4,7 +4,7 @@ import astropy.units as u
 from astropy.units import Quantity
 from typing import Tuple, List, Optional
 
-from .utils import IterNamespace, make_fixed_params, _set_ones
+from .utils import IterNamespace, make_fixed_params, _set_ones, _make_axis
 
 # TODO: Make sure all is tested! Write test for set_ones and improve all tests
 # TODO: Make good docstrings
@@ -48,13 +48,11 @@ class Model:
         """
         # TODO: Does center shift, xc, yc need to be applied?
         if self._component_name == "delta":
-            x = np.linspace(-self.fixed_params.image_size//2,
-                            self.fixed_params.image_size//2,
-                            self.fixed_params.image_size, endpoint=False)*self.pixel_scaling
+            x = _make_axis(self.fixed_params.image_size//2, self.fixed_params.image_size)
         else:
-            x = np.linspace(-self.fixed_params.image_size//2,
-                            self.fixed_params.image_size//2,
-                            self.fixed_params.pixel_sampling, endpoint=False)*self.pixel_scaling
+            x = _make_axis(self.fixed_params.image_size//2, self.fixed_params.pixel_sampling)
+
+        x *= self.pixel_scaling
         y = x[:, np.newaxis]
 
         # NOTE: This was taken from Jozsef's code and until here output is equal

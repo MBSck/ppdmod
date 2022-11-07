@@ -66,12 +66,16 @@ class CombinedModel:
 
     def eval_model(self) -> Quantity:
         """Evaluates the model's radius"""
-        image = None
+        image, gaussian_kernel = None, None
         for i, component in enumerate(self.components):
             component_attrs = self._components_attrs[i]
             if component_attrs.component == "delta":
                 self._stellar_flux_func = component.eval_flux
                 continue
+
+            if component_attrs.component == "gaussian":
+                gaussian_kernel = component.eval_model(component_attrs.params)
+
             if ("axis_ratio" in component_attrs.params._fields)\
                     and (self.geometric_params):
                 component_attrs.params.axis_ratio = self.geometric_params.axis_ratio
@@ -108,6 +112,13 @@ class CombinedModel:
                 image = temp_image
             else:
                 image += temp_image
+
+        if gaussian_kernel is not None:
+            if image is None:
+                image = gaussian_kernel
+            else:
+                image *= gaussian_kernel
+
         return image
 
     def eval_flux(self, wavelength: Quantity) -> Quantity:
