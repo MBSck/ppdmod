@@ -38,14 +38,17 @@ class GaussComponent(Model):
         model: astropy.units.Quantity
         """
         image = self._set_grid()
-        return (1/(np.sqrt(np.pi/(4*np.log(2)))*params.fwhm))\
-            *np.exp((-4*np.log(2)*image**2)/params.fwhm**2)
+        return np.sqrt(4*np.log(2*params.fwhm.value)/np.pi)*\
+            np.exp(-4*np.log(2)*image**2/params.fwhm**2)
 
 
 if __name__ == "__main__":
     fixed_params = make_fixed_params(10, 128, 1500, 7900, 140, 19)
     gauss = GaussComponent(fixed_params)
     params = _make_params([4.], [u.mas], ["fwhm"])
-    plt.imshow(gauss.eval_model(params).value)
+    print(params)
+    gaussian = gauss.eval_model(params)
+    print(gaussian.unit)
+    plt.imshow(gaussian.value)
     plt.show()
 

@@ -115,7 +115,7 @@ class CombinedModel:
 
         if gaussian_kernel is not None:
             if image is None:
-                image = gaussian_kernel
+                image = gaussian_kernel*u.mas
             else:
                 image *= gaussian_kernel
 
