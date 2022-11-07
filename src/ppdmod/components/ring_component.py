@@ -49,7 +49,9 @@ class RingComponent(Model):
             The image's radius [astropy.units.mas]
         """
         image = self._set_grid([params.axis_ratio, params.pa])
-        image[image < params.inner_radius] = 0.
+
+        if params.inner_radius != 0.:
+            image[image < params.inner_radius] = 0.
 
         if params.outer_radius != 0.:
             image[image > params.outer_radius] = 0.

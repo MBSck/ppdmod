@@ -1,3 +1,4 @@
+import cv2
 import scipy
 import numpy as np
 import astropy.units as u
@@ -23,20 +24,12 @@ class FastFourierTransform:
         self.wl = wavelength
         self.pixel_scaling = pixel_scaling
 
-        # TODO: Check how long copying takes?
-        self.unpadded_model = image.copy()
         self.unpadded_dim = image.shape[0]
         self.unpadded_centre = self.unpadded_dim//2
 
         self.fov_scale = (self.pixel_scaling*self.unpadded_centre).value
-
-        if zero_padding_order < 0:
-            raise ValueError("Zero padding order cannot be negative!")
-        else:
-            self.dim = 2**int(np.log2(self.unpadded_dim)+zero_padding_order)
-
+        self.model, self.unpadded_model, self.dim = self.zero_pad(image, zero_padding_order)
         self.model_centre = self.dim//2
-        self.model = self.zero_pad(image)
 
         self.ft = self.get_fft()
         self.fftfreq_axis = self._get_fftfreq_axis(self.dim, self.pixel_scaling)
@@ -81,16 +74,21 @@ class FastFourierTransform:
         """
         return (np.diff(fft_frequency_axis)[0].to(1/u.rad)).value*self.wl.to(u.m)
 
-    def zero_pad(self, image: Quantity):
+    def zero_pad(self, image: Quantity, zero_padding_order: int):
         """This adds zero padding to the model image before it is transformed
         to increase the sampling in the FFT image
         """
+        dim = 2**int(np.log2(self.unpadded_dim)+zero_padding_order)
+        model_centre = dim//2
+        if zero_padding_order == 0:
+            return image, image, dim
+
         # TODO: Check if the zero padding moves the centre of the image -> Should be ok?
-        padded_image = np.zeros((self.dim, self.dim))
-        mod_min = self.model_centre-self.unpadded_centre
-        mod_max = self.model_centre+self.unpadded_centre
-        padded_image[mod_min:mod_max, mod_min:mod_max] = image.value
-        return padded_image
+        padded_image = np.zeros((dim, dim))
+        mod_min, mod_max = model_centre-self.unpadded_centre,\
+            model_centre+self.unpadded_centre
+        padded_image[mod_min:mod_max, mod_min:mod_max] = image
+        return padded_image*image.unit, image, dim
 
     def window(self):
         ...
@@ -103,7 +101,7 @@ class FastFourierTransform:
         --------
         fourier_transform: np.ndarray
         """
-        return np.fft.ifftshift(np.fft.fft2(np.fft.fftshift(self.model)))
+        return np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(self.model.value)))
 
     def get_amp_phase(self) -> List[Quantity]:
         """Gets the amplitude and the phase of the FFT
@@ -115,7 +113,7 @@ class FastFourierTransform:
         phase: astropy.units.Quantity
             The phase information of the image after FFT
         """
-        return np.abs(self.ft), np.angle(self.ft, deg=True)
+        return np.abs(self.ft)*self.model.unit, np.angle(self.ft, deg=True)*u.deg
 
     def get_uv2fft2(self, uvcoords: Quantity, uvcoords_cphase: Quantity) -> Quantity:
         """Interpolates the input (u, v)-coordinates to the grid of the FFT
@@ -163,7 +161,7 @@ class FastFourierTransform:
                                                uvcoords_cphase.value,
                                                method='linear', bounds_error=False,
                                                fill_value=None)
-        cphases = np.angle(real_phase + 1j*imag_phase, deg=True)
+        cphases = np.angle(real_phase + 1j*imag_phase, deg=True).value*u.deg
         cphases = np.array(cphases).reshape(3, uvcoords_cphase.shape[1])
         cphases = np.sum(cphases, axis=0)
         # TODO: Check what impact this here has?
@@ -207,11 +205,11 @@ class FastFourierTransform:
         amp, phase = self.get_amp_phase()
         ax.imshow(self.unpadded_model.value, vmax=vmax, interpolation="None",
                   extent=[-self.fov_scale, self.fov_scale, -self.fov_scale, self.fov_scale])
-        cbx = bx.imshow(amp, extent=[-axis_meter_endpoint, axis_meter_endpoint,
-                                     -axis_Mlambda_endpoint, axis_Mlambda_endpoint],
+        cbx = bx.imshow(amp.value, extent=[-axis_meter_endpoint, axis_meter_endpoint,
+                                           -axis_Mlambda_endpoint, axis_Mlambda_endpoint],
                         interpolation="None", aspect=self.wl.value)
-        ccx = cx.imshow(phase, extent=[-axis_meter_endpoint, axis_meter_endpoint,
-                                       -axis_Mlambda_endpoint, axis_Mlambda_endpoint],
+        ccx = cx.imshow(phase.value, extent=[-axis_meter_endpoint, axis_meter_endpoint,
+                                             -axis_Mlambda_endpoint, axis_Mlambda_endpoint],
                         interpolation="None", aspect=self.wl.value)
 
         fig.colorbar(cbx, fraction=0.046, pad=0.04, ax=bx, label="Flux [Jy]")
@@ -221,8 +219,8 @@ class FastFourierTransform:
         bx.set_title("Amplitude of FFT")
         cx.set_title("Phase of FFT")
 
-        ax.set_xlabel("RA [mas]")
-        ax.set_ylabel("DEC [mas]")
+        ax.set_xlabel(r"$\alpha$ [mas]")
+        ax.set_ylabel(r"$\delta$ [mas]")
 
         bx.set_xlabel("u [m]")
         bx.set_ylabel(r"v [M$\lambda$]")
