@@ -4,6 +4,7 @@ import numpy as np
 import astropy.units as u
 import matplotlib.pyplot as plt
 
+from PIL import Image
 from astropy.units import Quantity
 from typing import List, Optional
 
@@ -79,18 +80,16 @@ class FastFourierTransform:
         to increase the sampling in the FFT image
         """
         dim = 2**int(np.log2(self.unpadded_dim)+zero_padding_order)
-        model_centre = dim//2
+        new_dims = [dim//2-self.unpadded_centre]*4
         if zero_padding_order == 0:
             return image, image, dim
 
-        # TODO: Check if the zero padding moves the centre of the image -> Should be ok?
-        padded_image = np.zeros((dim, dim))
-        mod_min, mod_max = model_centre-self.unpadded_centre,\
-            model_centre+self.unpadded_centre
-        padded_image[mod_min:mod_max, mod_min:mod_max] = image
+        padded_image = cv2.copyMakeBorder(image.value, *new_dims, cv2.BORDER_CONSTANT)
         return padded_image*image.unit, image, dim
 
+    # TODO: Implement this
     def window(self):
+        """Window function for the 2D-FFT"""
         ...
 
     def get_fft(self) -> np.ndarray:
@@ -101,10 +100,11 @@ class FastFourierTransform:
         --------
         fourier_transform: np.ndarray
         """
-        return np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(self.model.value)))
+        return np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(self.model)))
 
-    def get_amp_phase(self) -> List[Quantity]:
+    def get_amp_phase(self, phase_wrap: Optional[bool] = False) -> List[Quantity]:
         """Gets the amplitude and the phase of the FFT
+
         Returns
         --------
         amp: astropy.units.Quantity
@@ -113,7 +113,10 @@ class FastFourierTransform:
         phase: astropy.units.Quantity
             The phase information of the image after FFT
         """
-        return np.abs(self.ft)*self.model.unit, np.angle(self.ft, deg=True)*u.deg
+        amp, phase = cv2.cartToPolar(self.ft.real, self.ft.imag)
+        if phase_wrap:
+            phase = ((phase + np.pi) % (2 * np.pi) - np.pi)*-1
+        return amp*self.model.unit, np.rad2deg(phase)*u.deg
 
     def get_uv2fft2(self, uvcoords: Quantity, uvcoords_cphase: Quantity) -> Quantity:
         """Interpolates the input (u, v)-coordinates to the grid of the FFT
@@ -161,7 +164,7 @@ class FastFourierTransform:
                                                uvcoords_cphase.value,
                                                method='linear', bounds_error=False,
                                                fill_value=None)
-        cphases = np.angle(real_phase + 1j*imag_phase, deg=True).value*u.deg
+        cphases = np.angle(real_phase + 1j*imag_phase, deg=True)*u.deg
         cphases = np.array(cphases).reshape(3, uvcoords_cphase.shape[1])
         cphases = np.sum(cphases, axis=0)
         # TODO: Check what impact this here has?
@@ -172,6 +175,7 @@ class FastFourierTransform:
                        zoom: Optional[int] = 500,
                        uv_coords: Optional[Quantity] = None,
                        uv_coords_cphase: Optional[Quantity] = None,
+                       phase_wrap: Optional[bool] = False,
                        plt_save: Optional[bool] = False) -> None:
         """This plots the input model for the FFT as well as the resulting
         amplitudes and phases for units of both [m] and [Mlambda]
@@ -202,7 +206,7 @@ class FastFourierTransform:
 
         vmax = (np.sort(self.unpadded_model.flatten())[::-1][1]).value
 
-        amp, phase = self.get_amp_phase()
+        amp, phase = self.get_amp_phase(phase_wrap=phase_wrap)
         ax.imshow(self.unpadded_model.value, vmax=vmax, interpolation="None",
                   extent=[-self.fov_scale, self.fov_scale, -self.fov_scale, self.fov_scale])
         cbx = bx.imshow(amp.value, extent=[-axis_meter_endpoint, axis_meter_endpoint,
