@@ -87,7 +87,8 @@ def lnlike(theta: np.ndarray, data: DataHandler) -> float:
     cphases_chi_sq = chi_sq(data.cphases,
                             data.cphases_error,
                             cphases_mod, lnf)
-    return np.array(total_flux_chi_sq+corr_flux_chi_sq+cphases_chi_sq)
+    # return np.array(total_flux_chi_sq+corr_flux_chi_sq+cphases_chi_sq)
+    return np.array(corr_flux_chi_sq)
 
 def lnprior(theta: np.ndarray, priors: List[List[float]]) -> float:
     """Checks if all variables are within their priors (as well as

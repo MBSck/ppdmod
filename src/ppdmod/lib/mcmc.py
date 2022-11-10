@@ -163,7 +163,7 @@ if __name__ == "__main__":
     data.add_model_component(complete_ring)
     # data.add_model_component(inner_ring)
     # data.add_model_component(outer_ring)
-    data.fixed_params = make_fixed_params(30, 512, 1500, 7900, 140, 19, 1024)
+    data.fixed_params = make_fixed_params(100, 1024, 1500, 7900, 140, 19)
     data.geometric_priors = [[0.4, 1.], [0, 180]]
     # data.modulation_priors = [[0., 1.], [0, 360]]
     data.disc_priors = [[0., 1.], [0., 1.]]
