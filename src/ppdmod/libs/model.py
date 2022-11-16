@@ -50,12 +50,12 @@ class Model:
         if self._component_name == "delta":
             x = _make_axis(self.fixed_params.image_size//2, self.fixed_params.image_size)
         else:
-            x = _make_axis(self.fixed_params.image_size//2, self.fixed_params.pixel_sampling)
+            x = _make_axis(self.fixed_params.image_size//2,
+                           self.fixed_params.pixel_sampling)
 
         x *= self.pixel_scaling
         y = x[:, np.newaxis]
 
-        # NOTE: This was taken from Jozsef's code and until here output is equal
         if incline_params is not None:
             axis_ratio, pos_angle = incline_params
             pos_angle = pos_angle.to(u.rad)

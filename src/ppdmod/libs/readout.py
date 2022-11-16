@@ -270,8 +270,8 @@ class ReadoutFits:
     def get_closures_phase_uvcoords(self) -> Quantity:
         ucoords, vcoords = self.get_closures_phase_uvcoords_split()
         uv_coords = [[], [], []]
-        for i, ucoord in enumerate(ucoords):
-            uv_coords[i] = np.stack((ucoord, vcoords[i]), axis=1)
+        for index, ucoord in enumerate(ucoords):
+            uv_coords[index] = np.stack((ucoord, vcoords[index]), axis=1)
         return u.Quantity(uv_coords)
 
     # TODO: Write test for this

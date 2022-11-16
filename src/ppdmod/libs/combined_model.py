@@ -65,7 +65,7 @@ class CombinedModel:
         self._components_attrs.append(value)
 
     def eval_model(self) -> Quantity:
-        """Evaluates the model's radius"""
+        """Evaluates the model's image"""
         image, gaussian_kernel = None, None
         for i, component in enumerate(self.components):
             component_attrs = self._components_attrs[i]
@@ -122,7 +122,7 @@ class CombinedModel:
         return image
 
     def eval_flux(self, wavelength: Quantity) -> Quantity:
-        """Evaluates the flux for model"""
+        """Evaluates the model's flux"""
         image = self.eval_model()
         temperature = temperature_gradient(image, self._disc_params.q,
                                            self._inner_radius, self.inner_temperature)

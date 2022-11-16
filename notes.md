@@ -37,7 +37,7 @@
 - Try to use the FFT standalone and test if this works, if not then check the rest of the code again
 
 ## Working-on-ATM
-[] Ignore the error outputs for zero division
+[] Remove all superfluous imports (tests and such) from the individual scripts
 
 ### Slow Calculations
 [] Rework of reformat theta to components function
@@ -82,6 +82,7 @@
 [] Make function that gives stuff like 'eval_model' automatically docstrings
 
 ## Done
+[x] Ignore the error outputs for zero division
 [x] Fix scaling of correlated flux plotting
 [x] Check the plotting for the different epochs
 [x] Add the component info to the write_out
