@@ -144,32 +144,27 @@ def run_mcmc(data: DataHandler,
 
 
 if __name__ == "__main__":
-    # data_path = "../../../data/hd_142666_jozsef/nband"
-    # fits_files = ["HD_142666_2022-04-23T03_05_25_N_TARGET_FINALCAL_INT.fits"]
-    # fits_files = [os.path.join(data_path, file) for file in fits_files]
-    # flux_files = [None, None]
-    fits_files = ["../../../assets/synthetic/2022-10-30 21:28:43.746652_model_synthetic/synthetic_fit_0.fits"]
+    data_dir = "/data/beegfs/astro-storage/groups/matisse/scheuck/data/"
+    stem_dir = "matisse/GTO/hd163296/PRODUCTS/"
+    target_dirs = ["jozsef_files/HD_163296_2019-03-23T08_41_19_L_TARGET_FINALCAL_INT.fits",
+                   "jozsef/files/HD_163296_2019-05-06T08_19_51_L_TARGET_FINALCAL_INT.fits"]
+    fits_files = [os.path.join(data_dir, stem_dir, target_dir)\
+                  for target_dir in target_dirs]
     save_path = "../../../assets/model_results"
-    wavelengths = [12.0]
+    wavelengths = [3.2, 3.45, 3.7]
     data = DataHandler(fits_files, wavelengths)
     complete_ring = make_ring_component("inner_ring",
-                                        [[0., 0.], [0., 0.], [0.1, 6.], [0., 0.]])
-    inner_ring = make_ring_component("inner_ring",
-                                     [[0., 0.], [0., 0.], [1., 4.], [1., 6.]])
-    outer_ring = make_ring_component("outer_ring",
-                                     [[0., 0.], [0., 0.], [3., 10.], [0., 0.]])
+                                        [[0., 0.], [0., 0.], [1.5, 2.0], [0., 0.]])
     delta_component = make_delta_component("star")
     data.add_model_component(delta_component)
     data.add_model_component(complete_ring)
-    # data.add_model_component(inner_ring)
-    # data.add_model_component(outer_ring)
-    data.fixed_params = make_fixed_params(100, 1024, 1500, 7900, 140, 19)
-    data.geometric_priors = [[0.4, 1.], [0, 180]]
-    # data.modulation_priors = [[0., 1.], [0, 360]]
-    data.disc_priors = [[0., 1.], [0., 1.]]
+    data.fixed_params = make_fixed_params(50, 256, 1500, 9800, 101.2, 16, 1024)
+    data.geometric_priors = [[0.5, 0.7], [130, 150]]
+    data.modulation_priors = [[0.4, 0.67], [140, 200]]
+    data.disc_priors = [[0.64, 0.7], [0.64, 0.7]]
     data.lnf_priors = [-10., 10.]
-    data.mcmc = [50, 1000, 2500, 1e-4]
-    data.zero_padding_order = 2
-    data.tau_initial = 1.
-    run_mcmc(data, save_path=save_path, cpu_amount=32, show_plots=True)
+    data.mcmc = [35, 2500, 5000, 1e-4]
+    data.zero_padding_order = 0
+    data.tau_initial = 0.1
+    run_mcmc(data, save_path=save_path, cpu_amount=16, show_plots=True)
 

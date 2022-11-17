@@ -21,10 +21,10 @@ def plot(image: Quantity) -> None:
 def print_results(data: DataHandler, best_fit_total_fluxes,
                   best_fit_corr_fluxes, best_fit_cphases) -> None:
     """Prints the model's values"""
-    print("Best fit total fluxes:")
-    print(best_fit_total_fluxes)
-    print("Best real total fluxes:")
-    print(data.total_fluxes[0])
+    # print("Best fit total fluxes:")
+    # print(best_fit_total_fluxes)
+    # print("Best real total fluxes:")
+    # print(data.total_fluxes[0])
     print("--------------------------------------------------------------")
     print("Best fit correlated fluxes:")
     print(best_fit_corr_fluxes)
@@ -50,8 +50,8 @@ def write_data_to_ini(data: DataHandler, best_fit_total_fluxes,
                           "uvcoords": data.uv_coords,
                           "uvcoords_closure_phases": data.uv_coords_cphase,
                           "telescope_information": data.telescope_info}
-    real_data_dict = {"total_fluxes": data.total_fluxes,
-                      "total_fluxes_error": data.total_fluxes_error,
+    real_data_dict = {"total_fluxes": 0, # data.total_fluxes,
+                      "total_fluxes_error": 0, # data.total_fluxes_error,
                       "correlated_fluxes": data.corr_fluxes,
                       "correlated_fluxes_errors": data.corr_fluxes_error,
                       "closure_phases": data.cphases,
@@ -149,10 +149,10 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
         ax, bx = axarr.flatten()
 
     # TODO: Add the total flux to the limit estimation, and check that generally as well
-    all_amp = np.concatenate((data.total_fluxes.value[0], best_fit_total_fluxes.value))
-    y_min_amp, y_max_amp = 0, np.max(all_amp)
-    y_space_amp = np.sqrt(y_max_amp**2+y_min_amp**2)*0.1
-    y_lim_amp = [y_min_amp-y_space_amp, y_max_amp+y_space_amp]
+    # all_amp = np.concatenate((data.total_fluxes.value[0], best_fit_total_fluxes.value))
+    # y_min_amp, y_max_amp = 0, np.max(all_amp)
+    # y_space_amp = np.sqrt(y_max_amp**2+y_min_amp**2)*0.1
+    # y_lim_amp = [y_min_amp-y_space_amp, y_max_amp+y_space_amp]
 
     all_cphase = np.concatenate((data.cphases.value[0], best_fit_cphases.value))
     y_min_cphase, y_max_cphase = np.min(all_cphase), np.max(all_cphase)
@@ -172,9 +172,9 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
                     data.corr_fluxes_error.value[0][epochs*6:(epochs+1)*6],
                     color=color_real_data[epochs],
                     fmt='o', label="Observed data", alpha=0.6)
-        ax.errorbar(np.array([0]), data.total_fluxes[0][epochs],
-                    data.total_fluxes_error[0][epochs],
-                    color=color_real_data[epochs], fmt='o', alpha=0.6)
+        # ax.errorbar(np.array([0]), data.total_fluxes[0][epochs],
+                    # data.total_fluxes_error[0][epochs],
+                    # color=color_real_data[epochs], fmt='o', alpha=0.6)
         ax.scatter(data.baselines.value[epochs*6:(epochs+1)*6],
                    best_fit_corr_fluxes.value[epochs*6:(epochs+1)*6],
                    color=color_fit_data[epochs], marker='X', label="Model data")
@@ -191,7 +191,7 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
 
     ax.set_xlabel("Baselines [m]")
     ax.set_ylabel("Correlated fluxes [Jy]")
-    ax.set_ylim(y_lim_amp)
+    # ax.set_ylim(y_lim_amp)
     ax.legend(loc="upper right")
 
     bx.set_xlabel("Longest baselines [m]")

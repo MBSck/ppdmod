@@ -112,10 +112,10 @@ class FastFourierTransform:
         phase: astropy.units.Quantity
             The phase information of the image after FFT
         """
-        amp, phase = cv2.cartToPolar(self.ft.real, self.ft.imag)
+        amp, phase = np.abs(self.ft), np.angle(self.ft, deg=True)
         if phase_wrap:
             phase = ((phase + np.pi) % (2 * np.pi) - np.pi)*-1
-        return amp*self.model.unit, np.rad2deg(phase)*u.deg
+        return amp*self.model.unit, phase*u.deg
 
     def get_uv2fft2(self, uvcoords: Quantity, uvcoords_cphase: Quantity) -> Quantity:
         """Interpolates the input (u, v)-coordinates to the grid of the FFT

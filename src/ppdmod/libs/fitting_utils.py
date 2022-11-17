@@ -15,7 +15,8 @@ def loop_model(model: CombinedModel, data: DataHandler,
     """"""
     image = model.eval_flux(wavelength)
     total_flux = model.eval_total_flux(wavelength).value
-    total_flux_arr = np.array([total_flux for _ in range(data.corr_fluxes.shape[1] // 6)])
+    total_flux_arr = [total_flux]
+    # total_flux_arr = np.array([total_flux for _ in range(data.corr_fluxes.shape[1] // 6)])
     fourier = FastFourierTransform(image, wavelength,
                                         data.pixel_scaling, data.zero_padding_order)
     corr_flux_arr, cphases_arr = fourier.get_uv2fft2(data.uv_coords, data.uv_coords_cphase)
@@ -78,9 +79,9 @@ def lnlike(theta: np.ndarray, data: DataHandler) -> float:
     """
     lnf = theta[-1]
     total_flux_mod, corr_flux_mod, cphases_mod = calculate_model(theta[:-1], data)
-    total_flux_chi_sq = chi_sq(data.total_fluxes,
-                               data.total_fluxes_error,
-                               total_flux_mod, lnf)
+    # total_flux_chi_sq = chi_sq(data.total_fluxes,
+                               # data.total_fluxes_error,
+                               # total_flux_mod, lnf)
     corr_flux_chi_sq = chi_sq(data.corr_fluxes,
                               data.corr_fluxes_error,
                               corr_flux_mod, lnf)
@@ -88,6 +89,7 @@ def lnlike(theta: np.ndarray, data: DataHandler) -> float:
                             data.cphases_error,
                             cphases_mod, lnf)
     # return np.array(total_flux_chi_sq+corr_flux_chi_sq+cphases_chi_sq)
+    # return np.array(corr_flux_chi_sq+cphases_chi_sq)
     return np.array(corr_flux_chi_sq)
 
 def lnprior(theta: np.ndarray, priors: List[List[float]]) -> float:
