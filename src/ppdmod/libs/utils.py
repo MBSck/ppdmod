@@ -15,7 +15,13 @@ def calculate_effective_baselines(uv_coords: u.m,
                                   pos_angle: u.rad,
                                   wavelength: u.um) -> u.dimensionless_unscaled:
     """"""
-    u_coords, v_coords = map(lambda x: x.squeeze(), np.split(uv_coords, 2, axis=1))
+    if uv_coords.shape[0] == 3:
+        u_coords, v_coords = map(lambda x: x.squeeze(),
+                                 np.split(uv_coords, 2, axis=2))
+    else:
+        u_coords, v_coords = map(lambda x: x.squeeze(),
+                                 np.split(uv_coords, 2, axis=1))
+
     projected_baselines = np.sqrt(u_coords**2+v_coords**2)
     projected_baselines_angle = np.arctan2(u_coords, v_coords)\
             .to(u.rad,equivalencies=u.dimensionless_angles())

@@ -180,10 +180,11 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
                                                                 axis_ratio,
                                                                 pos_angle,
                                                                 data.wavelengths[index])
-            longest_baselines = calculate_effective_baselines(data.uv_coords_cphase[0],
+            longest_baselines = calculate_effective_baselines(data.uv_coords_cphase,
                                                               axis_ratio,
                                                               pos_angle,
                                                               data.wavelengths[index])
+            longest_baselines = np.max(longest_baselines, axis=0)
             ax.errorbar(effective_baselines.value[epochs*6:(epochs+1)*6],
                         corr_fluxes.value[epochs*6:(epochs+1)*6],
                         data.corr_fluxes_error[index].value[epochs*6:(epochs+1)*6],

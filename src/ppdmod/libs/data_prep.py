@@ -103,13 +103,6 @@ class DataHandler:
             raise IOError(f"Wrong unit has been input for tau initial. Needs to"\
                           f" be in [astropy.units.dimensionless_unscaled] or unitless!")
 
-    # TODO: Finish this function and get the poper baselines
-    @property
-    def longest_baselines(self):
-        # longest_baselines = self.baselines_cphase.flatten().copy()
-        # longest_baselines.sort()
-        return self.baselines_cphase[0]
-
     @property
     def pixel_scaling(self):
         if self.fixed_params is not None:
