@@ -17,7 +17,8 @@ def calculate_effective_baselines(uv_coords: u.m,
     """"""
     u_coords, v_coords = map(lambda x: x.squeeze(), np.split(uv_coords, 2, axis=1))
     projected_baselines = np.sqrt(u_coords**2+v_coords**2)
-    projected_baselines_angle = np.arctan2(u_coords, v_coords)
+    projected_baselines_angle = np.arctan2(u_coords, v_coords)\
+            .to(u.rad,equivalencies=u.dimensionless_angles())
     atd = np.arctan2(np.sin(projected_baselines_angle-pos_angle),
                      (np.cos(projected_baselines_angle-pos_angle)))
     u_coords_eff = projected_baselines*(np.cos(atd)*np.cos(pos_angle)\

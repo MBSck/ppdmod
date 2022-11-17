@@ -3,6 +3,7 @@ import numpy as np
 import configparser
 import itertools
 import matplotlib.pyplot as plt
+import astropy.units as u
 
 from pathlib import Path
 from astropy.units import Quantity
@@ -169,15 +170,19 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
     # TODO: Add more colors
     color_real_data = ["goldenrod", "darkgoldenrod", "gold"]
     color_fit_data = ["midnightblue", "darkblue", "blue"]
+    axis_ratio = data.theta_max[0]*u.dimensionless_unscaled
+    pos_angle = (data.theta_max[1]*u.deg).to(u.rad)
 
     for epochs in range(count_epochs):
         for index, corr_fluxes in enumerate(data.corr_fluxes):
             # NOTE: This calculates the effctive_baslines from the axis_ratio and positional_angle
             effective_baselines = calculate_effective_baselines(data.uv_coords,
-                                                                *data.theta_max[:2],
-                                                               data.wavelengths[index])
+                                                                axis_ratio,
+                                                                pos_angle,
+                                                                data.wavelengths[index])
             longest_baselines = calculate_effective_baselines(data.uv_coords_cphase[0],
-                                                              *data.theta_max[:2],
+                                                              axis_ratio,
+                                                              pos_angle,
                                                               data.wavelengths[index])
             ax.errorbar(effective_baselines.value[epochs*6:(epochs+1)*6],
                         corr_fluxes.value[epochs*6:(epochs+1)*6],
