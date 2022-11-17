@@ -459,4 +459,3 @@ if __name__ == "__main__":
     flux_file = "../../../data/tests/HD_142666_timmi2.txt"
     fits_file = "../../../data/hd_142666_jozsef/nband/HD_142666_2022-04-21T07_18_22_N_TARGET_FINALCAL_INT.fits"
     readout = ReadoutFits("../../../data/tests/test.fits", flux_file)
-    print(readout.get_closures_phase_uvcoords())
