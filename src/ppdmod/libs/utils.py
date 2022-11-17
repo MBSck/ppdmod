@@ -12,12 +12,17 @@ from astropy.units import Quantity
 
 def calculate_effective_baselines(uv_coords: u.m,
                                   axis_ratio: u.dimensionless_unscaled,
-                                  pos_angle: u.rad) -> u.m:
+                                  pos_angle: u.rad,
+                                  wavelength: u.um) -> u.dimensionless_unscaled:
     """"""
     u_coords, v_coords = map(lambda x: x.squeeze(), np.split(uv_coords, 2, axis=1))
-    u_coords_rot, v_coords_rot = u_coords*np.cos(pos_angle)+v_coords*np.sin(pos_angle)/axis_ratio,\
-        (v_coords*np.cos(pos_angle)-u_coords*np.sin(pos_angle))
-    return np.sqrt(u_coords_rot**2+v_coords_rot**2)
+    projected_baselines = np.sqrt(u_coords**2+v_coords**2)
+    projected_baselines_a_rad = np.arctan2(u_coords, v_coords)
+    atd = np.arctan2(np.sin(pbla_rad-PA),(np.cos(pbla_rad-PA)))
+    ucoords_eff = pbl*(np.cos(atd)*np.cos(PA)- cos_i*np.sin(atd)*np.sin(PA))
+    vcoords_eff = pbl*(np.cos(atd)*np.sin(PA)+ cos_i*np.sin(atd)*np.cos(PA))
+    pbl_eff = np.sqrt(ucoords_eff**2+vcoords_eff**2)
+    return 
 
 
 def _convert_orbital_radius_to_parallax(orbital_radius: Quantity,

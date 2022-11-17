@@ -147,7 +147,7 @@ if __name__ == "__main__":
     data_dir = "/data/beegfs/astro-storage/groups/matisse/scheuck/data/"
     stem_dir = "matisse/GTO/hd163296/PRODUCTS/"
     target_dirs = ["jozsef_files/HD_163296_2019-03-23T08_41_19_L_TARGET_FINALCAL_INT.fits",
-                   "jozsef/files/HD_163296_2019-05-06T08_19_51_L_TARGET_FINALCAL_INT.fits"]
+                   "jozsef_files/HD_163296_2019-05-06T08_19_51_L_TARGET_FINALCAL_INT.fits"]
     fits_files = [os.path.join(data_dir, stem_dir, target_dir)\
                   for target_dir in target_dirs]
     save_path = "../../../assets/model_results"
@@ -163,7 +163,7 @@ if __name__ == "__main__":
     data.modulation_priors = [[0.4, 0.67], [140, 200]]
     data.disc_priors = [[0.64, 0.7], [0.64, 0.7]]
     data.lnf_priors = [-10., 10.]
-    data.mcmc = [35, 2500, 5000, 1e-4]
+    data.mcmc = [35, 1, 1, 1e-4]
     data.zero_padding_order = 0
     data.tau_initial = 0.1
     run_mcmc(data, save_path=save_path, cpu_amount=16, show_plots=True)

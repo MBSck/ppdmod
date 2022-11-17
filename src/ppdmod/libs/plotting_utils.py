@@ -101,7 +101,6 @@ def plot_fit_results(best_fit_total_fluxes, best_fit_corr_fluxes,
     """
     print_results(data, best_fit_total_fluxes,
                   best_fit_corr_fluxes, best_fit_cphases)
-    plot_wl = data.wavelengths[0]
     fig, axarr = plt.subplots(2, 3, figsize=(20, 10))
     ax, bx, cx = axarr[0].flatten()
     ax2, bx2, cx2 = axarr[1].flatten()
@@ -110,10 +109,9 @@ def plot_fit_results(best_fit_total_fluxes, best_fit_corr_fluxes,
                               best_fit_corr_fluxes, best_fit_cphases,
                               matplot_axes=[bx, cx])
     fourier.plot_amp_phase(matplot_axes=[fig, ax2, bx2, cx2],
-
                            zoom=500, uv_coords=data.uv_coords,
                            uv_coords_cphase=data.uv_coords_cphase)
-    plot_name = f"Best-fit-model_{plot_wl}.png"
+    plot_name = f"Best-fit-model_{data.wavelengths[0]}.png"
 
     if save_path is None:
         plt.savefig(plot_name)
@@ -149,9 +147,6 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
         fig, axarr = plt.subplots(1, 2, figsize=(10, 5))
         ax, bx = axarr.flatten()
 
-    # NOTE: This calculates the effctive_baslines from the axis_ratio and positional_angle
-    effective_baselines = calculate_effective_baselines(data.uv_coords,
-                                                        *data.theta_max[:2])
 
     # TODO: Add the total flux to the limit estimation, and check that generally as well
     # all_amp = np.concatenate((data.total_fluxes.value[0], best_fit_total_fluxes.value))
@@ -160,9 +155,12 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
     # y_lim_amp = [y_min_amp-y_space_amp, y_max_amp+y_space_amp]
 
     min_cphases, max_cphases = np.min(data.cphases.value), np.max(data.cphases.value)
-    min_mod_cphases, max_mod_cphases = np.min(best_fit_cphases), np.max(best_fit_cphases)
-    y_min_cphase, y_max_cphase = np.min(min_cphases, min_mod_cphases),\
-                                        np.max(max_cphases, max_mod_cphases)
+    min_mod_cphases, max_mod_cphases = np.min(best_fit_cphases.value),\
+            np.max(best_fit_cphases.value)
+    y_min_cphase = min_cphases if min_cphases < min_mod_cphases\
+            else min_mod_cphases
+    y_max_cphase = max_cphases if max_cphases > max_mod_cphases\
+            else max_mod_cphases
     y_space_cphase = np.sqrt(y_max_cphase**2+y_min_cphase**2)*0.1
     y_lim_cphase = [y_min_cphase-y_space_cphase, y_max_cphase+y_space_cphase]
 
@@ -173,40 +171,44 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
     color_fit_data = ["midnightblue", "darkblue", "blue"]
 
     for epochs in range(count_epochs):
-        if epochs == count_epochs:
-            break
         for index, corr_fluxes in enumerate(data.corr_fluxes):
+            # NOTE: This calculates the effctive_baslines from the axis_ratio and positional_angle
+            effective_baselines = calculate_effective_baselines(data.uv_coords,
+                                                                *data.theta_max[:2],
+                                                               data.wavelengths[index])
+            longest_baselines = calculate_effective_baselines(data.uv_coords_cphase[0],
+                                                              *data.theta_max[:2],
+                                                              data.wavelengths[index])
             ax.errorbar(effective_baselines.value[epochs*6:(epochs+1)*6],
                         corr_fluxes.value[epochs*6:(epochs+1)*6],
                         data.corr_fluxes_error[index].value[epochs*6:(epochs+1)*6],
                         color=color_real_data[epochs],
-                        fmt='o', label="Observed data", alpha=0.6)
+                        fmt='o', alpha=0.6)
             # ax.errorbar(np.array([0]), data.total_fluxes[index][epochs],
                         # data.total_fluxes_error[index][epochs],
                         # color=color_real_data[epochs], fmt='o', alpha=0.6)
             ax.scatter(effective_baselines.value[epochs*6:(epochs+1)*6],
                        best_fit_corr_fluxes[index].value[epochs*6:(epochs+1)*6],
-                       color=color_fit_data[epochs], marker='X', label="Model data")
+                       color=color_fit_data[epochs], marker='X')
             ax.scatter(np.array([0]), best_fit_total_fluxes.value[epochs],
                        marker='X', color=color_fit_data[epochs])
-            bx.errorbar(data.longest_baselines.value[epochs*4:(epochs+1)*4],
+            bx.errorbar(longest_baselines.value[epochs*4:(epochs+1)*4],
                         data.cphases[index].value[epochs*4:(epochs+1)*4],
                         data.cphases_error[index].value[epochs*4:(epochs+1)*4],
-                        color=color_real_data[epochs], fmt='o',
-                        label="Observed data", alpha=0.6)
-            bx.scatter(data.longest_baselines.value[epochs*4:(epochs+1)*4],
+                        color=color_real_data[epochs], fmt='o')
+            bx.scatter(longest_baselines.value[epochs*4:(epochs+1)*4],
                        best_fit_cphases[index].value[epochs*4:(epochs+1)*4],
-                       color=color_fit_data[epochs], marker='X', label="Model data")
+                       color=color_fit_data[epochs], marker='X')
 
-    ax.set_xlabel("Baselines [m]")
+    ax.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}/\lambda$ [M$\lambda$]")
     ax.set_ylabel("Correlated fluxes [Jy]")
     # ax.set_ylim(y_lim_amp)
-    ax.legend(loc="upper right")
+    # ax.legend(loc="upper right")
 
-    bx.set_xlabel("Longest baselines [m]")
+    bx.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}/\lambda$ [M$\lambda$]")
     bx.set_ylabel(fr"Closure Phases [$^\circ$]")
     bx.set_ylim(y_lim_cphase)
-    bx.legend(loc="upper right")
+    # bx.legend(loc="upper right")
 
 def plot_txt(ax, title_dict: Dict, text_dict: Dict,
              text_font_size: Optional[int] = 12) -> None:
