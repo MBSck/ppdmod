@@ -196,7 +196,7 @@ class DataHandler:
         return self._disc_priors
 
     @disc_priors.setter
-    def disc_priors(self, value):
+    def disc_priors(self, value: List[float]):
         units = [u.dimensionless_unscaled, u.dimensionless_unscaled]
         labels = ["q", "p"]
         self._disc_priors = _make_priors(value, units, labels)
@@ -267,8 +267,12 @@ class DataHandler:
                 self._labels.extend(["mod_amp", "mod_angle"])
 
             if self.disc_priors is not None:
-                self._priors.extend([prior.value.tolist() for prior in self.disc_priors])
-                self._labels.extend(["q", "p"])
+                if np.any(self.disc_priors.q.value):
+                    self._priors.append(self.disc_priors.q)
+                    self._labels.append("q")
+                if np.any(self.disc_priors.p.value):
+                    self._priors.append(self.disc_priors.p)
+                    self._labels.append("p")
 
             # TODO: Add all possibilities here with the geometric params
             for component in self.model_components:
@@ -306,12 +310,20 @@ class DataHandler:
                 break
 
         self.model_components = []
+        disc_params = []
         if "axis_ratio" in theta_dict:
             self.geometric_params = [theta_dict["axis_ratio"], theta_dict["pa"]]
         if "mod_angle" in theta_dict:
             self.modulation_params = [theta_dict["mod_angle"], theta_dict["mod_amp"]]
-        if "q" in theta_dict:
+
+        # TODO: This might need a rework for more complex models
+        if ("q" and "p") in theta_dict:
             self.disc_params = [theta_dict["q"], theta_dict["p"]]
+        else:
+            if "q" in theta_dict:
+                self.disc_params = [theta_dict["q"], 0.]
+            else:
+                self.disc_params = [0., theta_dict["p"]]
         if "lnf" in theta_dict:
             self.lnf = theta_dict["lnf"]
 
