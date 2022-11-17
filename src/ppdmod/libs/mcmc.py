@@ -135,8 +135,8 @@ def run_mcmc(data: DataHandler,
                       best_fit_cphases, save_path=output_path)
     plot_corner(sampler, data, save_path=output_path)
     plot_chains(sampler, data, save_path=output_path)
-    plot_fit_results(best_fit_total_fluxes[0], best_fit_corr_fluxes[0],
-                     best_fit_cphases[0], data, fourier, save_path=output_path)
+    plot_fit_results(best_fit_total_fluxes, best_fit_corr_fluxes,
+                     best_fit_cphases, data, fourier, save_path=output_path)
 
     if show_plots:
         plt.tight_layout()

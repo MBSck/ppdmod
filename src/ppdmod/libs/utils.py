@@ -10,6 +10,16 @@ from astropy.units import Quantity
 
 ################################ PHYSICS #################################################
 
+def calculate_effective_baselines(uv_coords: u.m,
+                                  axis_ratio: u.dimensionless_unscaled,
+                                  pos_angle: u.rad) -> u.m:
+    """"""
+    u_coords, v_coords = map(lambda x: x.squeeze(), np.split(uv_coords, 2, axis=1))
+    u_coords_rot, v_coords_rot = u_coords*np.cos(pos_angle)+v_coords*np.sin(pos_angle)/axis_ratio,\
+        (v_coords*np.cos(pos_angle)-u_coords*np.sin(pos_angle))
+    return np.sqrt(u_coords_rot**2+v_coords_rot**2)
+
+
 def _convert_orbital_radius_to_parallax(orbital_radius: Quantity,
                                         distance: Optional[Quantity] = None
                                         ) -> Quantity:
@@ -559,6 +569,6 @@ def make_gaussian_component(name: str, priors: List[List[float]] = None,
 
 # TODO: Make test for this function. Seems broken?
 if __name__ == "__main__":
-    fixed_params = make_fixed_params(50, 128, 1500, 7900, 140, 19)
-    gaussian = make_gaussian_component("gaussian_kernel", [[0., 5.]])
-    print(gaussian)
+    lst = [(5, 10), (4, 8), (7, 6)]*u.m
+    print(calculate_effective_baselines(lst, 0.5*u.dimensionless_unscaled,
+                                        (180*u.deg).to(u.rad)))
