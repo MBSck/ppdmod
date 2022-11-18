@@ -14,7 +14,19 @@ def calculate_effective_baselines(uv_coords: u.m,
                                   axis_ratio: u.dimensionless_unscaled,
                                   pos_angle: u.rad,
                                   wavelength: u.um) -> u.dimensionless_unscaled:
-    """"""
+    """Calculates the effective baselines from the projected baselines in MegaLambdas
+
+    Parameters
+    ----------
+    uv_coords: u.m
+        The (u, v)-coordinates
+    axis_ratio: u.dimensionless_unscaled
+        The axis ratio of the ellipse
+    pos_angle: u.rad
+        The positional angle of the object
+    wavelength: u.um
+        The wavelength to calulate the MegaLambda
+    """
     if uv_coords.shape[0] == 3:
         u_coords, v_coords = map(lambda x: x.squeeze(),
                                  np.split(uv_coords, 2, axis=2))
@@ -24,7 +36,7 @@ def calculate_effective_baselines(uv_coords: u.m,
 
     projected_baselines = np.sqrt(u_coords**2+v_coords**2)
     projected_baselines_angle = np.arctan2(u_coords, v_coords)\
-            .to(u.rad,equivalencies=u.dimensionless_angles())
+            .to(u.rad, equivalencies=u.dimensionless_angles())
     atd = np.arctan2(np.sin(projected_baselines_angle-pos_angle),
                      (np.cos(projected_baselines_angle-pos_angle)))
     u_coords_eff = projected_baselines*(np.cos(atd)*np.cos(pos_angle)\
@@ -34,9 +46,8 @@ def calculate_effective_baselines(uv_coords: u.m,
     return np.sqrt(u_coords_eff**2+v_coords_eff**2)/wavelength.value
 
 
-def _convert_orbital_radius_to_parallax(orbital_radius: Quantity,
-                                        distance: Optional[Quantity] = None
-                                        ) -> Quantity:
+def _convert_orbital_radius_to_parallax(orbital_radius: u.m,
+                                        distance: Optional[u.pc] = None) -> u.mas:
     """Calculates the parallax [astropy.units.mas] from the orbital radius
     [astropy.units.m]. The formula for the angular diameter is used
 
@@ -55,38 +66,36 @@ def _convert_orbital_radius_to_parallax(orbital_radius: Quantity,
     return (1*u.rad).to(u.mas)*(orbital_radius.to(u.m)/distance.to(u.m))
 
 
-def _convert_parallax_to_orbital_radius(parallax: Quantity,
-                                        distance: Optional[Quantity] = None
-                                        ) -> Quantity:
+def _convert_parallax_to_orbital_radius(parallax: u.mas,
+                                        distance: Optional[u.pc] = None) -> u.m:
     """Calculates the orbital radius [astropy.units.m] from the parallax
     [astropy.units.mas]. The formula for the angular diameter is used
 
     Parameters
     ----------
-    parallax: astropy.units.Quantity
-        The angle of the orbital radius [astropy.units.mas]
-    distance: astropy.units.Quantity
-        The distance to the star from the observer [astropy.units.pc]
+    parallax: u.mas
+        The angle of the orbital radius
+    distance: u.pc
+        The distance to the star from the observer
 
     Returns
     -------
-    orbital_radius: astropy.units.Quantity
-        The orbital radius [astropy.units.m]
+    orbital_radius: u.m
+        The orbital radius
     """
     return (parallax*distance.to(u.m))/(1*u.rad).to(u.mas)
 
 
-def _calculate_stellar_radius(luminosity_star: Quantity,
-                              effective_temperature: Quantity) -> Quantity:
+def _calculate_stellar_radius(luminosity_star: u.W, effective_temperature: u.K) -> u.m:
     """Calculates the stellar radius [astropy.units.m] from its attributes.
     Only for 'delta_component' functionality
 
     Parameters
     ----------
-    luminosity_star: astropy.units.Quantity
-        The luminosity of the star [astropy.units.W]
-    effective_temperature: astropy.units.Quantity
-        The effective temperature of the star [astropy.units.K]
+    luminosity_star: u.W
+        The luminosity of the star
+    effective_temperature: u.K
+        The effective temperature of the star
 
     Returns
     -------
@@ -97,28 +106,26 @@ def _calculate_stellar_radius(luminosity_star: Quantity,
 
 
 # TODO: Make test with Jozsef's values
-def stellar_flux(wavelength: Quantity,
-                 effective_temperature: Quantity,
-                 distance: Quantity,
-                 luminosity_star: Quantity) -> Quantity:
+def stellar_flux(wavelength: u.um, effective_temperature: u.K,
+                 distance: u.pc, luminosity_star: u.W) -> u.Jy:
     """Calculates the stellar flux from the distance and its radius.
     Only for 'delta_component' functionality
 
     Parameters
     ----------
-    wavelength: astropy.units.Quantity
-        The wavelength to be used for the BlackBody calculation [astropy.units.um]
-    luminosity_star: astropy.units.Quantity
-        The luminosity of the star [astropy.units.W]
-    effective_temperature: astropy.units.Quantity
-        The effective temperature of the star [astropy.units.K]
+    wavelength: u.um
+        The wavelength to be used for the BlackBody calculation
+    luminosity_star: u.W
+        The luminosity of the star
+    effective_temperature: u.K
+        The effective temperature of the star
     distance: astropy.units.Quantity
-        The distance to the star from the observer [astropy.units.pc]
+        The distance to the star from the observer
 
     Returns
     -------
-    stellar_flux: astropy.units.Quantity
-        The star's flux [astropy.units.Jy]
+    stellar_flux: u.Jy
+        The star's flux
     """
     plancks_law = models.BlackBody(temperature=effective_temperature)
     spectral_radiance = plancks_law(wavelength).to(u.erg/(u.cm**2*u.Hz*u.s*u.mas**2))
@@ -128,27 +135,25 @@ def stellar_flux(wavelength: Quantity,
     return (spectral_radiance*np.pi*(stellar_radius_angular)**2).to(u.Jy)
 
 
-def _calculate_sublimation_radius(inner_temperature: Quantity,
-                                  distance: Quantity,
-                                  luminosity_star: Quantity) -> Quantity:
+def _calculate_inner_radius(inner_temperature: u.K,
+                            distance: u.pc, luminosity_star: u.W) -> u.mas:
     """Calculates the sublimation radius at the inner rim of the disc
 
     Returns
     -------
-    sublimation_radius: astropy.units.Quantity
-        The sublimation radius [astropy.units.mas]
-    distance: astropy.units.Quantity
-        The distance to the star from the observer [astropy.units.pc]
-    luminosity_star: astropy.units.Quantity
-        The luminosity of the star [astropy.units.W]
+    sublimation_radius: u.K
+        The sublimation radius
+    distance: u.pc
+        The distance to the star from the observer
+    luminosity_star: u.W
+        The luminosity of the star
     """
     radius = np.sqrt(luminosity_star/(4*np.pi*c.sigma_sb*inner_temperature**4))
     return _convert_orbital_radius_to_parallax(radius, distance)
 
 
-def _calculate_sublimation_temperature(inner_radius: Quantity,
-                                       distance: Quantity,
-                                       luminosity_star: Quantity) -> Quantity:
+def _calculate_inner_temperature(inner_radius: u.mas,
+                                 distance: u.pc, luminosity_star: u.W) -> u.K:
     """Calculates the sublimation temperature at the inner rim of the disc
 
     Parameters
@@ -168,28 +173,25 @@ def _calculate_sublimation_temperature(inner_radius: Quantity,
     return (luminosity_star/(4*np.pi*c.sigma_sb*inner_radius**2))**(1/4)
 
 
-def temperature_gradient(radius: Quantity, power_law_exponent: float,
-                         inner_radius: Quantity,
-                         inner_temperature: Quantity) -> Quantity:
+def temperature_gradient(radius: u.mas, power_law_exponent: u.dimensionless_unscaled,
+                         inner_radius: u.mas, inner_temperature: u.K) -> u.K:
     """Calculates the temperature gradient
 
     Parameters
     ----------
-    radius: astropy.units.Quantity
+    radius: u.mas
         An array containing all the points for the radius extending outwards
-        [astropy.units.mas]
-    power_law_exponent: float
+    power_law_exponent: u.dimensionless_unscaled
         A float specifying the power law exponent of the temperature gradient "q"
-    inner_radius: astropy.units.Quantity
+    inner_radius: u.K
         The inner radius of the object, if not given then the sublimation radius is
-        used [astropy.units.mas]
-    inner_temperature: astropy.units.Quantity
-        The temperature of the inner rim [astropy.units.K]
+        used
+    inner_temperature: u.K
+        The temperature of the inner rim
 
     Returns
     -------
-    temperature_gradient: astropy.units.Quantity
-        The temperature gradient [astropy.units.K]
+    temperature_gradient: u.K
     """
     temperature = models.PowerLaw1D().evaluate(radius, inner_temperature,
                                                inner_radius, power_law_exponent)
@@ -197,26 +199,28 @@ def temperature_gradient(radius: Quantity, power_law_exponent: float,
     return temperature
 
 
-def optical_depth_gradient(radius: Quantity,
-                           power_law_exponent: float, inner_radius: Quantity,
-                           inner_optical_depth: Quantity) -> Quantity:
+def optical_depth_gradient(radius: u.mas,
+                           power_law_exponent: u.dimensionless_unscaled,
+                           inner_radius: u.mas,
+                           inner_optical_depth: u.dimensionless_unscaled
+                           ) -> u.dimensionless_unscaled:
     """Calculates the optical depth gradient
 
     Parameters
     ----------
-    radius: astropy.units.Quantity
+    radius: u.mas
         An array containing all the points for the radius extending outwards
-        [astropy.units.mas]
-    power_law_exponent: float
+    power_law_exponent: u.dimensionless_unscaled
         A float specifying the power law exponent of the temperature gradient "q"
-    inner_radius: astropy.units.Quantity
+    inner_radius: u.mas
         The inner radius of the object, if not given then the sublimation radius is
-        used [astropy.units.mas]
-    inner_optical_depth: Quantity
-        The optical depth at the inner radius [astropy.units.dimensionless_unscaled]
+        used
+    inner_optical_depth: u.dimensionless_unscaled
+        The optical depth at the inner radius
 
     Returns
     -------
+    optical_depth_gradient: u.dimensionless_unscaled
     """
     optical_depth = models.PowerLaw1D().evaluate(radius, inner_optical_depth,
                                                  inner_radius, power_law_exponent)
@@ -224,30 +228,30 @@ def optical_depth_gradient(radius: Quantity,
     return optical_depth
 
 
-def flux_per_pixel(wavelength: Quantity, temperature_distribution: Quantity,
-                   optical_depth: Quantity, pixel_scaling: Quantity) -> Quantity:
+def flux_per_pixel(wavelength: u.um, temperature_distribution: u.K,
+                   optical_depth: u.dimensionless_unscaled, pixel_size: u.mas) -> u.Jy:
     """Calculates the total flux of the model
 
     Parameters
     ----------
-    wavelength: astropy.units.Quantity
-        The wavelength to be used for the BlackBody calculation [astropy.units.um]
-    temperature: astropy.units.Quantity
-        The temperature distribution of the disc [astropy.units.K]
-    optical_depth: astropy.units.Quantity
-        The optical depth of the disc [astropy.units.dimensionless_unscaled]
-    pixel_scaling: astropy.units.Quantity
-        The pixel scaling of the field of view [astropy.units.mas]/px
+    wavelength: u.um
+        The wavelength to be used for the BlackBody calculation
+    temperature: u.K
+        The temperature distribution of the disc
+    optical_depth: u.dimensionless_unscaled
+        The optical depth of the disc
+    pixel_size: u.mas/px
+        The pixel size determined by the field of view and the number of pixels
 
     Returns
     -------
-    flux: astropy.units.Quantity
-        The object's flux per pixel [astropy.units.Jy]/px
+    flux: u.Jy/px
+        The object's flux per pixel
     """
     plancks_law = models.BlackBody(temperature=temperature_distribution)
     # NOTE: Converts sr to mas**2. Field of view = sr or mas**2
     spectral_radiance = plancks_law(wavelength).to(u.erg/(u.cm**2*u.Hz*u.s*u.mas**2))
-    flux_per_pixel = spectral_radiance*pixel_scaling**2
+    flux_per_pixel = spectral_radiance*pixel_size**2
     return (flux_per_pixel.to(u.Jy))*(1-np.exp(-optical_depth))
 
 ################################ GENERAL UTILITY #########################################
@@ -255,7 +259,7 @@ def flux_per_pixel(wavelength: Quantity, temperature_distribution: Quantity,
 class IterNamespace(SimpleNamespace):
     """Contains the functionality of a SimpleNamespace with the addition of a '_fields'
     attribute and the ability to iterate over the values of the '__dict__'"""
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self._fields = tuple(attr for attr in self.__dict__.keys())
 
@@ -355,7 +359,8 @@ def _set_ones(image: Quantity,
     return image.value if rvalue else image
 
 
-def rebin_image(image: Quantity, new_shape: Tuple, rfactor: Optional[bool] = False):
+def rebin_image(image: Quantity, new_shape: Tuple,
+                rfactor: Optional[bool] = False) -> Quantity:
     """Rebins a 2D-image to a new input shape
 
     Parameters
