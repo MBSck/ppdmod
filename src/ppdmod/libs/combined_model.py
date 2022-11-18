@@ -5,7 +5,7 @@ from typing import List
 from astropy.units import Quantity
 
 from .utils import IterNamespace, make_fixed_params, make_delta_component,\
-    make_ring_component, _make_params, _calculate_sublimation_temperature,\
+    make_ring_component, _make_params, _calculate_inner_temperature,\
     temperature_gradient, optical_depth_gradient, flux_per_pixel, rebin_image
 from ..components import DeltaComponent, GaussComponent, RingComponent
 
@@ -46,16 +46,16 @@ class CombinedModel:
         return self._components_initialised
 
     @property
-    def pixel_scaling(self):
+    def pixel_size(self):
         return self._model_init_params.fov/self._model_init_params.image_size
 
     @property
     def inner_temperature(self):
         """Gets the inner temperature according to the radius"""
         if self._inner_radius is not None:
-            return _calculate_sublimation_temperature(self._inner_radius,
-                                                      self._model_init_params.distance,
-                                                      self._model_init_params.lum_star)
+            return _calculate_inner_temperature(self._inner_radius,
+                                                self._model_init_params.distance,
+                                                self._model_init_params.lum_star)
         else:
             return self._model_init_params.sub_temp
 
@@ -129,7 +129,7 @@ class CombinedModel:
 
         # optical_depth = optical_depth_gradient(image, self._disc_params.p,
                                                # self._inner_radius, self.tau)
-        flux = flux_per_pixel(wavelength, temperature, self.tau, self.pixel_scaling)
+        flux = flux_per_pixel(wavelength, temperature, self.tau, self.pixel_size)
 
         if self._model_init_params.pixel_sampling > self._model_init_params.image_size:
             new_shape = (self._model_init_params.image_size,

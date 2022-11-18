@@ -19,20 +19,20 @@ class FastFourierTransform:
     ...
     """
     def __init__(self, image: Quantity, wavelength: Quantity,
-                 pixel_scaling: Quantity, zero_padding_order: Optional[int] = 0) -> None:
+                 pixel_size: Quantity, zero_padding_order: Optional[int] = 0) -> None:
         """"""
         self.wl = wavelength
-        self.pixel_scaling = pixel_scaling
+        self.pixel_size = pixel_size
 
         self.unpadded_dim = image.shape[0]
         self.unpadded_centre = self.unpadded_dim//2
 
-        self.fov_scale = (self.pixel_scaling*self.unpadded_centre).value
+        self.fov = (self.pixel_size*self.unpadded_centre).value
         self.model, self.unpadded_model, self.dim = self.zero_pad(image, zero_padding_order)
         self.model_centre = self.dim//2
 
         self.ft = self.get_fft()
-        self.fftfreq_axis = self._get_fftfreq_axis(self.dim, self.pixel_scaling)
+        self.fftfreq_axis = self._get_fftfreq_axis(self.dim, self.pixel_size)
         self.meter_scaling = self.calculate_meter_scaling(self.fftfreq_axis)
         self.axis_meter_endpoint = self.meter_scaling*self.model_centre
         self.axis_Mlambda_endpoint = (self.meter_scaling/self.wl)*self.model_centre
@@ -207,7 +207,7 @@ class FastFourierTransform:
 
         amp, phase = self.get_amp_phase(phase_wrap=phase_wrap)
         ax.imshow(self.unpadded_model.value, vmax=vmax, interpolation="None",
-                  extent=[-self.fov_scale, self.fov_scale, -self.fov_scale, self.fov_scale])
+                  extent=[-self.fov, self.fov, -self.fov, self.fov])
         cbx = bx.imshow(amp.value, extent=[-axis_meter_endpoint, axis_meter_endpoint,
                                            -axis_Mlambda_endpoint, axis_Mlambda_endpoint],
                         interpolation="None", aspect=self.wl.value)
@@ -276,7 +276,7 @@ if __name__ == "__main__":
     image = model.eval_flux(wavelength)
     np.save("model.npy", image.value)
     fourier = FastFourierTransform(image, wavelength,
-                                   model.pixel_scaling, 3)
+                                   model.pixel_size, 3)
     print(model.eval_total_flux(wavelength))
     fourier.plot_amp_phase(zoom=500)
 

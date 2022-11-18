@@ -18,7 +18,7 @@ def loop_model(model: CombinedModel, data: DataHandler,
     total_flux_arr = [total_flux]
     # total_flux_arr = np.array([total_flux for _ in range(data.corr_fluxes.shape[1] // 6)])
     fourier = FastFourierTransform(image, wavelength,
-                                        data.pixel_scaling, data.zero_padding_order)
+                                        data.pixel_size, data.zero_padding_order)
     corr_flux_arr, cphases_arr = fourier.get_uv2fft2(data.uv_coords, data.uv_coords_cphase)
     if rfourier:
         return total_flux_arr, corr_flux_arr, cphases_arr, fourier

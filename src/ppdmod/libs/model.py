@@ -12,7 +12,7 @@ class Model:
     """Model baseclass """
     def __init__(self, fixed_params: IterNamespace) -> None:
         self.fixed_params = fixed_params
-        self.pixel_scaling = self.fixed_params.fov/self.fixed_params.image_size
+        self.pixel_size = self.fixed_params.fov/self.fixed_params.image_size
         self._component_name = None
         self._polar_angle = None
 
@@ -53,7 +53,7 @@ class Model:
             x = _make_axis(self.fixed_params.image_size//2,
                            self.fixed_params.pixel_sampling)
 
-        x *= self.pixel_scaling
+        x *= self.pixel_size
         y = x[:, np.newaxis]
 
         if incline_params is not None:

@@ -104,11 +104,11 @@ class DataHandler:
                           f" be in [astropy.units.dimensionless_unscaled] or unitless!")
 
     @property
-    def pixel_scaling(self):
+    def pixel_size(self):
         if self.fixed_params is not None:
             return self.fixed_params.fov/self.fixed_params.image_size
         else:
-            raise ValueError("Fixed params have to be specified to get pixel_scaling!")
+            raise ValueError("Fixed params have to be specified to get pixel size!")
 
     @property
     def initial(self):
