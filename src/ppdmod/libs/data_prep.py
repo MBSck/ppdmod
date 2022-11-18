@@ -256,7 +256,8 @@ class DataHandler:
     # TODO: Implement this for different orientations and modulations
     def reformat_components_to_priors(self):
         """Formats priors from the model components """
-        self._priors, self._labels = [], []
+        self._priors.clear()
+        self._labels.clear()
         if self.model_components:
             if self.geometric_priors is not None:
                 self._priors.extend([prior.value.tolist() for prior in self.geometric_priors])
@@ -309,8 +310,7 @@ class DataHandler:
                 model_components.append(component)
                 break
 
-        self.model_components = []
-        disc_params = []
+        self.model_components.clear()
         if "axis_ratio" in theta_dict:
             self.geometric_params = [theta_dict["axis_ratio"], theta_dict["pa"]]
         if "mod_angle" in theta_dict:
@@ -359,7 +359,6 @@ class DataHandler:
                 component = make_ring_component(name, params=params,
                                                 mod_params=mod_params)
             model_components.append(component)
-
         self.model_components = model_components.copy()
 
     def _get_data_type_function(self, readout_file: Callable,
@@ -406,9 +405,7 @@ class DataHandler:
                                               polychromatic_data.shape[0]+\
                                               data_other[i][j].shape[0]))
                 merged_data[i][j] = np.append(polychromatic_data, data_other[i][j])
-
             merged_data[i] *= unit
-
         return merged_data
 
     def _merge_data(self, data_type_keyword: str) -> Quantity:
@@ -433,17 +430,17 @@ class DataHandler:
         if data_type_keyword in ["uvcoords", "uvcoords_cphase",
                                  "telescope", "baselines", "baselines_cphase"]:
             raise IOError("Use the '_merge_simple_data' function for these datatypes")
-        for i, readout_file in enumerate(self.readouts):
+        for index, readout_file in enumerate(self.readouts):
             getter_func = self._get_data_type_function(readout_file, data_type_keyword)
             data = getter_func(self.wl_ind)
-            if i == 0 and len(self.readouts) > 1:
-                getter_func_next = self._get_data_type_function(self.readouts[i+1],
+            if index == 0 and len(self.readouts) > 1:
+                getter_func_next = self._get_data_type_function(self.readouts[index+1],
                                                                 data_type_keyword)
                 data_next = getter_func_next(self.wl_ind)
                 merged_data = self._iterate_over_data_arrays(data, data_next)
             elif len(self.readouts) == 1:
                 merged_data = data
-            elif i == 1:
+            elif index == 1:
                 continue
             else:
                 merged_data = self._iterate_over_data_arrays(merged_data, data)
@@ -463,18 +460,21 @@ class DataHandler:
             else:
                 if data_type_keyword == "uvcoords_cphase":
                     temp_data_lst = [[], [], []]
-                    for i, uv_coords in enumerate(data):
-                            temp_data_lst[i] = np.concatenate((merged_data[i], uv_coords))
+                    for index, uv_coords in enumerate(data):
+                            temp_data_lst[index] = np.concatenate((merged_data[index],
+                                                                   uv_coords))
                     merged_data = temp_data_lst.copy()
                 elif data_type_keyword == "baselines_cphase":
                     temp_data_lst = [[], [], []]
-                    for i, baseline in enumerate(data):
-                        temp_data_lst[i] = np.concatenate((merged_data[i], baseline))
+                    for index, baseline in enumerate(data):
+                        temp_data_lst[index] = np.concatenate((merged_data[index],
+                                                               baseline))
                     merged_data = temp_data_lst.copy()
                 elif data_type_keyword == "telescope":
                     temp_data_lst = [[], [], [], []]
-                    for i, dataset in enumerate(data):
-                        temp_data_lst[i] = np.concatenate((merged_data[i], dataset))
+                    for index, dataset in enumerate(data):
+                        temp_data_lst[index] = np.concatenate((merged_data[index],
+                                                               dataset))
                     merged_data = temp_data_lst.copy()
                 else:
                     merged_data = np.concatenate((merged_data, data))
