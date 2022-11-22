@@ -24,7 +24,7 @@ def print_results(data: DataHandler, best_fit_total_fluxes,
     """Prints the model's values"""
     print("Best fit total fluxes:")
     print(best_fit_total_fluxes)
-    print("Best real total fluxes:")
+    print("Real total fluxes:")
     print(data.total_fluxes[0])
     print("--------------------------------------------------------------")
     print("Best fit correlated fluxes:")
@@ -36,6 +36,7 @@ def print_results(data: DataHandler, best_fit_total_fluxes,
     print(best_fit_cphases)
     print("Real cphase:")
     print(data.cphases[0])
+    print("Closure phases have not been fitted!")
     print("--------------------------------------------------------------")
     print("Theta max:")
     print(data.theta_max)
@@ -91,6 +92,7 @@ def write_data_to_ini(data: DataHandler, best_fit_total_fluxes,
 
     with open(save_path, "w+") as configfile:
         config.write(configfile)
+
 
 def plot_fit_results(best_fit_total_fluxes, best_fit_corr_fluxes,
                      best_fit_cphases, data: DataHandler, fourier,
@@ -189,21 +191,23 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
                         data.corr_fluxes_error[index].value[epochs*6:(epochs+1)*6],
                         color=color_real_data[epochs],
                         fmt='o', alpha=0.6)
-            ax.errorbar(np.array([0]), data.total_fluxes[index][epochs],
-                        data.total_fluxes_error[index][epochs],
-                        color=color_real_data[epochs], fmt='o', alpha=0.6)
             ax.scatter(effective_baselines.value[epochs*6:(epochs+1)*6],
                        best_fit_corr_fluxes[index].value[epochs*6:(epochs+1)*6],
                        color=color_fit_data[epochs], marker='X')
-            ax.scatter(np.array([0]), best_fit_total_fluxes.value[epochs],
-                       marker='X', color=color_fit_data[epochs])
-            bx.errorbar(longest_baselines.value[epochs*4:(epochs+1)*4],
-                        data.cphases[index].value[epochs*4:(epochs+1)*4],
-                        data.cphases_error[index].value[epochs*4:(epochs+1)*4],
-                        color=color_real_data[epochs], fmt='o')
-            bx.scatter(longest_baselines.value[epochs*4:(epochs+1)*4],
-                       best_fit_cphases[index].value[epochs*4:(epochs+1)*4],
-                       color=color_fit_data[epochs], marker='X')
+            if data.fit_total_flux:
+                ax.errorbar(np.array([0]), data.total_fluxes[index][epochs],
+                            data.total_fluxes_error[index][epochs],
+                            color=color_real_data[epochs], fmt='o', alpha=0.6)
+                ax.scatter(np.array([0]), best_fit_total_fluxes.value[epochs],
+                           marker='X', color=color_fit_data[epochs])
+            if data.fit_cphases:
+                bx.errorbar(longest_baselines.value[epochs*4:(epochs+1)*4],
+                            data.cphases[index].value[epochs*4:(epochs+1)*4],
+                            data.cphases_error[index].value[epochs*4:(epochs+1)*4],
+                            color=color_real_data[epochs], fmt='o')
+                bx.scatter(longest_baselines.value[epochs*4:(epochs+1)*4],
+                           best_fit_cphases[index].value[epochs*4:(epochs+1)*4],
+                           color=color_fit_data[epochs], marker='X')
 
     ax.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}/\lambda$ [M$\lambda$]")
     ax.set_ylabel("Correlated fluxes [Jy]")

@@ -20,10 +20,13 @@ class DataHandler:
     data as well as the data created by the modelling process"""
     def __init__(self, fits_files: List[Path], wavelengths: List[Quantity],
                  wavelength_window_sizes: Optional[List[float]] = [0.2],
+                 fit_total_flux: Optional[bool] = True,
+                 fit_cphases: Optional[bool] = True,
                  flux_files: Optional[List[Path]] = None) -> None:
         """Initialises the class"""
         self.flux_files = flux_files
         self.fits_files = fits_files
+        self.fit_total_flux, self.fit_cphases = fit_total_flux, fit_cphases
 
         if self.flux_files is None:
             self.flux_files = [None]*len(fits_files)
@@ -60,15 +63,19 @@ class DataHandler:
         self._priors, self._labels = [], []
         self._mcmc, self._dynesty = None, None
 
-        self.total_fluxes, self.total_fluxes_error = self._merge_data("flux")
+        if self.fit_total_flux:
+            self.total_fluxes, self.total_fluxes_error = self._merge_data("flux")
+        else:
+            self.total_fluxes, self.total_fluxes_error = None, None
+
         self.corr_fluxes, self.corr_fluxes_error = self._merge_data("vis")
         self.cphases, self.cphases_error = self._merge_data("cphases")
 
         self.uv_coords = self._merge_simple_data("uvcoords")
         self.uv_coords_cphase = self._merge_simple_data("uvcoords_cphase")
+        self.baselines_cphase = self._merge_simple_data("baselines_cphase")
         self.telescope_info = self._merge_simple_data("telescope")
         self.baselines = self._merge_simple_data("baselines")
-        self.baselines_cphase = self._merge_simple_data("baselines_cphase")
 
     def __repr__(self):
         """The DataHandler class' representation"""

@@ -25,8 +25,8 @@ def loop_model(model: CombinedModel, data: DataHandler,
     else:
         return total_flux_arr, corr_flux_arr, cphases_arr
 
-# TODO: Write tests for this funciton
-# TODO: Check if the functionality works as thought
+# TODO: Write tests for this function
+# TODO: Check if works as thought
 def calculate_model(theta: np.ndarray, data: DataHandler,
                     rfourier: Optional[bool] = False, debug: Optional[bool] = False):
     """"""
@@ -79,15 +79,24 @@ def lnlike(theta: np.ndarray, data: DataHandler) -> float:
     """
     lnf = theta[-1]
     total_flux_mod, corr_flux_mod, cphases_mod = calculate_model(theta[:-1], data)
-    total_flux_chi_sq = chi_sq(data.total_fluxes,
-                               data.total_fluxes_error,
-                               total_flux_mod, lnf)
+
+    if data.fit_total_flux:
+        total_flux_chi_sq = chi_sq(data.total_fluxes,
+                                   data.total_fluxes_error,
+                                   total_flux_mod, lnf)
+    else:
+        total_flux_chi_sq= 0
+
     corr_flux_chi_sq = chi_sq(data.corr_fluxes,
                               data.corr_fluxes_error,
                               corr_flux_mod, lnf)
-    cphases_chi_sq = chi_sq(data.cphases,
-                            data.cphases_error,
-                            cphases_mod, lnf)
+    if data.fit_cphases:
+        cphases_chi_sq = chi_sq(data.cphases,
+                                data.cphases_error,
+                                cphases_mod, lnf)
+    else:
+        cphases_chi_sq = 0
+
     return np.array(total_flux_chi_sq+corr_flux_chi_sq+cphases_chi_sq)
 
 

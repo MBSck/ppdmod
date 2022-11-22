@@ -157,7 +157,8 @@ if __name__ == "__main__":
                   for target_dir in target_dirs]
     save_path = "../../../assets/model_results"
     wavelengths = [3.2, 3.45, 3.7]
-    data = DataHandler(fits_files, wavelengths, flux_files=flux_files)
+    data = DataHandler(fits_files, wavelengths,
+                       flux_files=flux_files, fit_total_flux=False)
     complete_ring = make_ring_component("inner_ring",
                                         [[0., 0.], [0., 0.], [1.5, 2.0], [15., 20.]])
     delta_component = make_delta_component("star")
