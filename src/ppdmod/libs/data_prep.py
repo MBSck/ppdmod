@@ -60,7 +60,7 @@ class DataHandler:
         self._priors, self._labels = [], []
         self._mcmc, self._dynesty = None, None
 
-        # self.total_fluxes, self.total_fluxes_error = self._merge_data("flux")
+        self.total_fluxes, self.total_fluxes_error = self._merge_data("flux")
         self.corr_fluxes, self.corr_fluxes_error = self._merge_data("vis")
         self.cphases, self.cphases_error = self._merge_data("cphases")
 
