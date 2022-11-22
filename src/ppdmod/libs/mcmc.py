@@ -151,17 +151,19 @@ if __name__ == "__main__":
     stem_dir = "matisse/GTO/hd163296/PRODUCTS/"
     target_dirs = ["jozsef_files/HD_163296_2019-03-23T08_41_19_L_TARGET_FINALCAL_INT.fits",
                    "jozsef_files/HD_163296_2019-05-06T08_19_51_L_TARGET_FINALCAL_INT.fits"]
+    flux_files = ["HD_163296_sws.txt", "HD_163296_sws.txt"]
+    flux_files = [os.path.join(data_dir, "flux_data", file) for file in flux_files]
     fits_files = [os.path.join(data_dir, stem_dir, target_dir)\
                   for target_dir in target_dirs]
     save_path = "../../../assets/model_results"
     wavelengths = [3.2, 3.45, 3.7]
-    data = DataHandler(fits_files, wavelengths)
+    data = DataHandler(fits_files, wavelengths, flux_files=flux_files)
     complete_ring = make_ring_component("inner_ring",
-                                        [[0., 0.], [0., 0.], [1.5, 2.0], [0., 0.]])
+                                        [[0., 0.], [0., 0.], [1.5, 2.0], [15., 20.]])
     delta_component = make_delta_component("star")
     data.add_model_component(delta_component)
     data.add_model_component(complete_ring)
-    data.fixed_params = make_fixed_params(50, 256, 1500, 9800, 101.2, 16, 1024)
+    data.fixed_params = make_fixed_params(20, 128, 1500, 9800, 101.2, 16)
     data.geometric_priors = [[0.5, 0.7], [130, 150]]
     data.modulation_priors = [[0.4, 0.67], [140, 200]]
     data.disc_priors = [[0.64, 0.7], [0., 0.]]
