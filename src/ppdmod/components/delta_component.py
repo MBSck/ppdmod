@@ -3,8 +3,8 @@ import astropy.constants as c
 
 from astropy.units import Quantity
 
-from ..lib.model import Model
-from ..lib.utils import stellar_flux, _set_zeros
+from ..libs.model import Model
+from ..libs.utils import stellar_flux, _set_zeros
 
 # TODO: Write tests for this as well
 class DeltaComponent(Model):

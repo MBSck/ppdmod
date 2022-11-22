@@ -5,8 +5,8 @@ from astropy.units import Quantity
 
 import matplotlib.pyplot as plt
 
-from ..lib.model import Model
-from ..lib.utils import IterNamespace, make_fixed_params, _make_params
+from ..libs.model import Model
+from ..libs.utils import IterNamespace, make_fixed_params, _make_params
 
 
 class GaussComponent(Model):
