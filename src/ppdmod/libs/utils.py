@@ -599,5 +599,6 @@ def make_gaussian_component(name: str, priors: List[List[float]] = None,
 # TODO: Make test for this function. Seems broken?
 if __name__ == "__main__":
     lst = [(5, 10), (4, 8), (7, 6)]*u.m
-    print(calculate_effective_baselines(lst, 0.5*u.dimensionless_unscaled,
-                                        (180*u.deg).to(u.rad)))
+    res = calculate_effective_baselines(lst, 0.5*u.dimensionless_unscaled,
+                                        (180*u.deg).to(u.rad), 8*u.um)
+    breakpoint()

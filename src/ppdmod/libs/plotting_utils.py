@@ -25,7 +25,10 @@ def print_results(data: DataHandler, best_fit_total_fluxes,
     print("Best fit total fluxes:")
     print(best_fit_total_fluxes)
     print("Real total fluxes:")
-    print(data.total_fluxes[0])
+    if data.fit_total_flux:
+        print(data.total_fluxes[0])
+    else:
+        print('None')
     print("--------------------------------------------------------------")
     print("Best fit correlated fluxes:")
     print(best_fit_corr_fluxes)
@@ -36,7 +39,6 @@ def print_results(data: DataHandler, best_fit_total_fluxes,
     print(best_fit_cphases)
     print("Real cphase:")
     print(data.cphases[0])
-    print("Closure phases have not been fitted!")
     print("--------------------------------------------------------------")
     print("Theta max:")
     print(data.theta_max)
@@ -52,8 +54,8 @@ def write_data_to_ini(data: DataHandler, best_fit_total_fluxes,
                           "uvcoords": data.uv_coords,
                           "uvcoords_closure_phases": data.uv_coords_cphase,
                           "telescope_information": data.telescope_info}
-    real_data_dict = {"total_fluxes": data.total_fluxes,
-                      "total_fluxes_error": data.total_fluxes_error,
+    real_data_dict = {"total_fluxes": str(data.total_fluxes),
+                      "total_fluxes_error": str(data.total_fluxes_error),
                       "correlated_fluxes": data.corr_fluxes,
                       "correlated_fluxes_errors": data.corr_fluxes_error,
                       "closure_phases": data.cphases,
@@ -151,9 +153,13 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
         fig, axarr = plt.subplots(1, 2, figsize=(10, 5))
         ax, bx = axarr.flatten()
 
-    max_flux, mod_max_flux = np.max(data.total_fluxes.value),\
-                                        np.max(best_fit_total_fluxes.value)
-    y_max_flux = max_flux if max_flux > mod_max_flux else mod_max_flux
+    if data.fit_total_flux:
+        max_flux, mod_max_flux = np.max(data.total_fluxes.value),\
+                                            np.max(best_fit_total_fluxes.value)
+        y_max_flux = max_flux if max_flux > mod_max_flux else mod_max_flux
+    else:
+        y_max_flux = np.max(best_fit_total_fluxes.value)
+
     y_space_flux = np.sqrt(y_max_flux**2)*0.1
     y_lim_flux = [0, y_max_flux+y_space_flux]
 
@@ -172,6 +178,8 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
     # TODO: Add more colors
     color_real_data = ["goldenrod", "darkgoldenrod", "gold"]
     color_fit_data = ["midnightblue", "darkblue", "blue"]
+    # TODO: Think of way to precisely get the axis_ratio and positional angle
+    # TODO: Make theta_max to components again and get geometrics?
     axis_ratio = data.theta_max[0]*u.dimensionless_unscaled
     pos_angle = (data.theta_max[1]*u.deg).to(u.rad)
 

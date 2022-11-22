@@ -169,7 +169,7 @@ if __name__ == "__main__":
     data.modulation_priors = [[0.4, 0.67], [140, 200]]
     data.disc_priors = [[0.64, 0.7], [0., 0.]]
     data.lnf_priors = [-10., 10.]
-    data.mcmc = [35, 5000, 1000, 1e-4]
+    data.mcmc = [35, 1, 1, 1e-4]
     data.zero_padding_order = 0
     data.tau_initial = 0.1
     run_mcmc(data, save_path=save_path, cpu_amount=32, show_plots=True)
