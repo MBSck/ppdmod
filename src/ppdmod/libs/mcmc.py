@@ -41,6 +41,7 @@ def generate_valid_guess(data: DataHandler) -> np.ndarray:
 
     return np.array(guess_lst, dtype=float)
 
+
 def plot_corner(sampler: np.ndarray, data: DataHandler,
                 save_path: Optional[str] = "") -> None:
     """Plots the corner plot of the posterior spread"""
@@ -53,6 +54,7 @@ def plot_corner(sampler: np.ndarray, data: DataHandler,
         plt.savefig(plot_name)
     else:
         plt.savefig(os.path.join(save_path, plot_name))
+
 
 def plot_chains(sampler: np.ndarray, data: DataHandler,
                 save_path: Optional[str] = "") -> None:
@@ -74,6 +76,7 @@ def plot_chains(sampler: np.ndarray, data: DataHandler,
         plt.savefig(plot_name)
     else:
         plt.savefig(os.path.join(save_path, plot_name))
+
 
 def run_mcmc(data: DataHandler,
              cpu_amount: Optional[int] = 6,

@@ -16,7 +16,7 @@ def loop_model(model: CombinedModel, data: DataHandler,
     image = model.eval_flux(wavelength)
     total_flux = model.eval_total_flux(wavelength).value
     total_flux_arr = [total_flux]
-    # total_flux_arr = np.array([total_flux for _ in range(data.corr_fluxes.shape[1] // 6)])
+    total_flux_arr = np.array([total_flux for _ in range(data.corr_fluxes.shape[1] // 6)])
     fourier = FastFourierTransform(image, wavelength,
                                         data.pixel_size, data.zero_padding_order)
     corr_flux_arr, cphases_arr = fourier.get_uv2fft2(data.uv_coords, data.uv_coords_cphase)
@@ -79,18 +79,17 @@ def lnlike(theta: np.ndarray, data: DataHandler) -> float:
     """
     lnf = theta[-1]
     total_flux_mod, corr_flux_mod, cphases_mod = calculate_model(theta[:-1], data)
-    # total_flux_chi_sq = chi_sq(data.total_fluxes,
-                               # data.total_fluxes_error,
-                               # total_flux_mod, lnf)
+    total_flux_chi_sq = chi_sq(data.total_fluxes,
+                               data.total_fluxes_error,
+                               total_flux_mod, lnf)
     corr_flux_chi_sq = chi_sq(data.corr_fluxes,
                               data.corr_fluxes_error,
                               corr_flux_mod, lnf)
     cphases_chi_sq = chi_sq(data.cphases,
                             data.cphases_error,
                             cphases_mod, lnf)
-    # return np.array(total_flux_chi_sq+corr_flux_chi_sq+cphases_chi_sq)
-    # return np.array(corr_flux_chi_sq+cphases_chi_sq)
-    return np.array(corr_flux_chi_sq)
+    return np.array(total_flux_chi_sq+corr_flux_chi_sq+cphases_chi_sq)
+
 
 def lnprior(theta: np.ndarray, priors: List[List[float]]) -> float:
     """Checks if all variables are within their priors (as well as
@@ -117,6 +116,7 @@ def lnprior(theta: np.ndarray, priors: List[List[float]]) -> float:
             return -np.inf
     return 0.
 
+
 def lnprob(theta: np.ndarray, data: DataHandler) -> np.ndarray:
     """This function runs the lnprior and checks if it returned -np.inf, and
     returns if it does. If not, (all priors are good) it returns the inlike for
@@ -133,6 +133,7 @@ def lnprob(theta: np.ndarray, data: DataHandler) -> np.ndarray:
         The minimisation value or -np.inf if it fails
     """
     return lnlike(theta, data) if np.isfinite(lnprior(theta, data.priors)) else -np.inf
+
 
 def chi_sq(real_data: Quantity, data_error: Quantity,
            data_model: Quantity, lnf: float) -> float:

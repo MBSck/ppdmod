@@ -29,7 +29,6 @@
 * Code too slow! Make it faster by far? Faster array calculation? Other approaches?
 
 ## Ideas
-* Switch to pyFFTW at some time maybe?
 * Switch to a faster array calculation?
 * Recode all of this in Rust?
 
@@ -37,7 +36,10 @@
 - Try to use the FFT standalone and test if this works, if not then check the rest of the code again
 
 ## Working-on-ATM
-[] Remove all superfluous imports (tests and such) from the individual scripts
+[] Fit visibilities for simple models
+[] Include visibilities calculations for data-handler
+[] Remove all superfluous imports (tests and such in file -> Make tests outside of file) from the individual scripts
+[] Rename branches and move astropy to master branch rename it as well to master
 
 ### Slow Calculations
 [] Rework of reformat theta to components function

@@ -10,6 +10,7 @@ from astropy.units import Quantity
 
 ################################ PHYSICS #################################################
 
+@u.quantity_input
 def calculate_effective_baselines(uv_coords: u.m,
                                   axis_ratio: u.dimensionless_unscaled,
                                   pos_angle: u.rad,
@@ -46,6 +47,7 @@ def calculate_effective_baselines(uv_coords: u.m,
     return np.sqrt(u_coords_eff**2+v_coords_eff**2)/wavelength.value
 
 
+@u.quantity_input
 def _convert_orbital_radius_to_parallax(orbital_radius: u.m,
                                         distance: Optional[u.pc] = None) -> u.mas:
     """Calculates the parallax [astropy.units.mas] from the orbital radius
@@ -66,6 +68,7 @@ def _convert_orbital_radius_to_parallax(orbital_radius: u.m,
     return (1*u.rad).to(u.mas)*(orbital_radius.to(u.m)/distance.to(u.m))
 
 
+@u.quantity_input
 def _convert_parallax_to_orbital_radius(parallax: u.mas,
                                         distance: Optional[u.pc] = None) -> u.m:
     """Calculates the orbital radius [astropy.units.m] from the parallax
@@ -86,6 +89,7 @@ def _convert_parallax_to_orbital_radius(parallax: u.mas,
     return (parallax*distance.to(u.m))/(1*u.rad).to(u.mas)
 
 
+@u.quantity_input
 def _calculate_stellar_radius(luminosity_star: u.W, effective_temperature: u.K) -> u.m:
     """Calculates the stellar radius [astropy.units.m] from its attributes.
     Only for 'delta_component' functionality
@@ -106,6 +110,7 @@ def _calculate_stellar_radius(luminosity_star: u.W, effective_temperature: u.K) 
 
 
 # TODO: Make test with Jozsef's values
+@u.quantity_input
 def stellar_flux(wavelength: u.um, effective_temperature: u.K,
                  distance: u.pc, luminosity_star: u.W) -> u.Jy:
     """Calculates the stellar flux from the distance and its radius.
@@ -135,6 +140,7 @@ def stellar_flux(wavelength: u.um, effective_temperature: u.K,
     return (spectral_radiance*np.pi*(stellar_radius_angular)**2).to(u.Jy)
 
 
+@u.quantity_input
 def _calculate_inner_radius(inner_temperature: u.K,
                             distance: u.pc, luminosity_star: u.W) -> u.mas:
     """Calculates the sublimation radius at the inner rim of the disc
@@ -152,6 +158,7 @@ def _calculate_inner_radius(inner_temperature: u.K,
     return _convert_orbital_radius_to_parallax(radius, distance)
 
 
+@u.quantity_input
 def _calculate_inner_temperature(inner_radius: u.mas,
                                  distance: u.pc, luminosity_star: u.W) -> u.K:
     """Calculates the sublimation temperature at the inner rim of the disc
@@ -173,6 +180,7 @@ def _calculate_inner_temperature(inner_radius: u.mas,
     return (luminosity_star/(4*np.pi*c.sigma_sb*inner_radius**2))**(1/4)
 
 
+@u.quantity_input
 def temperature_gradient(radius: u.mas, power_law_exponent: u.dimensionless_unscaled,
                          inner_radius: u.mas, inner_temperature: u.K) -> u.K:
     """Calculates the temperature gradient
@@ -199,6 +207,7 @@ def temperature_gradient(radius: u.mas, power_law_exponent: u.dimensionless_unsc
     return temperature
 
 
+@u.quantity_input
 def optical_depth_gradient(radius: u.mas,
                            power_law_exponent: u.dimensionless_unscaled,
                            inner_radius: u.mas,
@@ -228,6 +237,7 @@ def optical_depth_gradient(radius: u.mas,
     return optical_depth
 
 
+@u.quantity_input
 def flux_per_pixel(wavelength: u.um, temperature_distribution: u.K,
                    optical_depth: u.dimensionless_unscaled, pixel_size: u.mas) -> u.Jy:
     """Calculates the total flux of the model

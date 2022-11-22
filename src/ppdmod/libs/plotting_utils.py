@@ -22,10 +22,10 @@ def plot(image: Quantity) -> None:
 def print_results(data: DataHandler, best_fit_total_fluxes,
                   best_fit_corr_fluxes, best_fit_cphases) -> None:
     """Prints the model's values"""
-    # print("Best fit total fluxes:")
-    # print(best_fit_total_fluxes)
-    # print("Best real total fluxes:")
-    # print(data.total_fluxes[0])
+    print("Best fit total fluxes:")
+    print(best_fit_total_fluxes)
+    print("Best real total fluxes:")
+    print(data.total_fluxes[0])
     print("--------------------------------------------------------------")
     print("Best fit correlated fluxes:")
     print(best_fit_corr_fluxes)
@@ -51,8 +51,8 @@ def write_data_to_ini(data: DataHandler, best_fit_total_fluxes,
                           "uvcoords": data.uv_coords,
                           "uvcoords_closure_phases": data.uv_coords_cphase,
                           "telescope_information": data.telescope_info}
-    real_data_dict = {"total_fluxes": 0, # data.total_fluxes,
-                      "total_fluxes_error": 0, # data.total_fluxes_error,
+    real_data_dict = {"total_fluxes": data.total_fluxes,
+                      "total_fluxes_error": data.total_fluxes_error,
                       "correlated_fluxes": data.corr_fluxes,
                       "correlated_fluxes_errors": data.corr_fluxes_error,
                       "closure_phases": data.cphases,
@@ -64,7 +64,8 @@ def write_data_to_ini(data: DataHandler, best_fit_total_fluxes,
     mcmc_dict = {} if data.mcmc is None else data.mcmc.to_string_dict()
     dynesty_dict = {} if data.dynesty is None else data.dynesty.to_string_dict()
     fixed_params_dict = data.fixed_params.to_string_dict()
-    best_fit_parameters_dict = IterNamespace(**dict(zip(data.labels, data.theta_max))).to_string_dict()
+    best_fit_parameters_dict = IterNamespace(**dict(zip(data.labels,
+                                                        data.theta_max))).to_string_dict()
 
     config = configparser.ConfigParser()
     config["params.fixed"] = fixed_params_dict
@@ -148,12 +149,11 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
         fig, axarr = plt.subplots(1, 2, figsize=(10, 5))
         ax, bx = axarr.flatten()
 
-
-    # TODO: Add the total flux to the limit estimation, and check that generally as well
-    # all_amp = np.concatenate((data.total_fluxes.value[0], best_fit_total_fluxes.value))
-    # y_min_amp, y_max_amp = 0, np.max(all_amp)
-    # y_space_amp = np.sqrt(y_max_amp**2+y_min_amp**2)*0.1
-    # y_lim_amp = [y_min_amp-y_space_amp, y_max_amp+y_space_amp]
+    max_flux, mod_max_flux = np.max(data.total_fluxes.value),\
+                                        np.max(best_fit_total_fluxes.value)
+    y_max_flux = max_flux if max_flux > mod_max_flux else mod_max_flux
+    y_space_flux = np.sqrt(y_max_flux**2)*0.1
+    y_lim_flux = [0, y_max_flux+y_space_flux]
 
     min_cphases, max_cphases = np.min(data.cphases.value), np.max(data.cphases.value)
     min_mod_cphases, max_mod_cphases = np.min(best_fit_cphases.value),\
@@ -175,7 +175,6 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
 
     for epochs in range(count_epochs):
         for index, corr_fluxes in enumerate(data.corr_fluxes):
-            # NOTE: This calculates the effctive_baslines from the axis_ratio and positional_angle
             effective_baselines = calculate_effective_baselines(data.uv_coords,
                                                                 axis_ratio,
                                                                 pos_angle,
@@ -190,9 +189,9 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
                         data.corr_fluxes_error[index].value[epochs*6:(epochs+1)*6],
                         color=color_real_data[epochs],
                         fmt='o', alpha=0.6)
-            # ax.errorbar(np.array([0]), data.total_fluxes[index][epochs],
-                        # data.total_fluxes_error[index][epochs],
-                        # color=color_real_data[epochs], fmt='o', alpha=0.6)
+            ax.errorbar(np.array([0]), data.total_fluxes[index][epochs],
+                        data.total_fluxes_error[index][epochs],
+                        color=color_real_data[epochs], fmt='o', alpha=0.6)
             ax.scatter(effective_baselines.value[epochs*6:(epochs+1)*6],
                        best_fit_corr_fluxes[index].value[epochs*6:(epochs+1)*6],
                        color=color_fit_data[epochs], marker='X')
@@ -208,13 +207,14 @@ def plot_amp_phase_comparison(data: DataHandler, best_fit_total_fluxes,
 
     ax.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}/\lambda$ [M$\lambda$]")
     ax.set_ylabel("Correlated fluxes [Jy]")
-    # ax.set_ylim(y_lim_amp)
+    ax.set_ylim(y_lim_flux)
     # ax.legend(loc="upper right")
 
     bx.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}/\lambda$ [M$\lambda$]")
     bx.set_ylabel(fr"Closure Phases [$^\circ$]")
     bx.set_ylim(y_lim_cphase)
     # bx.legend(loc="upper right")
+
 
 def plot_txt(ax, title_dict: Dict, text_dict: Dict,
              text_font_size: Optional[int] = 12) -> None:

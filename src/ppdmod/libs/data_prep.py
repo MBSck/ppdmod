@@ -497,7 +497,6 @@ if __name__ == "__main__":
     data = DataHandler(fits_files, wavelengths, flux_files=flux_files)
     print(data.corr_fluxes)
     print(data.corr_fluxes.shape)
-    breakpoint()
     # complete_ring = make_ring_component("inner_ring",
                                         # [[0., 0.], [0., 0.], [1., 6.], [0., 0.]])
     # delta_component = make_delta_component("star")
