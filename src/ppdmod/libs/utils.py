@@ -49,7 +49,7 @@ def calculate_effective_baselines(uv_coords: u.m,
 
 @u.quantity_input
 def _convert_orbital_radius_to_parallax(orbital_radius: u.m,
-                                        distance: Optional[u.pc] = None) -> u.mas:
+                                        distance: Optional[Quantity[u.pc]] = None) -> u.mas:
     """Calculates the parallax [astropy.units.mas] from the orbital radius
     [astropy.units.m]. The formula for the angular diameter is used
 
@@ -70,7 +70,7 @@ def _convert_orbital_radius_to_parallax(orbital_radius: u.m,
 
 @u.quantity_input
 def _convert_parallax_to_orbital_radius(parallax: u.mas,
-                                        distance: Optional[u.pc] = None) -> u.m:
+                                        distance: Optional[Quantity[u.pc]] = None) -> u.m:
     """Calculates the orbital radius [astropy.units.m] from the parallax
     [astropy.units.mas]. The formula for the angular diameter is used
 
