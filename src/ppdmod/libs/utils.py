@@ -4,7 +4,7 @@ import astropy.constants as c
 
 from astropy.modeling import models
 from types import SimpleNamespace
-from typing import List, Tuple, Union, Optional
+from typing import Any, List, Tuple, Union, Optional
 from astropy.units import Quantity
 
 
