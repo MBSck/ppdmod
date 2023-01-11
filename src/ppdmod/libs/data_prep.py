@@ -10,11 +10,11 @@ from .readout import ReadoutFits
 from .utils import IterNamespace, _make_params, make_delta_component,\
     make_ring_component, _make_priors, make_inital_guess_from_priors
 
+
 # TODO: For this class implement different methods of polychromatic fitting. At a later
 # time
 # TODO: This will for the start just fit either the L- or N-band and not both at the
 # same time, fix this later
-# TODO: Check if this works for the uv-coords as well, if not make another merge_func
 class DataHandler:
     """This class handles all the data that is used for the fitting process, the observed
     data as well as the data created by the modelling process"""
@@ -22,19 +22,23 @@ class DataHandler:
                  wavelength_window_sizes: Optional[List[float]] = [0.2],
                  fit_total_flux: Optional[bool] = True,
                  fit_cphases: Optional[bool] = True,
+                 vis: Optional[bool] = False,
                  flux_files: Optional[List[Path]] = None) -> None:
         """Initialises the class"""
-        self.flux_files = flux_files
         self.fits_files = fits_files
         self.fit_total_flux, self.fit_cphases = fit_total_flux, fit_cphases
-
-        if self.flux_files is None:
-            self.flux_files = [None]*len(fits_files)
-
+        self.vis = vis
         self._wavelengths = wavelengths
         self._wavelength_window_sizes = wavelength_window_sizes
-        self.readouts = [ReadoutFits(fits_file, self.flux_files[i])\
-                         for i, fits_file in enumerate(fits_files)]
+
+        if flux_files is None:
+            self.flux_files = [None]*len(fits_files)
+        else:
+            self.flux_files = flux_files
+
+        self.readouts = [ReadoutFits(fits_file, flux_file)\
+                         for fits_file, flux_file in zip(self.fits_files, self.flux_files)]
+
         self.getter_function_dictionary = {"vis": "get_visibilities4wavelength",
                                            "vis2": "get_visibilities_squared4wavelength",
                                            "cphases": "get_closure_phases4wavelength",
@@ -44,6 +48,7 @@ class DataHandler:
                                            "telescope": "get_telescope_information",
                                            "baselines": "get_baselines",
                                            "baselines_cphase": "get_closure_phases_baselines"}
+
         # NOTE: This only works if the wl_solution stays the same for all files
         # TODO: Change this later for multiple wavelength files that have to be fitted
         self.wl_ind = self.readouts[0].\
@@ -70,6 +75,8 @@ class DataHandler:
 
         self.corr_fluxes, self.corr_fluxes_error = self._merge_data("vis")
         self.cphases, self.cphases_error = self._merge_data("cphases")
+        # if self.total_fluxes is not None:
+            # self.visibilities = self.corr_fluxes/self.
 
         self.uv_coords = self._merge_simple_data("uvcoords")
         self.uv_coords_cphase = self._merge_simple_data("uvcoords_cphase")
@@ -261,113 +268,6 @@ class DataHandler:
 
     # TODO: Implement this for more components at a later time
     # TODO: Implement this for different orientations and modulations
-    def reformat_components_to_priors(self):
-        """Formats priors from the model components """
-        self._priors.clear()
-        self._labels.clear()
-        if self.model_components:
-            if self.geometric_priors is not None:
-                self._priors.extend([prior.value.tolist() for prior in self.geometric_priors])
-                self._labels.extend(["axis_ratio", "pa"])
-
-            if self.modulation_priors is not None:
-                self._priors.extend([prior.value.tolist() for prior in self.modulation_priors])
-                self._labels.extend(["mod_amp", "mod_angle"])
-
-            if self.disc_priors is not None:
-                if np.any(self.disc_priors.q.value):
-                    self._priors.append(self.disc_priors.q)
-                    self._labels.append("q")
-                if np.any(self.disc_priors.p.value):
-                    self._priors.append(self.disc_priors.p)
-                    self._labels.append("p")
-
-            # TODO: Add all possibilities here with the geometric params
-            for component in self.model_components:
-                if component.component == "ring":
-                    # TODO: Implement geometric priors adding here
-                    if self.geometric_priors is not None:
-                        ...
-                    if component.priors.inner_radius.value.any():
-                        self._priors.append(component.priors.inner_radius.value.tolist())
-                        self._labels.append(f"{component.name}:ring:inner_radius")
-                    if component.priors.outer_radius.value.any():
-                        self._priors.append(component.priors.outer_radius.value.tolist())
-                        self._labels.append(f"{component.name}:ring:outer_radius")
-
-            if self.lnf_priors is not None:
-                lnf_priors = self.lnf_priors
-            else:
-                lnf_priors = [0., 0.]
-
-            self._priors.append(lnf_priors)
-            self._labels.append("lnf")
-
-        else:
-            raise ValueError("No model components have been added yet!")
-
-    def reformat_theta_to_components(self, theta: List[float]):
-        """Sets the model component list anew from the input theta"""
-        # TODO: Figure out way to do this during the modelling
-        # TODO: Make this into independent function
-        model_components = []
-        theta_dict = dict(zip(self.labels, theta))
-        for component in self.model_components:
-            if component.component == "delta":
-                model_components.append(component)
-                break
-
-        self.model_components.clear()
-        if "axis_ratio" in theta_dict:
-            self.geometric_params = [theta_dict["axis_ratio"], theta_dict["pa"]]
-        if "mod_angle" in theta_dict:
-            self.modulation_params = [theta_dict["mod_angle"], theta_dict["mod_amp"]]
-
-        # TODO: This might need a rework for more complex models
-        if ("q" and "p") in theta_dict:
-            self.disc_params = [theta_dict["q"], theta_dict["p"]]
-        else:
-            if "q" in theta_dict:
-                self.disc_params = [theta_dict["q"], 0.]
-            else:
-                self.disc_params = [0., theta_dict["p"]]
-        if "lnf" in theta_dict:
-            self.lnf = theta_dict["lnf"]
-
-        component_params_dict = {}
-        for key, value in theta_dict.items():
-            if ":" not in key:
-                continue
-            name, component_name, param_name = key.split(":")
-            if not name in component_params_dict:
-                component_params_dict[name] = {}
-            if not "params" in component_params_dict[name]:
-                component_params_dict[name]["params"] = {}
-            component_params_dict[name]["component"] = component_name
-            if component_name == "ring":
-                # TODO: Find a way to get around this parameter checking
-                if self.geometric_params is not None:
-                    component_params_dict[name]["params"]["axis_ratio"] =\
-                        theta_dict["axis_ratio"]
-                    component_params_dict[name]["params"]["pa"] = theta_dict["pa"]
-                if self.modulation_params is not None:
-                    mod_params = [theta_dict["mod_amp"], theta_dict["mod_angle"]]
-                    component_params_dict[name]["mod_params"] = mod_params
-            component_params_dict[name]["params"][param_name] = value
-
-        for name, values in component_params_dict.items():
-            mod_params = None
-            if values["component"] == "ring":
-                params = [value for value in values["params"].values()]
-                if "outer_radius" not in values["params"]:
-                    params.append(0.)
-                if "mod_params" in values:
-                    mod_params = [value for value in values["mod_params"]]
-                component = make_ring_component(name, params=params,
-                                                mod_params=mod_params)
-            model_components.append(component)
-        self.model_components = model_components.copy()
-
     def _get_data_type_function(self, readout_file: Callable,
                                 data_keyword: str) -> Callable:
         """This gets a method, to get a certain datatype, to be called from the
