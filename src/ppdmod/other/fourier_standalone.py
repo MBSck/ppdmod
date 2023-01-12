@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+
 """Fourier
 
 This script or rather the FFT class contained in it, takes a 2D-numpy arry and
@@ -7,8 +8,11 @@ applies the Fast Fourier Transform (FFT) to it for a certain wavelength and
 returns the amplitude (either correlated flux, visibilities or squared
 visibilities) and phase information.
 
-This file can also be imported as a module and contains the following class:
-    * FFT
+This file can also be imported as a module and contains the following functions
+and class:
+    * zoom_array
+    * mas2rad
+    * FFT - Class
 
 Example of usage:
     Image in the form of a 2D-numpy array
@@ -30,7 +34,7 @@ Example of usage:
 Credit
     FFT: https://numpy.org/doc/stable/reference/routines.fft.html
 
-License
+License:
     Copyright (C) 2022 Marten Scheuck
 
     This program is free software: you can redistribute it and/or modify
@@ -45,18 +49,52 @@ License
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""
 
-import time
+Version:
+    09.08.2022 - 0.1
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 
-from numpy.fft import fft2, fftshift, ifftshift, fftfreq
+from typing import List, Optional, Union
 from scipy.interpolate import interpn
-from pathlib import Path
-from typing import Any, List, Dict, Optional, Union
+from numpy.fft import fft2, fftshift, ifftshift, fftfreq
 
-from .utils import zoom_array, mas2rad
+
+def zoom_array(array: np.ndarray, bounds: List) -> np.ndarray :
+    """Zooms in on an image by cutting of the zero-padding
+
+    Parameters
+    ----------
+    array: np.ndarray
+        The image to be zoomed in on
+    bounds: int
+        The boundaries for the zoom, the minimum and maximum
+
+    Returns
+    -------
+    np.ndarray
+        The zoomed in array
+    """
+    min_ind, max_ind = bounds
+    return array[min_ind:max_ind, min_ind:max_ind]
+
+def mas2rad(angle: Optional[Union[int, float, np.ndarray]] = None):
+    """Returns a given angle in mas/rad or the pertaining scaling factor
+
+    Parameters
+    ----------
+    angle: int | float | np.ndarray, optional
+        The input angle(s)
+
+    Returns
+    -------
+    float
+        The angle in radians
+    """
+    if angle is None:
+        return np.radians(1/3.6e6)
+    return np.radians(angle/3.6e6)
 
 
 class FFT:
@@ -73,6 +111,7 @@ class FFT:
         The wavelength at which the fourier transform should be evaluated
     pixel_scale: float
         The pixel_scale for the frequency scaling of the fourier transform
+        given in [mas/px]
     zero_padding: int, optional
         Sets the order of the zero padding. Default is '1'. The order sets the
         exponent to be applied to '2**zero_padding_order', set to '0' for no
@@ -112,6 +151,7 @@ class FFT:
             The wavelength at which the fourier transform should be evaluated
         pixel_scale: float
             The pixel_scale for the frequency scaling of the fourier transform
+            given in [mas/px]
         zero_padding: int, optional
             Sets the order of the zero padding. Default is '1'. The order sets the
             exponent to be applied to '2**zero_padding_order', set to '0' for no
@@ -259,12 +299,16 @@ class FFT:
                                   method='linear', bounds_error=False,
                                   fill_value=None)
             cphases = np.angle(real_phase + 1j*imag_phase, deg=True)
-            cphases = np.array(cphases).reshape(len(cphases.flatten())//12, 3, 4)
 
-            xy_coords = [uvcoords, uvcoords_cphase]
+            u_c, v_c = uvcoords_cphase
+            xy_c = []
+            for i, o in enumerate(u_c):
+                for x, y in zip(o, v_c[i]):
+                    xy_c.append([x, y])
+
+            xy_coords = [uvcoords, np.array(xy_c)]
 
         else:
-            # FIXME: Might not work anymore
             amp_lst = []
             amp, phase = self.get_amp_phase(corr_flux=True)
             for uv in uvcoords:
@@ -290,11 +334,10 @@ class FFT:
                 for x, y in zip(o, v_c[i]):
                     xy_c.append([x, y])
 
-            cphases = np.array(cphases_lst).reshape(len(cphase_lst)//12, 3, 4)
+            cphases = np.array(cphases_lst)
             xy_coords = [np.round(uvcoords), np.array(xy_c)]
 
-        cphases = np.array([np.sum(i, axis=0) for i in cphases])
-        cphases = cphases.reshape(cphases.shape[0]*cphases.shape[1]).tolist()
+        cphases = sum(cphases)
         cphases = np.degrees((np.radians(cphases) + np.pi) % (2*np.pi) - np.pi)
 
         if not corr_flux:
@@ -354,7 +397,9 @@ class FFT:
     def plot_amp_phase(self, matplot_axis: Optional[List] = [],
                        zoom: Optional[int] = 500,
                        corr_flux: Optional[bool] = True,
+                       vis2: Optional[bool] = False,
                        uvcoords_lst: Optional[List] = [],
+                       vis_curve: Optional[bool] = False,
                        plt_save: Optional[bool] = False) -> None:
         """This plots the input model for the FFT as well as the resulting
         amplitudes and phases for units of both [m] and [Mlambda]
@@ -372,27 +417,38 @@ class FFT:
             object and not a simple geometrical model then set this to
             'True' and the output will be the correlated fluxes instead of the
             visibilities. 'False' yields the normed visibility function
+        vis2: bool, optional
+            Will take the complex conjugate and return the squared visibilities
+            if toggled.
+            DISCLAIMER: Only works if 'corr_flux' is 'False'
         uvcoords_lst: List, optional
             If not empty then the plots will be overplotted with the
             given (u, v)-coordinates
+        vis_curve: bool, optional
+            If toggled to 'True' then a centre slice of the
+            visibilities/correlated are plotted as well
         plt_save: bool, optional
             Saves the plot if toggled on
         """
         if matplot_axis:
             fig, ax, bx, cx = matplot_axis
         else:
-            fig, axarr = plt.subplots(1, 3, figsize=(15, 5))
-            ax, bx, cx = axarr.flatten()
+            if vis_curve:
+                fig, axarr = plt.subplots(2, 2, figsize=(5, 5))
+                ax, bx  = axarr[0].flatten()
+                cx, dx = axarr[1].flatten()
+            else:
+                fig, axarr = plt.subplots(1, 3, figsize=(15, 5))
+                ax, bx, cx = axarr.flatten()
 
         fov_scale = self.pixel_scale*self.model_unpadded_dim
         zoom_Mlambda = zoom/(self.wl*1e6)
 
-        if corr_flux:
-            vmax = np.sort(self.unpadded_model.flatten())[::-1][1]
-        else:
-            vmax = None
+        # NOTE: This might be erroneous for objects that have only one
+        # brightness
+        vmax = np.sort(self.unpadded_model.flatten())[::-1][1]
 
-        amp, phase = self.get_amp_phase(corr_flux)
+        amp, phase = self.get_amp_phase(corr_flux=corr_flux, vis2=vis2)
         ax.imshow(self.unpadded_model, vmax=vmax, interpolation="None",
                   extent=[-fov_scale, fov_scale, -fov_scale, fov_scale])
         cbx = bx.imshow(amp, extent=[-self.fftaxis_m_end,
@@ -406,8 +462,19 @@ class FFT:
                                        self.fftaxis_Mlambda_end-1],
                         interpolation="None", aspect=self.wl*1e6)
 
+        if vis_curve:
+            # Takes a slice of the model and shows vis-baselines (calculated)
+            centre = len(amp)//2
+            axis = np.linspace(-self.fftaxis_m_end, self.fftaxis_m_end,
+                                     len(amp), endpoint=False)
+            u, v = axis, axis[:, np.newaxis]
+            xvis_curve = np.sqrt(u**2+v**2)[centre]
+            yvis_curve = amp[centre]
 
-        label_vis = "Flux [Jy]" if corr_flux else "vis"
+            dx.plot(xvis_curve, yvis_curve)
+            dx.set_xlim([0, zoom])
+
+        label_vis = "Flux [Jy]" if corr_flux else ("vis_2" if vis2 else "vis")
         fig.colorbar(cbx, fraction=0.046, pad=0.04, ax=bx, label=label_vis)
         fig.colorbar(ccx, fraction=0.046, pad=0.04, ax=cx, label="Phase [°]")
 
@@ -424,8 +491,13 @@ class FFT:
         cx.set_xlabel("u [m]")
         cx.set_ylabel(r"v [M$\lambda$]")
 
+        if vis_curve:
+            dx.set_title("Visibility curve")
+            dx.set_xlabel("Baseline [m]")
+            dx.set_ylabel("Visibility")
+
         if uvcoords_lst:
-            uvcoords, uvcoords_cphase = map(lambda x: np.array(x), uvcoords_lst)
+            uvcoords, uvcoords_cphase = uvcoords_lst
             u, v = np.split(uvcoords, 2, axis=1)
             u_c, v_c = np.split(uvcoords_cphase, 2, axis=1)
             v, v_c = map(lambda x: x/(self.wl*1e6), [v, v_c])
@@ -446,4 +518,5 @@ class FFT:
 
 
 if __name__ == "__main__":
-    ...
+    fourier = FFT(np.load("../functionality/model.npy"), 8e-6, 30/128, 2)
+    fourier.plot_amp_phase()
