@@ -1,15 +1,13 @@
 import numpy as np
 import astropy.units as u
-
+import matplotlib.pyplot as plt
 from astropy.units import Quantity
 
-import matplotlib.pyplot as plt
-
-from ..libs.model import Model
-from ..libs.utils import IterNamespace, make_fixed_params, _make_params
+from .model_component import ModelComponent
+from ...utils.general import IterNamespace, make_fixed_params, _make_params
 
 
-class GaussComponent(Model):
+class GaussComponent(ModelComponent):
     """Two dimensional Gauss model, FFT is also Gauss
 
     ...
@@ -51,4 +49,3 @@ if __name__ == "__main__":
     print(gaussian.unit)
     plt.imshow(gaussian.value)
     plt.show()
-

@@ -10,6 +10,57 @@ from .utils import IterNamespace, make_fixed_params, make_delta_component,\
 from ..components import DeltaComponent, GaussComponent, RingComponent
 
 
+# TODO: Add this here
+# def loop_model(model: CombinedModel, data: DataHandler,
+               # wavelength: Quantity, rfourier: Optional[bool] = False):
+    # """"""
+    # image = model.eval_flux(wavelength)
+    # total_flux = model.eval_total_flux(wavelength).value
+    # total_flux_arr = [total_flux]
+    # total_flux_arr = np.array([total_flux for _ in range(data.corr_fluxes.shape[1] // 6)])
+    # fourier = FastFourierTransform(image, wavelength,
+                                        # data.pixel_size, data.zero_padding_order)
+    # corr_flux_arr, cphases_arr = fourier.get_uv2fft2(data.uv_coords, data.uv_coords_cphase)
+    # if rfourier:
+        # return total_flux_arr, corr_flux_arr, cphases_arr, fourier
+    # else:
+        # return total_flux_arr, corr_flux_arr, cphases_arr
+
+# # TODO: Write tests for this function
+# # TODO: Check if works as thought
+# def calculate_model(theta: np.ndarray, data: DataHandler,
+                    # rfourier: Optional[bool] = False, debug: Optional[bool] = False):
+    # """"""
+    # data.reformat_theta_to_components(theta)
+    # model = CombinedModel(data.fixed_params, data.disc_params,
+                          # data.wavelengths, data.geometric_params,
+                          # data.modulation_params)
+    # model.tau = data.tau_initial
+    # for component in data.model_components:
+        # model.add_component(component)
+
+    # total_flux_mod_chromatic, corr_flux_mod_chromatic, cphases_mod_chromatic_data =\
+        # [], [], []
+    # if debug:
+        # for wavelength in tqdm(data.wavelengths, "Calculating polychromatic model..."):
+            # model_data = loop_model(model, data, wavelength, rfourier)
+            # total_flux_mod_chromatic.append(model_data[0])
+            # corr_flux_mod_chromatic.append(model_data[1])
+            # cphases_mod_chromatic_data.append(model_data[2])
+    # else:
+        # for wavelength in data.wavelengths:
+            # model_data = loop_model(model, data, wavelength, rfourier)
+            # total_flux_mod_chromatic.append(model_data[0])
+            # corr_flux_mod_chromatic.append(model_data[1])
+            # cphases_mod_chromatic_data.append(model_data[2])
+
+    # if rfourier:
+        # return total_flux_mod_chromatic*u.Jy, corr_flux_mod_chromatic*u.Jy,\
+            # cphases_mod_chromatic_data*u.deg, model_data[-1]
+    # return total_flux_mod_chromatic*u.Jy, corr_flux_mod_chromatic*u.Jy,\
+        # cphases_mod_chromatic_data*u.deg
+
+
 # TODO: Add docstrings and tests
 class CombinedModel:
     """"""

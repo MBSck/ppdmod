@@ -1,63 +1,36 @@
+from typing import List
+
 import numpy as np
 import astropy.units as u
 
-from tqdm import tqdm
-from typing import Optional, List
-from astropy.units import Quantity
-
-from .data_prep import DataHandler
-from .combined_model import CombinedModel
-from .fourier import FastFourierTransform
+# TODO: Remove data handler at some point if possible
+from ..data_processing.data_prep import DataHandler
 
 
-def loop_model(model: CombinedModel, data: DataHandler,
-               wavelength: Quantity, rfourier: Optional[bool] = False):
-    """"""
-    image = model.eval_flux(wavelength)
-    total_flux = model.eval_total_flux(wavelength).value
-    total_flux_arr = [total_flux]
-    total_flux_arr = np.array([total_flux for _ in range(data.corr_fluxes.shape[1] // 6)])
-    fourier = FastFourierTransform(image, wavelength,
-                                        data.pixel_size, data.zero_padding_order)
-    corr_flux_arr, cphases_arr = fourier.get_uv2fft2(data.uv_coords, data.uv_coords_cphase)
-    if rfourier:
-        return total_flux_arr, corr_flux_arr, cphases_arr, fourier
-    else:
-        return total_flux_arr, corr_flux_arr, cphases_arr
+def make_inital_guess_from_priors(priors: List[float]) -> List[float]:
+    """Initialises a random float/list via a uniform distribution from the
+    bounds provided
 
-# TODO: Write tests for this function
-# TODO: Check if works as thought
-def calculate_model(theta: np.ndarray, data: DataHandler,
-                    rfourier: Optional[bool] = False, debug: Optional[bool] = False):
-    """"""
-    data.reformat_theta_to_components(theta)
-    model = CombinedModel(data.fixed_params, data.disc_params,
-                          data.wavelengths, data.geometric_params,
-                          data.modulation_params)
-    model.tau = data.tau_initial
-    for component in data.model_components:
-        model.add_component(component)
+    Parameters
+    -----------
+    priors: IterNamespace
+        Bounds list must be nested list(s) containing the bounds of the form
+        form [lower_bound, upper_bound]
 
-    total_flux_mod_chromatic, corr_flux_mod_chromatic, cphases_mod_chromatic_data =\
-        [], [], []
-    if debug:
-        for wavelength in tqdm(data.wavelengths, "Calculating polychromatic model..."):
-            model_data = loop_model(model, data, wavelength, rfourier)
-            total_flux_mod_chromatic.append(model_data[0])
-            corr_flux_mod_chromatic.append(model_data[1])
-            cphases_mod_chromatic_data.append(model_data[2])
-    else:
-        for wavelength in data.wavelengths:
-            model_data = loop_model(model, data, wavelength, rfourier)
-            total_flux_mod_chromatic.append(model_data[0])
-            corr_flux_mod_chromatic.append(model_data[1])
-            cphases_mod_chromatic_data.append(model_data[2])
-
-    if rfourier:
-        return total_flux_mod_chromatic*u.Jy, corr_flux_mod_chromatic*u.Jy,\
-            cphases_mod_chromatic_data*u.deg, model_data[-1]
-    return total_flux_mod_chromatic*u.Jy, corr_flux_mod_chromatic*u.Jy,\
-        cphases_mod_chromatic_data*u.deg
+    Returns
+    -------
+    List[float]
+        A list of the parameters corresponding to the priors. Also does not take the full
+        priors but 1/4 from the edges, to avoid emcee problems
+    """
+    params = []
+    for prior in priors:
+        quarter_prior_distance = np.diff(prior)/4
+        lower_bound, upper_bounds = prior[0]+quarter_prior_distance,\
+            prior[1]-quarter_prior_distance
+        param = np.random.uniform(lower_bound, upper_bounds)[0]
+        params.append(param)
+    return np.array(params)
 
 
 def lnlike(theta: np.ndarray, data: DataHandler) -> float:
@@ -144,8 +117,8 @@ def lnprob(theta: np.ndarray, data: DataHandler) -> np.ndarray:
     return lnlike(theta, data) if np.isfinite(lnprior(theta, data.priors)) else -np.inf
 
 
-def chi_sq(real_data: Quantity, data_error: Quantity,
-           data_model: Quantity, lnf: float) -> float:
+def chi_sq(real_data: u.Quantity, data_error: u.Quantity,
+           data_model: u.Quantity, lnf: float) -> float:
     """The chi square minimisation
 
     Parameters
@@ -167,4 +140,3 @@ def chi_sq(real_data: Quantity, data_error: Quantity,
 
 if __name__ == "__main__":
     ...
-

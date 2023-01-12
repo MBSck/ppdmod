@@ -1,14 +1,13 @@
+from typing import Any, Tuple, List, Union, Optional
+
 import numpy as np
 import astropy.units as u
 
-from astropy.units import Quantity
-from typing import Tuple, List, Optional
-
-from .utils import IterNamespace, make_fixed_params, _set_ones, _make_axis
+from ...utils.general import IterNamespace, make_fixed_params, _set_ones, _make_axis
 
 # TODO: Make sure all is tested! Write test for set_ones and improve all tests
 # TODO: Make good docstrings
-class Model:
+class ModelComponent:
     """Model baseclass """
     def __init__(self, fixed_params: IterNamespace) -> None:
         self.fixed_params = fixed_params
@@ -31,7 +30,7 @@ class Model:
             return (self.fixed_params.pixel_sampling//2,
                     self.fixed_params.pixel_sampling//2)
 
-    def _set_grid(self, incline_params: Optional[List[float]] = None) -> Quantity:
+    def _set_grid(self, incline_params: Optional[List[float]] = None) -> u.mas:
         """Sets the size of the model and its centre. Returns the polar coordinates
 
         Parameters
@@ -43,8 +42,7 @@ class Model:
 
         Returns
         -------
-        radius: np.array
-            The radius [astropy.units.mas/px]
+        radius: u.mas/px
         """
         # TODO: Does center shift, xc, yc need to be applied?
         if self._component_name == "delta":
@@ -68,24 +66,21 @@ class Model:
             radius = np.sqrt(x**2+y**2)
         return radius
 
-    def _set_azimuthal_modulation(self, image: Quantity,
-                                  amplitude: Quantity,
-                                  modulation_angle: Quantity) -> Quantity:
+    def _set_azimuthal_modulation(self, image: Union[Any, u.mas, u.Jy],
+                                  amplitude: u.dimensionless_unscaled,
+                                  modulation_angle: u.deg) -> u.mas:
         """Calculates the azimuthal modulation of the object
 
         Parameters
         ----------
-        image: astropy.units.Quantity
-            The model's image [astropy.units.Jy/px] or any image to modulate
-        amplitude: Quantity
-            The 'c'-amplitude [astropy.units.dimensionless_unscaled]
-        polar_angle: astropy.units.Quantity
-            The polar angle of the x, y-coordinates [astropy.units.rad]
+        image: u.mas/px | u.Jy/px
+            The model's image or any image to modulate
+        amplitude: u.dimensionless_unscaled
+            The 'c'-amplitude
 
         Returns
         -------
-        azimuthal_modulation: astropy.units.Quantity
-            The azimuthal modulation [astropy.units.dimensionless_unscaled]
+        azimuthally_modulated_image: u.mas
         """
         # TODO: Implement Modulation field like Jozsef?
         modulation_angle = modulation_angle.to(u.rad)

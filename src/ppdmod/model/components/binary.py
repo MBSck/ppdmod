@@ -1,14 +1,14 @@
+from typing import Union
+
 import numpy as np
 import astropy.units as u
-
-from typing import Union
 from astropy.units import Quantity
 
-from ..libs.model import Model
-from ..libs.utils import IterNamespace
+from .model_component import ModelComponent
+from ...utils.general import IterNamespace
 
 
-class BinaryComponent(Model):
+class BinaryComponent(ModelComponent):
     """..."""
     def __init__(self, *args):
         super().__init__(*args)

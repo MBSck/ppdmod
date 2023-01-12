@@ -3,11 +3,12 @@ import astropy.constants as c
 
 from astropy.units import Quantity
 
-from ..libs.model import Model
-from ..libs.utils import stellar_flux, _set_zeros
+from .model_component import ModelComponent
+from ...utils.general import stellar_flux, _set_zeros
+
 
 # TODO: Write tests for this as well
-class DeltaComponent(Model):
+class DeltaComponent(ModelComponent):
     """Delta function/Point source model
 
     ...
@@ -51,4 +52,3 @@ if __name__ == "__main__":
     image_size = u.Quantity(128, unit=u.dimensionless_unscaled, dtype=int)
     delta = DeltaComponent(50*u.mas, image_size, 1500*u.K,
                            7900*u.K, 140*u.pc, 19*c.L_sun, image_size)
-
