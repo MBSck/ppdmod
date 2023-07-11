@@ -1,9 +1,11 @@
+from typing import Optional
+
 import astropy.units as u
 import numpy as np
 
 from fft import compute_2Dfourier_transform
 from options import OPTIONS
-from parameter import Parameter, _standardParameters
+from parameter import STANDARD_PARAMETERS, Parameter
 from utils import rebin_image, pad_image, get_next_power_of_two
 
 
@@ -35,16 +37,16 @@ class NumericalComponent:
         self._allowExternalRotation = True
 
         self.params = {}
-        self.params["x"] = Parameter(**_standardParameters["x"])
-        self.params["y"] = Parameter(**_standardParameters["y"])
-        self.params["f"] = Parameter(**_standardParameters["f"])
-        self.params["dim"] = Parameter(**_standardParameters["dim"])
-        self.params["fov"] = Parameter(**_standardParameters["fov"])
-        self.params["pixSize"] = Parameter(**_standardParameters["pixSize"])
+        self.params["x"] = Parameter(**STANDARD_PARAMETERS["x"])
+        self.params["y"] = Parameter(**STANDARD_PARAMETERS["y"])
+        self.params["f"] = Parameter(**STANDARD_PARAMETERS["f"])
+        self.params["dim"] = Parameter(**STANDARD_PARAMETERS["dim"])
+        self.params["fov"] = Parameter(**STANDARD_PARAMETERS["fov"])
+        self.params["pixSize"] = Parameter(**STANDARD_PARAMETERS["pixSize"])
 
-        self.params["pa"] = Parameter(**_standardParameters["pa"])
+        self.params["pa"] = Parameter(**STANDARD_PARAMETERS["pa"])
         if self.elliptic:
-            self.params["elong"] = Parameter(**_standardParameters["elong"])
+            self.params["elong"] = Parameter(**STANDARD_PARAMETERS["elong"])
         self._eval(**kwargs)
 
     @property
@@ -146,7 +148,7 @@ class NumericalComponent:
 
         if self._allowExternalRotation:
             pa_rad = (self.params["pa"](wl)) * \
-                self.params["pa"].unit.to(units.rad)
+                self.params["pa"].unit.to(u.rad)
             co, si = np.cos(pa_rad), np.sin(pa_rad)
             fxp, fyp = ucoord*co-vcoord*si, ucoord*si+vcoord*co
             vcoord = fyp
@@ -193,6 +195,7 @@ class NumericalComponent:
         im = im.reshape(dims)
         return im
 
+
 if __name__ == "__main__":
     test = NumericalComponent(x=10, y=5)
-    
+    breakpoint()

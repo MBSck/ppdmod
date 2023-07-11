@@ -7,7 +7,7 @@ from astropy.units import Quantity
 
 
 # NOTE: Here is a list of standard parameters to be used when defining new components
-_standardParameters = {
+STANDARD_PARAMETERS = {
     "x": {"name": "x", "value": 0, "description": "x position", "unit": u.mas, "free": False},
     "y": {"name": "y", "value": 0, "description": "y position", "unit": u.mas, "free": False},
     "f": {"name": "f", "value": 1, "description": "flux", "unit": u.one},
@@ -25,14 +25,14 @@ _standardParameters = {
 }
 
 
-@dataclass
+@dataclass(kw_only=True)
 class Parameter:
     name: str
     value: any
     description: str
     unit: Quantity
     free: bool = True
-    limits: List[int] = None
+    limits: list[int] = None
     wavelengths: np.ndarray = None
 
     def __call__(self,
@@ -44,14 +44,8 @@ class Parameter:
         return self.value[np.where(self.wavelengths == wavelengths)]
 
     def __str__(self):
-        return f"Parameter: {self.name} has the value {self.value} and "\
-               f"is {'free' if self.free else 'not free'} "\
-               f"with its limits being {self.range_min}-{self.range_max}."
-
-    def __repr__(self):
-        return self.__str__()
-
-
-if __name__ == "__main__":
-    x = Parameter(**_standardParameters["x"])
-    breakpoint()
+        message = f"Parameter: {self.name} has the value {self.value} and "\
+                  f"is {'free' if self.free else 'not free'}"
+        if self.limits is not None:
+            message += f" with its limits being {self.limits[0]}-{self.limits[1]}"
+        return message

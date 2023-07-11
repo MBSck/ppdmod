@@ -1,3 +1,8 @@
+from typing import Optional, Union
+
+import astropy.units as u
+import numpy as np
+
 
 def _make_axis(axis_end: int, steps: int):
     """Makes an axis from a negative to a postive value, with the endpoint removed to give
@@ -20,8 +25,8 @@ def _make_axis(axis_end: int, steps: int):
 
 # TODO: Maybe even optimize calculation time further in the future
 # Got it down from 3.5s to 0.66s for 3 wavelengths. It is 0.19s per wl.
-def calculate_intensity(wavelengths: units.um,
-                        temp_profile: units.K,
+def calculate_intensity(wavelengths: u.um,
+                        temp_profile: u.K,
                         pixel_size: Optional[float] = None) -> np.ndarray:
     """Calculates the blackbody_profile via Planck's law and the
     emissivity_factor for a given wavelength, temperature- and
@@ -41,13 +46,13 @@ def calculate_intensity(wavelengths: units.um,
     intensity : numpy.ndarray
         Intensity per pixel.
     """
-    plancks_law = models.BlackBody(temperature=temp_profile*units.K)
+    plancks_law = models.BlackBody(temperature=temp_profile*u.K)
     spectral_profile = []
-    pixel_size *= units.rad
-    for wavelength in wavelengths*units.m:
+    pixel_size *= u.rad
+    for wavelength in wavelengths*u.m:
         spectral_radiance = plancks_law(wavelength).to(
-        units.erg/(units.cm**2*units.Hz*units.s*units.rad**2))
-        spectral_profile.append((spectral_radiance*pixel_size**2).to(units.Jy).value)
+        u.erg/(u.cm**2*u.Hz*u.s*u.rad**2))
+        spectral_profile.append((spectral_radiance*pixel_size**2).to(u.Jy).value)
     return np.array(spectral_profile)
 
 
@@ -165,5 +170,5 @@ def convert_radial_profile_to_meter(radius: Union[float, np.ndarray],
     where d is the distance from the star and D is the distance from the star
     to the observer and ..math::`\\delta` is the angular diameter.
     """
-    radius = ((radius*units.mas).to(units.arcsec).value*distance*units.au).to(units.m)
+    radius = ((radius*u.mas).to(u.arcsec).value*distance*u.au).to(u.m)
     return radius.value if rvalue else radius
