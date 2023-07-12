@@ -112,10 +112,10 @@ class NumericalComponent:
         x_arr, y_arr = self._calculate_internal_grid()
         return self._calculate_image(x_arr, y_arr, wl)
 
-    def calculate_visibility_function(self,
-                                      ucoord: np.ndarray,
-                                      vcoord: np.ndarray,
-                                      wl: Optional[np.ndarray] = None):
+    def calculate_complex_visibility(self,
+                                     ucoord: np.ndarray,
+                                     vcoord: np.ndarray,
+                                     wl: Optional[np.ndarray] = None):
         if wl is None:
             wl = ucoord*0
 

@@ -2,10 +2,16 @@ from pathlib import Path
 from multiprocessing import Pool, cpu_count
 from typing import Optional, Callable, Dict, List
 
+import astropy.units as u
 import emcee
 import numpy as np
 
 from parameter import Parameter
+from options import OPTIONS
+
+# Define globals
+DATA = ...
+MODEL = ...
 
 
 def chi_sq(data: u.quantity, error: u.quantity,
@@ -46,26 +52,17 @@ def lnlike(theta: np.ndarray) -> float:
     float
         The goodness of the fitted model (will be minimised)
     """
-    # if data.fit_total_flux:
-    #     total_flux_chi_sq = chi_sq(data.total_fluxes,
-    #                                data.total_fluxes_error,
-    #                                total_flux_mod, lnf)
-    # else:
-    #     total_flux_chi_sq= 0
-    #
-    # corr_flux_chi_sq = chi_sq(data.corr_fluxes,
-    #                           data.corr_fluxes_error,
-    #                           corr_flux_mod, lnf)
-    # if data.fit_cphases:
-    #     cphases_chi_sq = chi_sq(data.cphases,
-    #                             data.cphases_error,
-    #                             cphases_mod, lnf)
-    # else:
-    #     cphases_chi_sq = 0
-    # return np.array(total_flux_chi_sq+corr_flux_chi_sq+cphases_chi_sq)
+    # TODO: Calculate model here and set new params?
+    MODEL.calculate_complex_visibility(...)
+    total = 0
+    for key in OPTIONS["fit.datasets"]:
+        data = getattr(DATA, key)
+        error = getattr(DATA, f"key_{err}")
+        total += chi_sq(data, error, model)
+    return np.array(total)
 
 
-def lnprior(parameters: np.ndarray, priors: List[List[float]]) -> float:
+def lnprior(parameters: Dict[str, Parameter]) -> float:
     """Checks if all variables are within their priors (as well as
     determining them setting the same).
 
@@ -75,10 +72,7 @@ def lnprior(parameters: np.ndarray, priors: List[List[float]]) -> float:
 
     Parameters
     ----------
-    theta: np.ndarray
-        A list of all the parameters that ought to be fitted
-    priors: List[List[float]]
-        A list containing all the priors' bounds
+    parameters : dict of Parameter
 
     Returns
     -------
@@ -87,7 +81,7 @@ def lnprior(parameters: np.ndarray, priors: List[List[float]]) -> float:
     """
     for parameter in parameters:
         if parameter.free:
-            if not parameter.limits[0] < parameter.value < parameter.limits[1]:
+            if not parameter.min < parameter.value < parameter.max:
                 return -np.inf
     return 0.
 
@@ -109,66 +103,30 @@ def lnprob(parameters: Dict[Parameter]) -> np.ndarray:
     return lnlike(theta, data) if np.isfinite(lnprior(parameters)) else -np.inf
 
 
-def initiate_random(parameters: Dict[Parameter]) -> np.array:
+def initiate_randomly(free_parameters: Dict[Parameter],
+                      nwalkers: float) -> np.ndarray:
     """initialises a random numpy.ndarray from the parameter's limits.
 
     parameters
     -----------
-    parameters : dict of Parameter
+    free_parameters : dict of Parameter
 
     Returns
     -------
     numpy.ndarray
     """
-    theta = [parameter.value for parameter in parameters]
-    nw = self.params['nwalkers'].value
-    initialParams = np.ndarray([nw, self.nfree])
-
-    for iparam, parami in enumerate(self.freeParams.values()):
-        initialParams[:, iparam] = np.random.random(
-            self.params['nwalkers'].value)*(parami.max-parami.min)+parami.min
-
-    return initialParams
+    initial = np.ndarray([nwalkers, len(free_parameters)])
+    for index, parameter in enumerate(free_parameters.values()):
+        initial[:, index] = np.random.random(nwalkers)\
+            * np.ptp([parameter.min, parameter.max])+parameter.min
+    return initial
 
 
-def generate_valid_guess(initial: List, priors: List,
-                         nwalkers: int, frac: float) -> np.ndarray:
-    """Generates a valid guess that is in the bounds of the priors for the
-    start of the MCMC-fitting
-
-    Parameters
-    ----------
-    inital: List
-        The inital guess
-    priors: List
-        The priors that constrain the guess
-    nwalkers: int
-        The number of walkers to be initialised for
-
-    Returns
-    -------
-    p0: np.ndarray
-        A valid guess for the number of walkers according to the number of
-        dimensions
-    """
-    proposal = np.array(initial)
-    prior_dynamic = np.array([np.ptp(i) for i in priors])
-    dyn = 1/prior_dynamic
-
-    guess_lst = []
-    for _ in range(nwalkers):
-        guess = proposal + frac*dyn*np.random.normal(proposal, dyn)
-        guess_lst.append(guess)
-
-    return np.array(guess_lst, dtype=float)
-
-
-def run_mcmc(parameters: Parameter,
+def run_mcmc(parameters: Dict[str, Parameter],
              nwalkers: int,
              nsteps: int,
              discard: int,
              wavelength: float,
-             frac: Optional[float] = 1e-4,
              save_path: Optional[Path] = None) -> np.array:
     """Runs the emcee Hastings Metropolitan sampler
 
@@ -185,15 +143,22 @@ def run_mcmc(parameters: Parameter,
 
     Parameters
     ----------
-    lnprob: Callable
-    plot_wl: float
-    frac: float, optional
+    parameters : dict of Parameter
+    nwalkers : int,
+    nsteps : int,
+    discard : int,
+    wavelength : float
     save_path: pathlib.Path, optional
+
+    Returns
+    -------
+    np.ndarray
     """
-    # p0 = generate_valid_guess(initial, nwalkers, frac)
+    inital = initiate_randomly(parameters, nwalkers)
     with Pool() as pool:
         print(f"Executing MCMC with {cpu_count()} cores.")
         print("--------------------------------------------------------------")
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, pool=pool)
-        # pos, prob, state = sampler.run_mcmc(p0, nsteps, progress=True)
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob,
+                                        args=parameters, pool=pool)
+        pos, prob, state = sampler.run_mcmc(inital, nsteps, progress=True)
     theta_max = (sampler.flatchain)[np.argmax(sampler.flatlnprobability)]

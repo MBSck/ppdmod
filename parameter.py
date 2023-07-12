@@ -32,7 +32,8 @@ class Parameter:
     description: str
     unit: Quantity
     free: bool = True
-    limits: list[int] = None
+    min: float = None
+    max: float = None
     wavelengths: np.ndarray = None
 
     def __call__(self,
@@ -46,6 +47,6 @@ class Parameter:
     def __str__(self):
         message = f"Parameter: {self.name} has the value {self.value} and "\
                   f"is {'free' if self.free else 'not free'}"
-        if self.limits is not None:
-            message += f" with its limits being {self.limits[0]}-{self.limits[1]}"
+        if self.max is not None:
+            message += f" with its limits being {self.min}-{self.max}"
         return message

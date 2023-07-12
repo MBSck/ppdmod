@@ -1,10 +1,12 @@
-from typing import Union, Optional, Dict, List
+from typing import Union, Optional, Tuple, Dict, List
 
 import astropy.units as u
 import numpy as np
 from matplotlib.pyplot import plt
+from matplotlib.axes import Axes
 from numpy.typing import ArrayLike
 
+from component import NumericalComponent
 from parameter import Parameter
 
 
@@ -27,7 +29,7 @@ class oimModel:
        The components of the model.
     """
 
-    def __init__(self, *components: List[oimComponent]) -> None:
+    def __init__(self, *components: List[NumericalComponent]) -> None:
         """Constructor of the class"""
         if len(components) == 1 and type(components[0]) == list:
             self.components = components[0]
@@ -67,9 +69,8 @@ class oimModel:
         """
         return {key: value for key, value in self.params if value.free}
 
-
-    def getComplexCoherentFlux(self, ucoord: ArrayLike, vcoord: ArrayLike,
-                               wl: Optional[ArrayLike] = None) -> np.ndarray:
+    def calculate_complex_visibility(self, ucoord: ArrayLike, vcoord: ArrayLike,
+                                     wl: Optional[ArrayLike] = None) -> np.ndarray:
         """Compute and return the complex coherent flux for an array of u,v
         (and optionally wavelength and time) coordinates.
 
@@ -81,22 +82,20 @@ class oimModel:
             Spatial coordinate vu (in cycles/rad).
         wl : array_like, optional
             Wavelength(s) in meter. The default is None.
-        t :  array_like, optional
-            Time in s (mjd). The default is None.
 
         Returns
         -------
         numpy.ndarray
-            The complex coherent flux. The same size as u & v
+            The complex coherent flux. The same size as u & v.
         """
         res = complex(0, 0)
         for component in self.components:
             res += component.getComplexCoherentFlux(ucoord, vcoord, wl)
         return res
 
-    def getImage(self, dim: int, pixSize: float,
-                 wl: Optional[Union[float, ArrayLike]] = None,
-                 fromFT: Optional[bool] = False) -> np.ndarray:
+    def calculate_image(self, dim: int, pixSize: float,
+                        wl: Optional[Union[float, ArrayLike]] = None,
+                        fromFT: Optional[bool] = False) -> np.ndarray:
         """Compute and return an image or and image cube (if wavelength and time
         are given).
 
@@ -141,7 +140,7 @@ class oimModel:
             spfy_arr = (vy_arr/pixSize/u.mas.to(u.rad)).flatten()
             wl_arr = wl.flatten()
 
-            ft = self.getComplexCoherentFlux(spfx_arr, spfy_arr, wl_arr).reshape(dims)
+            ft = self.calculate_complex_visibility(spfx_arr, spfy_arr, wl_arr).reshape(dims)
 
             # TODO: Correct axes here
             image = np.abs(np.fft.fftshift(np.fft.ifft2(np.fft.fftshift(
@@ -153,20 +152,18 @@ class oimModel:
 
         return image
 
-    def showModel(self, dim: int, pixSize: float,
-                  wl: Optional[Union[int, ArrayLike]] = None,
-                  fromFT: Optional[bool] = False,
-                  axe: Optional[Axes] = None,
-                  normPow: Optional[float] = 0.5,
-                  figsize: Optional[Tuple[float]] = (3.5, 2.5),
-                  savefig: Optional[str] = None,
-                  colorbar: Optional[bool] = True,
-                  legend: Optional[bool] = False,
-                  swapAxes: Optional[bool] = True,
-                  kwargs_legend: Dict = {},
-                  normalize: Optional[bool] = False,
-                  rebin: Optional[bool] = False,
-                  **kwargs: Dict) -> Tuple[Figure, Axes, np.ndarray]:
+    def plot_model(self, dim: int, pixSize: float,
+                   wl: Optional[Union[int, ArrayLike]] = None,
+                   fromFT: Optional[bool] = False,
+                   axe: Optional[Axes] = None,
+                   normPow: Optional[float] = 0.5,
+                   figsize: Optional[Tuple[float]] = (3.5, 2.5),
+                   savefig: Optional[str] = None,
+                   colorbar: Optional[bool] = True,
+                   legend: Optional[bool] = False,
+                   kwargs_legend: Dict = {},
+                   rebin: Optional[bool] = False,
+                   **kwargs: Dict) -> Tuple[Figure, Axes, np.ndarray]:
         """Show the mode Image or image-Cube
 
         Parameters
@@ -203,7 +200,7 @@ class oimModel:
             If True normalizes the image.
         rebin : bool, optional
             If True rebin the image according to oimOptions["FTBinningFactor"].
-        **kwargs : dict
+        kwargs : dict
             Arguments to be passed to the plt.imshow function.
 
         Returns
@@ -215,7 +212,7 @@ class oimModel:
         im  : numpy.array
             The image(s).
         """
-        image = self.getImage(dim, pixSize, wl, fromFT=fromFT)
+        image = self.calculate_image(dim, pixSize, wl, fromFT=fromFT)
         wl = np.array(wl).flatten()
 
         nwl = wl.size
@@ -234,10 +231,10 @@ class oimModel:
             kwargs['norm'] = colors.PowerNorm(gamma=normPow)
 
         for iwl, wli in enumerate(wl):
-            cb = axe[iwl, it].imshow(image[iwl, :, :],
-                                     extent=[-dim/2*pixSize, dim/2*pixSize,
-                                             -dim/2*pixSize, dim/2*pixSize],
-                                     origin='lower', **kwargs)
+            cb = axe[iwl].imshow(image[iwl, :, :],
+                                 extent=[-dim/2*pixSize, dim/2*pixSize,
+                                         -dim/2*pixSize, dim/2*pixSize],
+                                 origin='lower', **kwargs)
 
             axe[iwl].set_xlim(dim/2*pixSize, -dim/2*pixSize)
 
@@ -264,20 +261,17 @@ class oimModel:
             image = rebin_image(image)
         return fig, axe, image
 
-    def showFourier(self, dim: int, pixSize: float,
-                    wl: Optional[Union[int, ArrayLike]] = None,
-                    t: Optional[Union[int, ArrayLike]] = None,
-                    axe: Optional[Axes] = None,
-                    normPow: Optional[float] = 0.5,
-                    figsize: Optional[Tuple[float]] = (3.5, 2.5),
-                    savefig: Optional[str] = None,
-                    colorbar: Optional[bool] = True,
-                    legend: Optional[bool] = False,
-                    swapAxes: Optional[bool] = True,
-                    display_mode: Optional[str] = "vis",
-                    kwargs_legend: Optional[Dict] = {},
-                    normalize: Optional[bool] = False,
-                    **kwargs: Dict):
+    def plot_fourier(self, dim: int, pixSize: float,
+                     wl: Optional[Union[int, ArrayLike]] = None,
+                     axe: Optional[Axes] = None,
+                     normPow: Optional[float] = 0.5,
+                     figsize: Optional[Tuple[float]] = (3.5, 2.5),
+                     savefig: Optional[str] = None,
+                     colorbar: Optional[bool] = True,
+                     legend: Optional[bool] = False,
+                     display_mode: Optional[str] = "corr_flux",
+                     kwargs_legend: Optional[Dict] = {},
+                     **kwargs: Dict):
         """Show the amplitude and phase of the Fourier space
 
         Parameters
@@ -343,7 +337,7 @@ class oimModel:
         wl_arr = wl.flatten()
         spfx_extent = spfx_arr.max()
 
-        ft = self.getComplexCoherentFlux(spfx_arr, spfy_arr, wl_arr).reshape(dims)
+        ft = self.calculate_complex_visibility(spfx_arr, spfy_arr, wl_arr).reshape(dims)
             
         if display_mode == "vis":
             im = np.abs(ft)
