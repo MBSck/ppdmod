@@ -32,8 +32,9 @@ class NumericalComponent:
         All components have at least three parameters the position
         x and y and their flux f
         """
+        self.name = None
         self._wl = None, None
-        self._dim, self._pixSize = None, None
+        self._dim, self._pixel_size = None, None
         self._allowExternalRotation = True
 
         self.params = {}
@@ -50,17 +51,17 @@ class NumericalComponent:
         self._eval(**kwargs)
 
     @property
-    def pixSize(self):
+    def pixel_size(self):
         """Gets the pixel size of the object [rad]."""
-        if "pixSize" in self.params and self._pixSize is None:
-            self._pixSize = self.params["pixSize"].value\
+        if "pixSize" in self.params and self._pixel_size is None:
+            self._pixel_size = self.params["pixSize"].value\
                 * self.params["pixSize"].unit.to(u.rad)
-        return self._pixSize
+        return self._pixel_size
 
-    @pixSize.setter
-    def pixSize(self, value):
+    @pixel_size.setter
+    def pixel_size(self, value):
         """Sets the pixel size of the object."""
-        self._pixSize = value
+        self._pixel_size = value
 
     @property
     def dim(self):
@@ -88,21 +89,7 @@ class NumericalComponent:
     def _translate_coordinates(self, x, y, wl):
         return x-self.params["x"](wl), y-self.params["y"](wl)
 
-    def __str__(self):
-        txt = self.name
-        for name, param in self.params.items():
-            if isinstance(param, oimParam):
-                if 'value' in param.__dict__:
-                    txt += " {0}={1:.2f}".format(param.name, param.value)
-                elif isinstance(param, oimParamInterpolator):
-                    # TODO have a string for each oimParamInterpolator
-                    txt += " {0}={1}".format(param.name,
-                                             param.__class__.__name__)
-
-        return txt
-
-    def _calculate_interal_grid(self,
-                                wl: np.ndarray = None) -> np.ndarray:
+    def _calculate_internal_grid(self) -> np.ndarray:
         """Calculates the model grid.
 
         In case of 1D it is a radial profile and in 2D it is a grid.
@@ -113,18 +100,17 @@ class NumericalComponent:
         Returns
         -------
         """
-        wl0 = self.get_variable_from_attribute("_wl", wl)
         pix = self.params["pixSize"].value * \
             self.params["pixSize"].unit.to(u.mas)
         v = np.linspace(-0.5, 0.5, self.dim)*pix*self.dim
-        return wl0, v, v[:, None]
+        return v, v[:, None]
 
     def _calculate_image(self, x: np.ndarray, y: np.ndarray, wl: np.ndarray):
         return
 
     def calculate_internal_image(self, wl: np.ndarray):
-        wl_arr, x_arr, y_arr = self._calculate_interal_grid(wl, t)
-        return self._calculate_image(x_arr, y_arr, wl_arr)
+        x_arr, y_arr = self._calculate_internal_grid()
+        return self._calculate_image(x_arr, y_arr, wl)
 
     def calculate_visibility_function(self,
                                       ucoord: np.ndarray,
@@ -138,13 +124,10 @@ class NumericalComponent:
         else:
             wl0 = self._wl
 
-        im = self.getInternalImage(wl0).reshape(wl0.size, self.dim, self.dim)
+        image = self.getInternalImage(wl0).reshape(wl0.size, self.dim, self.dim)
         if OPTIONS["FTBinningFactor"] is not None:
-            im = rebin_image(im, OPTIONS["FTBinningFactor"])
-        im = pad_image(im)
-
-        tr = self._translate_fourier_transform(
-            ucoord, vcoord, wl)*self.params["f"](wl)
+            image = rebin_image(image, OPTIONS["FTBinningFactor"])
+        image = pad_image(image)
 
         if self._allowExternalRotation:
             pa_rad = (self.params["pa"](wl)) * \
@@ -153,14 +136,18 @@ class NumericalComponent:
             fxp, fyp = ucoord*co-vcoord*si, ucoord*si+vcoord*co
             vcoord = fyp
             if self.elliptic:
-                ucoord = fxp/self.params["elong"](wl, t)
+                ucoord = fxp/self.params["elong"](wl)
             else:
                 ucoord = fxp
 
         # TODO: Implement custom fft here
-        ...
+        fourier_transform = compute_2Dfourier_transform(image, ucoord, vcoord,
+                                                        wl, wl, self.pixel_size)
 
-        return vc*tr*self.params["f"](wl)
+        translate_factor = self._translate_fourier_transform(
+            ucoord, vcoord, wl)*self.params["f"](wl)
+
+        return fourier_transform*translate_factor*self.params["f"](wl)
 
     def calculate_image(self, dim: float, pixSize: float,
                         wl: Optional[np.ndarray] = None):
@@ -197,5 +184,5 @@ class NumericalComponent:
 
 
 if __name__ == "__main__":
-    test = NumericalComponent(x=10, y=5)
+    test = NumericalComponent(x=10, y=5, fov=100, pixSize=0.1)
     breakpoint()
