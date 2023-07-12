@@ -62,8 +62,10 @@ class ReadoutFits:
         self.vcoord = np.array(self.vcoord)
         return self
 
-    def get_data_for_wavelength(self, wavelength: np.ndarray):
-        ...
+    def get_data_for_wavelength(self, wavelengths: np.ndarray, key: str):
+        """Gets the data for the given wavelengths."""
+        indicies = np.where(np.isin(self.wavelength, wavelengths))
+        return getattr(self, key)[:, indicies].squeeze().T
 
 
 if __name__ == "__main__":
@@ -72,4 +74,5 @@ if __name__ == "__main__":
              "hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_HAWAII-2RG_FINAL_TARGET_INT.fits"]
     files = [path / file for file in files]
     readout = ReadoutFits(files).read_files()
+    data = readout.get_data_for_wavelength(readout.wavelength[50:52], "t3phi")
     breakpoint()
