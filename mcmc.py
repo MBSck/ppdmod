@@ -6,12 +6,32 @@ import astropy.units as u
 import emcee
 import numpy as np
 
+from data import ReadoutFits
 from parameter import Parameter
 from options import OPTIONS
+from utils import get_next_power_of_two
 
 # Define globals
-DATA = ...
-MODEL = ...
+PATH = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse")
+FILES = ["hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_AQUARIUS_FINAL_TARGET_INT.fits",
+         "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits"]
+FILES = [PATH / file for file in FILES]
+DATA = [ReadoutFits(file) for file in FILES]
+
+# NOTE: Geometric parameters
+FOV = 100
+PIXEL_SIZE = 0.1
+DIM = get_next_power_of_two(FOV / PIXEL_SIZE)
+
+# NOTE: Star parameters and model component
+DISTANCE = 150
+LUMINOSITY = 19
+EFFECTIVE_TEMPERATURE = 7500
+STAR = ...
+
+# NOTE: Wavelength dependent parameters
+KAPPA_ABS = ...
+KAPPA_ABS_CONT = ...
 
 
 def chi_sq(data: u.quantity, error: u.quantity,
@@ -35,7 +55,8 @@ def chi_sq(data: u.quantity, error: u.quantity,
                        - np.log(inv_sigma_squared))
 
 # TODO: Think of a way to handle data here.
-def lnlike(theta: np.ndarray) -> float:
+def lnlike(theta: np.ndarray,
+           wavelengths: np.ndarray) -> float:
     """Takes theta vector and the x, y and the yerr of the theta.
     Returns a number corresponding to how good of a fit the model is to your
     data for a given set of parameters, weighted by the data points.
@@ -52,12 +73,15 @@ def lnlike(theta: np.ndarray) -> float:
     float
         The goodness of the fitted model (will be minimised)
     """
-    # TODO: Calculate model here and set new params?
-    MODEL.calculate_complex_visibility(...)
+    # TODO: Initialise model here to account for multiprocessing
+    model = ...
+    fourier_transform = model.calculate_complex_visibility(DATA.ucoord, DATA.vcoord,
+                                                           wavelengths)
+    # TODO: Calculate the different observables here
     total = 0
     for key in OPTIONS["fit.datasets"]:
-        data = getattr(DATA, key)
-        error = getattr(DATA, f"key_{err}")
+        data = DATA.get_data_for_wavelength(wavelengths, key)
+        error = DATA.get_data_for_wavelength(wavelengths, f"key_{err}")
         total += chi_sq(data, error, model)
     return np.array(total)
 
@@ -85,7 +109,7 @@ def lnprior(parameters: Dict[str, Parameter]) -> float:
                 return -np.inf
     return 0.
 
-def lnprob(parameters: Dict[Parameter]) -> np.ndarray:
+def lnprob(parameters: Dict[Parameter], wavelengths: np.ndarray) -> np.ndarray:
     """This function runs the lnprior and checks if it returned -np.inf, and
     returns if it does. If not, (all priors are good) it returns the inlike for
     that model (convention is lnprior + lnlike)
@@ -100,7 +124,8 @@ def lnprob(parameters: Dict[Parameter]) -> np.ndarray:
     float
         The minimisation value or -np.inf if it fails
     """
-    return lnlike(theta, data) if np.isfinite(lnprior(parameters)) else -np.inf
+    return lnlike(parameters, wavelengths)\
+        if np.isfinite(lnprior(parameters)) else -np.inf
 
 
 def initiate_randomly(free_parameters: Dict[Parameter],
@@ -126,7 +151,7 @@ def run_mcmc(parameters: Dict[str, Parameter],
              nwalkers: int,
              nsteps: int,
              discard: int,
-             wavelength: float,
+             wavelengths: float,
              save_path: Optional[Path] = None) -> np.array:
     """Runs the emcee Hastings Metropolitan sampler
 
@@ -147,7 +172,7 @@ def run_mcmc(parameters: Dict[str, Parameter],
     nwalkers : int,
     nsteps : int,
     discard : int,
-    wavelength : float
+    wavelengths : float
     save_path: pathlib.Path, optional
 
     Returns
@@ -158,7 +183,7 @@ def run_mcmc(parameters: Dict[str, Parameter],
     with Pool() as pool:
         print(f"Executing MCMC with {cpu_count()} cores.")
         print("--------------------------------------------------------------")
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob,
-                                        args=parameters, pool=pool)
+        sampler = emcee.EnsembleSampler(nwalkers, len(MODEL.free_params), lnprob,
+                                        args=(parameters, wavelengths), pool=pool)
         pos, prob, state = sampler.run_mcmc(inital, nsteps, progress=True)
     theta_max = (sampler.flatchain)[np.argmax(sampler.flatlnprobability)]
