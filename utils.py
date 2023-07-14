@@ -3,6 +3,7 @@ from typing import Optional, Union, List
 
 import astropy.units as u
 import numpy as np
+from astropy.modeling import models
 
 from fluxcal import transform_spectrum_to_real_spectral_resolution
 from options import OPTIONS
@@ -33,10 +34,9 @@ def _make_axis(axis_end: int, steps: int):
     """
     return np.linspace(-axis_end, axis_end, steps, endpoint=False)
 
-
 # TODO: Maybe even optimize calculation time further in the future
 # Got it down from 3.5s to 0.66s for 3 wavelengths. It is 0.19s per wl.
-def calculate_intensity(wavelengths: u.um,
+def calculate_intensity(wavelength: u.um,
                         temp_profile: u.K,
                         pixel_size: Optional[float] = None) -> np.ndarray:
     """Calculates the blackbody_profile via Planck's law and the
@@ -58,13 +58,9 @@ def calculate_intensity(wavelengths: u.um,
         Intensity per pixel.
     """
     plancks_law = models.BlackBody(temperature=temp_profile*u.K)
-    spectral_profile = []
     pixel_size *= u.rad
-    for wavelength in wavelengths*u.m:
-        spectral_radiance = plancks_law(wavelength).to(
-        u.erg/(u.cm**2*u.Hz*u.s*u.rad**2))
-        spectral_profile.append((spectral_radiance*pixel_size**2).to(u.Jy).value)
-    return np.array(spectral_profile)
+    spectral_radiance = plancks_law(wavelength*u.m).to(u.erg/(u.cm**2*u.Hz*u.s*u.rad**2))
+    return (spectral_radiance*pixel_size**2).to(u.Jy).value
 
 
 def pad_image(image: np.ndarray):
@@ -126,13 +122,10 @@ def rebin_image(image: np.ndarray,
     new_dim = int(image.shape[-1] * 2**-binning_factor)
     binned_shape = (new_dim, int(image.shape[-1] / new_dim),
                     new_dim, int(image.shape[-1] / new_dim))
-    if len(image.shape) <= 4:
-        shape = (image.shape[0], image.shape[1], *binned_shape)
-    else:
-        shape = binned_shape
+    breakpoint()
     if rdim:
-        return image.reshape(shape).mean(-1).mean(-2), new_dim
-    return image.reshape(shape).mean(-1).mean(-2)
+        return image.reshape(binned_shape).mean(-1).mean(-2), new_dim
+    return image.reshape(binned_shape).mean(-1).mean(-2)
 
 
 def get_next_power_of_two(number: Union[int, float]) -> int:

@@ -27,7 +27,10 @@ class Component:
     def _eval(self, **kwargs):
         for key, value in kwargs.items():
             if key in self.params:
-                self.params[key].value = value
+                if isinstance(value, Parameter):
+                    self.params[key] = value
+                else:
+                    self.params[key].value = value
 
     def _translate_fourier_transform(self, ucoord, vcoord):
         x = self.params["x"].value*self.params["x"].unit.to(u.rad)

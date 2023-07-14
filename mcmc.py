@@ -5,8 +5,9 @@ from typing import Optional, Callable, Dict
 import astropy.units as u
 import emcee
 import numpy as np
+import matplotlib.pyplot as plt
 
-from custom_components import Star, TemperatureGradient
+from custom_components import Star, AsymmetricSDGreyBodyContinuum
 from data import ReadoutFits
 from model import Model
 from parameter import Parameter
@@ -63,9 +64,19 @@ CONTINUUM_OPACITY_L_BAND = opacity_to_matisse_opacity(WAVELENGTH_AXES[0],
                                                       qval_file=QVAL_FILE_DIR / "Q_SILICA_RV0.1.DAT")
 CONTINUUM_OPACITY_N_BAND = opacity_to_matisse_opacity(WAVELENGTH_AXES[1],
                                                       qval_file=QVAL_FILE_DIR / "Q_SILICA_RV0.1.DAT")
+
 KAPPA_ABS = np.concatenate([OPACITY_L_BAND, OPACITY_N_BAND])
 KAPPA_ABS_CONT = np.concatenate([CONTINUUM_OPACITY_L_BAND,
                                  CONTINUUM_OPACITY_N_BAND])
+
+KAPPA_ABS = Parameter(name="kappa_abs", value=KAPPA_ABS,
+                      wavelengths=WAVELENGTH_AXIS,
+                      unit=u.cm**2/u.g, free=False,
+                      description="Dust mass absorption coefficient")
+KAPPA_ABS_CONT = Parameter(name="kappa_cont", value=KAPPA_ABS_CONT,
+                           wavelengths=WAVELENGTH_AXIS,
+                           unit=u.cm**2/u.g, free=False,
+                           description="Continuum dust mass absorption coefficient")
 
 
 def chi_sq(data: u.quantity, error: u.quantity,
@@ -229,10 +240,13 @@ def run_mcmc(parameters: Dict[str, Parameter],
 
 if __name__ == "__main__":
     star = Star(dim=DIM, dist=DISTANCE, eff_temp=EFF_TEMP, lum=LUMINOSITY)
-    temp_grad = TemperatureGradient(dim=DIM, dist=DISTANCE, Tin=INNER_TEMP,
-                                    pixSize=PIXEL_SIZE, rin=0.5, rout=100,
-                                    Mdust=0.11, q=0.5, p=0.5, a=0.5,
-                                    pa=150, phi=33, elong=0.5)
+    temp_grad = AsymmetricSDGreyBodyContinuum(dim=DIM, dist=DISTANCE, Tin=INNER_TEMP,
+                                              pixSize=PIXEL_SIZE, Teff=EFF_TEMP,
+                                              kappa_abs=KAPPA_ABS, lum=LUMINOSITY,
+                                              kappa_cont=KAPPA_ABS_CONT,
+                                              rin=0.5, rout=100, Mdust=0.11,
+                                              q=0.5, p=0.5, a=0.5, cont_weight=0.5,
+                                              pa=150, phi=33, elong=0.5)
     model = Model([star, temp_grad])
-    model.calculate_image(1024, 0.1, 3.5e-6)
-    breakpoint()
+    model.plot_model(2048, 0.1, 4.78301581e-06, binning_factor=2)
+    plt.show()

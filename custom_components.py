@@ -113,7 +113,6 @@ class Star(AnalyticalComponent):
             val = np.abs(xx)+np.abs(yy)
             idx = np.unravel_index(np.argmin(val), np.shape(val))
             self._image[idx] = 1
-        breakpoint()
         return self._image*self._calculate_flux(wl)
 
     def _visibility_function(self, ucoord, vcoord, rho, wl):
@@ -227,8 +226,7 @@ class TemperatureGradient(NumericalComponent):
         self._wl = None  # None value <=> All wavelengths (from Data)
         self._eval(**kwargs)
 
-    def _azimuthal_modulation(self, xx: np.ndarray,
-                              yy: np.ndarray, wl: np.ndarray) -> np.ndarray:
+    def _azimuthal_modulation(self, xx: np.ndarray, yy: np.ndarray) -> np.ndarray:
         """Calculates the azimuthal modulation.
 
         Parameters
@@ -237,17 +235,15 @@ class TemperatureGradient(NumericalComponent):
             The x-coordinate grid
         yy : numpy.ndarray
             The y-coordinate grid
-        wl : numpy.ndarray
-            Wavelengths.
 
         Returns
         -------
         azimuthal_modulation : numpy.ndarray
         """
-        phi = self.params["phi"](wl)*self.params["phi"].unit.to(u.rad)
-        return self.params["a"](wl)*np.cos(np.arctan2(yy, xx)-phi)
+        phi = self.params["phi"].value*self.params["phi"].unit.to(u.rad)
+        return self.params["a"].value*np.cos(np.arctan2(yy, xx)-phi)
 
-    def _surface_density_profile(self, xx, yy, wl):
+    def _surface_density_profile(self, xx, yy):
         """Calculates the surface density profile.
 
         This can be azimuthally varied if so specified.
@@ -258,21 +254,21 @@ class TemperatureGradient(NumericalComponent):
             The x-coordinate grid [mas].
         yy : numpy.ndarray
             The y-coordinate grid [mas].
-        wl : numpy.ndarray
-            Wavelengths [micron].
 
         Returns
         -------
         surface_density_profile : np.ndarray
             The surface density profile [g/cm^2].
         """
-        dist = self.params["dist"](wl)
-        rin, rout = map(lambda x: self.params[x](wl), ["rin", "rout"])
+        dist = self.params["dist"].value
+        rin, rout = map(lambda x: self.params[x].value, ["rin", "rout"])
         rin_cm = convert_radial_profile_to_meter(rin, dist).to(u.cm).value
         rout_cm = convert_radial_profile_to_meter(rout, dist).to(u.cm).value
 
-        p = self.params["p"](wl)
-        dust_mass = self.params["Mdust"](wl)*const.M_sun.value*1e3
+        p = self.params["p"].value
+        dust_mass = self.params["Mdust"].value\
+            * self.params["Mdust"].unit.to(u.g)
+
         if p == 2:
             sigma_in = dust_mass/(2.*np.pi*np.log(rout_cm/rin_cm)*rin_cm**2)
         else:
@@ -281,7 +277,7 @@ class TemperatureGradient(NumericalComponent):
 
         sigma_profile = sigma_in*(np.sqrt(xx**2+yy**2) / rin)**(-p)
         if self.asymmetric_surface_density:
-            return sigma_profile*(1+self._azimuthal_modulation(xx, yy, wl))
+            return sigma_profile*(1+self._azimuthal_modulation(xx, yy))
         return sigma_profile
 
     def _optical_depth(self, xx, yy, wl):
@@ -301,20 +297,16 @@ class TemperatureGradient(NumericalComponent):
         optical_depth : np.ndarray
             The optical depth.
         """
-        sigma_profile = self._surface_density_profile(xx, yy, wl)
+        sigma_profile = self._surface_density_profile(xx, yy)
         if self.continuum_contribution:
-            opacities = self.params["kappa_abs"](wl) +\
-                        self.params["cont_weight"](wl) *\
-                        self.params["kappa_cont"](wl)
+            opacity = self.params["kappa_abs"](wl) +\
+                    self.params["cont_weight"].value *\
+                    self.params["kappa_cont"](wl)
         else:
-            opacities = self.params["kappa_abs"](wl)
+            opacity = self.params["kappa_abs"](wl)
+        return np.array(-sigma_profile*opacity)
 
-        optical_depth = []
-        for opacity in opacities:
-            optical_depth.append(-sigma_profile*opacity)
-        return np.array(optical_depth)
-
-    def _temperature_profile(self, r, wl):
+    def _temperature_profile(self, radius):
         """Calculates the temperature profile.
 
         Can be specified to be either as a r^q power law or an a
@@ -350,15 +342,16 @@ class TemperatureGradient(NumericalComponent):
         .. math:: T_{grain} = \\sqrt{\\frac{R_*}{2r}}\\cdot T_*.
         """
         if self.const_temperature:
-            radius = convert_radial_profile_to_meter(r, self.params["dist"](wl))
-            luminosity = (self.params["lum"](wl) *
+            radius = convert_radial_profile_to_meter(radius,
+                                                     self.params["dist"].value)
+            luminosity = (self.params["lum"].value *
                           self.params["lum"].unit).to(u.W)
-            stellar_temperature = self.params["Teff"](wl)*self.params["Teff"].unit
+            stellar_temperature = self.params["Teff"].value*self.params["Teff"].unit
             stellar_radius = np.sqrt(
                 luminosity/(4*np.pi*const.sigma_sb*stellar_temperature**4))
             return (np.sqrt(stellar_radius/(2*radius))*stellar_temperature).value
-        q, inner_temp = map(lambda x: self.params[x](wl), ["q", "Tin"])
-        return inner_temp*(r / self.params["rin"](wl))**(-q)
+        q, inner_temp = map(lambda x: self.params[x].value, ["q", "Tin"])
+        return inner_temp*(radius / self.params["rin"].value)**(-q)
 
     def _image(self, xx: np.ndarray,
                yy: np.ndarray, wl: np.ndarray) -> np.ndarray:
@@ -380,16 +373,18 @@ class TemperatureGradient(NumericalComponent):
         -------
         image : numpy.ndarray
         """
-        r = np.sqrt(xx**2+yy**2)
-        rin, rout = map(lambda x: self.params[x](wl), ["rin", "rout"])
-        radial_profile = np.logical_and(r > rin, r < rout).astype(int)
-        temperature_profile = self._temperature_profile(r, wl)
-        spectral_density = calculate_intensity(wl, temperature_profile, self.pixSize)
+        radius = np.sqrt(xx**2+yy**2)
+        rin, rout = map(lambda x: self.params[x].value, ["rin", "rout"])
+        radial_profile = np.logical_and(radius > rin, radius < rout).astype(int)
+        temperature_profile = self._temperature_profile(radius)
+        pixel_size = self.params["pixSize"].value*self.params["pixSize"].unit.to(u.rad)
+        spectral_density = calculate_intensity(wl,
+                                               temperature_profile, pixel_size)
         return np.nan_to_num(radial_profile * spectral_density *
                              (1 - np.exp(self._optical_depth(xx, yy, wl))), nan=0)
 
-    def _imageFunction(self, xx: np.ndarray,
-                       yy: np.ndarray, wl: np.ndarray) -> np.ndarray:
+    def _image_function(self, xx: np.ndarray,
+                        yy: np.ndarray, wl: np.ndarray) -> np.ndarray:
         """Calculates a 2D-image from a dust-surface density- and
         temperature profile.
 
@@ -408,13 +403,13 @@ class TemperatureGradient(NumericalComponent):
         """
         if self.asymmetric_image:
             img = self._image(xx, yy, wl) * \
-                (1+self._azimuthal_modulation(xx, yy, wl))
+                (1+self._azimuthal_modulation(xx, yy))
         else:
             img = self._image(xx, yy, wl)
         return img
 
 
-class AsymmetricSDTemperatureGradient(NumericalComponent):
+class AsymmetricSDTemperatureGradient(TemperatureGradient):
     """A ring defined by a radial temperature profile in r^q
     that is multiplied by an azimuthal modulation.
     and an asymmetric radial dust surface density profile in r^p.
@@ -467,7 +462,7 @@ class AsymmetricSDTemperatureGradient(NumericalComponent):
     continuum_contribution = False
 
 
-class AsymmetricSDGreyBody(NumericalComponent):
+class AsymmetricSDGreyBody(TemperatureGradient):
     """A ring defined by a radial temperature profile in r^q
     that is multiplied by an azimuthal modulation.
     and an asymmetric radial dust surface density profile in r^p.
@@ -520,7 +515,7 @@ class AsymmetricSDGreyBody(NumericalComponent):
     continuum_contribution = False
 
 
-class AsymmetricSDGreyBodyContinuum(NumericalComponent):
+class AsymmetricSDGreyBodyContinuum(TemperatureGradient):
     """A ring defined by a radial temperature profile in r^q
     that is multiplied by an azimuthal modulation.
     and an asymmetric radial dust surface density profile in r^p.
@@ -571,8 +566,3 @@ class AsymmetricSDGreyBodyContinuum(NumericalComponent):
     asymmetric_surface_density = True
     const_temperature = True
     continuum_contribution = True
-
-
-if __name__ == "__main__":
-    test = Star(eff_temp=7800, dist=150, lum=19)
-    breakpoint()

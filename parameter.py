@@ -36,12 +36,12 @@ class Parameter:
     wavelengths: np.ndarray = None
 
     def __call__(self,
-                 wavelengths: Optional[np.ndarray] = None) -> np.ndarray:
+                 wavelength: Optional[np.ndarray] = None) -> np.ndarray:
         """Gets the value for the parameter or the corresponding
         values for the wavelengths."""
         if self.wavelengths is None:
             return self.value
-        return self.value[np.where(self.wavelengths == wavelengths)]
+        return self.value[np.where(self.wavelengths == wavelength)]
 
     def __str__(self):
         message = f"Parameter: {self.name} has the value {self.value} and "\

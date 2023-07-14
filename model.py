@@ -122,36 +122,18 @@ class Model:
         numpy.ndarray
              A numpy 2D array (or 3D array if wl is given).
         """
-        # TODO: Maybe change calculation to one per wavelength.
-        if wl is None:
-            wl = 0
-
-        wl = np.array(wl).flatten()
-        nwl = wl.size
-        dims = (nwl, dim, dim)
-
         if fromFT:
             v = np.linspace(-0.5, 0.5, dim)
             vx, vy = np.meshgrid(v, v)
+            spfx_arr, spfy_arr = (vx/pixSize/u.mas.to(u.rad)).flatten()
+            spfy_arr = (vy/pixSize/u.mas.to(u.rad)).flatten()
 
-            vx_arr = np.tile(vx[None, None, :, :], (nwl, 1, 1))
-            vy_arr = np.tile(vy[None, None, :, :], (nwl, 1, 1))
-            wl_arr = np.tile(wl[None, :, None, None], (1, dim, dim))
-
-            spfx_arr, spfy_arr = (vx_arr/pixSize/u.mas.to(u.rad)).flatten()
-            spfy_arr = (vy_arr/pixSize/u.mas.to(u.rad)).flatten()
-            wl_arr = wl.flatten()
-
-            ft = self.calculate_complex_visibility(spfx_arr, spfy_arr, wl_arr).reshape(dims)
-
-            # TODO: Correct axes here
-            image = np.abs(np.fft.fftshift(np.fft.ifft2(np.fft.fftshift(
-                ft, axes=[-2, -1]), axes=[-2, -1]), axes=[-2, -1]))
+            ft = self.calculate_complex_visibility(spfx_arr, spfy_arr, wl_arr)
+            image = np.abs(np.fft.fftshift(np.fft.ifft2(np.fft.fftshift(ft))))
         else:
-            image = np.zeros(dims)
+            image = np.zeros((dim, dim))
             for component in self.components:
                 image += component.calculate_image(dim, pixSize, wl)
-
         return image
 
     def plot_model(self, dim: int, pixSize: float,
@@ -163,7 +145,7 @@ class Model:
                    colorbar: Optional[bool] = True,
                    legend: Optional[bool] = False,
                    kwargs_legend: Dict = {},
-                   rebin: Optional[bool] = False,
+                   binning_factor: Optional[bool] = None,
                    **kwargs: Dict) -> Tuple[Figure, Axes, np.ndarray]:
         """Show the mode Image or image-Cube
 
@@ -181,9 +163,6 @@ class Model:
         axe : matplotlib.axes.Axes, optional
             If provided the image will be shown in this axe. If not a new figure
             will be created. The default is None.
-        normPow : float, optional
-            Exponent for the Image colorscale powerLaw normalisation.
-            The default is 0.5.
         figsize : tuple of float, optional
             The Figure size in inches. The default is (8., 6.).
         savefig : str, optional
@@ -193,14 +172,9 @@ class Model:
             Add a colobar to the Axe. The default is True.
         legend : bool, optional
             If True displays a legend. Default is False.
-        swapAxes : bool, optional
-            If True swaps the axes of the wavelength and time.
-            Default is True.
         kwargs_legend: dict, optional
-        normalize : bool, optional
-            If True normalizes the image.
         rebin : bool, optional
-            If True rebin the image according to oimOptions["FTBinningFactor"].
+            If True rebin the image according to OPTIONS["FTBinningFactor"].
         kwargs : dict
             Arguments to be passed to the plt.imshow function.
 
@@ -214,40 +188,32 @@ class Model:
             The image(s).
         """
         image = self.calculate_image(dim, pixSize, wl, fromFT=fromFT)
-        wl = np.array(wl).flatten()
-
-        nwl = wl.size
-
         if axe is None:
-            fig, axe = plt.subplots(nwl, figsize=(figsize[1]*nwl),
-                                    sharex=True, sharey=True)
+            fig, axe = plt.subplots()
         else:
             try:
                 fig = axe.get_figure()
             except Exception:
                 fig = axe.flatten()[0].get_figure()
 
-        axe = np.array(axe).flatten().reshape((nwl))
-        for iwl, wli in enumerate(wl):
-            cb = axe[iwl].imshow(image[iwl, :, :],
-                                 extent=[-dim/2*pixSize, dim/2*pixSize,
-                                         -dim/2*pixSize, dim/2*pixSize],
-                                 origin='lower', **kwargs)
+        cb = axe.imshow(image[:],
+                        vmax=np.sort(image[:].flatten())[::-1][1],
+                        extent=[-dim/2*pixSize, dim/2*pixSize,
+                                -dim/2*pixSize, dim/2*pixSize],
+                        origin='lower', **kwargs)
 
-            axe[iwl].set_xlim(dim/2*pixSize, -dim/2*pixSize)
+        axe.set_xlim(dim/2*pixSize, -dim/2*pixSize)
+        axe.set_xlabel("$\\alpha$(mas)")
+        axe.set_ylabel("$\\delta$(mas)")
 
-            if iwl == nwl-1:
-                axe[iwl].set_xlabel("$\\alpha$(mas)")
-                axe[iwl].set_ylabel("$\\delta$(mas)")
-
-            if legend:
-                txt = ""
-                if wl[0] is not None:
-                    txt += r"wl={:.4f}$\mu$m\n".format(wli*1e6)
-                if "color" not in kwargs_legend:
-                    kwargs_legend["color"] = "w"
-                axe[iwl].text(0, 0.95*dim/2*pixSize, txt,
-                              va="top", ha='center', **kwargs_legend)
+        if legend:
+            txt = ""
+            if wl is not None:
+                txt += r"wl={:.4f}$\mu$m\n".format(wl*1e6)
+            if "color" not in kwargs_legend:
+                kwargs_legend["color"] = "w"
+            axe.text(0, 0.95*dim/2*pixSize, txt,
+                     va="top", ha='center', **kwargs_legend)
 
         if colorbar:
             fig.colorbar(cb, ax=axe, label="Normalized Intensity")
@@ -255,8 +221,7 @@ class Model:
         if savefig is not None:
             plt.savefig(savefig)
 
-        if rebin:
-            image = rebin_image(image)
+        image = rebin_image(image, binning_factor=binning_factor)
         return fig, axe, image
 
     def plot_fourier(self, dim: int, pixSize: float,
