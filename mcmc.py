@@ -1,41 +1,75 @@
 from pathlib import Path
 from multiprocessing import Pool, cpu_count
-from typing import Optional, Callable, Dict, List
+from typing import Optional, Callable, Dict
 
 import astropy.units as u
 import emcee
 import numpy as np
 
+from custom_components import Star, TemperatureGradient
 from data import ReadoutFits
+from model import Model
 from parameter import Parameter
-from options import OPTIONS
-from utils import get_next_power_of_two
+from utils import get_next_power_of_two, opacity_to_matisse_opacity,\
+    linearly_combine_opacities
+
+
+# NOTE: Path to data.
+PATH = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse")
+
+# NOTE: Define wavelengths to fit
+WAVELENGTHS = []
+
+# NOTE: Get the wavelenght axis of MATISSE for both band (CHECK: Might differ for different files)?
+WAVLENGTH_FILES = ["hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_HAWAII-2RG_FINAL_TARGET_INT.fits",
+                   "hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_AQUARIUS_FINAL_TARGET_INT.fits"]
+WAVELENGTH_AXES = list(map(lambda x: ReadoutFits(PATH / x).wavelength, WAVLENGTH_FILES))
+WAVELENGTH_AXES[0].sort()
+WAVELENGTH_AXIS = np.concatenate(WAVELENGTH_AXES)
 
 # Define globals
-PATH = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse")
 FILES = ["hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_AQUARIUS_FINAL_TARGET_INT.fits",
          "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits"]
-FILES = [PATH / file for file in FILES]
+FILES = list(map(lambda x: PATH / x, FILES))
 DATA = [ReadoutFits(file) for file in FILES]
 
 # NOTE: Geometric parameters
-FOV = 100
-PIXEL_SIZE = 0.1
+FOV, PIXEL_SIZE = 100, 0.1
 DIM = get_next_power_of_two(FOV / PIXEL_SIZE)
 
-# NOTE: Star parameters and model component
+# NOTE: Star parameters
 DISTANCE = 150
+EFF_TEMP = 7500
 LUMINOSITY = 19
-EFFECTIVE_TEMPERATURE = 7500
-STAR = ...
+
+# NOTE: Temperature gradient parameters
+INNER_TEMP = 1500
 
 # NOTE: Wavelength dependent parameters
-KAPPA_ABS = ...
-KAPPA_ABS_CONT = ...
+WEIGHTS = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
+QVAL_FILE_DIR = Path("/Users/scheuck/Data/opacities/QVAL")
+QVAL_FILES = ["Q_Am_Mgolivine_Jae_DHS_f0.2_rv0.1.dat",
+              "Q_Am_Mgolivine_Jae_DHS_f0.2_rv1.5.dat",
+              "Q_Am_Mgpyroxene_Dor_DHS_f1.0_rv1.5.dat",
+              "Q_Fo_Suto_DHS_f1.0_rv0.1.dat",
+              "Q_Fo_Suto_DHS_f1.0_rv1.5.dat",
+              "Q_En_Jaeger_DHS_f1.0_rv1.5.dat"]
+QVAL_PATHS = list(map(lambda x: QVAL_FILE_DIR / x, QVAL_FILES))
+OPACITY_L_BAND = linearly_combine_opacities(WEIGHTS,
+                                            QVAL_PATHS, WAVELENGTH_AXES[0])
+OPACITY_N_BAND = linearly_combine_opacities(WEIGHTS,
+                                            QVAL_PATHS, WAVELENGTH_AXES[1])
+CONTINUUM_OPACITY_L_BAND = opacity_to_matisse_opacity(WAVELENGTH_AXES[0],
+                                                      qval_file=QVAL_FILE_DIR / "Q_SILICA_RV0.1.DAT")
+CONTINUUM_OPACITY_N_BAND = opacity_to_matisse_opacity(WAVELENGTH_AXES[1],
+                                                      qval_file=QVAL_FILE_DIR / "Q_SILICA_RV0.1.DAT")
+KAPPA_ABS = np.concatenate([OPACITY_L_BAND, OPACITY_N_BAND])
+KAPPA_ABS_CONT = np.concatenate([CONTINUUM_OPACITY_L_BAND,
+                                 CONTINUUM_OPACITY_N_BAND])
 
 
 def chi_sq(data: u.quantity, error: u.quantity,
-           model_data: u.quantity, lnf: float) -> float:
+           model_data: u.quantity, lnf: float = 0) -> float:
     """the chi square minimisation.
 
     Parameters
@@ -74,14 +108,20 @@ def lnlike(theta: np.ndarray,
         The goodness of the fitted model (will be minimised)
     """
     # TODO: Initialise model here to account for multiprocessing
-    model = ...
-    fourier_transform = model.calculate_complex_visibility(DATA.ucoord, DATA.vcoord,
-                                                           wavelengths)
+    # TODO: Set params globally and then just pass them to the function and set the values from the theta.
+    star = Star(dim=DIM, dist=DISTANCE, eff_temp=EFF_TEMP, lum=LUMINOSITY)
+    temp_grad = TemperatureGradient(dim=DIM, )
+    model = Model([star, temp_grad])
+    fourier_transforms = {}
+    # NOTE: Find way to check if file has wavelength and then use the uv-coords of the wavelength.
+    for wavelength in WAVELENGTHS:
+        fourier_transform = model.calculate_complex_visibility(DATA.ucoord, DATA.vcoord,
+                                                               WAVELENGTHS)
     # TODO: Calculate the different observables here
     total = 0
-    for key in OPTIONS["fit.datasets"]:
-        data = DATA.get_data_for_wavelength(wavelengths, key)
-        error = DATA.get_data_for_wavelength(wavelengths, f"key_{err}")
+    for index, _ in enumerate(FILES):
+        data = DATA[index].get_data_for_wavelength(WAVELENGTHS, key)
+        error = DATA[index].get_data_for_wavelength(WAVELENGTHS, f"{key}_err")
         total += chi_sq(data, error, model)
     return np.array(total)
 
@@ -109,7 +149,7 @@ def lnprior(parameters: Dict[str, Parameter]) -> float:
                 return -np.inf
     return 0.
 
-def lnprob(parameters: Dict[Parameter], wavelengths: np.ndarray) -> np.ndarray:
+def lnprob(parameters: Dict[str, Parameter]) -> np.ndarray:
     """This function runs the lnprior and checks if it returned -np.inf, and
     returns if it does. If not, (all priors are good) it returns the inlike for
     that model (convention is lnprior + lnlike)
@@ -124,11 +164,10 @@ def lnprob(parameters: Dict[Parameter], wavelengths: np.ndarray) -> np.ndarray:
     float
         The minimisation value or -np.inf if it fails
     """
-    return lnlike(parameters, wavelengths)\
-        if np.isfinite(lnprior(parameters)) else -np.inf
+    return lnlike(parameters) if np.isfinite(lnprior(parameters)) else -np.inf
 
 
-def initiate_randomly(free_parameters: Dict[Parameter],
+def initiate_randomly(free_parameters: Dict[str, Parameter],
                       nwalkers: float) -> np.ndarray:
     """initialises a random numpy.ndarray from the parameter's limits.
 
@@ -151,7 +190,6 @@ def run_mcmc(parameters: Dict[str, Parameter],
              nwalkers: int,
              nsteps: int,
              discard: int,
-             wavelengths: float,
              save_path: Optional[Path] = None) -> np.array:
     """Runs the emcee Hastings Metropolitan sampler
 
@@ -184,6 +222,16 @@ def run_mcmc(parameters: Dict[str, Parameter],
         print(f"Executing MCMC with {cpu_count()} cores.")
         print("--------------------------------------------------------------")
         sampler = emcee.EnsembleSampler(nwalkers, len(MODEL.free_params), lnprob,
-                                        args=(parameters, wavelengths), pool=pool)
+                                        args=(parameterswavelengths), pool=pool)
         pos, prob, state = sampler.run_mcmc(inital, nsteps, progress=True)
     theta_max = (sampler.flatchain)[np.argmax(sampler.flatlnprobability)]
+
+
+if __name__ == "__main__":
+    star = Star(dim=DIM, dist=DISTANCE, eff_temp=EFF_TEMP, lum=LUMINOSITY)
+    temp_grad = TemperatureGradient(dim=DIM, dist=DISTANCE, Tin=INNER_TEMP,
+                                    pixSize=PIXEL_SIZE, rin=0.5, rout=100,
+                                    Mdust=0.11, q=0.5, p=0.5, a=0.5,
+                                    pa=150, phi=33, elong=0.5)
+    model = Model([star, temp_grad])
+    breakpoint()

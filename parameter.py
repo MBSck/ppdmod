@@ -10,7 +10,6 @@ from astropy.units import Quantity
 STANDARD_PARAMETERS = {
     "x": {"name": "x", "value": 0, "description": "x position", "unit": u.mas, "free": False},
     "y": {"name": "y", "value": 0, "description": "y position", "unit": u.mas, "free": False},
-    "f": {"name": "f", "value": 1, "description": "flux", "unit": u.one},
     "r": {"name": "r", "value": 0, "description": "radius", "unit": u.mas},
     "elong": {"name": "elong", "value": 1, "description": "Elongation Ratio", "unit": u.one},
     "pa": {"name": "pa", "value": 0, "description": "Major-axis Position angle", "unit": u.deg},

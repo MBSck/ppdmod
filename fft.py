@@ -27,7 +27,7 @@ def compute_2Dfourier_transform(image: np.ndarray,
     # TODO: Only fourier transform the last two axes here (the image itself).
     return np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(image))), frequency_axis
 
-# TODO: Fix this. Where should the frequenciy axis belong to
+
 def interpolate_coordinates(fourier_transform: np.ndarray,
                             frequency_axis: np.ndarray,
                             ucoord: np.ndarray,

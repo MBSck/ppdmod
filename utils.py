@@ -1,7 +1,18 @@
-from typing import Optional, Union
+from pathlib import Path
+from typing import Optional, Union, List
 
 import astropy.units as u
 import numpy as np
+
+from fluxcal import transform_spectrum_to_real_spectral_resolution
+from options import OPTIONS
+
+
+DL_COEFFS = {
+    "low": [0.10600484,  0.01502548,  0.00294806, -0.00021434],
+    "high": [-8.02282965e-05,  3.83260266e-03, 7.60090459e-05, -4.30753848e-07]
+}
+SPECTRAL_BINNING = {"low": 7, "high": 7}
 
 
 def _make_axis(axis_end: int, steps: int):
@@ -68,8 +79,8 @@ def pad_image(image: np.ndarray):
     s0x = np.trim_zeros(im0x).size
     s0y = np.trim_zeros(im0y).size
 
-    min_sizex = s0x*oimOptions["FTpaddingFactor"]
-    min_sizey = s0y*oimOptions["FTpaddingFactor"]
+    min_sizex = s0x*OPTIONS["FTpaddingFactor"]
+    min_sizey = s0y*OPTIONS["FTpaddingFactor"]
 
     min_pow2x = 2**(min_sizex - 1).bit_length()
     min_pow2y = 2**(min_sizey - 1).bit_length()
@@ -172,3 +183,60 @@ def convert_radial_profile_to_meter(radius: Union[float, np.ndarray],
     """
     radius = ((radius*u.mas).to(u.arcsec).value*distance*u.au).to(u.m)
     return radius.value if rvalue else radius
+
+
+def qval_to_opacity(qval_file: Path) -> np.ndarray:
+    """Reads the qval file and returns the opacity.
+
+    Parameters
+    ----------
+    qval_file : pathlib.Path
+
+    Notes
+    -----
+    The qval-files give the grain size in microns and the
+    density in g/cm^3.
+    """
+    with open(qval_file, "r+", encoding="utf8") as file:
+        _, grain_size, density = map(float, file.readline().strip().split())
+    wavelenght_grid, qval = np.loadtxt(qval_file, skiprows=1, unpack=True)
+    return wavelenght_grid, 3*qval/(4*grain_size*u.um.to(u.cm)*density)
+
+
+def opacity_to_matisse_opacity(wavelength_solution: u.m,
+                               opacity: Optional[np.ndarray] = None,
+                               opacity_file: Optional[Path] = None,
+                               qval_file: Optional[Path] = None,
+                               resolution: Optional[str] = "low",
+                               save_path: Optional[Path] = None):
+    """Converts the opacity to the MATISSE wavelength grid."""
+    wavelengths = wavelength_solution*u.m.to(u.um)
+    if qval_file is not None:
+        wavelength_grid, opacity = qval_to_opacity(qval_file)
+    elif opacity_file is not None:
+        wavelength_grid, opacity = np.loadtxt(
+            opacity_file, skiprows=1, unpack=True)
+    ind = np.where(np.logical_and(wavelengths.min() < wavelength_grid,
+                                  wavelength_grid < wavelengths.max()))
+    wavelength_grid, opacity = wavelength_grid[ind], opacity[ind]
+    matisse_opacity = transform_spectrum_to_real_spectral_resolution(wavelength_grid, opacity,
+                                                                     DL_COEFFS[resolution], 10,
+                                                                     wavelengths,
+                                                                     SPECTRAL_BINNING[resolution])
+    if save_path is not None:
+        np.save(save_path, [wavelengths, matisse_opacity])
+    return matisse_opacity
+
+
+def linearly_combine_opacities(weights: List[float], files: List[Path],
+                               wavelength_solution: u.m) -> np.ndarray:
+    """Linearly combines multiple opacities by their weights."""
+    total_opacity = None
+    for weight, file in zip(weights, files):
+        opacity = opacity_to_matisse_opacity(wavelength_solution,
+                                             qval_file=file)
+        if total_opacity is None:
+            total_opacity = weight*opacity
+        else:
+            total_opacity += weight*opacity
+    return total_opacity

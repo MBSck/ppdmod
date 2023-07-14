@@ -1,16 +1,18 @@
 from typing import Union, Optional, Tuple, Dict, List
 
 import astropy.units as u
+import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.pyplot import plt
 from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from numpy.typing import ArrayLike
 
 from component import NumericalComponent
 from parameter import Parameter
+from utils import rebin_image
 
 
-class oimModel:
+class Model:
     """The oimModel class hold a model made of one or more components (derived
     from the oimComponent class).
 
@@ -79,7 +81,7 @@ class oimModel:
         ucoord : array_like
             Spatial coordinate u (in cycles/rad).
         vcoord : array_like
-            Spatial coordinate vu (in cycles/rad).
+            Spatial coordinate v (in cycles/rad).
         wl : array_like, optional
             Wavelength(s) in meter. The default is None.
 
@@ -96,8 +98,7 @@ class oimModel:
     def calculate_image(self, dim: int, pixSize: float,
                         wl: Optional[Union[float, ArrayLike]] = None,
                         fromFT: Optional[bool] = False) -> np.ndarray:
-        """Compute and return an image or and image cube (if wavelength and time
-        are given).
+        """Compute and return an image.
 
         The returned image as the x,y dimension dim in pixel with
         an angular pixel size pixSize in rad. Image is returned as a numpy
@@ -156,7 +157,6 @@ class oimModel:
                    wl: Optional[Union[int, ArrayLike]] = None,
                    fromFT: Optional[bool] = False,
                    axe: Optional[Axes] = None,
-                   normPow: Optional[float] = 0.5,
                    figsize: Optional[Tuple[float]] = (3.5, 2.5),
                    savefig: Optional[str] = None,
                    colorbar: Optional[bool] = True,
@@ -218,7 +218,8 @@ class oimModel:
         nwl = wl.size
 
         if axe is None:
-            fig, axe = plt.subplots(nwl, figsize=(figsize[1]*nwl), sharex=True, sharey=True)
+            fig, axe = plt.subplots(nwl, figsize=(figsize[1]*nwl),
+                                    sharex=True, sharey=True)
         else:
             try:
                 fig = axe.get_figure()
@@ -226,10 +227,6 @@ class oimModel:
                 fig = axe.flatten()[0].get_figure()
 
         axe = np.array(axe).flatten().reshape((nwl))
-
-        if 'norm' not in kwargs:
-            kwargs['norm'] = colors.PowerNorm(gamma=normPow)
-
         for iwl, wli in enumerate(wl):
             cb = axe[iwl].imshow(image[iwl, :, :],
                                  extent=[-dim/2*pixSize, dim/2*pixSize,
@@ -246,10 +243,10 @@ class oimModel:
                 txt = ""
                 if wl[0] is not None:
                     txt += r"wl={:.4f}$\mu$m\n".format(wli*1e6)
-                if 'color' not in kwargs_legend:
-                    kwargs_legend['color'] = "w"
+                if "color" not in kwargs_legend:
+                    kwargs_legend["color"] = "w"
                 axe[iwl].text(0, 0.95*dim/2*pixSize, txt,
-                              va='top', ha='center', **kwargs_legend)
+                              va="top", ha='center', **kwargs_legend)
 
         if colorbar:
             fig.colorbar(cb, ax=axe, label="Normalized Intensity")
@@ -264,7 +261,6 @@ class oimModel:
     def plot_fourier(self, dim: int, pixSize: float,
                      wl: Optional[Union[int, ArrayLike]] = None,
                      axe: Optional[Axes] = None,
-                     normPow: Optional[float] = 0.5,
                      figsize: Optional[Tuple[float]] = (3.5, 2.5),
                      savefig: Optional[str] = None,
                      colorbar: Optional[bool] = True,
@@ -337,15 +333,14 @@ class oimModel:
         wl_arr = wl.flatten()
         spfx_extent = spfx_arr.max()
 
-        ft = self.calculate_complex_visibility(spfx_arr, spfy_arr, wl_arr).reshape(dims)
-            
+        fourier_transform = self.calculate_complex_visibility(spfx_arr, spfy_arr, wl_arr).reshape(dims)
         if display_mode == "vis":
-            im = np.abs(ft)
+            im = np.abs(fourier_transform)
             im /= im.max()
         elif display_mode == "corr_flux":
-            im = np.abs(ft)
+            im = np.abs(fourier_transform)
         elif display_mode == "phase":
-            im = np.angle(ft, deg=True)
+            im = np.angle(fourier_transform, deg=True)
         else:
             raise NameError("Only 'vis', 'corr_flux' and 'phase' are valid"
                             " choices for the display_mode!")
@@ -361,35 +356,25 @@ class oimModel:
                 fig = axe.flatten()[0].get_figure()
 
         axe = np.array(axe).flatten().reshape((nwl))
-
-        if 'norm' not in kwargs:
-            kwargs['norm'] = colors.PowerNorm(gamma=normPow)
-
         for iwl, wli in enumerate(wl):
             cb = axe[iwl].imshow(im[iwl, :, :],
                                  extent=[-spfx_extent, spfx_extent,
                                          -spfx_extent, spfx_extent],
                                  origin='lower', **kwargs)
 
-            axe[iwl, it].set_xlim(-spfx_extent, spfx_extent)
+            axe[iwl].set_xlim(-spfx_extent, spfx_extent)
 
             if iwl == nwl-1:
                 axe[iwl].set_xlabel("sp. freq. (cycles/rad)")
 
             if legend:
                 txt = ""
-                if not swapAxes:
-                    if wl[0] is not None:
-                        txt += "wl={:.4f}$\mu$m\n".format(wli*1e6)
-                    if 'color' not in kwargs_legend:
-                        kwargs_legend['color'] = "w"
-                else:
-                    if wl[0] is not None:
-                        txt += f"Time={wli}"
-                    if 'color' not in kwargs_legend:
-                        kwargs_legend['color'] = "w"
+                if wl[0] is not None:
+                    txt += r"wl={:.4f}$\mu$m\n".format(wli*1e6)
+                if 'color' not in kwargs_legend:
+                    kwargs_legend['color'] = "w"
                 axe[iwl].text(0, 0.95*dim/2*pixSize, txt,
-                              va='top', ha='center', **kwargs_legend)
+                              va="top", ha="center", **kwargs_legend)
         if colorbar:
             fig.colorbar(cb, ax=axe, label="Normalized Intensity")
 
