@@ -17,7 +17,6 @@ class Component:
     def __init__(self, **kwargs):
         """The class's constructor."""
         self.name = None
-        self._wl = None
         self._allowExternalRotation = True
 
         self.params = {}
@@ -30,13 +29,13 @@ class Component:
             if key in self.params:
                 self.params[key].value = value
 
-    def _translate_fourier_transform(self, ucoord, vcoord, wl):
-        x = self.params["x"](wl)*self.params["x"].unit.to(u.rad)
-        y = self.params["y"](wl)*self.params["y"].unit.to(u.rad)
+    def _translate_fourier_transform(self, ucoord, vcoord):
+        x = self.params["x"].value*self.params["x"].unit.to(u.rad)
+        y = self.params["y"].value*self.params["y"].unit.to(u.rad)
         return np.exp(-2*1j*np.pi*(ucoord*x+vcoord*y))
 
-    def _translate_coordinates(self, x, y, wl):
-        return x-self.params["x"](wl), y-self.params["y"](wl)
+    def _translate_coordinates(self, x, y):
+        return x-self.params["x"].value, y-self.params["y"].value
 
 
 class AnalyticalComponent(Component):
@@ -62,34 +61,24 @@ class AnalyticalComponent(Component):
     def _visibility_function(self, ucoord, vcoord, rho, wl):
         return
 
-    def _calculate_image(self, dim, pixSize, wl=None):
-        wl = np.array(wl).flatten()
-        dims = (wl.size, dim, dim)
-
+    def calculate_image(self, dim, pixSize, wl=None):
         v = np.linspace(-0.5, 0.5, dim)
-        vx, vy = np.meshgrid(v, v)
-        vx_arr = np.tile(vx[None, None, :, :], (wl.size, 1, 1))
-        vy_arr = np.tile(vy[None, None, :, :], (wl.size, 1, 1))
-        wl_arr = np.tile(wl[None, :, None, None], (1, dim, dim))
-        x_arr, y_arr, wl_arr = map(lambda x: x.flatten(), [vx_arr, vy_arr, wl_arr])
-        x_arr, y_arr = self._translate_coordinates(x_arr, y_arr, wl_arr)
+        x_arr, y_arr = self._translate_coordinates(*np.meshgrid(v, v))
 
         if self.elliptic:
-            pa_rad = (self.params["pa"](wl_arr)) * \
+            pa_rad = (self.params["pa"].value) * \
                 self.params["pa"].unit.to(u.rad)
             xp = x_arr*np.cos(pa_rad)-y_arr*np.sin(pa_rad)
             yp = x_arr*np.sin(pa_rad)+y_arr*np.cos(pa_rad)
-            x_arr, y_arr = xp*self.params["elong"](wl_arr), yp
-
-        return self._image_function(x_arr.reshape(dims),
-                                    y_arr.reshape(dims), wl_arr.reshape(dims))
+            x_arr, y_arr = xp*self.params["elong"].value, yp
+        return self._image_function(x_arr, y_arr, wl)
 
     def calculate_complex_visibility(self, ucoord, vcoord, wl=None):
         if self.elliptic:
-            pa_rad = (self.params["pa"](wl))*self.params["pa"].unit.to(u.rad)
+            pa_rad = (self.params["pa"].value)*self.params["pa"].unit.to(u.rad)
             co, si = np.cos(pa_rad). np.sin(pa_rad)
             fxp, fyp = ucoord*co-vcoord*si, ucoord*si+vcoord*co
-            rho = np.sqrt(fxp**2/self.params["elong"](wl)**2+fyp**2)
+            rho = np.sqrt(fxp**2/self.params["elong"].value**2+fyp**2)
         else:
             fxp, fyp = ucoord, vcoord
             rho = np.sqrt(fxp**2+fyp**2)
@@ -128,19 +117,6 @@ class NumericalComponent(Component):
             self.params["elong"] = Parameter(**STANDARD_PARAMETERS["elong"])
         self._eval(**kwargs)
 
-    @property
-    def pixel_size(self):
-        """Gets the pixel size of the object [rad]."""
-        if "pixSize" in self.params and self._pixel_size is None:
-            self._pixel_size = self.params["pixSize"].value\
-                * self.params["pixSize"].unit.to(u.rad)
-        return self._pixel_size
-
-    @pixel_size.setter
-    def pixel_size(self, value):
-        """Sets the pixel size of the object."""
-        self._pixel_size = value
-
     def _calculate_internal_grid(self) -> np.ndarray:
         """Calculates the model grid.
 
@@ -171,59 +147,34 @@ class NumericalComponent(Component):
                                      vcoord: np.ndarray,
                                      wl: Optional[np.ndarray] = None
                                      ) -> np.ndarray:
-        if wl is None:
-            wl = ucoord*0
-
-        if self._wl is None:
-            wl0 = np.sort(np.unique(wl))
-        else:
-            wl0 = self._wl
-
-        dim = self.params["dim"].value
-        image = self.calculate_internal_image(wl0).reshape(wl0.size, dim, dim)
+        image = self.calculate_internal_image(wl)
         if OPTIONS["FTBinningFactor"] is not None:
             image = rebin_image(image, OPTIONS["FTBinningFactor"])
         image = pad_image(image)
 
         if self._allowExternalRotation:
-            pa_rad = (self.params["pa"](wl)) * \
+            pa_rad = (self.params["pa"].value) * \
                 self.params["pa"].unit.to(u.rad)
             co, si = np.cos(pa_rad), np.sin(pa_rad)
             fxp, fyp = ucoord*co-vcoord*si, ucoord*si+vcoord*co
             vcoord = fyp
             if self.elliptic:
-                ucoord = fxp/self.params["elong"](wl)
+                ucoord = fxp/self.params["elong"].value
             else:
                 ucoord = fxp
-
-        return compute_2Dfourier_transform(image, self.pixel_size)\
+        pixel_size = self.params["pixSize"].value*self.params["pixSize"].unit.to(u.rad)
+        return compute_2Dfourier_transform(image, pixel_size)\
             * self._translate_fourier_transform(ucoord, vcoord, wl)
 
     def calculate_image(self, dim: float, pixSize: float,
                         wl: Optional[np.ndarray] = None) -> np.ndarray:
-        if wl is None:
-            wl = 0
-
-        wl = np.array(wl).flatten()
-        dims = (wl.size, dim, dim)
-
         v = np.linspace(-0.5, 0.5, dim)*pixSize*dim
-        vx, vy = np.meshgrid(v, v)
-        vx_arr = np.tile(vx[None, :, :], (wl.size, 1, 1))
-        vy_arr = np.tile(vy[None, :, :], (wl.size, 1, 1))
-        wl_arr = np.tile(wl[:, None, None], (1, dim, dim))
-
-        x_arr, y_arr, wl_arr = map(lambda x: x.flatten(),
-                                   [vx_arr, vy_arr, wl_arr])
-        x_arr, y_arr = self._translate_coordinates(x_arr, y_arr, wl_arr)
+        x_arr, y_arr = self._translate_coordinates(*np.meshgrid(v, v))
 
         if self.elliptic:
-            pa_rad = (self.params["pa"](wl_arr)) * \
+            pa_rad = (self.params["pa"].value) * \
                 self.params["pa"].unit.to(u.rad)
             xp = x_arr*np.cos(pa_rad)-y_arr*np.sin(pa_rad)
             yp = x_arr*np.sin(pa_rad)+y_arr*np.cos(pa_rad)
-            x_arr, y_arr = xp*self.params["elong"](wl_arr), yp
-
-        im = self._image_function(x_arr, y_arr, wl_arr)
-        im = im.reshape(dims)
-        return im
+            x_arr, y_arr = xp*self.params["elong"].value, yp
+        return self._image_function(x_arr, y_arr, wl)

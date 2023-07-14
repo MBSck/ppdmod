@@ -30,9 +30,9 @@ class Star(AnalyticalComponent):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self._image = None
         self._stellar_radius = None
         self._stellar_angular_radius = None
-        self._image = None
 
         self.params["eff_temp"] = Parameter(name="eff_temp", value=0,
                                             unit=u.K, free=False,
@@ -109,10 +109,11 @@ class Star(AnalyticalComponent):
 
     def _image_function(self, xx, yy, wl):
         if self._image is None:
-            image = xx*0
+            self._image = xx*0
             val = np.abs(xx)+np.abs(yy)
             idx = np.unravel_index(np.argmin(val), np.shape(val))
-            image[idx] = 1
+            self._image[idx] = 1
+        breakpoint()
         return self._image*self._calculate_flux(wl)
 
     def _visibility_function(self, ucoord, vcoord, rho, wl):

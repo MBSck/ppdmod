@@ -122,6 +122,7 @@ class Model:
         numpy.ndarray
              A numpy 2D array (or 3D array if wl is given).
         """
+        # TODO: Maybe change calculation to one per wavelength.
         if wl is None:
             wl = 0
 
@@ -137,7 +138,7 @@ class Model:
             vy_arr = np.tile(vy[None, None, :, :], (nwl, 1, 1))
             wl_arr = np.tile(wl[None, :, None, None], (1, dim, dim))
 
-            spfx_arr = (vx_arr/pixSize/u.mas.to(u.rad)).flatten()
+            spfx_arr, spfy_arr = (vx_arr/pixSize/u.mas.to(u.rad)).flatten()
             spfy_arr = (vy_arr/pixSize/u.mas.to(u.rad)).flatten()
             wl_arr = wl.flatten()
 
@@ -149,7 +150,7 @@ class Model:
         else:
             image = np.zeros(dims)
             for component in self.components:
-                image += component.getImage(dim, pixSize, wl)
+                image += component.calculate_image(dim, pixSize, wl)
 
         return image
 

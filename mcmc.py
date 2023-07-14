@@ -234,4 +234,5 @@ if __name__ == "__main__":
                                     Mdust=0.11, q=0.5, p=0.5, a=0.5,
                                     pa=150, phi=33, elong=0.5)
     model = Model([star, temp_grad])
+    model.calculate_image(1024, 0.1, 3.5e-6)
     breakpoint()
