@@ -1,6 +1,6 @@
 from pathlib import Path
 from multiprocessing import Pool, cpu_count
-from typing import Optional, Callable, Dict
+from typing import Optional, Callable, Dict, List
 
 import astropy.units as u
 import emcee
@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from custom_components import Star, AsymmetricSDGreyBodyContinuum
 from data import ReadoutFits
 from model import Model
-from parameter import Parameter
+from parameter import Parameter, STANDARD_PARAMETERS
 from options import OPTIONS
 from utils import get_next_power_of_two, opacity_to_matisse_opacity,\
     linearly_combine_opacities
@@ -20,7 +20,7 @@ from utils import get_next_power_of_two, opacity_to_matisse_opacity,\
 PATH = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse")
 
 # NOTE: Define wavelengths to fit
-WAVELENGTHS = []
+WAVELENGTHS = np.array([4.78301581e-06, 8.28835527e-06])
 
 # NOTE: Get the wavelenght axis of MATISSE for both band (CHECK: Might differ for different files)?
 WAVLENGTH_FILES = ["hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_HAWAII-2RG_FINAL_TARGET_INT.fits",
@@ -34,6 +34,14 @@ FILES = ["hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_AQUARIUS_FINAL_TARGE
          "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits"]
 FILES = list(map(lambda x: PATH / x, FILES))
 DATA = [ReadoutFits(file) for file in FILES]
+CORR_FLUX, CORR_FLUX_ERR = [], []
+CPHASE, CPHASE_ERR = [], []
+
+for data in DATA:
+    CORR_FLUX.append(data.get_data_for_wavelength(WAVELENGTHS, "vis"))
+    CORR_FLUX_ERR.append(data.get_data_for_wavelength(WAVELENGTHS, "vis_err"))
+    CPHASE.append(data.get_data_for_wavelength(WAVELENGTHS, "t3phi"))
+    CPHASE_ERR.append(data.get_data_for_wavelength(WAVELENGTHS, "t3phi_err"))
 
 # NOTE: Geometric parameters
 FOV, PIXEL_SIZE = 100, 0.1
@@ -79,6 +87,38 @@ KAPPA_ABS_CONT = Parameter(name="kappa_cont", value=KAPPA_ABS_CONT,
                            unit=u.cm**2/u.g, free=False,
                            description="Continuum dust mass absorption coefficient")
 
+RIN = Parameter(name="rin", value=0, unit=u.mas,
+                description="Inner radius of the disk")
+ROUT = Parameter(name="rout", value=0, unit=u.mas,
+                 description="Outer radius of the disk")
+MDUST = Parameter(name="Mdust", value=0.0, unit=u.M_sun,
+                  description="Mass of the dusty disk")
+P = Parameter(name="p", value=0, unit=u.one,
+              description="Power-law exponent for the surface density profile")
+A = Parameter(name="a", value=0, unit=u.one,
+              description="Azimuthal modulation amplitude")
+PHI = Parameter(name="phi", value=0, unit=u.deg,
+                description="Azimuthal modulation angle")
+CONT_WEIGHT = Parameter(name="cont_weight", value=0.0,
+                        unit=u.one, free=True,
+                        description="Dust mass continuum absorption coefficient's weight")
+PA = Parameter(**STANDARD_PARAMETERS["pa"])
+ELONG = Parameter(**STANDARD_PARAMETERS["elong"])
+
+RIN.set(min=0, max=20)
+ROUT.set(min=0, max=100)
+MDUST.set(min=0, max=3)
+P.set(min=0., max=1.)
+A.set(min=0., max=1.)
+PHI.set(min=0, max=360)
+CONT_WEIGHT.set(min=0, max=1)
+PA.set(min=0, max=360)
+ELONG.set(min=1, max=50)
+
+PARAMS = {"rin": RIN, "rout": ROUT, "Mdust": MDUST,
+          "p": P, "a": A, "phi": PHI, "cont_weight": CONT_WEIGHT,
+          "pa": PA, "elong": ELONG}
+
 
 def chi_sq(data: u.quantity, error: u.quantity,
            model_data: u.quantity, lnf: float = 0) -> float:
@@ -100,9 +140,8 @@ def chi_sq(data: u.quantity, error: u.quantity,
     return -0.5*np.sum((data.value-model_data.value)**2*inv_sigma_squared\
                        - np.log(inv_sigma_squared))
 
-# TODO: Think of a way to handle data here.
-def lnlike(theta: np.ndarray,
-           wavelengths: np.ndarray) -> float:
+
+def lnprob(theta: np.ndarray) -> float:
     """Takes theta vector and the x, y and the yerr of the theta.
     Returns a number corresponding to how good of a fit the model is to your
     data for a given set of parameters, weighted by the data points.
@@ -118,66 +157,48 @@ def lnlike(theta: np.ndarray,
     -------
     float
         The goodness of the fitted model (will be minimised)
+
+    Notes
+    -----
+    If multiple models with the same params are required put them once into theta
+    and then assign them with a dict, to then get them from the dict for the second
+    component as well.
     """
-    # TODO: Initialise model here to account for multiprocessing
-    # TODO: Set params globally and then just pass them to the function and set the values from the theta.
-    star = Star(dim=DIM, dist=DISTANCE, eff_temp=EFF_TEMP, lum=LUMINOSITY)
-    temp_grad = TemperatureGradient(dim=DIM, eff_temp=EFF_TEMP, lum=LUMINOSITY,
-                                    dist=DISTANCE,)
-    model = Model([star, temp_grad])
-    fourier_transforms = {}
-    # NOTE: Find way to check if file has wavelength and then use the uv-coords of the wavelength.
-    for wavelength in WAVELENGTHS:
-        fourier_transform = model.calculate_complex_visibility(DATA.ucoord, DATA.vcoord,
-                                                               WAVELENGTHS)
-    # TODO: Calculate the different observables here
-    total = 0
-    for index, _ in enumerate(FILES):
-        data = DATA[index].get_data_for_wavelength(WAVELENGTHS, key)
-        error = DATA[index].get_data_for_wavelength(WAVELENGTHS, f"{key}_err")
-        total += chi_sq(data, error, model)
-    return np.array(total)
-
-
-def lnprior(parameters: Dict[str, Parameter]) -> float:
-    """Checks if all variables are within their priors (as well as
-    determining them setting the same).
-
-    If all priors are satisfied it needs to return '0.0' and if not '-np.inf'
-    This function checks for an unspecified amount of flat priors. If upper
-    bound is 'None' then no upper bound is given
-
-    Parameters
-    ----------
-    parameters : dict of Parameter
-
-    Returns
-    -------
-    float
-        Return-code 0.0 for within bounds and -np.inf for out of bound priors
-    """
-    for parameter in parameters:
+    params = dict(zip(PARAMS.keys(), theta))
+    # TODO: If more than one model component make all params variable
+    for index, parameter in enumerate(PARAMS.values()):
         if parameter.free:
-            if not parameter.min < parameter.value < parameter.max:
+            if not parameter.min < theta[index] < parameter.max:
                 return -np.inf
-    return 0.
 
-def lnprob(parameters: Dict[str, Parameter]) -> np.ndarray:
-    """This function runs the lnprior and checks if it returned -np.inf, and
-    returns if it does. If not, (all priors are good) it returns the inlike for
-    that model (convention is lnprior + lnlike)
+    star = Star(dim=DIM, dist=DISTANCE, eff_temp=EFF_TEMP, lum=LUMINOSITY)
+    temp_grad = AsymmetricSDGreyBodyContinuum(dim=DIM, dist=DISTANCE,
+                                              Tin=INNER_TEMP,
+                                              pixSize=PIXEL_SIZE,
+                                              Teff=EFF_TEMP,
+                                              kappa_abs=KAPPA_ABS,
+                                              lum=LUMINOSITY,
+                                              kappa_cont=KAPPA_ABS_CONT,
+                                              **params)
+    model = Model([star, temp_grad])
 
-    Parameters
-    ----------
-    parameters : dict of Parameter
-        A vector that contains all the parameters of the model
+    # TODO: Reduce the computation time by precomputing the fourier transforms?
+    # Just interpolation for the files is different?
+    fourier_transforms = {}
+    for wavelength in WAVELENGTHS:
+        fourier_transforms[str(wavelength)] = model.calculate_image(
+            DIM, PIXEL_SIZE, wavelength)
+            # DATA.ucoord, DATA.vcoord, wavelength)
 
-    Returns
-    -------
-    float
-        The minimisation value or -np.inf if it fails
-    """
-    return lnlike(parameters) if np.isfinite(lnprior(parameters)) else -np.inf
+    # TODO: Calculate the different observables here
+    total_chi_sq = 0
+    for index, (corr_flux, corr_flux_err, cphase, cphase_err)\
+            in enumerate(zip(CORR_FLUX, CORR_FLUX_ERR, CPHASE, CPHASE_ERR)):
+        corr_flux_model = ...
+        cphase_model = ...
+        total_chi_sq += chi_sq(corr_flux, corr_flux_err, corr_flux_model)
+        total_chi_sq += chi_sq(cphase, cphase_err, cphase_model)
+    return np.array(total_chi_sq)
 
 
 def initiate_randomly(free_parameters: Dict[str, Parameter],
@@ -199,8 +220,7 @@ def initiate_randomly(free_parameters: Dict[str, Parameter],
     return initial
 
 
-def run_mcmc(parameters: Dict[str, Parameter],
-             nwalkers: int,
+def run_mcmc(nwalkers: int,
              nsteps: int,
              discard: int,
              save_path: Optional[Path] = None) -> np.array:
@@ -230,26 +250,29 @@ def run_mcmc(parameters: Dict[str, Parameter],
     -------
     np.ndarray
     """
-    inital = initiate_randomly(parameters, nwalkers)
+    initial = initiate_randomly(PARAMS, nwalkers)
     with Pool() as pool:
         print(f"Executing MCMC with {cpu_count()} cores.")
         print("--------------------------------------------------------------")
-        sampler = emcee.EnsembleSampler(nwalkers, len(MODEL.free_params), lnprob,
-                                        args=(parameters), pool=pool)
-        pos, prob, state = sampler.run_mcmc(inital, nsteps, progress=True)
-    theta_max = (sampler.flatchain)[np.argmax(sampler.flatlnprobability)]
+        sampler = emcee.EnsembleSampler(nwalkers, len(PARAMS),
+                                        lnprob, pool=pool)
+        sampler.run_mcmc(initial, nsteps, progress=True)
+    return (sampler.flatchain)[np.argmax(sampler.flatlnprobability)]
 
 
 if __name__ == "__main__":
-    OPTIONS["fourier.binning"] = 1
-    star = Star(dim=DIM, dist=DISTANCE, eff_temp=EFF_TEMP, lum=LUMINOSITY)
-    temp_grad = AsymmetricSDGreyBodyContinuum(dim=DIM, dist=DISTANCE, Tin=INNER_TEMP,
-                                              pixSize=PIXEL_SIZE, Teff=EFF_TEMP,
-                                              kappa_abs=KAPPA_ABS, lum=LUMINOSITY,
-                                              kappa_cont=KAPPA_ABS_CONT,
-                                              rin=0.5, rout=100, Mdust=0.11,
-                                              q=0.5, p=0.5, a=0.5, cont_weight=0.5,
-                                              pa=150, phi=33, elong=0.5)
-    model = Model([star, temp_grad])
-    model.plot_model(4096, 0.1, 4.78301581e-06)
-    plt.show()
+    # OPTIONS["fourier.binning"] = 1
+    # star = Star(dim=DIM, dist=DISTANCE, eff_temp=EFF_TEMP, lum=LUMINOSITY)
+    # temp_grad = AsymmetricSDGreyBodyContinuum(dim=DIM, dist=DISTANCE, Tin=INNER_TEMP,
+    #                                           pixSize=PIXEL_SIZE, Teff=EFF_TEMP,
+    #                                           kappa_abs=KAPPA_ABS, lum=LUMINOSITY,
+    #                                           kappa_cont=KAPPA_ABS_CONT,
+    #                                           rin=0.5, rout=100, Mdust=0.11,
+    #                                           q=0.5, p=0.5, a=0.5, cont_weight=0.5,
+    #                                           pa=150, phi=33, elong=0.5)
+    # model = Model([star, temp_grad])
+    # model.plot_model(4096, 0.1, 4.78301581e-06)
+    # plt.show()
+    # run_mcmc(nwalkers=25, nsteps=100, discard=10)
+    initial = initiate_randomly(PARAMS, 25)
+    lnprob(initial[0])

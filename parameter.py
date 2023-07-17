@@ -49,3 +49,8 @@ class Parameter:
         if self.max is not None:
             message += f" with its limits being {self.min}-{self.max}"
         return message
+
+    def set(self, min: Optional[float] = None,
+            max: Optional[float] = None):
+        """Sets the limits of the parameters."""
+        self.min, self.max = min, max

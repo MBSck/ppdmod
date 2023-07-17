@@ -9,7 +9,8 @@ from numpy.typing import ArrayLike
 
 from component import NumericalComponent
 from parameter import Parameter
-from utils import rebin_image
+from options import OPTIONS
+from utils import get_binned_dimension
 
 
 class Model:
@@ -69,7 +70,7 @@ class Model:
         dict of Parameter
             A Dictionary of the model's free parameters.
         """
-        return {key: value for key, value in self.params if value.free}
+        return {key: value for key, value in self.params.items() if value.free}
 
     def calculate_complex_visibility(self, ucoord: ArrayLike, vcoord: ArrayLike,
                                      wl: Optional[ArrayLike] = None) -> np.ndarray:
@@ -128,15 +129,16 @@ class Model:
             spfx_arr, spfy_arr = (vx/pixSize/u.mas.to(u.rad)).flatten()
             spfy_arr = (vy/pixSize/u.mas.to(u.rad)).flatten()
 
-            ft = self.calculate_complex_visibility(spfx_arr, spfy_arr, wl_arr)
+            ft = self.calculate_complex_visibility(spfx_arr, spfy_arr)
             image = np.abs(np.fft.fftshift(np.fft.ifft2(np.fft.fftshift(ft))))
         else:
-            image = None
+            if OPTIONS["fourier.binning"] is not None:
+                img_dim = get_binned_dimension(dim, OPTIONS["fourier.binning"])
+            else:
+                img_dim = dim
+            image = np.zeros((img_dim, img_dim))
             for component in self.components:
-                if image is None:
-                    image = component.calculate_image(dim, pixSize, wl)
-                else:
-                    image += component.calculate_image(dim, pixSize, wl)
+                image += component.calculate_image(dim, pixSize, wl)
         return image
 
     def plot_model(self, dim: int, pixSize: float,

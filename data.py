@@ -33,8 +33,11 @@ class ReadoutFits:
 
     def get_data_for_wavelength(self, wavelengths: np.ndarray, key: str):
         """Gets the data for the given wavelengths."""
-        indicies = np.where(np.isin(self.wavelength, wavelengths))
-        return getattr(self, key)[:, indicies].squeeze().T
+        indicies = [np.where(self.wavelength == wavelength)[0]
+                    for wavelength in wavelengths]
+        data = {str(wavelengths[count]): getattr(self, key)[:, index].squeeze().T
+                for count, index in enumerate(indicies)}
+        return {key: value for key, value in data.items() if value.size != 0}
 
 
 if __name__ == "__main__":
