@@ -43,29 +43,12 @@ class Star(AnalyticalComponent):
                                         value=0,
                                         unit=u.pc, free=False,
                                         description="Distance to the star")
-        self.params["lum"] = Parameter(name="lum",
-                                       value=0,
-                                       unit=u.Lsun, free=False,
-                                       description="The star's luminosity")
+        self.params["eff_radius"] = Parameter(name="eff_radius",
+                                              value=0,
+                                              unit=u.Lsun, free=False,
+                                              description="The stellar radius")
 
         self._eval(**kwargs)
-
-    @property
-    def stellar_radius(self) -> u.m:
-        """Calculates the stellar radius.
-
-        Returns
-        -------
-        stellar_radius : astropy.units.m
-            The star's radius.
-        """
-        if self._stellar_radius is None:
-            luminosity = (self.params["lum"].value*self.params["lum"].unit).to(u.W)
-            self._stellar_radius = np.sqrt(luminosity /
-                                           (4*np.pi*const.sigma_sb*(
-                                            self.params["eff_temp"].value
-                                            * self.params["eff_temp"].unit)**4))
-        return self._stellar_radius
 
     @property
     def stellar_radius_angular(self) -> u.mas:
@@ -83,9 +66,12 @@ class Star(AnalyticalComponent):
         This produces an output in radians.
         """
         if self._stellar_angular_radius is None:
-            distance = self.params["dist"].value*self.params["dist"].unit
-            self._stellar_angular_radius = (self.stellar_radius.to(u.m) /
-                                            distance.to(u.m)*u.rad).to(u.mas)
+            distance = self.params["dist"].value\
+                * self.params["dist"]
+            stellar_radius_m = self.params["eff_radius"].value\
+                * self.params["eff_radius"].unit.to(u.m)
+            self._stellar_angular_radius = (stellar_radius_m
+                                            * distance.to(u.m)*u.rad).to(u.mas)
         return self._stellar_angular_radius
 
     def _calculate_flux(self, wl: u.m) -> np.ndarray:

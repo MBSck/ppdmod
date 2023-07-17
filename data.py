@@ -1,14 +1,10 @@
 import numpy as np
-import astropy.units as u
 
 from astropy.io import fits
 from pathlib import Path
-from astropy.units import Quantity
-from typing import Tuple, List, Optional, Union
-from scipy.interpolate import CubicSpline
+from typing import List
 
 
-# TODO: Make get_band_information method to check the band
 class ReadoutFits:
     """All functionality to work with (.fits)-files"""
 
@@ -29,6 +25,10 @@ class ReadoutFits:
             self.vis_err = hdul["oi_vis"].data["visamperr"]
             self.t3phi = hdul["oi_t3"].data["t3phi"]
             self.t3phi_err = hdul["oi_t3"].data["t3phierr"]
+            self.u1coord = hdul["oi_t3"].data["u1coord"]
+            self.u2coord = hdul["oi_t3"].data["u2coord"]
+            self.v1coord = hdul["oi_t3"].data["v1coord"]
+            self.v2coord = hdul["oi_t3"].data["v2coord"]
         return self
 
     def get_data_for_wavelength(self, wavelengths: np.ndarray, key: str):

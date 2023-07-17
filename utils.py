@@ -2,11 +2,11 @@ from pathlib import Path
 from typing import Optional, Union, List
 
 import astropy.units as u
+import astropy.constants as const
 import numpy as np
 from astropy.modeling import models
 
 from fluxcal import transform_spectrum_to_real_spectral_resolution
-from options import OPTIONS
 
 
 DL_COEFFS = {
@@ -14,6 +14,32 @@ DL_COEFFS = {
     "high": [-8.02282965e-05,  3.83260266e-03, 7.60090459e-05, -4.30753848e-07]
 }
 SPECTRAL_BINNING = {"low": 7, "high": 7}
+
+
+def calculate_stellar_radius(luminosity: u.Lsun,
+                             effective_temperature: u.K) -> u.m:
+    """Calculates the stellar radius from its luminosity
+    and effective temperature.
+
+    Parameters
+    ----------
+    luminosity : u.Lsun
+        The star's luminosity.
+    effective_temperature : u.K
+        The star's effective temperature.
+
+    Returns
+    -------
+    stellar_radius : u.m
+        The stellar radius.
+    """
+    if not isinstance(luminosity, u.Quantity):
+        luminosity *= u.Lsun
+    luminosity = luminosity.to(u.W)
+    if not isinstance(effective_temperature, u.Quantity):
+        effective_temperature *= u.K
+    return np.sqrt(luminosity /
+                   (4*np.pi*const.sigma_sb*effective_temperature**4))
 
 
 def _make_axis(axis_end: int, steps: int):

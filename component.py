@@ -165,9 +165,8 @@ class NumericalComponent(Component):
                 ucoord = fxp/self.params["elong"].value
             else:
                 ucoord = fxp
-        pixel_size = self.params["pixSize"].value*self.params["pixSize"].unit.to(u.rad)
-        return compute_2Dfourier_transform(image, pixel_size)\
-            * self._translate_fourier_transform(ucoord, vcoord, wl)
+        return compute_2Dfourier_transform(image)\
+            * self._translate_fourier_transform(ucoord, vcoord)
 
     def calculate_image(self, dim: float, pixSize: float,
                         wl: Optional[np.ndarray] = None) -> np.ndarray:
