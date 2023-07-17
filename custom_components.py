@@ -5,7 +5,9 @@ from astropy.modeling import models
 
 from component import AnalyticalComponent, NumericalComponent
 from parameter import Parameter
-from utils import convert_radial_profile_to_meter, calculate_intensity
+from options import OPTIONS
+from utils import convert_radial_profile_to_meter, calculate_intensity,\
+    rebin_image
 
 
 class Star(AnalyticalComponent):
@@ -176,7 +178,6 @@ class TemperatureGradient(NumericalComponent):
     def __init__(self, **kwargs):
         """The class's constructor."""
         super().__init__(**kwargs)
-        self.normalizeImage = False
         self.params["rin"] = Parameter(name="rin", value=0, unit=u.mas,
                                        description="Inner radius of the disk")
         self.params["rout"] = Parameter(name="rout", value=0, unit=u.mas,
@@ -406,6 +407,8 @@ class TemperatureGradient(NumericalComponent):
                 (1+self._azimuthal_modulation(xx, yy))
         else:
             img = self._image(xx, yy, wl)
+        if OPTIONS["fourier.binning"] is not None:
+            img = rebin_image(img, OPTIONS["fourier.binning"])
         return img
 
 

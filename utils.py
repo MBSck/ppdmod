@@ -63,33 +63,29 @@ def calculate_intensity(wavelength: u.um,
     return (spectral_radiance*pixel_size**2).to(u.Jy).value
 
 
-def pad_image(image: np.ndarray):
+# TODO: Check if this function does what it should -> Compare to oimodeler.
+def pad_image(image: np.ndarray, padding_factor: int):
     """Pads an image with additional zeros for Fourier transform."""
-    im0 = np.sum(image, axis=(0, 1))
-    dimy = im0.shape[0]
-    dimx = im0.shape[1]
-
-    im0x = np.sum(im0, axis=1)
-    im0y = np.sum(im0, axis=1)
-
-    s0x = np.trim_zeros(im0x).size
-    s0y = np.trim_zeros(im0y).size
-
-    min_sizex = s0x*OPTIONS["FTpaddingFactor"]
-    min_sizey = s0y*OPTIONS["FTpaddingFactor"]
-
-    min_pow2x = 2**(min_sizex - 1).bit_length()
-    min_pow2y = 2**(min_sizey - 1).bit_length()
+    im0 = np.sum(image)
+    dims = image.shape[0], image.shape[1]
+    im0s = map(lambda x: x.sum(axius=1), dims)
+    sizes = map(lambda x: np.trim_zeros(x).size, im0s)
+    min_size = map(lambda x: x*padding_factor, sizes)
+    min_pow2 = list(map(lambda x: 2**(x - 1).bit_length(), min_size))
 
     # HACK: If Image has zeros around it already then this does not work -> Rework
-    if min_pow2x < dimx:
+    if min_pow2[0] < image.shape[0]:
         return image
 
-    padx = (min_pow2x-dimx)//2
-    pady = (min_pow2y-dimy)//2
+    pad = list(map(lambda x, y: (x-y)//2, zip(min_pow2, dims)))
+    return np.pad(image, ((0, 0), (0, 0), (pad[0], pad[0]),
+                  (pad[1], pad[1])), 'constant', constant_values=0)
 
-    return np.pad(image, ((0, 0), (0, 0), (padx, padx), (pady, pady)),
-                  'constant', constant_values=0)
+
+def get_binned_dimension(dim: int, binning_factor: int) -> int:
+    """Gets the binned dimension from the original dimension
+    and the binning factor."""
+    return int(dim*2**-binning_factor)
 
 
 def rebin_image(image: np.ndarray,
@@ -118,14 +114,15 @@ def rebin_image(image: np.ndarray,
         The new dimension of the image.
     """
     if binning_factor is None:
-        return image, image.shape[-1] if rdim else image
-    new_dim = int(image.shape[-1] * 2**-binning_factor)
+        if rdim:
+            return image, image.shape[-1] if rdim else image
+        return image
+    new_dim = get_binned_dimension(image.shape[-1], binning_factor)
     binned_shape = (new_dim, int(image.shape[-1] / new_dim),
                     new_dim, int(image.shape[-1] / new_dim))
-    breakpoint()
     if rdim:
         return image.reshape(binned_shape).mean(-1).mean(-2), new_dim
-    return image.reshape(binned_shape).mean(-1).mean(-2)
+    return image.reshape(binned_shape).mean(-1).mean(1)
 
 
 def get_next_power_of_two(number: Union[int, float]) -> int:

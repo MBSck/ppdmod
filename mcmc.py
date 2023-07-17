@@ -11,6 +11,7 @@ from custom_components import Star, AsymmetricSDGreyBodyContinuum
 from data import ReadoutFits
 from model import Model
 from parameter import Parameter
+from options import OPTIONS
 from utils import get_next_power_of_two, opacity_to_matisse_opacity,\
     linearly_combine_opacities
 
@@ -121,7 +122,8 @@ def lnlike(theta: np.ndarray,
     # TODO: Initialise model here to account for multiprocessing
     # TODO: Set params globally and then just pass them to the function and set the values from the theta.
     star = Star(dim=DIM, dist=DISTANCE, eff_temp=EFF_TEMP, lum=LUMINOSITY)
-    temp_grad = TemperatureGradient(dim=DIM, )
+    temp_grad = TemperatureGradient(dim=DIM, eff_temp=EFF_TEMP, lum=LUMINOSITY,
+                                    dist=DISTANCE,)
     model = Model([star, temp_grad])
     fourier_transforms = {}
     # NOTE: Find way to check if file has wavelength and then use the uv-coords of the wavelength.
@@ -218,9 +220,9 @@ def run_mcmc(parameters: Dict[str, Parameter],
     Parameters
     ----------
     parameters : dict of Parameter
-    nwalkers : int,
-    nsteps : int,
-    discard : int,
+    nwalkers : int
+    nsteps : int
+    discard : int
     wavelengths : float
     save_path: pathlib.Path, optional
 
@@ -233,12 +235,13 @@ def run_mcmc(parameters: Dict[str, Parameter],
         print(f"Executing MCMC with {cpu_count()} cores.")
         print("--------------------------------------------------------------")
         sampler = emcee.EnsembleSampler(nwalkers, len(MODEL.free_params), lnprob,
-                                        args=(parameterswavelengths), pool=pool)
+                                        args=(parameters), pool=pool)
         pos, prob, state = sampler.run_mcmc(inital, nsteps, progress=True)
     theta_max = (sampler.flatchain)[np.argmax(sampler.flatlnprobability)]
 
 
 if __name__ == "__main__":
+    OPTIONS["fourier.binning"] = 1
     star = Star(dim=DIM, dist=DISTANCE, eff_temp=EFF_TEMP, lum=LUMINOSITY)
     temp_grad = AsymmetricSDGreyBodyContinuum(dim=DIM, dist=DISTANCE, Tin=INNER_TEMP,
                                               pixSize=PIXEL_SIZE, Teff=EFF_TEMP,
@@ -248,5 +251,5 @@ if __name__ == "__main__":
                                               q=0.5, p=0.5, a=0.5, cont_weight=0.5,
                                               pa=150, phi=33, elong=0.5)
     model = Model([star, temp_grad])
-    model.plot_model(2048, 0.1, 4.78301581e-06, binning_factor=2)
+    model.plot_model(4096, 0.1, 4.78301581e-06)
     plt.show()

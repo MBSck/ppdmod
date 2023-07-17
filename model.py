@@ -131,9 +131,12 @@ class Model:
             ft = self.calculate_complex_visibility(spfx_arr, spfy_arr, wl_arr)
             image = np.abs(np.fft.fftshift(np.fft.ifft2(np.fft.fftshift(ft))))
         else:
-            image = np.zeros((dim, dim))
+            image = None
             for component in self.components:
-                image += component.calculate_image(dim, pixSize, wl)
+                if image is None:
+                    image = component.calculate_image(dim, pixSize, wl)
+                else:
+                    image += component.calculate_image(dim, pixSize, wl)
         return image
 
     def plot_model(self, dim: int, pixSize: float,
@@ -189,7 +192,7 @@ class Model:
         """
         image = self.calculate_image(dim, pixSize, wl, fromFT=fromFT)
         if axe is None:
-            fig, axe = plt.subplots()
+            fig, axe = plt.subplots(figsize=figsize)
         else:
             try:
                 fig = axe.get_figure()
@@ -220,12 +223,9 @@ class Model:
 
         if savefig is not None:
             plt.savefig(savefig)
-
-        image = rebin_image(image, binning_factor=binning_factor)
         return fig, axe, image
 
-    def plot_fourier(self, dim: int, pixSize: float,
-                     wl: Optional[Union[int, ArrayLike]] = None,
+    def plot_fourier(self, dim: int, pixSize: float, wl: float,
                      axe: Optional[Axes] = None,
                      figsize: Optional[Tuple[float]] = (3.5, 2.5),
                      savefig: Optional[str] = None,
@@ -282,24 +282,12 @@ class Model:
         im  : numpy.ndarray
             The image(s).
         """
-        wl = np.array(wl).flatten()
-
-        nwl = wl.size
-        dims = (nwl, dim, dim)
-
         v = np.linspace(-0.5, 0.5, dim)
         vx, vy = np.meshgrid(v, v)
-
-        vx_arr = np.tile(vx[None, None, :, :], (nwl, 1, 1))
-        vy_arr = np.tile(vy[None, None, :, :], (nwl, 1, 1))
-        wl_arr = np.tile(wl[None, :, None, None], (1, dim, dim))
-
         spfx_arr, spfy_arr = map(lambda x: (x/pixSize/u.mas.to(u.rad)).flatten(),
-                                 [vx_arr, vy_arr])
-        wl_arr = wl.flatten()
+                                 [vx, vy])
         spfx_extent = spfx_arr.max()
-
-        fourier_transform = self.calculate_complex_visibility(spfx_arr, spfy_arr, wl_arr).reshape(dims)
+        fourier_transform = self.calculate_complex_visibility(spfx_arr, spfy_arr)
         if display_mode == "vis":
             im = np.abs(fourier_transform)
             im /= im.max()
@@ -312,35 +300,26 @@ class Model:
                             " choices for the display_mode!")
 
         if axe is None:
-            fig, axe = plt.subplots(nwl,
-                                    figsize=(figsize[1]*nwl),
-                                    sharex=True, sharey=True)
+            fig, axe = plt.subplots(figsize=figsize, sharex=True, sharey=True)
         else:
             try:
                 fig = axe.get_figure()
             except Exception:
                 fig = axe.flatten()[0].get_figure()
 
-        axe = np.array(axe).flatten().reshape((nwl))
-        for iwl, wli in enumerate(wl):
-            cb = axe[iwl].imshow(im[iwl, :, :],
-                                 extent=[-spfx_extent, spfx_extent,
-                                         -spfx_extent, spfx_extent],
-                                 origin='lower', **kwargs)
+        cb = axe.imshow(im,
+                        extent=[-spfx_extent, spfx_extent,
+                                -spfx_extent, spfx_extent],
+                        origin='lower', **kwargs)
+        axe.set_xlim(-spfx_extent, spfx_extent)
+        axe.set_xlabel("sp. freq. (cycles/rad)")
 
-            axe[iwl].set_xlim(-spfx_extent, spfx_extent)
-
-            if iwl == nwl-1:
-                axe[iwl].set_xlabel("sp. freq. (cycles/rad)")
-
-            if legend:
-                txt = ""
-                if wl[0] is not None:
-                    txt += r"wl={:.4f}$\mu$m\n".format(wli*1e6)
-                if 'color' not in kwargs_legend:
-                    kwargs_legend['color'] = "w"
-                axe[iwl].text(0, 0.95*dim/2*pixSize, txt,
-                              va="top", ha="center", **kwargs_legend)
+        if legend:
+            txt = r"wl={:.4f}$\mu$m\n".format(wl*1e6)
+            if 'color' not in kwargs_legend:
+                kwargs_legend['color'] = "w"
+            axe.text(0, 0.95*dim/2*pixSize, txt,
+                     va="top", ha="center", **kwargs_legend)
         if colorbar:
             fig.colorbar(cb, ax=axe, label="Normalized Intensity")
 

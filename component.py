@@ -6,7 +6,7 @@ import numpy as np
 from fft import compute_2Dfourier_transform
 from options import OPTIONS
 from parameter import STANDARD_PARAMETERS, Parameter
-from utils import pad_image, rebin_image
+from utils import pad_image, get_binned_dimension
 
 
 class Component:
@@ -22,6 +22,7 @@ class Component:
         self.params = {}
         self.params["x"] = Parameter(**STANDARD_PARAMETERS["x"])
         self.params["y"] = Parameter(**STANDARD_PARAMETERS["y"])
+        self.params["dim"] = Parameter(**STANDARD_PARAMETERS["dim"])
         self._eval(**kwargs)
 
     def _eval(self, **kwargs):
@@ -65,6 +66,9 @@ class AnalyticalComponent(Component):
         return
 
     def calculate_image(self, dim, pixSize, wl=None):
+        if OPTIONS["fourier.binning"] is not None:
+            dim = get_binned_dimension(dim,
+                                       OPTIONS["fourier.binning"])
         v = np.linspace(-0.5, 0.5, dim)
         x_arr, y_arr = self._translate_coordinates(*np.meshgrid(v, v))
 
@@ -110,12 +114,9 @@ class NumericalComponent(Component):
     def __init__(self, **kwargs):
         """The class's constructor."""
         super().__init__(**kwargs)
-        self._pixel_size = None, None
-
-        self.params["dim"] = Parameter(**STANDARD_PARAMETERS["dim"])
         self.params["pixSize"] = Parameter(**STANDARD_PARAMETERS["pixSize"])
-
         self.params["pa"] = Parameter(**STANDARD_PARAMETERS["pa"])
+
         if self.elliptic:
             self.params["elong"] = Parameter(**STANDARD_PARAMETERS["elong"])
         self._eval(**kwargs)
@@ -151,9 +152,8 @@ class NumericalComponent(Component):
                                      wl: Optional[np.ndarray] = None
                                      ) -> np.ndarray:
         image = self.calculate_internal_image(wl)
-        if OPTIONS["FTBinningFactor"] is not None:
-            image = rebin_image(image, OPTIONS["FTBinningFactor"])
-        image = pad_image(image)
+        if OPTIONS["fourier.padding"] is not None:
+            image = pad_image(image, OPTIONS["fourier.padding"])
 
         if self._allowExternalRotation:
             pa_rad = (self.params["pa"].value) * \
