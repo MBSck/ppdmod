@@ -51,7 +51,8 @@ DIM = get_next_power_of_two(FOV / PIXEL_SIZE)
 # NOTE: Star parameters
 DISTANCE = 150
 EFF_TEMP = 7500
-LUMINOSITY = 19
+EFF_RADIUS = 1.8
+LUMINOSITY = 9.12
 
 # NOTE: Temperature gradient parameters
 INNER_TEMP = 1500

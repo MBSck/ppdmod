@@ -45,10 +45,14 @@ class Star(AnalyticalComponent):
                                         description="Distance to the star")
         self.params["eff_radius"] = Parameter(name="eff_radius",
                                               value=0,
-                                              unit=u.Lsun, free=False,
+                                              unit=u.Rsun, free=False,
                                               description="The stellar radius")
-
         self._eval(**kwargs)
+
+    @property
+    def stellar_radius_m(self):
+        return (self.params["eff_radius"].value *
+                self.params["eff_radius"].unit).to(u.m)
 
     @property
     def stellar_radius_angular(self) -> u.mas:
@@ -67,11 +71,9 @@ class Star(AnalyticalComponent):
         """
         if self._stellar_angular_radius is None:
             distance = self.params["dist"].value\
-                * self.params["dist"]
-            stellar_radius_m = self.params["eff_radius"].value\
-                * self.params["eff_radius"].unit.to(u.m)
-            self._stellar_angular_radius = (stellar_radius_m
-                                            * distance.to(u.m)*u.rad).to(u.mas)
+                * self.params["dist"].unit
+            self._stellar_angular_radius = (self.stellar_radius_m
+                                            / distance.to(u.m)*u.rad).to(u.mas)
         return self._stellar_angular_radius
 
     def _calculate_flux(self, wl: u.m) -> np.ndarray:
@@ -555,3 +557,15 @@ class AsymmetricSDGreyBodyContinuum(TemperatureGradient):
     asymmetric_surface_density = True
     const_temperature = True
     continuum_contribution = True
+
+
+if __name__ == "__main__":
+    # NOTE: Star parameters
+    DISTANCE = 150
+    EFF_TEMP = 7500
+    EFF_RADIUS = 1.8
+    LUMINOSITY = 9.12
+
+    star = Star(dim=512, dist=DISTANCE,
+                eff_temp=EFF_TEMP, eff_radius=EFF_RADIUS)
+    breakpoint()
