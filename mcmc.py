@@ -60,8 +60,8 @@ INNER_TEMP = 1500
 # NOTE: Wavelength dependent parameters
 WEIGHTS = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
 QVAL_FILE_DIR = Path("/Users/scheuck/Data/opacities/QVAL")
-QVAL_FILES = ["Q_Am_Mgolivine_Jae_DHS_f0.2_rv0.1.dat",
-              "Q_Am_Mgolivine_Jae_DHS_f0.2_rv1.5.dat",
+QVAL_FILES = ["Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat",
+              "Q_Am_Mgolivine_Jae_DHS_f1.0_rv1.5.dat",
               "Q_Am_Mgpyroxene_Dor_DHS_f1.0_rv1.5.dat",
               "Q_Fo_Suto_DHS_f1.0_rv0.1.dat",
               "Q_Fo_Suto_DHS_f1.0_rv1.5.dat",

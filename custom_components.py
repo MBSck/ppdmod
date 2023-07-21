@@ -51,6 +51,7 @@ class Star(AnalyticalComponent):
 
     @property
     def stellar_radius_m(self):
+        """Converts the star's radius from solar radii to meter."""
         return (self.params["eff_radius"].value *
                 self.params["eff_radius"].unit).to(u.m)
 

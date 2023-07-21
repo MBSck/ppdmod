@@ -36,7 +36,6 @@ def get_frequency_axis(dim: int, pixel_size: float, wavelength: float) -> np.nda
     frequency_axis = np.fft.ifftshift(np.fft.fftfreq(dim, pixel_size*u.rad))
     # NOTE: Units of 1/m
     meter_scaling = np.diff(frequency_axis).value[0]*wavelength
-    breakpoint()
     return frequency_axis
 
 
