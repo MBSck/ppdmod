@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 from typing import Optional, Union, List
 
@@ -14,6 +15,16 @@ DL_COEFFS = {
     "high": [-8.02282965e-05,  3.83260266e-03, 7.60090459e-05, -4.30753848e-07]
 }
 SPECTRAL_BINNING = {"low": 7, "high": 7}
+
+
+def execution_time(func):
+    """Prints the execution time of the decorated function."""
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        print(f"Execution time: {time.time() - start_time:.6f} seconds")
+        return result
+    return wrapper
 
 
 def calculate_stellar_radius(luminosity: u.Lsun,

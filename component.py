@@ -80,18 +80,10 @@ class AnalyticalComponent(Component):
             x_arr, y_arr = xp*self.params["elong"].value, yp
         return self._image_function(x_arr, y_arr, wl)
 
-    def calculate_complex_visibility(self, ucoord, vcoord, wl=None):
-        if self.elliptic:
-            pa_rad = (self.params["pa"].value)*self.params["pa"].unit.to(u.rad)
-            co, si = np.cos(pa_rad). np.sin(pa_rad)
-            fxp, fyp = ucoord*co-vcoord*si, ucoord*si+vcoord*co
-            rho = np.sqrt(fxp**2/self.params["elong"].value**2+fyp**2)
-        else:
-            fxp, fyp = ucoord, vcoord
-            rho = np.sqrt(fxp**2+fyp**2)
-
-        return self._visibility_function(fxp, fyp, rho, wl)\
-            * self._translate_fourier_transform(ucoord, vcoord, wl)
+    def calculate_complex_visibility(self, wl=None):
+        # TODO: Calculate this for grid of uv-coords.
+        # TODO: Apply transformation somehow
+        return self._visibility_function(wl)
 
 
 class NumericalComponent(Component):
@@ -147,26 +139,12 @@ class NumericalComponent(Component):
         return self._image_function(x_arr, y_arr, wl)
 
     def calculate_complex_visibility(self,
-                                     ucoord: np.ndarray,
-                                     vcoord: np.ndarray,
                                      wl: Optional[np.ndarray] = None
                                      ) -> np.ndarray:
         image = self.calculate_internal_image(wl)
         if OPTIONS["fourier.padding"] is not None:
             image = pad_image(image, OPTIONS["fourier.padding"])
-
-        if self._allowExternalRotation:
-            pa_rad = (self.params["pa"].value) * \
-                self.params["pa"].unit.to(u.rad)
-            co, si = np.cos(pa_rad), np.sin(pa_rad)
-            fxp, fyp = ucoord*co-vcoord*si, ucoord*si+vcoord*co
-            vcoord = fyp
-            if self.elliptic:
-                ucoord = fxp/self.params["elong"].value
-            else:
-                ucoord = fxp
-        return compute_2Dfourier_transform(image)\
-            * self._translate_fourier_transform(ucoord, vcoord)
+        return compute_2Dfourier_transform(image)
 
     def calculate_image(self, dim: float, pixSize: float,
                         wl: Optional[np.ndarray] = None) -> np.ndarray:

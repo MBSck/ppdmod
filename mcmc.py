@@ -12,9 +12,8 @@ from data import ReadoutFits
 from fft import interpolate_for_coordinates
 from model import Model
 from parameter import Parameter, STANDARD_PARAMETERS
-from options import OPTIONS
 from utils import get_next_power_of_two, opacity_to_matisse_opacity,\
-    linearly_combine_opacities
+    linearly_combine_opacities, execution_time
 
 
 # NOTE: Path to data.
@@ -128,21 +127,21 @@ def chi_sq(data: u.quantity, error: u.quantity,
 
     Parameters
     ----------
-    data : astropy.units.Quantity
-    error : astropy.units.Quantity
-    model_data : astropy.units.Quantity
+    data : numpy.ndarray
+    error : numpy.ndarray
+    model_data : numpy.ndarray
     lnf : float, optional
 
     Returns
     -------
     chi_sq : float
     """
-    inv_sigma_squared = 1./np.sum(error.value**2+\
-                                  model_data.value**2*np.exp(2*lnf))
-    return -0.5*np.sum((data.value-model_data.value)**2*inv_sigma_squared\
+    inv_sigma_squared = 1./np.sum(error**2
+                                  + model_data**2*np.exp(2*lnf))
+    return -0.5*np.sum((data-model_data)**2*inv_sigma_squared
                        - np.log(inv_sigma_squared))
 
-
+# @execution_time
 def lnprob(theta: np.ndarray) -> float:
     """Takes theta vector and the x, y and the yerr of the theta.
     Returns a number corresponding to how good of a fit the model is to your
@@ -182,30 +181,41 @@ def lnprob(theta: np.ndarray) -> float:
                                               lum=LUMINOSITY,
                                               kappa_cont=KAPPA_ABS_CONT,
                                               **params)
+    pixel_size = temp_grad.params["pixSize"].value\
+        * temp_grad.params["pixSize"].unit.to(u.rad)
     model = Model([star, temp_grad])
 
+    # TODO: Apply coordinate transformation somehow?
     fourier_transforms = {}
     for wavelength in WAVELENGTHS:
-        fourier_transforms[str(wavelength)] = model.calculate_complex_visibility(
-            DATA.ucoord, DATA.vcoord, wavelength)
+        fourier_transform = model.calculate_complex_visibility(wavelength)
+        total_flux = np.abs(fourier_transform).sum()
+        fourier_transforms[str(wavelength)] = {"ft": fourier_transform,
+                                               "total_flux": total_flux}
 
     # TODO: Calculate the different observables here
     total_chi_sq = 0
     for index, (corr_flux, corr_flux_err, cphase, cphase_err)\
             in enumerate(zip(CORR_FLUX, CORR_FLUX_ERR, CPHASE, CPHASE_ERR)):
+        print(index)
         for wavelength in WAVELENGTHS:
-            if str(wavelength) in fourier_transforms:
+            print(wavelength)
+            if str(wavelength) in fourier_transforms\
+                    and str(wavelength) in corr_flux:
                 fourier_transform = fourier_transforms[str(wavelength)]
-                interpolated_fft = interpolate_for_coordinates(fourier_transform,
-                                                               fourier_transform.shape[0],
-                                                               temp_grad.params["pixelSize"].value*temp_grad.params["pixSize"].unit.to(u.rad),
-                                                               DATA[index].ucoord, DATA[index].vcoord,
-                                                               DATA[index].wavelength, wavelength)
-                total_flux_model = interpolated_fft.abs().sum()
-                corr_flux_model = interpolated_fft.abs()
-                cphase_model = ...
-                total_chi_sq += chi_sq(corr_flux, corr_flux_err, corr_flux_model)
-                total_chi_sq += chi_sq(cphase, cphase_err, cphase_model)
+                interpolated_fft = interpolate_for_coordinates(
+                    fourier_transform["ft"],
+                    fourier_transform["ft"].shape[0],
+                    pixel_size,
+                    DATA[index].ucoord, DATA[index].vcoord,
+                    DATA[index].wavelength, wavelength)
+                # total_flux_model = fourier_transform["total_flux"]
+                corr_flux_model = np.abs(interpolated_fft)
+                total_chi_sq += chi_sq(corr_flux[str(wavelength)],
+                                       corr_flux_err[str(wavelength)],
+                                       corr_flux_model)
+                # cphase_model = ...
+                # total_chi_sq += chi_sq(cphase, cphase_err, cphase_model)
             else:
                 continue
     return np.array(total_chi_sq)

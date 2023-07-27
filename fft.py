@@ -21,22 +21,23 @@ def compute_2Dfourier_transform(image: np.ndarray) -> np.ndarray:
 
 
 def get_frequency_axis(dim: int, pixel_size: float, wavelength: float) -> np.ndarray:
-    """Calculates the frequency axis in meters.
+    """Calculates the frequency axis in meters at the observed wavelength.
 
     Parameters
     ----------
     dim : float
+        The dimension [px].
     pixel_size : float
+        The pixel size [u.rad].
     wavelength : numpy.ndarray
+        The wavelength [u.m].
 
     Returns
     -------
     frequency_axis : numpy.ndarray
+        The frequency axis [u.m].
     """
-    frequency_axis = np.fft.ifftshift(np.fft.fftfreq(dim, pixel_size*u.rad))
-    # NOTE: Units of 1/m
-    meter_scaling = np.diff(frequency_axis).value[0]*wavelength
-    return frequency_axis
+    return np.fft.fftshift(np.fft.fftfreq(dim, pixel_size))*wavelength
 
 
 def interpolate_for_coordinates(fourier_transform: np.ndarray,
@@ -62,12 +63,9 @@ def interpolate_for_coordinates(fourier_transform: np.ndarray,
     -------
     numpy.ndarray
     """
-    # NOTE: Convert spatial frequencies from cycles/rad to cycles/meter.
-    frequency_axis = np.fft.ifftshift(np.fft.fftfreq(dim, pixel_size))
-    frequency_axis = np.diff(frequency_axis)[0]*wavelengths
-    breakpoint()
-    grid = (wavelengths, frequency_axis, frequency_axis)
-    coordinates = np.transpose([wavelength_axis, vcoord, ucoord])
+    frequency_axis = get_frequency_axis(dim, pixel_size, wavelength)
+    grid = (frequency_axis, frequency_axis)
+    coordinates = np.transpose([vcoord, ucoord])
     real = interpolate.interpn(grid, np.real(fourier_transform), coordinates,
                                bounds_error=False, fill_value=None)
     imag = interpolate.interpn(grid, np.imag(fourier_transform), coordinates,

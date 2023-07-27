@@ -72,17 +72,13 @@ class Model:
         """
         return {key: value for key, value in self.params.items() if value.free}
 
-    def calculate_complex_visibility(self, ucoord: ArrayLike, vcoord: ArrayLike,
+    def calculate_complex_visibility(self,
                                      wl: Optional[ArrayLike] = None) -> np.ndarray:
         """Compute and return the complex coherent flux for an array of u,v
         (and optionally wavelength and time) coordinates.
 
         Parameters
         ----------
-        ucoord : array_like
-            Spatial coordinate u (in cycles/rad).
-        vcoord : array_like
-            Spatial coordinate v (in cycles/rad).
         wl : array_like, optional
             Wavelength(s) in meter. The default is None.
 
@@ -93,7 +89,7 @@ class Model:
         """
         res = complex(0, 0)
         for component in self.components:
-            res += component.getComplexCoherentFlux(ucoord, vcoord, wl)
+            res += component.calculate_complex_visibility(wl)
         return res
 
     def calculate_image(self, dim: int, pixSize: float,

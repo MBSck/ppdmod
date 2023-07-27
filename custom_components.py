@@ -106,7 +106,7 @@ class Star(AnalyticalComponent):
             self._image[idx] = 1
         return self._image*self._calculate_flux(wl)
 
-    def _visibility_function(self, ucoord, vcoord, rho, wl):
+    def _visibility_function(self, wl):
         return self._calculate_flux(wl)
 
 
@@ -363,7 +363,7 @@ class TemperatureGradient(NumericalComponent):
         -------
         image : numpy.ndarray
         """
-        radius = np.sqrt(xx**2+yy**2)
+        radius = np.hypot(xx, yy)
         rin, rout = map(lambda x: self.params[x].value, ["rin", "rout"])
         radial_profile = np.logical_and(radius > rin, radius < rout).astype(int)
         temperature_profile = self._temperature_profile(radius)
