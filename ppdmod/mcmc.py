@@ -77,11 +77,11 @@ KAPPA_ABS_CONT = np.concatenate([CONTINUUM_OPACITY_L_BAND,
                                  CONTINUUM_OPACITY_N_BAND])
 
 KAPPA_ABS = Parameter(name="kappa_abs", value=KAPPA_ABS,
-                      wavelengths=WAVELENGTH_AXIS,
+                      wavelength=WAVELENGTH_AXIS,
                       unit=u.cm**2/u.g, free=False,
                       description="Dust mass absorption coefficient")
 KAPPA_ABS_CONT = Parameter(name="kappa_cont", value=KAPPA_ABS_CONT,
-                           wavelengths=WAVELENGTH_AXIS,
+                           wavelength=WAVELENGTH_AXIS,
                            unit=u.cm**2/u.g, free=False,
                            description="Continuum dust mass absorption coefficient")
 

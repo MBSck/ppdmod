@@ -1,9 +1,9 @@
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import Optional
 
 import astropy.units as u
 import numpy as np
-from astropy.units import Quantity
+from numpy.typing import ArrayLike
 
 
 # NOTE: Here is a list of standard parameters to be used when defining new components
@@ -26,22 +26,28 @@ STANDARD_PARAMETERS = {
 
 @dataclass(kw_only=True)
 class Parameter:
+    """Defines a parameter."""
     name: str
     value: any
     description: str
-    unit: Quantity
+    unit: u.Quantity
     free: bool = True
     min: float = None
     max: float = None
-    wavelengths: np.ndarray = None
+    wavelength: np.ndarray = None
+
+    def __post__init__(self):
+        """Post initialisation actions."""
+        self.value = self._set_to_numpy_array(self.wavelength)
+        self.wavelength = self._set_to_numpy_array(self.wavelength)
 
     def __call__(self,
                  wavelength: Optional[np.ndarray] = None) -> np.ndarray:
         """Gets the value for the parameter or the corresponding
         values for the wavelengths."""
-        if self.wavelengths is None:
-            return self.value
-        return self.value[np.where(self.wavelengths == wavelength)]
+        if self.wavelength is None:
+            return self.value[0]
+        return self.value[np.where(self.wavelength == wavelength)]
 
     def __str__(self):
         message = f"Parameter: {self.name} has the value {self.value} and "\
@@ -50,7 +56,16 @@ class Parameter:
             message += f" with its limits being {self.min}-{self.max}"
         return message
 
+    def _set_to_numpy_array(self, array: ArrayLike) -> np.ndarray:
+        """Converts a value to a numpy array."""
+        if not isinstance(array, np.ndarray):
+            if isinstance(array, (tuple, list)):
+                array = np.array(array)
+            else:
+                array = np.array([array])
+        return array
+
     def set(self, min: Optional[float] = None,
-            max: Optional[float] = None):
+            max: Optional[float] = None) -> None:
         """Sets the limits of the parameters."""
         self.min, self.max = min, max

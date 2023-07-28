@@ -17,7 +17,6 @@ class Component:
     def __init__(self, **kwargs):
         """The class's constructor."""
         self.name = None
-        self._allowExternalRotation = True
 
         self.params = {}
         self.params["x"] = Parameter(**STANDARD_PARAMETERS["x"])
@@ -26,6 +25,7 @@ class Component:
         self._eval(**kwargs)
 
     def _eval(self, **kwargs):
+        """Sets the parameters (values) from the keyword arguments."""
         for key, value in kwargs.items():
             if key in self.params:
                 if isinstance(value, Parameter):
