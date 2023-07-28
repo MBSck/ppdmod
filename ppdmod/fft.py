@@ -1,9 +1,8 @@
-from astropy.units import Quantity
 from typing import List, Optional
 
 import numpy as np
 import astropy.units as u
-from scipy import interpolate
+from scipy.interpolate import interpn
 
 
 def compute_2Dfourier_transform(image: np.ndarray) -> np.ndarray:
@@ -45,7 +44,6 @@ def interpolate_for_coordinates(fourier_transform: np.ndarray,
                                 pixel_size: float,
                                 ucoord: np.ndarray,
                                 vcoord: np.ndarray,
-                                wavelength_axis: np.ndarray,
                                 wavelength: np.ndarray):
     """Interpolate the coordinates.
 
@@ -66,10 +64,8 @@ def interpolate_for_coordinates(fourier_transform: np.ndarray,
     frequency_axis = get_frequency_axis(dim, pixel_size, wavelength)
     grid = (frequency_axis, frequency_axis)
     coordinates = np.transpose([vcoord, ucoord])
-    real = interpolate.interpn(grid, np.real(fourier_transform), coordinates,
-                               bounds_error=False, fill_value=None)
-    imag = interpolate.interpn(grid, np.imag(fourier_transform), coordinates,
-                               bounds_error=False, fill_value=None)
+    real = interpn(grid, np.real(fourier_transform), coordinates)
+    imag = interpn(grid, np.imag(fourier_transform), coordinates)
     return real+imag*1j
 
 
@@ -80,7 +76,7 @@ def interpolate_for_coordinates(fourier_transform: np.ndarray,
 
 def get_amp_phase(fourier_transform: np.ndarray,
                   unwrap_phase: Optional[bool] = False,
-                  period: Optional[int] = 360) -> List[Quantity]:
+                  period: Optional[int] = 360) -> List[u.Quantity]:
     """Gets the amplitude and the phase of the FFT
 
     Parameters
@@ -103,4 +99,4 @@ def get_amp_phase(fourier_transform: np.ndarray,
 
 
 if __name__ == "__main__":
-    get_frequency_axis(512, 0.1, 4.5e-6)
+    print(get_frequency_axis(512, 0.1*u.mas.to(u.rad), 4.5e-6))

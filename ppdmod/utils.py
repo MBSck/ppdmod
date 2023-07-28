@@ -7,7 +7,7 @@ import astropy.constants as const
 import numpy as np
 from astropy.modeling import models
 
-from fluxcal import transform_spectrum_to_real_spectral_resolution
+from .fluxcal import transform_spectrum_to_real_spectral_resolution
 
 
 DL_COEFFS = {

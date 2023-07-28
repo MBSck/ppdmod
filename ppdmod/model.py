@@ -7,10 +7,10 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from numpy.typing import ArrayLike
 
-from component import NumericalComponent
-from parameter import Parameter
-from options import OPTIONS
-from utils import get_binned_dimension
+from .component import Component
+from .parameter import Parameter
+from .options import OPTIONS
+from .utils import get_binned_dimension
 
 
 class Model:
@@ -32,9 +32,9 @@ class Model:
        The components of the model.
     """
 
-    def __init__(self, *components: List[NumericalComponent]) -> None:
+    def __init__(self, *components: List[Component]) -> None:
         """Constructor of the class"""
-        if len(components) == 1 and type(components[0]) == list:
+        if len(components) == 1 and isinstance(components[0], list):
             self.components = components[0]
         else:
             self.components = components

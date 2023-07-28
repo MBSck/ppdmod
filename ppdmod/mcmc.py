@@ -7,12 +7,12 @@ import emcee
 import numpy as np
 import matplotlib.pyplot as plt
 
-from custom_components import Star, AsymmetricSDGreyBodyContinuum
-from data import ReadoutFits
-from fft import interpolate_for_coordinates
-from model import Model
-from parameter import Parameter, STANDARD_PARAMETERS
-from utils import get_next_power_of_two, opacity_to_matisse_opacity,\
+from .custom_components import Star, AsymmetricSDGreyBodyContinuum
+from .data import ReadoutFits
+from .fft import interpolate_for_coordinates
+from .model import Model
+from .parameter import Parameter, STANDARD_PARAMETERS
+from .utils import get_next_power_of_two, opacity_to_matisse_opacity,\
     linearly_combine_opacities, execution_time
 
 
@@ -23,15 +23,12 @@ PATH = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse")
 WAVELENGTHS = np.array([4.78301581e-06, 8.28835527e-06])
 
 # NOTE: Get the wavelenght axis of MATISSE for both band (CHECK: Might differ for different files)?
-WAVLENGTH_FILES = ["hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_HAWAII-2RG_FINAL_TARGET_INT.fits",
-                   "hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_AQUARIUS_FINAL_TARGET_INT.fits"]
-WAVELENGTH_AXES = list(map(lambda x: ReadoutFits(PATH / x).wavelength, WAVLENGTH_FILES))
+FILES = ["hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_HAWAII-2RG_FINAL_TARGET_INT.fits",
+         "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits"]
+WAVELENGTH_AXES = list(map(lambda x: ReadoutFits(PATH / x).wavelength, FILES))
 WAVELENGTH_AXES[0].sort()
 WAVELENGTH_AXIS = np.concatenate(WAVELENGTH_AXES)
 
-# Define globals
-FILES = ["hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_AQUARIUS_FINAL_TARGET_INT.fits",
-         "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits"]
 FILES = list(map(lambda x: PATH / x, FILES))
 DATA = [ReadoutFits(file) for file in FILES]
 CORR_FLUX, CORR_FLUX_ERR = [], []
@@ -189,7 +186,7 @@ def lnprob(theta: np.ndarray) -> float:
     fourier_transforms = {}
     for wavelength in WAVELENGTHS:
         fourier_transform = model.calculate_complex_visibility(wavelength)
-        total_flux = np.abs(fourier_transform).sum()
+        # total_flux = fourier_transform
         fourier_transforms[str(wavelength)] = {"ft": fourier_transform,
                                                "total_flux": total_flux}
 

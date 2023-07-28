@@ -3,10 +3,10 @@ import astropy.constants as const
 import numpy as np
 from astropy.modeling import models
 
-from component import AnalyticalComponent, NumericalComponent
-from parameter import Parameter
-from options import OPTIONS
-from utils import convert_radial_profile_to_meter, calculate_intensity,\
+from .component import AnalyticalComponent, NumericalComponent
+from .parameter import Parameter
+from .options import OPTIONS
+from .utils import convert_radial_profile_to_meter, calculate_intensity,\
     rebin_image
 
 

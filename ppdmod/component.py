@@ -3,10 +3,10 @@ from typing import Optional
 import astropy.units as u
 import numpy as np
 
-from fft import compute_2Dfourier_transform
-from options import OPTIONS
-from parameter import STANDARD_PARAMETERS, Parameter
-from utils import pad_image, get_binned_dimension
+from .fft import compute_2Dfourier_transform
+from .options import OPTIONS
+from .parameter import STANDARD_PARAMETERS, Parameter
+from .utils import pad_image, get_binned_dimension
 
 
 class Component:
@@ -62,7 +62,7 @@ class AnalyticalComponent(Component):
     def _image_function(self, xx, yy, wl):
         return
 
-    def _visibility_function(self, ucoord, vcoord, rho, wl):
+    def _visibility_function(self, wl):
         return
 
     def calculate_image(self, dim, pixSize, wl=None):
@@ -81,8 +81,6 @@ class AnalyticalComponent(Component):
         return self._image_function(x_arr, y_arr, wl)
 
     def calculate_complex_visibility(self, wl=None):
-        # TODO: Calculate this for grid of uv-coords.
-        # TODO: Apply transformation somehow
         return self._visibility_function(wl)
 
 
