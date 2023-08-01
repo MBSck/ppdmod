@@ -34,11 +34,11 @@ def test_component(component: Component) -> None:
 
 def test_eval(component: Component) -> None:
     """Tests if the evaulation of the parameters works."""
-    x = Parameter(**STANDARD_PARAMETERS["scale"])
+    x = Parameter(**STANDARD_PARAMETERS["fov"])
     params = {"x": x, "y": 10, "dim": 512}
     component._eval(**params)
 
-    assert component.params["x"] == Parameter(**STANDARD_PARAMETERS["scale"])
+    assert component.params["x"] == Parameter(**STANDARD_PARAMETERS["fov"])
     assert component.params["y"].value == 10
     assert component.params["dim"].value == 512
 
@@ -75,7 +75,7 @@ def test_numerical_component_init(numerical_component: NumericalComponent) -> No
 
     assert "pa" in numerical_component.params
     assert "elong" in numerical_component.params
-    assert "pixSize" in numerical_component.params
+    assert "pixel_size" in numerical_component.params
 
 
 def test_numerical_component_grid(numerical_component: NumericalComponent) -> None:
