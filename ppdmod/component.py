@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Tuple
 
 import astropy.units as u
 import numpy as np
@@ -110,16 +110,13 @@ class NumericalComponent(Component):
             self.params["elong"] = Parameter(**STANDARD_PARAMETERS["elong"])
         self._eval(**kwargs)
 
-    def _calculate_internal_grid(self) -> np.ndarray:
+    def _calculate_internal_grid(self) -> Tuple[np.ndarray, np.ndarray]:
         """Calculates the model grid.
-
-        In case of 1D it is a radial profile and in 2D it is a grid.
-
-        Parameters
-        ----------
 
         Returns
         -------
+        xx: numpy.ndarray
+        yy: numpy.ndarray
         """
         pix = (self.params["pixSize"].value
                * self.params["pixSize"].unit).to(u.mas)
@@ -139,8 +136,6 @@ class NumericalComponent(Component):
                                      wl: Optional[np.ndarray] = None
                                      ) -> np.ndarray:
         image = self.calculate_internal_image(wl)
-        if OPTIONS["fourier.padding"] is not None:
-            image = pad_image(image, OPTIONS["fourier.padding"])
         return compute_2Dfourier_transform(image)
 
     def calculate_image(self, dim: float, pixSize: float,

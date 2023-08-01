@@ -5,9 +5,10 @@ import numpy as np
 import pyfftw
 from scipy.interpolate import interpn
 
+from .options import OPTIONS
 
-def compute_2Dfourier_transform(image: np.ndarray,
-                                backend="numpy") -> np.ndarray:
+
+def compute_2Dfourier_transform(image: np.ndarray) -> np.ndarray:
     """Calculates the Fourier transform.
 
     Parameters
@@ -18,10 +19,8 @@ def compute_2Dfourier_transform(image: np.ndarray,
     --------
     interpolated_fourier_transform : np.ndarray
     """
-    if backend == "numpy":
+    if OPTIONS["fourier.backend"] == "numpy":
         return np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(image)))
-    if backend == "pyfftw":
-        return
 
 
 def get_frequency_axis(dim: int, pixel_size: float, wavelength: float) -> np.ndarray:
