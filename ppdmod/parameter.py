@@ -12,7 +12,7 @@ STANDARD_PARAMETERS = {
     "y": {"name": "y", "value": 0, "description": "y position", "unit": u.mas, "free": False},
     "elong": {"name": "elong", "value": 1, "description": "Elongation Ratio", "unit": u.one},
     "pa": {"name": "pa", "value": 0, "description": "Major-axis Position angle", "unit": u.deg},
-    "pixSize": {"name": "pixSize", "value": 0, "description": "Pixel Size", "unit": u.mas, "free": False},
+    "pixel_size": {"name": "pixel_size", "value": 0, "description": "Pixel Size", "unit": u.mas, "free": False},
     "dim": {"name": "dim", "value": 128, "description": "Dimension in pixels", "unit": u.one, "free": False},
     "wl": {"name": "wl", "value": 0, "description": "Wavelength", "unit": u.m},
     "fov": {"name": "fov", "value": 0, "description": "The interferometric field of view", "unit": u.mas, "free": False},

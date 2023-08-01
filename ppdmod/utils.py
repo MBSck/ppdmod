@@ -5,16 +5,12 @@ from typing import Optional, Union, List
 import astropy.units as u
 import astropy.constants as const
 import numpy as np
+from astropy.convolution import Gaussian1DKernel, Box1DKernel, convolve
 from astropy.modeling import models
+from numpy.polynomial.polynomial import polyval
+from scipy.interpolate import interp1d
 
-from .fluxcal import transform_spectrum_to_real_spectral_resolution
-
-
-DL_COEFFS = {
-    "low": [0.10600484,  0.01502548,  0.00294806, -0.00021434],
-    "high": [-8.02282965e-05,  3.83260266e-03, 7.60090459e-05, -4.30753848e-07]
-}
-SPECTRAL_BINNING = {"low": 7, "high": 7}
+from .options import OPTIONS
 
 
 def execution_time(func):
@@ -27,55 +23,11 @@ def execution_time(func):
     return wrapper
 
 
-def calculate_stellar_radius(luminosity: u.Lsun,
-                             effective_temperature: u.K) -> u.m:
-    """Calculates the stellar radius from its luminosity
-    and effective temperature.
-
-    Parameters
-    ----------
-    luminosity : u.Lsun
-        The star's luminosity.
-    effective_temperature : u.K
-        The star's effective temperature.
-
-    Returns
-    -------
-    stellar_radius : u.m
-        The stellar radius.
-    """
-    if not isinstance(luminosity, u.Quantity):
-        luminosity *= u.Lsun
-    luminosity = luminosity.to(u.W)
-    if not isinstance(effective_temperature, u.Quantity):
-        effective_temperature *= u.K
-    return np.sqrt(luminosity /
-                   (4*np.pi*const.sigma_sb*effective_temperature**4))
-
-
-def _make_axis(axis_end: int, steps: int):
-    """Makes an axis from a negative to a postive value, with the endpoint removed to give
-    an even signal for a Fourier transform
-
-    Parameters
-    ----------
-    axis_end: int
-        The negative/positive endpoint
-    steps: int
-        The steps used to get from one end to another, should be an even multiple of
-        the distance between positive and negative axis_end for fourier transforms
-
-    Returns
-    -------
-    axis: np.ndarray
-    """
-    return np.linspace(-axis_end, axis_end, steps, endpoint=False)
-
 # TODO: Maybe even optimize calculation time further in the future
 # Got it down from 3.5s to 0.66s for 3 wavelengths. It is 0.19s per wl.
-def calculate_intensity(wavelength: u.um,
-                        temp_profile: u.K,
-                        pixel_size: Optional[float] = None) -> np.ndarray:
+def calculate_intensity(temp_profile: u.K,
+                        wavelength: u.um,
+                        pixel_size: Optional[u.rad] = None) -> np.ndarray:
     """Calculates the blackbody_profile via Planck's law and the
     emissivity_factor for a given wavelength, temperature- and
     dust surface density profile.
@@ -86,18 +38,18 @@ def calculate_intensity(wavelength: u.um,
         Wavelength value(s).
     temp_profile : astropy.units.K
         Temperature profile.
-    pixSize: float, optional
-        The pixel size [rad].
+    pixel_size : astropy.units.rad, optional
+        The pixel size.
 
     Returns
     -------
-    intensity : numpy.ndarray
-        Intensity per pixel.
+    intensity : astropy.units.Jy
+        Intensity per pixel [Jy/px]
     """
-    plancks_law = models.BlackBody(temperature=temp_profile*u.K)
-    pixel_size *= u.rad
-    spectral_radiance = plancks_law(wavelength*u.m).to(u.erg/(u.cm**2*u.Hz*u.s*u.rad**2))
-    return (spectral_radiance*pixel_size**2).to(u.Jy).value
+    plancks_law = models.BlackBody(temperature=temp_profile)
+    spectral_radiance = plancks_law(wavelength.to(u.m)).to(
+        u.erg/(u.cm**2*u.Hz*u.s*u.rad**2))
+    return (spectral_radiance*(pixel_size.to(u.rad))**2).to(u.Jy)
 
 
 # TODO: Check if this function does what it should -> Compare to oimodeler.
@@ -178,26 +130,21 @@ def get_next_power_of_two(number: Union[int, float]) -> int:
     return int(2**np.ceil(np.log2(number)))
 
 
-def convert_radial_profile_to_meter(radius: Union[float, np.ndarray],
-                                    distance: float,
-                                    rvalue: Optional[bool] = False) -> Union[float, np.ndarray]:
+def angular_to_distance(radius: u.mas, distance: u.pc) -> u.m:
     """Converts the distance from mas to meters for a radial profile around
     a star via the angular diameter small angle approximation.
 
     Parameters
     ----------
-    radius : float or numpy.ndarray
-        The radius of the object around the star [mas].
-    distance : float
-        The star's distance to the observer [pc].
-    rvalue : bool, optional
-        If toggled, returns the value witout units else returns
-        an astropy.units.Quantity object. The default is False.
+    radius : astropy.units.mas
+        The radius of the object around the star.
+    distance : astropy.units.pc
+        The star's distance to the observer.
 
     Returns
     -------
-    radius : float or numpy.ndarray
-        The radius of the object around the star [m].
+    radius : astropy.units.m
+        The radius of the object around the star.
 
     Notes
     -----
@@ -208,11 +155,10 @@ def convert_radial_profile_to_meter(radius: Union[float, np.ndarray],
     where d is the distance from the star and D is the distance from the star
     to the observer and ..math::`\\delta` is the angular diameter.
     """
-    radius = ((radius*u.mas).to(u.arcsec).value*distance*u.au).to(u.m)
-    return radius.value if rvalue else radius
+    return (radius.to(u.arcsec).value*distance.to(u.au)).to(u.m)
 
 
-def qval_to_opacity(qval_file: Path) -> np.ndarray:
+def qval_to_opacity(qval_file: Path) -> u.cm**2/u.g:
     """Reads the qval file and returns the opacity.
 
     Parameters
@@ -227,37 +173,117 @@ def qval_to_opacity(qval_file: Path) -> np.ndarray:
     with open(qval_file, "r+", encoding="utf8") as file:
         _, grain_size, density = map(float, file.readline().strip().split())
     wavelenght_grid, qval = np.loadtxt(qval_file, skiprows=1, unpack=True)
-    return wavelenght_grid, 3*qval/(4*grain_size*u.um.to(u.cm)*density)
+    return wavelenght_grid*u.um,\
+        3*qval/(4*(grain_size*u.um).to(u.cm)*(density*u.g/u.cm**3))
 
 
-def opacity_to_matisse_opacity(wavelength_solution: u.m,
+def transform_opacity(
+        wavelength_grid: u.um, opacity: u.cm**2/u.g,
+        dl_coeffs: u.one, kernel_width: float,
+        wavelength_solution: u.um, spectral_binning: float):
+    """Transform a spectrum to the real wavlength grid of MATISSE.
+
+    Parameters
+    ----------
+    wavelength_grid : astropy.units.um
+    opacity : astropy.units.cm**2/astropy.units.g
+    dl_coeffs : list of float
+    kernel_width : float
+        The kernel width [px].
+    wavelength_solution : astropy.units.um
+    spectral_binning : float
+
+    Returns
+    -------
+    transformed_opacity : astropy.units.cm**2/astropy.units.g
+    """
+    min_wl, max_wl = np.min(wavelength_grid), np.max(wavelength_grid)
+    wavelength, wl_new = min_wl, [min_wl]
+    while wavelength < max_wl:
+        wavelength = wavelength\
+            + u.um*polyval(wavelength.value, dl_coeffs)/kernel_width
+        wl_new.append(wavelength)
+    wl_new = u.Quantity(wl_new, unit=u.um)
+    f_spec_new = interp1d(wavelength_grid, opacity,
+                          kind='cubic', fill_value='extrapolate')
+    spec_new = f_spec_new(wl_new)
+
+    # NOTE: Convolve with Gaussian kernel
+    kernel = Gaussian1DKernel(stddev=kernel_width /
+                              (2.0*np.sqrt(2.0*np.log(2.0))))
+    spec_new[0] = np.nanmedian(spec_new[0:int(kernel.dimension/2.0)])
+    spec_new[-1] = np.nanmedian(spec_new[-1:-int(kernel.dimension/2.0)])
+    spec_convolved = convolve(spec_new, kernel, boundary='extend')
+
+    # NOTE: Interpolate the convolved spectrum to the input wavelength grid
+    f_spec_new = interp1d(wl_new, spec_convolved,
+                          kind='cubic', fill_value='extrapolate')
+    spec_interp = f_spec_new(wavelength_solution)
+
+    # NOTE: Apply spectral binning: Convolve with a top-hat kernel of size
+    # spectral_binning
+    if spectral_binning > 1:
+        kernel = Box1DKernel(spectral_binning)
+        spec_final = convolve(spec_interp, kernel, boundary='extend')
+    else:
+        spec_final = spec_interp
+    return spec_final*u.cm**2/u.g
+
+
+def opacity_to_matisse_opacity(wavelength_solution: u.um,
                                opacity: Optional[np.ndarray] = None,
                                opacity_file: Optional[Path] = None,
                                qval_file: Optional[Path] = None,
                                resolution: Optional[str] = "low",
-                               save_path: Optional[Path] = None):
-    """Converts the opacity to the MATISSE wavelength grid."""
-    wavelengths = wavelength_solution*u.m.to(u.um)
+                               save_path: Optional[Path] = None) -> np.ndarray:
+    """Converts the opacity to the MATISSE wavelength grid.
+
+    Parameters
+    ----------
+    wavelength_solution : u.um
+        The MATISSE wavelength solution.
+    opacity : , optional
+        An input opacity.
+    opacity_file : pathlib.Path, optional
+    qval_file : pathlib.Path, optional
+    resolution : str, optional
+    save_path : pathlib.Path, optional
+
+    Returns
+    -------
+    numpy.ndarray
+    """
     if qval_file is not None:
         wavelength_grid, opacity = qval_to_opacity(qval_file)
     elif opacity_file is not None:
         wavelength_grid, opacity = np.loadtxt(
             opacity_file, skiprows=1, unpack=True)
-    ind = np.where(np.logical_and(wavelengths.min() < wavelength_grid,
-                                  wavelength_grid < wavelengths.max()))
+
+    ind = np.where(np.logical_and(wavelength_solution.min() < wavelength_grid,
+                                  wavelength_grid < wavelength_solution.max()))
     wavelength_grid, opacity = wavelength_grid[ind], opacity[ind]
-    matisse_opacity = transform_spectrum_to_real_spectral_resolution(wavelength_grid, opacity,
-                                                                     DL_COEFFS[resolution], 10,
-                                                                     wavelengths,
-                                                                     SPECTRAL_BINNING[resolution])
+    matisse_opacity = transform_opacity(
+        wavelength_grid, opacity,
+        OPTIONS["spectrum.coefficients"][resolution],
+        10, wavelength_solution,
+        OPTIONS["spectrum.binning"][resolution])
     if save_path is not None:
-        np.save(save_path, [wavelengths, matisse_opacity])
+        np.save(save_path, [wavelength_solution, matisse_opacity])
     return matisse_opacity
 
 
-def linearly_combine_opacities(weights: List[float], files: List[Path],
-                               wavelength_solution: u.m) -> np.ndarray:
-    """Linearly combines multiple opacities by their weights."""
+def linearly_combine_opacities(weights: u.one, files: List[Path],
+                               wavelength_solution: u.um) -> np.ndarray:
+    """Linearly combines multiple opacities by their weights.
+
+    Parameters
+    ----------
+    weights : u.one
+        The weights for the different opacity components.
+    files : list of pathlib.Path
+    wavelength_solution : u.um
+        The MATISSE wavelength solution.
+    """
     total_opacity = None
     for weight, file in zip(weights, files):
         opacity = opacity_to_matisse_opacity(wavelength_solution,

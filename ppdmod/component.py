@@ -10,7 +10,17 @@ from .utils import get_binned_dimension
 
 
 class Component:
-    """The base class for the component."""
+    """The base class for the component.
+
+    Parameters
+    ----------
+    xx : float
+        The x-coordinate of the component.
+    yy : float
+        The x-coordinate of the component.
+    dim : float
+        The dimension [px].
+    """
     name = "Generic component"
     shortname = "GenComp"
     description = "This is the class from which all components are derived."
@@ -59,13 +69,15 @@ class AnalyticalComponent(Component):
         self._eval(**kwargs)
 
     def _image_function(self, xx: u.mas, yy: u.mas,
-                        wavelength: Optional[u.m] = None) -> Optional[u.Quantity]:
+                        wavelength: Optional[u.um] = None) -> Optional[u.Quantity]:
         """Calculates the image from a 2D grid.
 
         Parameters
         ----------
-        xx : u.mas
-        yy : u.mas
+        xx : astropy.units.mas
+            The x-coordinate grid.
+        yy : astropy.units.mas
+            The y-coordinate grid.
         wavelength : u.m, optional
 
         Returns
@@ -75,12 +87,12 @@ class AnalyticalComponent(Component):
         return
 
     def _visibility_function(self,
-                             wavelength: Optional[u.m] = None) -> np.ndarray:
+                             wavelength: Optional[u.um] = None) -> np.ndarray:
         """Calculates the complex visibility of the the component's image.
 
         Parameters
         ----------
-        wavelength : astropy.units.m, optional
+        wavelength : astropy.units.um, optional
 
         Returns
         -------
@@ -119,8 +131,19 @@ class AnalyticalComponent(Component):
             x_arr, y_arr = xp*self.params["elong"].value, yp
         return self._image_function(x_arr, y_arr, wavelength)
 
-    def calculate_complex_visibility(self, wl=None):
-        return self._visibility_function(wl)
+    def calculate_complex_visibility(self,
+                                     wavelength: Optional[u.m] = None) -> np.ndarray:
+        """Calculates the complex visibility of the the component's image.
+
+        Parameters
+        ----------
+        wavelength : astropy.units.m, optional
+
+        Returns
+        -------
+        complex_visibility_function : numpy.ndarray
+        """
+        return self._visibility_function(wavelength)
 
 
 class NumericalComponent(Component):
@@ -129,6 +152,14 @@ class NumericalComponent(Component):
 
     Parameters
     ----------
+    pixel_size : float
+        The size of a pixel [mas].
+    pa : float
+        Positional angle [deg].
+    elong : float
+        Elongation of the disk [dimensionless].
+    dim : float
+        The dimension [px].
 
     Attributes
     ----------
@@ -143,7 +174,7 @@ class NumericalComponent(Component):
     def __init__(self, **kwargs):
         """The class's constructor."""
         super().__init__(**kwargs)
-        self.params["pixSize"] = Parameter(**STANDARD_PARAMETERS["pixSize"])
+        self.params["pixel_size"] = Parameter(**STANDARD_PARAMETERS["pixel_size"])
         self.params["pa"] = Parameter(**STANDARD_PARAMETERS["pa"])
 
         if self.elliptic:
@@ -155,12 +186,14 @@ class NumericalComponent(Component):
 
         Returns
         -------
-        xx: u.mas
-        yy: u.mas
+        xx : astropy.units.mas
+            The x-coordinate grid.
+        yy : astropy.units.mas
+            The y-coordinate grid.
         """
         v = np.linspace(-0.5, 0.5, self.params["dim"].value)\
-            * self.params["pixSize"]().to(u.mas)*self.params["dim"].value
-        return v, v[:, None]
+            * self.params["pixel_size"]().to(u.mas)*self.params["dim"].value
+        return np.meshgrid(v, v)
 
     def _image_function(self, xx: u.mas,
                         yy: u.mas, wavelength: u.m) -> Optional[u.Quantity]:
@@ -168,13 +201,15 @@ class NumericalComponent(Component):
 
         Parameters
         ----------
-        xx : u.mas
-        yy : u.mas
+        xx : astropy.units.mas
+            The x-coordinate grid.
+        yy : astropy.units.mas
+            The y-coordinate grid.
         wavelength : u.m, optional
 
         Returns
         -------
-        image : astropy.units.Quantity, Optional
+        image : astropy.units.Quantity, optional
         """
         return
 
@@ -195,13 +230,13 @@ class NumericalComponent(Component):
         return self._image_function(x_arr, y_arr, wavelength)
 
     def calculate_complex_visibility(self,
-                                     wavelength: Optional[u.m] = None
+                                     wavelength: Optional[u.um] = None
                                      ) -> np.ndarray:
         """Calculates the complex visibility of the the component's image.
 
         Parameters
         ----------
-        wavelength : astropy.units.m, optional
+        wavelength : astropy.units.um, optional
 
         Returns
         -------
@@ -211,7 +246,7 @@ class NumericalComponent(Component):
         return compute_2Dfourier_transform(image)
 
     def calculate_image(self, dim: float, pixel_size: float,
-                        wavelength: Optional[u.m] = None) -> u.Quantity:
+                        wavelength: Optional[u.um] = None) -> u.Quantity:
         """Calculates a 2D image.
 
         Parameters
@@ -220,8 +255,7 @@ class NumericalComponent(Component):
             The dimension [px].
         pixel_size : float
             The size of a pixel [mas].
-        wavelength : u.m, optional
-            The wavelength.
+        wavelength : astropy.units.um, optional
 
         Returns
         -------
