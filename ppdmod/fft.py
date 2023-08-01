@@ -1,11 +1,13 @@
 from typing import List, Optional
 
-import numpy as np
 import astropy.units as u
+import numpy as np
+import pyfftw
 from scipy.interpolate import interpn
 
 
-def compute_2Dfourier_transform(image: np.ndarray) -> np.ndarray:
+def compute_2Dfourier_transform(image: np.ndarray,
+                                backend="numpy") -> np.ndarray:
     """Calculates the Fourier transform.
 
     Parameters
@@ -16,7 +18,10 @@ def compute_2Dfourier_transform(image: np.ndarray) -> np.ndarray:
     --------
     interpolated_fourier_transform : np.ndarray
     """
-    return np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(image)))
+    if backend == "numpy":
+        return np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(image)))
+    if backend == "pyfftw":
+        return
 
 
 def get_frequency_axis(dim: int, pixel_size: float, wavelength: float) -> np.ndarray:
@@ -99,4 +104,7 @@ def get_amp_phase(fourier_transform: np.ndarray,
 
 
 if __name__ == "__main__":
+    a = pyfftw.empty_aligned(128, dtype="complex128", n=16)
+    a[:] = np.random.randn(128) + 1j*np.random.randn(128)
+    breakpoint()
     print(get_frequency_axis(512, 0.1*u.mas.to(u.rad), 4.5e-6))
