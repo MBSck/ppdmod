@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Any
+from warnings import warn
 
 import astropy.units as u
 import numpy as np
@@ -28,17 +29,24 @@ STANDARD_PARAMETERS = {
 class Parameter:
     """Defines a parameter."""
     name: str
-    value: any
+    value: Any
     description: str
     unit: u.Quantity
     free: bool = True
-    min: float = None
-    max: float = None
-    wavelength: np.ndarray = None
+    min: Optional[float] = None
+    max: Optional[float] = None
+    wavelength: Optional[np.ndarray] = None
 
-    def __post__init__(self):
+    def __setattr__(self, key: str, value: Any):
+        """Sets an attribute."""
+        if key != "unit":
+            if isinstance(value, u.Quantity):
+                value = value.value
+        super().__setattr__(key, value)
+
+    def __post_init__(self):
         """Post initialisation actions."""
-        self.value = self._set_to_numpy_array(self.wavelength)
+        self.value = self._set_to_numpy_array(self.value)
         self.wavelength = self._set_to_numpy_array(self.wavelength)
 
     def __call__(self,
@@ -46,8 +54,8 @@ class Parameter:
         """Gets the value for the parameter or the corresponding
         values for the wavelengths."""
         if self.wavelength is None:
-            return self.value[0]
-        return self.value[np.where(self.wavelength == wavelength)]
+            return self.value*self.unit
+        return self.value[np.where(self.wavelength == wavelength)]*self.unit
 
     def __str__(self):
         message = f"Parameter: {self.name} has the value {self.value} and "\
@@ -58,14 +66,19 @@ class Parameter:
 
     def _set_to_numpy_array(self, array: ArrayLike) -> np.ndarray:
         """Converts a value to a numpy array."""
+        if array is None:
+            return array
         if not isinstance(array, np.ndarray):
             if isinstance(array, (tuple, list)):
                 array = np.array(array)
-            else:
-                array = np.array([array])
         return array
 
     def set(self, min: Optional[float] = None,
             max: Optional[float] = None) -> None:
         """Sets the limits of the parameters."""
         self.min, self.max = min, max
+
+
+if __name__ == "__main__":
+    x = Parameter(name="x", description="", value=0*u.mas, unit=u.mas)
+    breakpoint()

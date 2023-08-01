@@ -10,14 +10,13 @@ from .utils import pad_image, get_binned_dimension
 
 
 class Component:
+    """The base class for the component."""
     name = "Generic component"
     shortname = "GenComp"
     description = "This is the class from which all components are derived."
 
     def __init__(self, **kwargs):
         """The class's constructor."""
-        self.name = None
-
         self.params = {}
         self.params["x"] = Parameter(**STANDARD_PARAMETERS["x"])
         self.params["y"] = Parameter(**STANDARD_PARAMETERS["y"])
@@ -65,7 +64,7 @@ class AnalyticalComponent(Component):
     def _visibility_function(self, wl):
         return
 
-    def calculate_image(self, dim, pixSize, wl=None):
+    def calculate_image(self, dim, pixSize=None, wl=None):
         if OPTIONS["fourier.binning"] is not None:
             dim = get_binned_dimension(dim,
                                        OPTIONS["fourier.binning"])
@@ -122,14 +121,14 @@ class NumericalComponent(Component):
         Returns
         -------
         """
-        pix = self.params["pixSize"].value * \
-            self.params["pixSize"].unit.to(u.mas)
+        pix = (self.params["pixSize"].value
+               * self.params["pixSize"].unit).to(u.mas)
         v = np.linspace(-0.5, 0.5, self.params["dim"].value)\
             * pix*self.params["dim"].value
         return v, v[:, None]
 
-    def _image_function(self, x: np.ndarray,
-                        y: np.ndarray, wl: np.ndarray) -> None:
+    def _image_function(self, xx: np.ndarray,
+                        yy: np.ndarray, wl: np.ndarray) -> None:
         return
 
     def calculate_internal_image(self, wl: np.ndarray):
