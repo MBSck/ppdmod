@@ -1,5 +1,3 @@
-from typing import Optional, List
-
 import astropy.units as u
 import numpy as np
 import pyfftw
@@ -63,7 +61,6 @@ def interpolate_for_coordinates(fourier_transform: np.ndarray,
     pixel_size : float
     ucoord : numpy.ndarray
     vcoord : numpy.ndarray
-    wavelength_axis : numpy.ndarray
     wavelength : numpy.ndarray
 
     Returns
@@ -77,34 +74,7 @@ def interpolate_for_coordinates(fourier_transform: np.ndarray,
     imag = interpn(grid, np.imag(fourier_transform), coordinates)
     return real+imag*1j
 
-
 # TODO: Look up how to calculate the closure phases from the fourier transform
-# TODO: Look up how to calculate the total flux (add up the individual fluxes probs of the image)
-# or just pick the zeroth frequency?
-
-
-def get_amp_phase(fourier_transform: np.ndarray,
-                  unwrap_phase: Optional[bool] = False,
-                  period: Optional[int] = 360) -> List[u.Quantity]:
-    """Gets the amplitude and the phase of the FFT
-
-    Parameters
-    ----------
-    ft : np.ndarray
-        The Fourier transform.
-
-    Returns
-    --------
-    amp: astropy.units.Quantity
-        The correlated fluxes or normed visibilities or visibilities
-        squared pertaining to the function's settings
-    phase: astropy.units.Quantity
-        The phase information of the image after FFT
-    """
-    amp, phase = np.abs(fourier_transform), np.angle(fourier_transform, deg=True)
-    if unwrap_phase:
-        phase = np.unwrap(phase, period=period)
-    return amp*u.Jy, phase*u.deg
 
 
 if __name__ == "__main__":

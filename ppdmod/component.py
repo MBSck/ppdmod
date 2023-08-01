@@ -6,7 +6,7 @@ import numpy as np
 from .fft import compute_2Dfourier_transform
 from .options import OPTIONS
 from .parameter import STANDARD_PARAMETERS, Parameter
-from .utils import pad_image, get_binned_dimension
+from .utils import get_binned_dimension
 
 
 class Component:
@@ -33,9 +33,9 @@ class Component:
                     self.params[key].value = value
 
     def _translate_fourier_transform(self, ucoord, vcoord):
-        x = self.params["x"].value*self.params["x"].unit.to(u.rad)
-        y = self.params["y"].value*self.params["y"].unit.to(u.rad)
-        return np.exp(-2*1j*np.pi*(ucoord*x+vcoord*y))
+        x = self.params["x"]().to(u.rad)
+        y = self.params["y"]().to(u.rad)
+        return np.exp(-2*1j*np.pi*(ucoord*x.value+vcoord*y.value))
 
     def _translate_coordinates(self, x, y):
         return x-self.params["x"].value, y-self.params["y"].value
@@ -58,13 +58,54 @@ class AnalyticalComponent(Component):
             self.elliptic = True
         self._eval(**kwargs)
 
-    def _image_function(self, xx, yy, wl):
+    def _image_function(self, xx: u.mas, yy: u.mas,
+                        wavelength: Optional[u.m] = None) -> Optional[u.Quantity]:
+        """Calculates the image from a 2D grid.
+
+        Parameters
+        ----------
+        xx : u.mas
+        yy : u.mas
+        wavelength : u.m, optional
+
+        Returns
+        -------
+        image : astropy.units.Quantity, Optional
+        """
         return
 
-    def _visibility_function(self, wl):
+    def _visibility_function(self,
+                             wavelength: Optional[u.m] = None) -> np.ndarray:
+        """Calculates the complex visibility of the the component's image.
+
+        Parameters
+        ----------
+        wavelength : astropy.units.m, optional
+
+        Returns
+        -------
+        complex_visibility_function : numpy.ndarray
+        """
         return
 
-    def calculate_image(self, dim, pixSize=None, wl=None):
+    def calculate_image(self, dim,
+                        pixel_size: Optional[float] = None,
+                        wavelength: Optional[float] = None) -> u.Quantity:
+        """Calculates a 2D image.
+
+        Parameters
+        ----------
+        dim : float
+            The dimension [px].
+        pixel_size : float
+            The size of a pixel [mas].
+        wavelength : u.m, optional
+            The wavelength.
+
+        Returns
+        -------
+        image : astropy.units.Quantity
+        """
         if OPTIONS["fourier.binning"] is not None:
             dim = get_binned_dimension(dim,
                                        OPTIONS["fourier.binning"])
@@ -72,12 +113,11 @@ class AnalyticalComponent(Component):
         x_arr, y_arr = self._translate_coordinates(*np.meshgrid(v, v))
 
         if self.elliptic:
-            pa_rad = (self.params["pa"].value) * \
-                self.params["pa"].unit.to(u.rad)
+            pa_rad = self.params["pa"]().to(u.rad).value
             xp = x_arr*np.cos(pa_rad)-y_arr*np.sin(pa_rad)
             yp = x_arr*np.sin(pa_rad)+y_arr*np.cos(pa_rad)
             x_arr, y_arr = xp*self.params["elong"].value, yp
-        return self._image_function(x_arr, y_arr, wl)
+        return self._image_function(x_arr, y_arr, wavelength)
 
     def calculate_complex_visibility(self, wl=None):
         return self._visibility_function(wl)
@@ -110,43 +150,89 @@ class NumericalComponent(Component):
             self.params["elong"] = Parameter(**STANDARD_PARAMETERS["elong"])
         self._eval(**kwargs)
 
-    def _calculate_internal_grid(self) -> Tuple[np.ndarray, np.ndarray]:
+    def _calculate_internal_grid(self) -> Tuple[u.mas, u.mas]:
         """Calculates the model grid.
 
         Returns
         -------
-        xx: numpy.ndarray
-        yy: numpy.ndarray
+        xx: u.mas
+        yy: u.mas
         """
-        pix = (self.params["pixSize"].value
-               * self.params["pixSize"].unit).to(u.mas)
         v = np.linspace(-0.5, 0.5, self.params["dim"].value)\
-            * pix*self.params["dim"].value
+            * self.params["pixSize"]().to(u.mas)*self.params["dim"].value
         return v, v[:, None]
 
-    def _image_function(self, xx: np.ndarray,
-                        yy: np.ndarray, wl: np.ndarray) -> None:
+    def _image_function(self, xx: u.mas,
+                        yy: u.mas, wavelength: u.m) -> Optional[u.Quantity]:
+        """Calculates the image from a 2D grid.
+
+        Parameters
+        ----------
+        xx : u.mas
+        yy : u.mas
+        wavelength : u.m, optional
+
+        Returns
+        -------
+        image : astropy.units.Quantity, Optional
+        """
         return
 
-    def calculate_internal_image(self, wl: np.ndarray):
+    def calculate_internal_image(self,
+                                 wavelength: Optional[u.m] = None
+                                 ) -> u.Quantity:
+        """Calculates the internal image of the component.
+
+        Parameters
+        ----------
+        wavelength : astropy.units.m, optional
+
+        Returns
+        -------
+        image : astropy.units.Quantity
+        """
         x_arr, y_arr = self._calculate_internal_grid()
-        return self._image_function(x_arr, y_arr, wl)
+        return self._image_function(x_arr, y_arr, wavelength)
 
     def calculate_complex_visibility(self,
-                                     wl: Optional[np.ndarray] = None
+                                     wavelength: Optional[u.m] = None
                                      ) -> np.ndarray:
-        image = self.calculate_internal_image(wl)
+        """Calculates the complex visibility of the the component's image.
+
+        Parameters
+        ----------
+        wavelength : astropy.units.m, optional
+
+        Returns
+        -------
+        complex_visibility_function : numpy.ndarray
+        """
+        image = self.calculate_internal_image(wavelength)
         return compute_2Dfourier_transform(image)
 
-    def calculate_image(self, dim: float, pixSize: float,
-                        wl: Optional[np.ndarray] = None) -> np.ndarray:
-        v = np.linspace(-0.5, 0.5, dim)*pixSize*dim
+    def calculate_image(self, dim: float, pixel_size: float,
+                        wavelength: Optional[u.m] = None) -> u.Quantity:
+        """Calculates a 2D image.
+
+        Parameters
+        ----------
+        dim : float
+            The dimension [px].
+        pixel_size : float
+            The size of a pixel [mas].
+        wavelength : u.m, optional
+            The wavelength.
+
+        Returns
+        -------
+        image : astropy.units.Quantity
+        """
+        v = np.linspace(-0.5, 0.5, dim)*pixel_size*dim
         x_arr, y_arr = self._translate_coordinates(*np.meshgrid(v, v))
 
         if self.elliptic:
-            pa_rad = (self.params["pa"].value) * \
-                self.params["pa"].unit.to(u.rad)
+            pa_rad = self.params["pa"]().to(u.rad).value
             xp = x_arr*np.cos(pa_rad)-y_arr*np.sin(pa_rad)
             yp = x_arr*np.sin(pa_rad)+y_arr*np.cos(pa_rad)
             x_arr, y_arr = xp*self.params["elong"].value, yp
-        return self._image_function(x_arr, y_arr, wl)
+        return self._image_function(x_arr, y_arr, wavelength)
