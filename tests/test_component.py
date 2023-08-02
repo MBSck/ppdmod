@@ -27,9 +27,9 @@ def numerical_component() -> NumericalComponent:
 def test_component(component: Component) -> None:
     """Tests if the initialization of the component works."""
     assert len(component.params) == 3
-    assert component.params["x"].value == 0
-    assert component.params["y"].value == 0
-    assert component.params["dim"].value == 128
+    assert component.params["x"]() == 0*u.mas
+    assert component.params["y"]() == 0*u.mas
+    assert component.params["dim"]() == 128
 
 
 def test_eval(component: Component) -> None:
@@ -39,8 +39,8 @@ def test_eval(component: Component) -> None:
     component._eval(**params)
 
     assert component.params["x"] == Parameter(**STANDARD_PARAMETERS["fov"])
-    assert component.params["y"].value == 10
-    assert component.params["dim"].value == 512
+    assert component.params["y"]() == 10*u.mas
+    assert component.params["dim"]() == 512
 
 
 def test_translate_fourier(component: Component) -> None:
@@ -72,7 +72,6 @@ def test_numerical_component_init(numerical_component: NumericalComponent) -> No
     """Tests if the initialization of the numerical component works."""
     numerical_component.elliptic = True
     numerical_component.__init__()
-
     assert "pa" in numerical_component.params
     assert "elong" in numerical_component.params
     assert "pixel_size" in numerical_component.params
@@ -80,8 +79,10 @@ def test_numerical_component_init(numerical_component: NumericalComponent) -> No
 
 def test_numerical_component_grid(numerical_component: NumericalComponent) -> None:
     """Tests the grid calculation of the numerical component."""
+    numerical_component.params["pixel_size"].value = 0.1
     grid = numerical_component._calculate_internal_grid()
-    assert grid[0].shape == (numerical_component.params["dim"].value,)
-    assert grid[1].shape == (numerical_component.params["dim"].value, 1)
-    assert grid[0].unit == u.mas
-    assert grid[1].unit == u.mas
+    dims = (numerical_component.params["dim"](),
+            numerical_component.params["dim"]())
+    assert all(axe.shape == dims for axe in grid)
+    assert all(axe.unit == u.mas for axe in grid)
+    assert all(0.*u.mas in axe for axe in grid)
