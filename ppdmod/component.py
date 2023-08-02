@@ -191,7 +191,7 @@ class NumericalComponent(Component):
         yy : astropy.units.mas
             The y-coordinate grid.
         """
-        v = np.linspace(-0.5, 0.5, self.params["dim"].value)\
+        v = np.linspace(-0.5, 0.5, self.params["dim"].value, endpoint=False)\
             * self.params["pixel_size"]().to(u.mas)*self.params["dim"].value
         return np.meshgrid(v, v)
 

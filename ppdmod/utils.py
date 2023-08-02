@@ -130,21 +130,21 @@ def get_next_power_of_two(number: Union[int, float]) -> int:
     return int(2**np.ceil(np.log2(number)))
 
 
-def angular_to_distance(radius: u.mas, distance: u.pc) -> u.m:
-    """Converts the distance from mas to meters for a radial profile around
-    a star via the angular diameter small angle approximation.
+def angular_to_distance(angular_diameter: u.mas, distance: u.pc) -> u.m:
+    """Converts an angular diameter of an object at a certain distance
+    from the observer from mas to meters.
 
     Parameters
     ----------
-    radius : astropy.units.mas
-        The radius of the object around the star.
+    angular_diameter : astropy.units.mas
+        The angular diameter of an object.
     distance : astropy.units.pc
-        The star's distance to the observer.
+        The distance to the object.
 
     Returns
     -------
-    radius : astropy.units.m
-        The radius of the object around the star.
+    diameter : astropy.units.m
+        The diameter of the object.
 
     Notes
     -----
@@ -152,10 +152,10 @@ def angular_to_distance(radius: u.mas, distance: u.pc) -> u.m:
 
     .. math:: \\delta = \\frac{d}{D}
 
-    where d is the distance from the star and D is the distance from the star
-    to the observer and ..math::`\\delta` is the angular diameter.
+    where 'd' is the diameter of the object and 'D' is the distance from the
+    observer to the object and ..math::`\\delta` is the angular diameter.
     """
-    return (radius.to(u.arcsec).value*distance.to(u.au)).to(u.m)
+    return (angular_diameter.to(u.rad).value*distance.to(u.au)).to(u.m)
 
 
 def qval_to_opacity(qval_file: Path) -> u.cm**2/u.g:
