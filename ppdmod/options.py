@@ -1,5 +1,8 @@
 OPTIONS = {}
 
+# NOTE: Model. The output can either be 'surface_brightness' or ' jansky_px'
+OPTIONS["model.output"] = "jansky_px"
+
 # NOTE: Fourier transform.
 OPTIONS["fourier.padding"] = None
 OPTIONS["fourier.binning"] = None
