@@ -1,9 +1,7 @@
 from typing import Optional
 
 import astropy.units as u
-import astropy.constants as const
 import numpy as np
-from astropy.modeling import models
 
 from .component import AnalyticalComponent, NumericalComponent
 from .parameter import Parameter
@@ -123,7 +121,7 @@ class TemperatureGradient(NumericalComponent):
         Outer radius of the disk [mas].
     inner_temp : float
         Inner radius temperature [K].
-    Mdust : float
+    dust_mass : float
         Mass of the dusty disk [M_sun].
     a : float
         Azimuthal modulation amplitude.
@@ -152,8 +150,8 @@ class TemperatureGradient(NumericalComponent):
     name = "Asymmetric Temperature Gradient"
     shortname = "AsymTempGrad"
     elliptic = True
-    asymmetric = True
-    asymmetric_image = True
+    asymmetric = False
+    asymmetric_image = False
     asymmetric_surface_density = False
     const_temperature = False
     continuum_contribution = False
@@ -181,7 +179,7 @@ class TemperatureGradient(NumericalComponent):
             self.params["q"].free = False
 
         self.params["p"].description = "Power-law exponent for the dust surface density profile"
-        self.params["Mdust"] = Parameter(name="Mdust", value=0, unit=u.M_sun,
+        self.params["dust_mass"] = Parameter(name="dust_mass", value=0, unit=u.M_sun,
                                          description="Mass of the dusty disk")
         self.params["kappa_abs"] = Parameter(name="kappa_abs", value=0,
                                              unit=u.cm**2/u.g, free=False,
@@ -253,12 +251,13 @@ class TemperatureGradient(NumericalComponent):
         Notes
         -----
         """
+        # TODO: Find way to make calculation here work properly with inf outer radius.
         rin, rout = map(lambda x: self.params[x](), ["rin", "rout"])
         rin_cm, rout_cm = map(
             lambda x: angular_to_distance(x, self.params["dist"]()).to(u.cm),
             [rin, rout])
 
-        p, dust_mass = self.params["p"](), self.params["Mdust"]().to(u.g)
+        p, dust_mass = self.params["p"](), self.params["dust_mass"]().to(u.g)
         if p == 2:
             inner_surface_density = dust_mass\
                  / (2.*np.pi*np.log(rout_cm/rin_cm)*rin_cm**2)
@@ -287,7 +286,7 @@ class TemperatureGradient(NumericalComponent):
 
         Returns
         -------
-        optical_depth : np.ndarray
+        optical_depth : u.one
         """
         sigma_profile = self._calculate_surface_density_profile(radius, xx, yy)
         if self.continuum_contribution:
@@ -298,7 +297,7 @@ class TemperatureGradient(NumericalComponent):
             opacity = self.params["kappa_abs"](wavelength)
         return -sigma_profile*opacity
 
-    def _temperature_profile(self, radius: u.mas) -> u.K:
+    def _calculate_temperature_profile(self, radius: u.mas) -> u.K:
         """Calculates the temperature profile.
 
         Can be specified to be either as a r^q power law or an a
@@ -331,13 +330,13 @@ class TemperatureGradient(NumericalComponent):
         """
         if self.const_temperature:
             radius = angular_to_distance(radius, self.params["dist"]())
-            return np.sqrt(self.params["eff_radius"]()/(2*radius))\
+            return np.sqrt(self.params["eff_radius"]().to(u.m)/(2*radius))\
                 * self.params["eff_temp"]()
         return self.params["inner_temp"]()\
             * (radius / self.params["rin"]())**(-self.params["q"].value)
 
-    def _image(self, xx: u.mas, yy: u.mas,
-               wavelength: u.um) -> u.Jy:
+    def _calculate_image(self, xx: u.mas, yy: u.mas,
+                         wavelength: u.um) -> u.Jy:
         """Combines the various radial profiles into an image.
 
         Parameters
@@ -353,20 +352,20 @@ class TemperatureGradient(NumericalComponent):
         image : astropy.units.Jy
         """
         radius = np.hypot(xx, yy)
-        rin, rout = map(lambda x: self.params[x].value, ["rin", "rout"])
-        if np.isinf(rout):
-            radial_profile = radius > rin
-        else:
-            radial_profile = np.logical_and(radius > rin, radius < rout)
-        breakpoint()
-
-        temperature_profile = self._temperature_profile(radius)
+        rin, rout = map(lambda x: self.params[x](), ["rin", "rout"])
+        # TODO: Make infinite outer radius work with dust mass calculation
+        # if np.isinf(rout):
+            # radial_profile = radius > rin
+        # else:
+        radial_profile = np.logical_and(radius > rin, radius < rout)
+        temperature_profile = self._calculate_temperature_profile(radius)
         spectral_density = calculate_intensity(temperature_profile,
                                                wavelength,
                                                self.params["pixel_size"]())
-        return np.nan_to_num(radial_profile * spectral_density *
-                             (1 - np.exp(self._calculate_optical_depth(xx, yy, wavelength))),
-                             nan=0)
+        optical_depth = self._calculate_optical_depth(radius, xx, yy, wavelength)
+        return np.nan_to_num(
+            radial_profile * spectral_density * (1 - np.exp(optical_depth)),
+            nan=0)
 
     def _image_function(self, xx: u.mas, yy: u.mas,
                         wavelength: u.um) -> u.Jy:
@@ -387,10 +386,11 @@ class TemperatureGradient(NumericalComponent):
         image : astropy.units.Jy
         """
         if self.asymmetric_image:
-            img = self._image(xx, yy, wavelength) * \
+            img = self._calculate_image(xx, yy, wavelength) * \
                 (1+self._calculate_azimuthal_modulation(xx, yy))
         else:
-            img = self._image(xx, yy, wavelength)
+            img = self._calculate_image(xx, yy, wavelength)
+        # TODO: Move rebinning somewhere different? Calculate star 4 times bigger.
         if OPTIONS["fourier.binning"] is not None:
             img = rebin_image(img, OPTIONS["fourier.binning"])
         return img
@@ -409,7 +409,7 @@ class AsymmetricSDTemperatureGradient(TemperatureGradient):
         Outer radius of the disk [mas].
     inner_temp : float
         Inner radius temperature [K].
-    Mdust : float
+    dust_mass : float
         Mass of the dusty disk [M_sun].
     a : float
         Azimuthal modulation amplitude.
@@ -437,15 +437,11 @@ class AsymmetricSDTemperatureGradient(TemperatureGradient):
     """
     name = "Asymmetric Temperature Gradient"
     shortname = "AsymTempGrad"
-    elliptic = True
     asymmetric = True
-    asymmetric_image = False
     asymmetric_surface_density = True
-    const_temperature = False
-    continuum_contribution = False
 
 
-class AsymmetricSDGreyBody(TemperatureGradient):
+class AsymmetricSDGreyBody(AsymmetricSDTemperatureGradient):
     """A ring defined by a radial temperature profile in r^q
     that is multiplied by an azimuthal modulation.
     and an asymmetric radial dust surface density profile in r^p.
@@ -458,7 +454,7 @@ class AsymmetricSDGreyBody(TemperatureGradient):
         Outer radius of the disk [mas].
     inner_temp : float
         Inner radius temperature [K].
-    Mdust : float
+    dust_mass : float
         Mass of the dusty disk [M_sun].
     a : float
         Azimuthal modulation amplitude.
@@ -484,17 +480,14 @@ class AsymmetricSDGreyBody(TemperatureGradient):
     params : dict with keys of str and values of Parameter
         Dictionary of parameters.
     """
-    name = "Asymmetric Temperature Gradient"
-    shortname = "AsymTempGrad"
-    elliptic = True
+    name = "Asymmetric Grey Body"
+    shortname = "AsymGreyBody"
     asymmetric = True
-    asymmetric_image = False
     asymmetric_surface_density = True
     const_temperature = True
-    continuum_contribution = False
 
 
-class AsymmetricSDGreyBodyContinuum(TemperatureGradient):
+class AsymmetricSDGreyBodyContinuum(AsymmetricSDTemperatureGradient):
     """A ring defined by a radial temperature profile in r^q
     that is multiplied by an azimuthal modulation.
     and an asymmetric radial dust surface density profile in r^p.
@@ -507,7 +500,7 @@ class AsymmetricSDGreyBodyContinuum(TemperatureGradient):
         Outer radius of the disk [mas].
     inner_temp : float
         Inner radius temperature [K].
-    Mdust : float
+    dust_mass : float
         Mass of the dusty disk [M_sun].
     a : float
         Azimuthal modulation amplitude.
@@ -533,11 +526,9 @@ class AsymmetricSDGreyBodyContinuum(TemperatureGradient):
     params : dict with keys of str and values of Parameter
         Dictionary of parameters.
     """
-    name = "Asymmetric Temperature Gradient"
-    shortname = "AsymTempGrad"
-    elliptic = True
+    name = "Asymmetric Continuum Grey Body"
+    shortname = "AsymContinuumGreyBody"
     asymmetric = True
-    asymmetric_image = False
     asymmetric_surface_density = True
     const_temperature = True
     continuum_contribution = True

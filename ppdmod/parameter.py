@@ -48,10 +48,16 @@ class Parameter:
                  ) -> np.ndarray:
         """Gets the value for the parameter or the corresponding
         values for the wavelengths."""
+        if wavelength is not None:
+            wavelength = wavelength.value\
+                if isinstance(wavelength, u.Quantity) else wavelength
         if self.wavelength is None:
             value = self.value
         else:
             value = self.value[np.where(self.wavelength == wavelength)]
+            if value.size == 0:
+                index = np.abs(self.wavelength - wavelength).argmin()
+                value = self.value[index]
             value = value[0] if len(value) == 1 else value
         return value*self.unit
 

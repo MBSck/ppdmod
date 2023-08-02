@@ -1,7 +1,6 @@
 import astropy.units as u
 import numpy as np
 import pytest
-from numpy.typing import ArrayLike
 
 from ppdmod.fft import compute_2Dfourier_transform, interpolate_for_coordinates
 from ppdmod.utils import uniform_disk, uniform_disk_vis
@@ -10,7 +9,7 @@ from ppdmod.utils import uniform_disk, uniform_disk_vis
 @pytest.fixture
 def ucoord() -> u.m:
     """Sets the ucoord."""
-    return np.linspace(100, 160, 60)
+    return np.linspace(100, 160, 60)*u.m
 
 
 @pytest.fixture
@@ -30,7 +29,8 @@ def test_interpolation(diameter: u.mas, dim: float,
     but more importantly, implicitly the unit conversion of the
     frequency axis."""
     pixel_size, wavelength = 0.1*u.mas, 1.02322101e-05*u.m
-    ft = compute_2Dfourier_transform(uniform_disk(diameter, pixel_size, dim))
+    ft = compute_2Dfourier_transform(uniform_disk(pixel_size, dim,
+                                                  diameter=diameter))
     vis = uniform_disk_vis(diameter, ucoord, vcoord, wavelength)
     interpolated_values = interpolate_for_coordinates(ft, dim,
                                                       pixel_size.to(u.rad),
