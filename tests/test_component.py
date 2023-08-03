@@ -101,7 +101,7 @@ def test_analytic_component_calculate_visibility_function(
 def test_analytical_component_calculate_image(
         analytic_component: AnalyticalComponent) -> None:
     """Tests the analytical component's image calculation."""
-    assert analytic_component.calculate_image() is None
+    assert analytic_component.calculate_image(512, 0.1) is None
 
 
 def test_analytical_component_calculate_complex_visibility(
@@ -130,4 +130,7 @@ def test_numerical_component_calculate_complex_visibility(
         numerical_component: NumericalComponent) -> None:
     """Tests the numerical component's complex visibility
     function calculation."""
-    assert numerical_component.calculate_complex_visibility() is None
+    # NOTE: Raises attribute error here as image is not calculated
+    # and None has no value attribute.
+    with pytest.raises(AttributeError) as e_info:
+        numerical_component.calculate_complex_visibility(8*u.um)

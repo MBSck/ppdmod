@@ -85,11 +85,8 @@ class Model:
         -------
         image : astropy.unity.Jy
         """
-        if OPTIONS["fourier.binning"] is not None:
-            img_dim = get_binned_dimension(dim, OPTIONS["fourier.binning"])
-        else:
-            img_dim = dim
-        image = np.zeros((img_dim, img_dim))*u.Jy
+        dim = get_binned_dimension(dim, OPTIONS["fourier.binning"])
+        image = np.zeros((dim, dim))*u.Jy
         for component in self.components:
             image += component.calculate_image(dim, pixel_size, wavelength)
         return image

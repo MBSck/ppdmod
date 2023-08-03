@@ -153,10 +153,8 @@ class AnalyticalComponent(Component):
         -------
         image : astropy.units.Quantity
         """
-        if OPTIONS["fourier.binning"] is not None:
-            dim = get_binned_dimension(dim,
-                                       OPTIONS["fourier.binning"])
-        x_arr, y_arr = self._calculate_internal_grid()
+        dim = get_binned_dimension(dim, OPTIONS["fourier.binning"])
+        x_arr, y_arr = self._calculate_internal_grid(dim, pixel_size)
         return self._image_function(x_arr, y_arr, wavelength)
 
     def calculate_complex_visibility(self,

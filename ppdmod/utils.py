@@ -155,6 +155,7 @@ def get_next_power_of_two(number: Union[int, float]) -> int:
 def get_binned_dimension(dim: int, binning_factor: int) -> int:
     """Gets the binned dimension from the original dimension
     and the binning factor."""
+    binning_factor = binning_factor if binning_factor is not None else 0
     return int(dim*2**-binning_factor)
 
 
