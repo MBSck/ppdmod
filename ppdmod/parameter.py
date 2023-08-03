@@ -53,6 +53,8 @@ class Parameter:
         self.value = self._set_to_numpy_array(self.value)
         self.wavelength = self._set_to_numpy_array(self.wavelength)
 
+    # TODO: Raises an error if there is no close enough value...
+    # Important maybe later on when non specific values are fitted.
     def __call__(self,
                  wavelength: Optional[Union[float, np.ndarray]] = None
                  ) -> np.ndarray:

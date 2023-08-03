@@ -5,6 +5,7 @@ import pytest
 from ppdmod.fft import compute_2Dfourier_transform, interpolate_for_coordinates
 from ppdmod.utils import uniform_disk, uniform_disk_vis
 
+# TODO: Make tests for the phase that make pictures.
 
 @pytest.fixture
 def ucoord() -> u.m:
