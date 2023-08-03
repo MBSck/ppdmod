@@ -24,6 +24,7 @@ class Component:
     name = "Generic component"
     shortname = "GenComp"
     description = "This is the class from which all components are derived."
+    elliptic = False
 
     def __init__(self, **kwargs):
         """The class's constructor."""
@@ -31,6 +32,12 @@ class Component:
         self.params["x"] = Parameter(**STANDARD_PARAMETERS["x"])
         self.params["y"] = Parameter(**STANDARD_PARAMETERS["y"])
         self.params["dim"] = Parameter(**STANDARD_PARAMETERS["dim"])
+        self.params["pixel_size"] = Parameter(**STANDARD_PARAMETERS["pixel_size"])
+
+        if any(key in kwargs for key in ["elong", "pa"]) or self.elliptic:
+            self.params["pa"] = Parameter(**STANDARD_PARAMETERS["pa"])
+            self.params["elong"] = Parameter(**STANDARD_PARAMETERS["elong"])
+            self.elliptic = True
         self._eval(**kwargs)
 
     def _eval(self, **kwargs):
@@ -42,13 +49,52 @@ class Component:
                 else:
                     self.params[key].value = value
 
-    def _translate_fourier_transform(self, ucoord, vcoord):
-        x = self.params["x"]().to(u.rad)
-        y = self.params["y"]().to(u.rad)
-        return np.exp(-2*1j*np.pi*(ucoord*x.value+vcoord*y.value))
+    def _calculate_internal_grid(self, dim: Optional[float] = None,
+                                 pixel_size: Optional[float] = None,
+                                 ) -> Tuple[u.mas, u.mas]:
+        """Calculates the model grid.
 
-    def _translate_coordinates(self, x, y):
-        return x-self.params["x"].value, y-self.params["y"].value
+        Parameters
+        ----------
+        dim : float, optional
+        pixel_size : float, optional
+
+        Returns
+        -------
+        xx : astropy.units.mas
+            The x-coordinate grid.
+        yy : astropy.units.mas
+            The y-coordinate grid.
+        """
+        dim = dim if dim is not None else self.params["dim"]()
+        pixel_size = pixel_size if pixel_size is not None\
+            else self.params["pixel_size"]()
+        dim = u.Quantity(value=dim, unit=u.one, dtype=int)
+        pixel_size = u.Quantity(value=pixel_size, unit=u.mas)
+        v = np.linspace(-0.5, 0.5, dim, endpoint=False)\
+            * pixel_size.to(u.mas)*dim
+        x_arr, y_arr = np.meshgrid(v, v)
+        if self.elliptic:
+            pa_rad = self.params["pa"]().to(u.rad)
+            xp = x_arr*np.cos(pa_rad)-y_arr*np.sin(pa_rad)
+            yp = x_arr*np.sin(pa_rad)+y_arr*np.cos(pa_rad)
+            return xp*self.params["elong"](), yp
+        return x_arr, y_arr
+
+    def _translate_fourier_transform(self, ucoord: u.m, vcoord: u.m,
+                                     wavelength: u.um) -> u.one:
+        """Translate the coordinates of the fourier transform."""
+        x, y = map(lambda x: self.params[x]().to(u.rad), ["x", "y"])
+        ucoord, vcoord = map(
+            lambda x: (u.Quantity(value=x, unit=u.m)/wavelength.to(u.m))/u.rad,
+            [ucoord, vcoord])
+        return np.exp(-2*1j*np.pi*(ucoord*x+vcoord*y)).value
+
+    def _translate_coordinates(self,
+                               xx: u.mas, yy: u.mas) -> Tuple[u.mas, u.mas]:
+        """Shifts the coordinates according to an offset."""
+        xx, yy = map(lambda x: u.Quantity(value=x, unit=u.mas), [xx, yy])
+        return xx-self.params["x"](), yy-self.params["y"]()
 
 
 class AnalyticalComponent(Component):
@@ -57,16 +103,6 @@ class AnalyticalComponent(Component):
     shortname = "AnaComp"
     description = "This is the class from which all"\
                   "analytical components are derived."
-    elliptic = False
-
-    def __init__(self, **kwargs):
-        """The class's constructor."""
-        super().__init__(**kwargs)
-        if ("elong" in kwargs) or ("pa" in kwargs) or self.elliptic:
-            self.params["elong"] = Parameter(**STANDARD_PARAMETERS["elong"])
-            self.params["pa"] = Parameter(**STANDARD_PARAMETERS["pa"])
-            self.elliptic = True
-        self._eval(**kwargs)
 
     def _image_function(self, xx: u.mas, yy: u.mas,
                         wavelength: Optional[u.um] = None) -> Optional[u.Quantity]:
@@ -100,9 +136,9 @@ class AnalyticalComponent(Component):
         """
         return
 
-    def calculate_image(self, dim,
+    def calculate_image(self, dim: float,
                         pixel_size: Optional[float] = None,
-                        wavelength: Optional[float] = None) -> u.Quantity:
+                        wavelength: Optional[u.um] = None) -> u.Jy:
         """Calculates a 2D image.
 
         Parameters
@@ -111,8 +147,7 @@ class AnalyticalComponent(Component):
             The dimension [px].
         pixel_size : float
             The size of a pixel [mas].
-        wavelength : u.m, optional
-            The wavelength.
+        wavelength : astropy.units.um, optional
 
         Returns
         -------
@@ -121,23 +156,17 @@ class AnalyticalComponent(Component):
         if OPTIONS["fourier.binning"] is not None:
             dim = get_binned_dimension(dim,
                                        OPTIONS["fourier.binning"])
-        v = np.linspace(-0.5, 0.5, dim)
-        x_arr, y_arr = self._translate_coordinates(*np.meshgrid(v, v))
-
-        if self.elliptic:
-            pa_rad = self.params["pa"]().to(u.rad).value
-            xp = x_arr*np.cos(pa_rad)-y_arr*np.sin(pa_rad)
-            yp = x_arr*np.sin(pa_rad)+y_arr*np.cos(pa_rad)
-            x_arr, y_arr = xp*self.params["elong"].value, yp
+        x_arr, y_arr = self._calculate_internal_grid()
         return self._image_function(x_arr, y_arr, wavelength)
 
     def calculate_complex_visibility(self,
-                                     wavelength: Optional[u.m] = None) -> np.ndarray:
+                                     wavelength: Optional[u.um] = None
+                                     ) -> np.ndarray:
         """Calculates the complex visibility of the the component's image.
 
         Parameters
         ----------
-        wavelength : astropy.units.m, optional
+        wavelength : astropy.units.um, optional
 
         Returns
         -------
@@ -171,32 +200,8 @@ class NumericalComponent(Component):
     """
     elliptic = False
 
-    def __init__(self, **kwargs):
-        """The class's constructor."""
-        super().__init__(**kwargs)
-        self.params["pixel_size"] = Parameter(**STANDARD_PARAMETERS["pixel_size"])
-        self.params["pa"] = Parameter(**STANDARD_PARAMETERS["pa"])
-
-        if self.elliptic:
-            self.params["elong"] = Parameter(**STANDARD_PARAMETERS["elong"])
-        self._eval(**kwargs)
-
-    def _calculate_internal_grid(self) -> Tuple[u.mas, u.mas]:
-        """Calculates the model grid.
-
-        Returns
-        -------
-        xx : astropy.units.mas
-            The x-coordinate grid.
-        yy : astropy.units.mas
-            The y-coordinate grid.
-        """
-        v = np.linspace(-0.5, 0.5, self.params["dim"].value, endpoint=False)\
-            * self.params["pixel_size"]().to(u.mas)*self.params["dim"].value
-        return np.meshgrid(v, v)
-
     def _image_function(self, xx: u.mas,
-                        yy: u.mas, wavelength: u.m) -> Optional[u.Quantity]:
+                        yy: u.mas, wavelength: u.um) -> u.Jy:
         """Calculates the image from a 2D grid.
 
         Parameters
@@ -205,7 +210,7 @@ class NumericalComponent(Component):
             The x-coordinate grid.
         yy : astropy.units.mas
             The y-coordinate grid.
-        wavelength : u.m, optional
+        wavelength : astropy.units.um, optional
 
         Returns
         -------
@@ -213,25 +218,9 @@ class NumericalComponent(Component):
         """
         return
 
-    def calculate_internal_image(self,
-                                 wavelength: Optional[u.m] = None
-                                 ) -> u.Quantity:
-        """Calculates the internal image of the component.
-
-        Parameters
-        ----------
-        wavelength : astropy.units.m, optional
-
-        Returns
-        -------
-        image : astropy.units.Quantity
-        """
-        x_arr, y_arr = self._calculate_internal_grid()
-        return self._image_function(x_arr, y_arr, wavelength)
-
-
-    def calculate_image(self, dim: float, pixel_size: float,
-                        wavelength: Optional[u.um] = None) -> u.Quantity:
+    def calculate_image(self, dim: Optional[float] = None,
+                        pixel_size: Optional[float] = None,
+                        wavelength: Optional[u.um] = None) -> u.Jy:
         """Calculates a 2D image.
 
         Parameters
@@ -246,14 +235,7 @@ class NumericalComponent(Component):
         -------
         image : astropy.units.Quantity
         """
-        v = np.linspace(-0.5, 0.5, dim)*pixel_size*dim
-        x_arr, y_arr = self._translate_coordinates(*np.meshgrid(v, v))
-
-        if self.elliptic:
-            pa_rad = self.params["pa"]().to(u.rad).value
-            xp = x_arr*np.cos(pa_rad)-y_arr*np.sin(pa_rad)
-            yp = x_arr*np.sin(pa_rad)+y_arr*np.cos(pa_rad)
-            x_arr, y_arr = xp*self.params["elong"].value, yp
+        x_arr, y_arr = self._calculate_internal_grid(dim, pixel_size)
         return self._image_function(x_arr, y_arr, wavelength)
 
     def calculate_complex_visibility(self,
@@ -269,6 +251,6 @@ class NumericalComponent(Component):
         -------
         complex_visibility_function : numpy.ndarray
         """
-        image = self.calculate_internal_image(wavelength)
+        image = self.calculate_image(wavelength)
         breakpoint()
         return compute_2Dfourier_transform(image.value)

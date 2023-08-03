@@ -112,8 +112,10 @@ class Star(AnalyticalComponent):
         if self._visibility is None:
             self._visibility = np.ones((self.params["dim"](),
                                         self.params["dim"]()))
-        return self._visibility*calculate_intensity(
-            self.params["eff_temp"](), wavelength, self.stellar_radius_angular).value
+        return self._visibility\
+            * calculate_intensity(self.params["eff_temp"](),
+                                  wavelength,
+                                  self.stellar_radius_angular).value
 
 
 # TODO: Think of doing all conversions in properties -> Quicker?

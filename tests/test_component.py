@@ -26,7 +26,7 @@ def numerical_component() -> NumericalComponent:
 
 def test_component(component: Component) -> None:
     """Tests if the initialization of the component works."""
-    assert len(component.params) == 3
+    assert len(component.params) == 4
     assert component.params["x"]() == 0*u.mas
     assert component.params["y"]() == 0*u.mas
     assert component.params["dim"]() == 128
@@ -43,24 +43,42 @@ def test_eval(component: Component) -> None:
     assert component.params["dim"]() == 512
 
 
+def test_component_calculate_grid(component: Component) -> None:
+    """Tests the grid calculation of the numerical component."""
+    component.params["pixel_size"].value = 0.1
+    grid = component._calculate_internal_grid()
+    dims = (component.params["dim"](),
+            component.params["dim"]())
+    assert all(axe.shape == dims for axe in grid)
+    assert all(axe.unit == u.mas for axe in grid)
+    assert all(0.*u.mas in axe for axe in grid)
+
+    dim, pixel_size = 512, 0.1
+    grid = component._calculate_internal_grid(dim, pixel_size)
+    assert all(axe.shape == (512, 512) for axe in grid)
+    assert all(axe.unit == u.mas for axe in grid)
+    assert all(0.*u.mas in axe for axe in grid)
+
+
 def test_translate_fourier(component: Component) -> None:
     """Tests if the translation of the fourier transform works."""
-    assert component._translate_fourier_transform(0, 0) == 1
-    assert component._translate_fourier_transform(25, 15) == 1
+    assert component._translate_fourier_transform(0, 0, 8*u.um) == 1
+    assert component._translate_fourier_transform(25, 15, 8*u.um) == 1
 
 
 def test_translate_coordinates(component: Component) -> None:
     """Tests if the translation of the coordinates works."""
-    assert component._translate_coordinates(0, 0) == (0, 0)
-    assert component._translate_coordinates(25, 15) == (25, 15)
+    assert component._translate_coordinates(0, 0) == (0*u.mas, 0*u.mas)
+    assert component._translate_coordinates(25, 15) == (25*u.mas, 15*u.mas)
 
 
 def test_analytic_component_init(analytic_component: AnalyticalComponent) -> None:
     """Tests if the initialization of the analytical component works."""
     analytic_component.elliptic = True
     analytic_component.__init__()
+
     def image_function(xx, yy, wl):
-        return np.hypot(xx, yy)*np.inf
+        return np.hypot(xx, yy)
     analytic_component._image_function = image_function
 
     assert "pa" in analytic_component.params
@@ -68,16 +86,24 @@ def test_analytic_component_init(analytic_component: AnalyticalComponent) -> Non
     assert analytic_component.calculate_image(512).size > 0
 
 
-def test_analytic_component_image_function(
+def test_analytic_component_calculate_image_function(
         analytic_component: AnalyticalComponent) -> None:
     """Tests if the visibility function returns None."""
     assert analytic_component._image_function(None, None) is None
 
 
-def test_analytic_component_visibility_function(
+def test_analytic_component_calculate_visibility_function(
         analytic_component: AnalyticalComponent) -> None:
     """Tests if the visibility function returns None."""
     assert analytic_component._visibility_function() is None
+
+
+def test_analytical_component_calculate_image() -> None:
+    ...
+
+
+def test_analytical_component_calculate_complex_visibility() -> None:
+    ...
 
 
 def test_numerical_component_init(numerical_component: NumericalComponent) -> None:
@@ -89,12 +115,11 @@ def test_numerical_component_init(numerical_component: NumericalComponent) -> No
     assert "pixel_size" in numerical_component.params
 
 
-def test_numerical_component_grid(numerical_component: NumericalComponent) -> None:
-    """Tests the grid calculation of the numerical component."""
-    numerical_component.params["pixel_size"].value = 0.1
-    grid = numerical_component._calculate_internal_grid()
-    dims = (numerical_component.params["dim"](),
-            numerical_component.params["dim"]())
-    assert all(axe.shape == dims for axe in grid)
-    assert all(axe.unit == u.mas for axe in grid)
-    assert all(0.*u.mas in axe for axe in grid)
+def test_numerical_component_calculate_image() -> None:
+    ...
+
+
+def test_nuemral_component_calculate_complex_visibility() -> None:
+    ...
+
+
