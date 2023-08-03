@@ -16,7 +16,7 @@ STANDARD_PARAMETERS = {
               "description": "Elongation Ratio", "unit": u.one},
     "pa": {"name": "pa", "value": 0,
            "description": "Major-axis Position angle", "unit": u.deg},
-    "pixel_size": {"name": "pixel_size", "value": 0,
+    "pixel_size": {"name": "pixel_size", "value": 1,
                    "description": "Pixel Size", "unit": u.mas, "free": False},
     "dim": {"name": "dim", "value": 128,
             "description": "Dimension in pixels",

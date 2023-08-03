@@ -66,9 +66,9 @@ class Component:
         yy : astropy.units.mas
             The y-coordinate grid.
         """
-        dim = dim if dim is not None else self.params["dim"]()
-        pixel_size = pixel_size if pixel_size is not None\
-            else self.params["pixel_size"]()
+        dim = self.params["dim"]() if dim is None else dim
+        pixel_size = self.params["pixel_size"]()\
+            if pixel_size is None else pixel_size
         dim = u.Quantity(value=dim, unit=u.one, dtype=int)
         pixel_size = u.Quantity(value=pixel_size, unit=u.mas)
         v = np.linspace(-0.5, 0.5, dim, endpoint=False)\
@@ -136,7 +136,7 @@ class AnalyticalComponent(Component):
         """
         return
 
-    def calculate_image(self, dim: float,
+    def calculate_image(self, dim: Optional[float] = None,
                         pixel_size: Optional[float] = None,
                         wavelength: Optional[u.um] = None) -> u.Jy:
         """Calculates a 2D image.
@@ -251,6 +251,5 @@ class NumericalComponent(Component):
         -------
         complex_visibility_function : numpy.ndarray
         """
-        image = self.calculate_image(wavelength)
-        breakpoint()
+        image = self.calculate_image(wavelength=wavelength)
         return compute_2Dfourier_transform(image.value)

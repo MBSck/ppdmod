@@ -1,12 +1,15 @@
+from pathlib import Path
 from typing import Dict
 
 import astropy.units as u
+import numpy as np
 import pytest
 
 from ppdmod.custom_components import Star, TemperatureGradient
 from ppdmod.model import Model
+from ppdmod.parameter import Parameter
 from ppdmod.options import OPTIONS
-from ppdmod.utils import get_binned_dimension
+from ppdmod.utils import get_binned_dimension, linearly_combine_opacities
 
 
 @pytest.fixture
@@ -16,10 +19,31 @@ def star_parameters() -> Dict[str, float]:
 
 
 @pytest.fixture
+def opacity(qval_file_dir: Path,
+            wavelength_solution: u.um) -> None:
+    """A parameter containing the opacity."""
+    weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
+    qval_files = ["Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat",
+                  "Q_Am_Mgolivine_Jae_DHS_f1.0_rv1.5.dat",
+                  "Q_Am_Mgpyroxene_Dor_DHS_f1.0_rv1.5.dat",
+                  "Q_Fo_Suto_DHS_f1.0_rv0.1.dat",
+                  "Q_Fo_Suto_DHS_f1.0_rv1.5.dat",
+                  "Q_En_Jaeger_DHS_f1.0_rv1.5.dat"]
+    qval_paths = list(map(lambda x: qval_file_dir / x, qval_files))
+    opacity = linearly_combine_opacities(weights,
+                                         qval_paths, wavelength_solution)
+    return Parameter(name="kappa_abs", value=opacity,
+                     wavelength=wavelength_solution,
+                     unit=u.cm**2/u.g, free=False,
+                     description="Dust mass absorption coefficient")
+
+
+@pytest.fixture
 def temp_gradient_parameters() -> Dict[str, float]:
     """The temperature gradient's parameters."""
     return {"rin": 0.5, "rout": 100, "dust_mass": 0.11, "q": 0.5,
-            "inner_temp": 1500, "pixel_size": 0.1, "p": 0.5}
+            "inner_temp": 1500, "pixel_size": 0.1, "p": 0.5,
+            "kappa_abs": opacity}
 
 
 @pytest.fixture
@@ -85,10 +109,11 @@ def test_calculate_image(star: Star,
 
 
 def test_calculate_complex_visibility(
-    star: Star, temp_gradient: TemperatureGradient) -> None:
+        star: Star, temp_gradient: TemperatureGradient) -> None:
     """Tests the model's complex visibility function calculation."""
     model = Model(star, temp_gradient)
     complex_vis = model.calculate_complex_visibility(8*u.um)
-    binned_dim = get_binned_dimension(star.params["idim"](), OPTIONS["fourier.binning"])
+    binned_dim = get_binned_dimension(star.params["dim"](),
+                                      OPTIONS["fourier.binning"])
     assert complex_vis.unit == u.one
     assert complex_vis.shape == (binned_dim, binned_dim)

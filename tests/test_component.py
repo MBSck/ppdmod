@@ -98,12 +98,17 @@ def test_analytic_component_calculate_visibility_function(
     assert analytic_component._visibility_function() is None
 
 
-def test_analytical_component_calculate_image() -> None:
-    ...
+def test_analytical_component_calculate_image(
+        analytic_component: AnalyticalComponent) -> None:
+    """Tests the analytical component's image calculation."""
+    assert analytic_component.calculate_image() is None
 
 
-def test_analytical_component_calculate_complex_visibility() -> None:
-    ...
+def test_analytical_component_calculate_complex_visibility(
+        analytic_component: AnalyticalComponent) -> None:
+    """Tests the analytical component's complex visibility
+    function calculation."""
+    assert analytic_component.calculate_complex_visibility() is None
 
 
 def test_numerical_component_init(numerical_component: NumericalComponent) -> None:
@@ -115,11 +120,14 @@ def test_numerical_component_init(numerical_component: NumericalComponent) -> No
     assert "pixel_size" in numerical_component.params
 
 
-def test_numerical_component_calculate_image() -> None:
-    ...
+def test_numerical_component_calculate_image(
+        numerical_component: NumericalComponent) -> None:
+    """Tests the numerical component's image calculation."""
+    assert numerical_component.calculate_image() is None
 
 
-def test_nuemral_component_calculate_complex_visibility() -> None:
-    ...
-
-
+def test_numerical_component_calculate_complex_visibility(
+        numerical_component: NumericalComponent) -> None:
+    """Tests the numerical component's complex visibility
+    function calculation."""
+    assert numerical_component.calculate_complex_visibility() is None

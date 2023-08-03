@@ -11,8 +11,9 @@ from ppdmod.custom_components import Star, TemperatureGradient,\
     AsymmetricSDGreyBodyContinuum
 from ppdmod.parameter import Parameter
 from ppdmod.readout import ReadoutFits
+from ppdmod.options import OPTIONS
 from ppdmod.utils import opacity_to_matisse_opacity, linearly_combine_opacities,\
-    calculate_intensity
+    calculate_intensity, get_binned_dimension
 
 
 @pytest.fixture
@@ -85,7 +86,7 @@ def radius(grid: Tuple[u.mas, u.mas]) -> u.mas:
 @pytest.fixture
 def star_parameters() -> Dict[str, float]:
     """The star's parameters"""
-    return {"dist": 145, "eff_temp": 7800, "eff_radius": 1.8}
+    return {"dim": 512, "dist": 145, "eff_temp": 7800, "eff_radius": 1.8}
 
 
 @pytest.fixture
@@ -268,24 +269,39 @@ def test_asym_grey_body_temperature_profile(
     assert temp_profile.unit == u.K
 
 
-def test_temperature_gradient_image(temp_gradient: TemperatureGradient,
-                                    grid: Tuple[u.mas, u.mas],
-                                    wavelength: u.um,
-                                    opacity: Parameter) -> None:
-    """Tests the temperature gradient's image calculation."""
-    temp_gradient.params["kappa_abs"] = opacity
-    image = temp_gradient._calculate_image(*grid, wavelength)
-    assert image.shape == grid[0].shape
-    assert image.unit == u.Jy
-
-
 def test_temperature_gradient_image_function(
         temp_gradient: TemperatureGradient,
         grid: Tuple[u.mas, u.mas],
         wavelength: u.um,
         opacity: Parameter) -> None:
     """Tests the temperature gradient's image function."""
+    OPTIONS["fourier.binning"] = None
     temp_gradient.params["kappa_abs"] = opacity
     image = temp_gradient._image_function(*grid, wavelength)
     assert image.shape == grid[0].shape
     assert image.unit == u.Jy
+
+    OPTIONS["fourier.binning"] = 1
+    image = temp_gradient._image_function(*grid, wavelength)
+    assert image.shape == tuple(np.array(grid[0].shape)//2)
+    assert image.unit == u.Jy
+
+
+def test_numerical_component_calculate_complex_visibility(
+        temp_gradient: TemperatureGradient,
+        wavelength: u.um,
+        opacity: Parameter) -> None:
+    """Tests the numerical component's complex visibility
+    function calculation."""
+    OPTIONS["fourier.binning"] = None
+    temp_gradient.params["kappa_abs"] = opacity
+    dim = temp_gradient.params["dim"]()
+    complex_visibility = temp_gradient.calculate_complex_visibility(wavelength)
+    assert np.all(complex_visibility != 0)
+    assert complex_visibility.shape == (dim, dim)
+
+    OPTIONS["fourier.binning"] = 2
+    binned_dim = get_binned_dimension(dim, OPTIONS["fourier.binning"])
+    complex_visibility = temp_gradient.calculate_complex_visibility(wavelength)
+    assert np.all(complex_visibility != 0)
+    assert complex_visibility.shape == (binned_dim, binned_dim)

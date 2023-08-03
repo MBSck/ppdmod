@@ -344,39 +344,7 @@ class TemperatureGradient(NumericalComponent):
             return np.sqrt(self.params["eff_radius"]().to(u.m)/(2*radius))\
                 * self.params["eff_temp"]()
         return self.params["inner_temp"]()\
-            * (radius / self.params["rin"]())**(-self.params["q"].value)
-
-    def _calculate_image(self, xx: u.mas, yy: u.mas,
-                         wavelength: u.um) -> u.Jy:
-        """Combines the various radial profiles into an image.
-
-        Parameters
-        ----------
-        xx : astropy.units.mas
-            The x-coordinate grid.
-        yy : astropy.units.mas
-            The y-coordinate grid.
-        wavelength : astropy.units.um
-
-        Returns
-        -------
-        image : astropy.units.Jy
-        """
-        radius = np.hypot(xx, yy)
-        rin, rout = map(lambda x: self.params[x](), ["rin", "rout"])
-        # TODO: Make infinite outer radius work with dust mass calculation
-        # if np.isinf(rout):
-            # radial_profile = radius > rin
-        # else:
-        radial_profile = np.logical_and(radius > rin, radius < rout)
-        temperature_profile = self._calculate_temperature_profile(radius)
-        spectral_density = calculate_intensity(temperature_profile,
-                                               wavelength,
-                                               self.params["pixel_size"]())
-        optical_depth = self._calculate_optical_depth(radius, xx, yy, wavelength)
-        return np.nan_to_num(
-            radial_profile * spectral_density * (1 - np.exp(optical_depth)),
-            nan=0)
+            * (radius / self.params["rin"]())**(-self.params["q"]())
 
     def _image_function(self, xx: u.mas, yy: u.mas,
                         wavelength: u.um) -> u.Jy:
@@ -396,15 +364,27 @@ class TemperatureGradient(NumericalComponent):
         -------
         image : astropy.units.Jy
         """
+        radius = np.hypot(xx, yy)
+        rin, rout = map(lambda x: self.params[x](), ["rin", "rout"])
+        # TODO: Make infinite outer radius work with dust mass calculation
+        # if np.isinf(rout):
+        #   radial_profile = radius > rin
+        # else:
+        radial_profile = np.logical_and(radius > rin, radius < rout)
+        temperature_profile = self._calculate_temperature_profile(radius)
+        spectral_density = calculate_intensity(temperature_profile,
+                                               wavelength,
+                                               self.params["pixel_size"]())
+        optical_depth = self._calculate_optical_depth(radius, xx,
+                                                      yy, wavelength)
+        image = np.nan_to_num(radial_profile * spectral_density
+                              * (1 - np.exp(optical_depth)), nan=0)
         if self.asymmetric_image:
-            img = self._calculate_image(xx, yy, wavelength) * \
-                (1+self._calculate_azimuthal_modulation(xx, yy))
-        else:
-            img = self._calculate_image(xx, yy, wavelength)
-        # TODO: Move rebinning somewhere different? Calculate star 4 times bigger.
+            image = self._calculate_image(xx, yy, wavelength)*(1+image)
+
         if OPTIONS["fourier.binning"] is not None:
-            img = rebin_image(img, OPTIONS["fourier.binning"])
-        return img
+            image = rebin_image(image, OPTIONS["fourier.binning"])
+        return image
 
 
 class AsymmetricSDTemperatureGradient(TemperatureGradient):

@@ -92,7 +92,7 @@ class Model:
             img_dim = get_binned_dimension(dim, OPTIONS["fourier.binning"])
         else:
             img_dim = dim
-        image = np.zeros((img_dim, img_dim))
+        image = np.zeros((img_dim, img_dim))*u.Jy
         for component in self.components:
             image += component.calculate_image(dim, pixel_size, wavelength)
         return image
