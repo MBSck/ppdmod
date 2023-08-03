@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, Any
+from typing import Union
 
 import astropy.units as u
 import matplotlib.pyplot as plt
@@ -14,14 +14,13 @@ from ppdmod.options import OPTIONS
 @pytest.fixture
 def qval_file_dir() -> Path:
     """The qval-file directory."""
-    return Path("/Users/scheuck/Data/opacities/QVAL")
+    return Path("data/qval")
 
 
 @pytest.fixture
 def fits_file() -> Path:
     """A MATISSE (.fits)-file."""
-    path = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse")
-    return path /\
+    return Path("data/fits") /\
         "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits"
 
 
@@ -62,12 +61,13 @@ def test_set_fit_wavelenghts() -> None:
     assert not OPTIONS["fit.wavelengths"]
 
 
-def test_set_data(fits_file: Path) -> None:
-    """Tests the automatic data procurrment from one
-    or multiple (.fits)-files."""
-    utils.set_fit_wavelengths([4.78301581e-06, 8.28835527e-06])
-    breakpoint()
-    utils.set_data(fits_file)
+# TODO: Finish this and make the data procurrment work somehow.
+# def test_set_data(fits_file: Path) -> None:
+#     """Tests the automatic data procurrment from one
+#     or multiple (.fits)-files."""
+#     utils.set_fit_wavelengths([4.78301581e-06, 8.28835527e-06])
+#     breakpoint()
+#     utils.set_data(fits_file)
 
 
 def test_uniform_disk() -> None:

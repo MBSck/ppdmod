@@ -6,16 +6,10 @@ from ppdmod.readout import ReadoutFits
 
 
 @pytest.fixture
-def path() -> Path:
-    """The (.fits)-files paths."""
-    return Path("/Users/scheuck/Data/reduced_data/hd142666/matisse")
-
-
-@pytest.fixture
-def readout(path: Path) -> ReadoutFits:
+def readout() -> ReadoutFits:
     """The data of the input files."""
-    file = "hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_AQUARIUS_FINAL_TARGET_INT.fits"
-    return ReadoutFits(path / file)
+    file = "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits"
+    return ReadoutFits(Path("data/fits") / file)
 
 
 def test_readout(readout: ReadoutFits) -> None:
@@ -37,5 +31,4 @@ def test_wavelength_retrieval(readout: ReadoutFits) -> None:
     data4wavelength = readout.get_data_for_wavelength(
         readout.wavelength[50:52], "t3phi")
     assert isinstance(data4wavelength, dict)
-    assert data4wavelength
     assert len(data4wavelength) == 2

@@ -22,15 +22,14 @@ def star_parameters() -> Dict[str, float]:
 @pytest.fixture
 def qval_file_dir() -> Path:
     """The qval-file directory."""
-    return Path("/Users/scheuck/Data/opacities/QVAL")
+    return Path("data/qval")
 
 
 @pytest.fixture
 def wavelength_solution() -> u.um:
     """A MATISSE (.fits)-file."""
-    path = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse")
     file = Path("hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits")
-    return (ReadoutFits(path / file).wavelength*u.m).to(u.um)
+    return (ReadoutFits("data/fits" / file).wavelength*u.m).to(u.um)
 
 
 @pytest.fixture
