@@ -1,4 +1,4 @@
-from typing import Union, Optional, Dict, List
+from typing import Optional, Dict, List
 
 import astropy.units as u
 import numpy as np
@@ -6,7 +6,7 @@ import numpy as np
 from .component import Component
 from .parameter import Parameter
 from .options import OPTIONS
-from .utils import get_binned_dimension
+from .utils import get_binned_dimension, set_tuple_from_args
 
 
 class Model:
@@ -29,10 +29,7 @@ class Model:
 
     def __init__(self, *components: List[Component]) -> None:
         """Constructor of the class"""
-        if isinstance(components[0], list):
-            self.components = tuple(component for component in components[0])
-        else:
-            self.components = components
+        self.components = set_tuple_from_args(*components)
 
     @property
     def params(self) -> Dict[str, Parameter]:

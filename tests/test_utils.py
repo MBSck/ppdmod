@@ -6,8 +6,23 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from ppdmod.readout import ReadoutFits
 from ppdmod import utils
+from ppdmod.readout import ReadoutFits
+from ppdmod.options import OPTIONS
+
+
+@pytest.fixture
+def qval_file_dir() -> Path:
+    """The qval-file directory."""
+    return Path("/Users/scheuck/Data/opacities/QVAL")
+
+
+@pytest.fixture
+def fits_file() -> Path:
+    """A MATISSE (.fits)-file."""
+    path = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse")
+    return path /\
+        "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits"
 
 
 @pytest.fixture
@@ -17,21 +32,42 @@ def wavelength() -> u.m:
 
 
 @pytest.fixture
-def wavelength_solution() -> u.um:
-    """A MATISSE (.fits)-file."""
-    path = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse")
-    file = Path("hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits")
-    return (ReadoutFits(path / file).wavelength*u.m).to(u.um)
-
-
-@pytest.fixture
-def qval_file_dir() -> Path:
-    """The qval-file directory."""
-    return Path("/Users/scheuck/Data/opacities/QVAL")
+def wavelength_solution(fits_file: Path) -> u.um:
+    """The wavelength solution of a MATISSE (.fits)-file."""
+    return (ReadoutFits(fits_file).wavelength*u.m).to(u.um)
 
 
 def test_exection_time() -> None:
     ...
+
+
+def test_set_list_from_args() -> None:
+    """Tests the set lists from args function."""
+    args = [1, 2, 3]
+    args = utils.set_tuple_from_args(*args)
+    assert args == (1, 2, 3)
+
+    args = 1, 2, 3
+    args = utils.set_tuple_from_args(*args)
+    assert args == (1, 2, 3)
+
+
+def test_set_fit_wavelenghts() -> None:
+    """Tests the set fit wavelenghts function."""
+    utils.set_fit_wavelengths([4.78301581e-06, 8.28835527e-06])
+    assert np.array_equal(OPTIONS["fit.wavelengths"],
+                          ([4.78301581e-06, 8.28835527e-06]*u.m).to(u.um))
+
+    utils.set_fit_wavelengths()
+    assert not OPTIONS["fit.wavelengths"]
+
+
+def test_set_data(fits_file: Path) -> None:
+    """Tests the automatic data procurrment from one
+    or multiple (.fits)-files."""
+    utils.set_fit_wavelengths([4.78301581e-06, 8.28835527e-06])
+    breakpoint()
+    utils.set_data(fits_file)
 
 
 def test_uniform_disk() -> None:

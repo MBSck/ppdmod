@@ -1,5 +1,14 @@
 OPTIONS = {}
 
+OPTIONS["data.readouts"] = []
+OPTIONS["data.correlated_flux"] = []
+OPTIONS["data.correlated_flux_error"] = []
+OPTIONS["data.closure_phase"] = []
+OPTIONS["data.closure_phase_error"] = []
+OPTIONS["data.opacity_files_and_weights"] = {}
+OPTIONS["data.constant_parameters"] = {}
+OPTIONS["data.model_and_parameters"] = {}
+
 # NOTE: Model. The output can either be 'surface_brightness' or ' jansky_px'
 OPTIONS["model.output"] = "jansky_px"
 
@@ -18,3 +27,4 @@ OPTIONS["spectrum.binning"] = {"low": 7,
 
 # NOTE: Fitting.
 OPTIONS["fit.datasets"] = ["flux", "vis", "t3phi"]
+OPTIONS["fit.wavelengths"] = None

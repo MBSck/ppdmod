@@ -1,6 +1,6 @@
 import time
 from pathlib import Path
-from typing import Optional, Union, List
+from typing import Optional, Union, Any, Tuple, List
 
 import astropy.units as u
 import numpy as np
@@ -11,6 +11,7 @@ from scipy.interpolate import interp1d
 from scipy.special import j1
 
 from .options import OPTIONS
+from .readout import ReadoutFits
 
 
 def execution_time(func):
@@ -21,6 +22,66 @@ def execution_time(func):
         print(f"Execution time: {time.time() - start_time:.6f} seconds")
         return result
     return wrapper
+
+
+def set_tuple_from_args(*args: Tuple) -> Tuple[Any]:
+    """Sets the arguments to a tuple if a list is provided
+    as the first argument. Otherwise return the arguments.
+    """
+    if isinstance(args[0], list):
+        return tuple(arg for arg in args[0])
+    return args
+
+
+def set_fit_wavelengths(*wavelengths: Optional[u.m]) -> None:
+    """Sets the wavelengths to be fitted for as a global option.
+
+    If called without parameters or recalled, it will clear the
+    fit wavelengths.
+    """
+    OPTIONS["fit.wavelengths"] = []
+
+    if not wavelengths:
+        return
+
+    wavelengths = set_tuple_from_args(*wavelengths)
+    if not isinstance(wavelengths, u.Quantity):
+        wavelengths *= u.m
+    OPTIONS["fit.wavelengths"] = wavelengths.to(u.um)
+
+
+def set_data(*fits_files: Optional[Union[List[Path], Path]]) -> None:
+    """Sets the data as a global variable from the input files.
+
+    If called without parameters or recalled, it will clear the data.
+    """
+    OPTIONS["data.readouts"] = []
+    OPTIONS["data.correlated_flux"],\
+        OPTIONS["data.correlated_flux_error"] = [], []
+    OPTIONS["data.closure_phase"],\
+        OPTIONS["data.closure_phase_error"] = [], []
+
+    if not fits_files:
+        return
+
+    fits_files = set_tuple_from_args(*fits_files)
+    if not isinstance(fits_files, list):
+        fits_files = [fits_files]
+    readouts = OPTIONS["data.readouts"] =\
+        [ReadoutFits(file) for file in fits_files]
+    if not OPTIONS["fit.wavelengths"]:
+        raise ValueError("Fitting wavelengths must be specified!")
+
+    wavelengths = OPTIONS["fit.wavelengths"]
+    for readout in readouts:
+        OPTIONS["data.correlated_flux"].append(
+            readout.get_data_for_wavelength(wavelengths, "vis"))
+        OPTIONS["data.correlated_flux_error"].append(
+            readout.get_data_for_wavelength(wavelengths, "vis_err"))
+        OPTIONS["data.closure_phase"].append(
+            readout.get_data_for_wavelength(wavelengths, "t3phi"))
+        OPTIONS["data.closure_phase_error"].append(
+            readout.get_data_for_wavelength(wavelengths, "t3phi_err"))
 
 
 # TODO: Set the linespace endpoint=False for the real model as well.
