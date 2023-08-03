@@ -8,14 +8,24 @@ from numpy.typing import ArrayLike
 
 # NOTE: A list of standard parameters to be used when defining new components.
 STANDARD_PARAMETERS = {
-    "x": {"name": "x", "value": 0, "description": "x position", "unit": u.mas, "free": False},
-    "y": {"name": "y", "value": 0, "description": "y position", "unit": u.mas, "free": False},
-    "elong": {"name": "elong", "value": 1, "description": "Elongation Ratio", "unit": u.one},
-    "pa": {"name": "pa", "value": 0, "description": "Major-axis Position angle", "unit": u.deg},
-    "pixel_size": {"name": "pixel_size", "value": 0, "description": "Pixel Size", "unit": u.mas, "free": False},
-    "dim": {"name": "dim", "value": 128, "description": "Dimension in pixels", "unit": u.one, "free": False},
-    "wl": {"name": "wl", "value": 0, "description": "Wavelength", "unit": u.m},
-    "fov": {"name": "fov", "value": 0, "description": "The interferometric field of view", "unit": u.mas, "free": False},
+    "x": {"name": "x", "value": 0, "description": "x position",
+          "unit": u.mas, "free": False},
+    "y": {"name": "y", "value": 0, "description": "y position",
+          "unit": u.mas, "free": False},
+    "elong": {"name": "elong", "value": 1,
+              "description": "Elongation Ratio", "unit": u.one},
+    "pa": {"name": "pa", "value": 0,
+           "description": "Major-axis Position angle", "unit": u.deg},
+    "pixel_size": {"name": "pixel_size", "value": 0,
+                   "description": "Pixel Size", "unit": u.mas, "free": False},
+    "dim": {"name": "dim", "value": 128,
+            "description": "Dimension in pixels",
+            "unit": u.Quantity(value=1, unit=u.one, dtype=int), "free": False},
+    "wl": {"name": "wl", "value": 0,
+           "description": "Wavelength", "unit": u.m},
+    "fov": {"name": "fov", "value": 0,
+            "description": "The interferometric field of view",
+            "unit": u.mas, "free": False},
 }
 
 

@@ -11,7 +11,8 @@ from ppdmod.custom_components import Star, TemperatureGradient,\
     AsymmetricSDGreyBodyContinuum
 from ppdmod.parameter import Parameter
 from ppdmod.readout import ReadoutFits
-from ppdmod.utils import opacity_to_matisse_opacity, linearly_combine_opacities
+from ppdmod.utils import opacity_to_matisse_opacity, linearly_combine_opacities,\
+    calculate_intensity
 
 
 @pytest.fixture
@@ -86,6 +87,7 @@ def star_parameters() -> Dict[str, float]:
     """The star's parameters"""
     return {"dist": 145, "eff_temp": 7800, "eff_radius": 1.8}
 
+
 @pytest.fixture
 def temp_gradient_parameters() -> Dict[str, float]:
     """The temperature gradient's parameters."""
@@ -155,12 +157,24 @@ def test_star_stellar_radius_angular(star: Star) -> None:
                           (10*u.um, 0.1), (11*u.um, 0.1)])
 def test_star_image(star: Star,
                     grid: Tuple[u.mas, u.mas],
-                    wavelength: u.m,
+                    wavelength: u.um,
                     threshold: float) -> None:
     """Tests the star's image calculation."""
     image = star._image_function(*grid, wavelength)
     assert image.unit == u.Jy
     assert np.max(image.value) < threshold
+
+
+def test_star_visibility_function(star: Star,
+                                  wavelength: u.um) -> None:
+    """Tests the star's complex visibility function calculation."""
+    intensity = calculate_intensity(star.params["eff_temp"](),
+                                    wavelength,
+                                    star.stellar_radius_angular).value
+    complex_visibility = star._visibility_function(wavelength)
+    assert complex_visibility.shape == (star.params["dim"](),
+                                        star.params["dim"]())
+    assert np.all(complex_visibility == intensity)
 
 
 def test_temperature_gradient_init(temp_gradient: TemperatureGradient) -> None:

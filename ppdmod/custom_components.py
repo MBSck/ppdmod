@@ -44,7 +44,7 @@ class Star(AnalyticalComponent):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._image = None
+        self._image, self._visibility = None, None
         self._stellar_angular_radius = None
 
         self.params["dist"] = Parameter(name="dist",
@@ -105,6 +105,15 @@ class Star(AnalyticalComponent):
         return self._image*calculate_intensity(self.params["eff_temp"](),
                                                wavelength,
                                                self.stellar_radius_angular)
+
+    def _visibility_function(self,
+                             wavelength: Optional[u.um] = None) -> np.ndarray:
+        """The component's _visibility_function."""
+        if self._visibility is None:
+            self._visibility = np.ones((self.params["dim"](),
+                                        self.params["dim"]()))
+        return self._visibility*calculate_intensity(
+            self.params["eff_temp"](), wavelength, self.stellar_radius_angular).value
 
 
 # TODO: Think of doing all conversions in properties -> Quicker?

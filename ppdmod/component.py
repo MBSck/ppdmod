@@ -229,21 +229,6 @@ class NumericalComponent(Component):
         x_arr, y_arr = self._calculate_internal_grid()
         return self._image_function(x_arr, y_arr, wavelength)
 
-    def calculate_complex_visibility(self,
-                                     wavelength: Optional[u.um] = None
-                                     ) -> np.ndarray:
-        """Calculates the complex visibility of the the component's image.
-
-        Parameters
-        ----------
-        wavelength : astropy.units.um, optional
-
-        Returns
-        -------
-        complex_visibility_function : numpy.ndarray
-        """
-        image = self.calculate_internal_image(wavelength)
-        return compute_2Dfourier_transform(image)
 
     def calculate_image(self, dim: float, pixel_size: float,
                         wavelength: Optional[u.um] = None) -> u.Quantity:
@@ -270,3 +255,19 @@ class NumericalComponent(Component):
             yp = x_arr*np.sin(pa_rad)+y_arr*np.cos(pa_rad)
             x_arr, y_arr = xp*self.params["elong"].value, yp
         return self._image_function(x_arr, y_arr, wavelength)
+
+    def calculate_complex_visibility(self,
+                                     wavelength: Optional[u.um] = None
+                                     ) -> np.ndarray:
+        """Calculates the complex visibility of the the component's image.
+
+        Parameters
+        ----------
+        wavelength : astropy.units.um, optional
+
+        Returns
+        -------
+        complex_visibility_function : numpy.ndarray
+        """
+        image = self.calculate_internal_image(wavelength)
+        return compute_2Dfourier_transform(image)
