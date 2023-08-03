@@ -270,4 +270,5 @@ class NumericalComponent(Component):
         complex_visibility_function : numpy.ndarray
         """
         image = self.calculate_internal_image(wavelength)
-        return compute_2Dfourier_transform(image)
+        breakpoint()
+        return compute_2Dfourier_transform(image.value)

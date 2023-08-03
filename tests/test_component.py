@@ -68,6 +68,18 @@ def test_analytic_component_init(analytic_component: AnalyticalComponent) -> Non
     assert analytic_component.calculate_image(512).size > 0
 
 
+def test_analytic_component_image_function(
+        analytic_component: AnalyticalComponent) -> None:
+    """Tests if the visibility function returns None."""
+    assert analytic_component._image_function(None, None) is None
+
+
+def test_analytic_component_visibility_function(
+        analytic_component: AnalyticalComponent) -> None:
+    """Tests if the visibility function returns None."""
+    assert analytic_component._visibility_function() is None
+
+
 def test_numerical_component_init(numerical_component: NumericalComponent) -> None:
     """Tests if the initialization of the numerical component works."""
     numerical_component.elliptic = True
