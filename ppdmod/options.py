@@ -2,6 +2,8 @@ OPTIONS = {}
 
 # NOTE: Data.
 OPTIONS["data.readouts"] = []
+OPTIONS["data.total_flux"] = []
+OPTIONS["data.total_flux_error"] = []
 OPTIONS["data.correlated_flux"] = []
 OPTIONS["data.correlated_flux_error"] = []
 OPTIONS["data.closure_phase"] = []
@@ -28,5 +30,6 @@ OPTIONS["spectrum.binning"] = {"low": 7,
 # NOTE: Fitting.
 OPTIONS["fit.datasets"] = ["flux", "vis", "t3phi"]
 OPTIONS["fit.wavelengths"] = None
+OPTIONS["fit.chi2.weight.total_flux"] = 1
 OPTIONS["fit.chi2.weight.corr_flux"] = 1
 OPTIONS["fit.chi2.weight.cphase"] = 1

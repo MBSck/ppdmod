@@ -76,11 +76,10 @@ def lnprob(theta: np.ndarray) -> float:
     fourier_transforms = {}
     for wavelength in OPTIONS["fit.wavelengths"]:
         fourier_transform = model.calculate_complex_visibility(wavelength)
-        # total_flux = fourier_transform
-        fourier_transforms[str(wavelength)] = {"ft": fourier_transform}
-        #                                      "total_flux": total_flux}
+        fourier_transforms[str(wavelength)] = fourier_transform
 
-    # TODO: Calculate the different observables here
+    total_flux, total_flux_err =\
+        OPTIONS["data.total_flux"], OPTIONS["data.total_flux_error"]
     corr_fluxes, corr_fluxes_err =\
         OPTIONS["data.correlated_flux"], OPTIONS["data.correlated_flux_error"]
     cphases, cphases_err =\
@@ -93,23 +92,38 @@ def lnprob(theta: np.ndarray) -> float:
             if str(wavelength) in fourier_transforms\
                     and str(wavelength) in corr_flux:
                 fourier_transform = fourier_transforms[str(wavelength)]
-                interpolated_fft = interpolate_coordinates(
-                    fourier_transform["ft"],
-                    fourier_transform["ft"].shape[0],
+                centre = fourier_transform.shape[0]//2
+                total_flux_model = fourier_transform[centre, centre]
+
+                interpolated_corr_flux = interpolate_coordinates(
+                    fourier_transform,
+                    fourier_transform.shape[0],
                     temp_grad.params["pixel_size"](),
                     OPTIONS["data.readouts"][index].ucoord,
                     OPTIONS["data.readouts"][index].vcoord,
                     wavelength)
+                corr_flux_model = np.abs(interpolated_corr_flux)
 
-                # total_flux_model = fourier_transform["total_flux"]
-                corr_flux_model = np.abs(interpolated_fft)
+                interpolated_cphase = interpolate_coordinates(
+                    fourier_transform,
+                    fourier_transform.shape[0],
+                    temp_grad.params["pixel_size"](),
+                    OPTIONS["data.readouts"][index].u123coord,
+                    OPTIONS["data.readouts"][index].v123coord,
+                    wavelength)
+                cphase_model = np.product(interpolated_cphase, axis=1)
+
+                # TODO: Add total flux here.
+                total_chi_sq += chi_sq(total_flux[str(wavelength)],
+                                       total_flux_err[str(wavelength)],
+                                       total_flux_model)\
+                    * OPTIONS["fit.chi2.weight.total_flux"]
                 total_chi_sq += chi_sq(corr_flux[str(wavelength)],
                                        corr_flux_err[str(wavelength)],
                                        corr_flux_model)\
                     * OPTIONS["fit.chi2.weight.corr_flux"]
-                # cphase_model = ...
-                # total_chi_sq += chi_sq(cphase, cphase_err, cphase_model)\
-                    # * OPTIONS["fit.chi2.weight.cphases"]
+                total_chi_sq += chi_sq(cphase, cphase_err, cphase_model)\
+                    * OPTIONS["fit.chi2.weight.cphases"]
             else:
                 continue
     return np.array(total_chi_sq)

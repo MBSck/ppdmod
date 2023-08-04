@@ -56,6 +56,8 @@ def set_data(*fits_files: Optional[Union[List[Path], Path]]) -> None:
     If called without parameters or recalled, it will clear the data.
     """
     OPTIONS["data.readouts"] = []
+    OPTIONS["data.total_flux"],\
+        OPTIONS["data.total_flux_error"] = [], []
     OPTIONS["data.correlated_flux"],\
         OPTIONS["data.correlated_flux_error"] = [], []
     OPTIONS["data.closure_phase"],\
@@ -84,7 +86,6 @@ def set_data(*fits_files: Optional[Union[List[Path], Path]]) -> None:
             readout.get_data_for_wavelength(wavelengths, "t3phi_err"))
 
 
-# TODO: Set the linespace endpoint=False for the real model as well.
 def uniform_disk(pixel_size: u.mas, dim: int,
                  diameter: Optional[u.mas] = None) -> u.one:
     """The brightness profile of a uniform disk.
@@ -103,7 +104,8 @@ def uniform_disk(pixel_size: u.mas, dim: int,
     radial_profile : astropy.units.one
     """
     if diameter is not None:
-        v = np.linspace(-0.5, 0.5, dim, endpoint=False)*pixel_size.to(u.mas)*dim
+        v = np.linspace(-0.5, 0.5, dim, endpoint=False)\
+            * pixel_size.to(u.mas)*dim
         x_arr, y_arr = np.meshgrid(v, v)
         radius = np.hypot(x_arr, y_arr) < diameter/2
     else:

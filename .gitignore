@@ -2,6 +2,7 @@ __pycache__/
 ppdmod.egg-info/
 binning/
 padding/
+phase/
 interpolation/
 .DS_Store
 *.pdf

@@ -49,7 +49,8 @@ def test_chi_sq(data: np.ndarray, error: np.ndarray,
     """Tests the chi squre function."""
     assert chi_sq(data, error, data_model) == expected
 
-def test_ln_prob() -> None:
+
+def test_lnprob() -> None:
     ...
 
 
