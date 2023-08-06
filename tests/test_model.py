@@ -7,7 +7,7 @@ import pytest
 
 from ppdmod.custom_components import Star, TemperatureGradient
 from ppdmod.model import Model
-from ppdmod.readout import ReadoutFits
+from ppdmod.data import ReadoutFits
 from ppdmod.parameter import Parameter
 from ppdmod.options import OPTIONS
 from ppdmod.utils import get_binned_dimension, linearly_combine_opacities
@@ -35,7 +35,7 @@ def wavelength() -> u.m:
 def wavelength_solution() -> u.um:
     """A MATISSE (.fits)-file."""
     file = Path("hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits")
-    return (ReadoutFits("data/fits" / file).wavelength*u.m).to(u.um)
+    return ReadoutFits("data/fits" / file).wavelength
 
 
 @pytest.fixture
@@ -123,6 +123,7 @@ def test_calculate_image(star: Star,
                          opacity: Parameter,
                          wavelength: u.um) -> None:
     """Tests the model's image calculation."""
+    OPTIONS["fourier.binning"] = None
     temp_gradient.params["kappa_abs"] = opacity
     model = Model(star, temp_gradient)
     image = model.calculate_image(512, 0.1, wavelength)
@@ -135,6 +136,7 @@ def test_calculate_complex_visibility(
         star: Star, temp_gradient: TemperatureGradient,
         opacity: Parameter, wavelength: u.um) -> None:
     """Tests the model's complex visibility function calculation."""
+    OPTIONS["fourier.binning"] = None
     temp_gradient.params["kappa_abs"] = opacity
     model = Model(star, temp_gradient)
     complex_vis = model.calculate_complex_visibility(wavelength)

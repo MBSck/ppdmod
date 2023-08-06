@@ -5,6 +5,8 @@ import astropy.units as u
 import numpy as np
 from numpy.typing import ArrayLike
 
+from .utils import get_closest_indices
+
 
 # NOTE: A list of standard parameters to be used when defining new components.
 STANDARD_PARAMETERS = {
@@ -39,7 +41,7 @@ class Parameter:
     description: Optional[str] = None
     min: Optional[float] = None
     max: Optional[float] = None
-    wavelength: Optional[np.ndarray] = None
+    wavelength: Optional[u.um] = None
 
     def __setattr__(self, key: str, value: Any):
         """Sets an attribute."""
@@ -51,25 +53,19 @@ class Parameter:
     def __post_init__(self):
         """Post initialisation actions."""
         self.value = self._set_to_numpy_array(self.value)
-        self.wavelength = self._set_to_numpy_array(self.wavelength)
+        self.wavelength = self._set_to_numpy_array(self.wavelength, True)
 
     # TODO: Raises an error if there is no close enough value...
     # Important maybe later on when non specific values are fitted.
-    def __call__(self,
-                 wavelength: Optional[Union[float, np.ndarray]] = None
-                 ) -> np.ndarray:
+    def __call__(self, *wavelength) -> np.ndarray:
         """Gets the value for the parameter or the corresponding
         values for the wavelengths."""
-        if wavelength is not None:
-            wavelength = wavelength.value\
-                if isinstance(wavelength, u.Quantity) else wavelength
         if self.wavelength is None:
             value = self.value
         else:
-            value = self.value[np.where(self.wavelength == wavelength)]
-            if value.size == 0:
-                index = np.abs(self.wavelength - wavelength).argmin()
-                value = self.value[index]
+            # HACK: Setting the wavelength to u.um is a hack.
+            value = self.value[get_closest_indices(*wavelength,
+                                                   array=self.wavelength*u.um)]
             value = value[0] if len(value) == 1 else value
         return value*self.unit
 
@@ -81,9 +77,12 @@ class Parameter:
         return message
 
     def _set_to_numpy_array(self,
-                            array: Optional[ArrayLike] = None
+                            array: Optional[ArrayLike] = None,
+                            retain_value: Optional[bool] = False
                             ) -> Union[Any, np.ndarray]:
         """Converts a value to a numpy array."""
+        if isinstance(array, u.Quantity) and retain_value:
+            return array
         if not isinstance(array, np.ndarray):
             if isinstance(array, (tuple, list)):
                 return np.array(array)
@@ -93,8 +92,3 @@ class Parameter:
             max: Optional[float] = None) -> None:
         """Sets the limits of the parameters."""
         self.min, self.max = min, max
-
-
-if __name__ == "__main__":
-    x = Parameter(name="x", description="", value=0*u.mas, unit=u.mas)
-    breakpoint()

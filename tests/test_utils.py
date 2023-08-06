@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from ppdmod import utils
-from ppdmod.readout import ReadoutFits
+from ppdmod.data import ReadoutFits
 from ppdmod.options import OPTIONS
 
 
@@ -31,43 +31,47 @@ def wavelength() -> u.m:
 
 
 @pytest.fixture
+def wavelengths() -> u.um:
+    """A wavelength grid."""
+    return ([8.28835527e-06, 1.02322101e-05]*u.m).to(u.um)
+
+
+@pytest.fixture
 def wavelength_solution(fits_file: Path) -> u.um:
     """The wavelength solution of a MATISSE (.fits)-file."""
-    return (ReadoutFits(fits_file).wavelength*u.m).to(u.um)
+    return ReadoutFits(fits_file).wavelength
 
 
 def test_exection_time() -> None:
     ...
 
 
-def test_set_list_from_args() -> None:
+def test_set_list_from_args(wavelengths: u.um) -> None:
     """Tests the set lists from args function."""
-    args = [1, 2, 3]
-    args = utils.set_tuple_from_args(*args)
-    assert args == (1, 2, 3)
+    arguments = [1, 2, 3]
+    arguments = utils.set_tuple_from_args(*arguments)
+    assert arguments == (1, 2, 3)
 
-    args = 1, 2, 3
-    args = utils.set_tuple_from_args(*args)
-    assert args == (1, 2, 3)
+    arguments = 1, 2, 3
+    arguments = utils.set_tuple_from_args(*arguments)
+    assert arguments == (1, 2, 3)
 
+    arguments = [1, 2, 3]*u.m
+    arguments = utils.set_tuple_from_args(*arguments)
+    assert arguments == (1*u.m, 2*u.m, 3*u.m)
 
-def test_set_fit_wavelenghts() -> None:
-    """Tests the set fit wavelenghts function."""
-    utils.set_fit_wavelengths([4.78301581e-06, 8.28835527e-06])
-    assert np.array_equal(OPTIONS["fit.wavelengths"],
-                          ([4.78301581e-06, 8.28835527e-06]*u.m).to(u.um))
-
-    utils.set_fit_wavelengths()
-    assert not OPTIONS["fit.wavelengths"]
+    arguments = utils.set_tuple_from_args(*wavelengths)
+    return arguments == ((8.28835527e-06*u.m).to(u.um),
+                         (1.02322101e-05*u.m).to(u.um),)
 
 
-# TODO: Finish this and make the data procurrment work somehow.
-# def test_set_data(fits_file: Path) -> None:
-#     """Tests the automatic data procurrment from one
-#     or multiple (.fits)-files."""
-#     utils.set_fit_wavelengths([4.78301581e-06, 8.28835527e-06])
-#     breakpoint()
-#     utils.set_data(fits_file)
+def test_get_closest_indices(wavelength: u.um,
+                             wavelengths: u.um,
+                             wavelength_solution: u.um) -> None:
+    """Tests the get_closest_indices function."""
+    index = utils.get_closest_indices(wavelength, array=wavelength_solution)
+    indices = utils.get_closest_indices(wavelengths, array=wavelength_solution)
+    assert index.size > 0 and indices.size > 0
 
 
 def test_uniform_disk() -> None:

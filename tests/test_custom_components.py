@@ -10,7 +10,7 @@ from ppdmod.custom_components import Star, TemperatureGradient,\
     AsymmetricSDTemperatureGradient, AsymmetricSDGreyBody,\
     AsymmetricSDGreyBodyContinuum
 from ppdmod.parameter import Parameter
-from ppdmod.readout import ReadoutFits
+from ppdmod.data import ReadoutFits
 from ppdmod.options import OPTIONS
 from ppdmod.utils import opacity_to_matisse_opacity, linearly_combine_opacities,\
     calculate_intensity, get_binned_dimension
@@ -26,7 +26,7 @@ def wavelength() -> u.m:
 def wavelength_solution() -> u.um:
     """A MATISSE (.fits)-file."""
     file = "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits"
-    return (ReadoutFits(Path("data/fits") / file).wavelength*u.m).to(u.um)
+    return ReadoutFits(Path("data/fits") / file).wavelength
 
 
 @pytest.fixture
@@ -231,7 +231,7 @@ def test_temperature_gradient_optical_depth(
         opacity: Parameter) -> None:
     """Tests the temperature gradient's optical depth calculation."""
     temp_gradient.params["kappa_abs"] = opacity
-    optical_depth =temp_gradient._calculate_optical_depth(
+    optical_depth = temp_gradient._calculate_optical_depth(
         radius, *grid, wavelength)
     assert optical_depth.unit == u.one
 

@@ -7,7 +7,6 @@ from ppdmod.fft import compute_2Dfourier_transform, get_frequency_axis,\
 from ppdmod.utils import uniform_disk, uniform_disk_vis
 
 
-# TODO: Make tests for the phase that make pictures.
 @pytest.fixture
 def ucoord() -> u.m:
     """Sets the ucoord."""

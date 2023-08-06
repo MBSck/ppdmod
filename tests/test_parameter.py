@@ -7,7 +7,7 @@ from ppdmod.parameter import STANDARD_PARAMETERS, Parameter
 
 
 VALUE = np.arange(0, 10)*u.mas
-WAVELENGTH = np.linspace(9, 12, 10)*1e-6
+WAVELENGTH = np.linspace(9, 12, 10)*u.um
 WAVELENGTHS_AND_VALUES = list(zip(WAVELENGTH, VALUE))
 
 
@@ -34,7 +34,8 @@ def test_set_parameter_limits(x: Parameter) -> None:
 
 @pytest.mark.parametrize("array, expected",
                          [(1, 1), ((5, 10,), np.array([5, 10])),
-                          ([6, 7], np.array([6, 7]))])
+                          ([6, 7], np.array([6, 7])),
+                          ([8, 12]*u.um, [8, 12]*u.um)])
 def test_set_to_numpy_array(x: Parameter,
                             array: ArrayLike,
                             expected: ArrayLike):

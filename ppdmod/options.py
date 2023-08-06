@@ -28,7 +28,7 @@ OPTIONS["spectrum.binning"] = {"low": 7,
                                "high": 7}
 
 # NOTE: Fitting.
-OPTIONS["fit.datasets"] = ["flux", "vis", "t3phi"]
+OPTIONS["fit.data"] = ["flux", "vis", "t3phi"]
 OPTIONS["fit.wavelengths"] = None
 OPTIONS["fit.chi2.weight.total_flux"] = 1
 OPTIONS["fit.chi2.weight.corr_flux"] = 1
