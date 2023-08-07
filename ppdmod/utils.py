@@ -96,6 +96,71 @@ def uniform_disk_vis(diameter: u.mas, ucoord: u.m,
         / (np.pi*diameter.to(u.rad).value*rho)
 
 
+def binary(dim: int, pixel_size: u.mas,
+           flux1: u.Jy, flux2: u.Jy,
+           position1: u.mas, position2: u.mas) -> u.Jy:
+    """The image of a binary.
+
+    Parameters
+    ----------
+    dim : float
+        The image's dimension [px].
+    pixel_size : astropy.units.mas
+        The size of a pixel in the image.
+    flux1 : astropy.units.Jy
+        The main component's flux.
+    flux2 : astropy.units.Jy
+        The companion's flux.
+    position1 : astropy.units.m
+        The main component's (x, y)-coordinates.
+    position2 : astropy.units.m
+        The companion's (x, y)-coordinates.
+    wavelength : astropy.units.um
+
+    Returns
+    -------
+    image : astropy.units.Jy
+    """
+    v = np.linspace(-0.5, 0.5, dim, endpoint=False)\
+        * pixel_size.to(u.mas)*dim
+    image = np.zeros((dim, dim))*u.Jy
+    position1 = np.array(list(map(lambda x: np.where(v == x), position1))).flatten().tolist()
+    position2 = np.array(list(map(lambda x: np.where(v == x), position2))).flatten().tolist()
+    image[position1[1]][position1[0]] = flux1
+    image[position2[1]][position2[0]] = flux2
+    return image
+
+
+def binary_vis(flux1: u.Jy, flux2: u.Jy,
+               ucoord: u.m, vcoord: u.m,
+               position1: u.mas, position2: u.mas,
+               wavelength: u.um) -> np.ndarray:
+    """The complex visibility function of a binary star.
+
+    Parameters
+    ----------
+    flux1 : astropy.units.Jy
+        The main component's flux.
+    flux2 : astropy.units.Jy
+        The companion's flux.
+    position1 : astropy.units.m
+        The main component's (x, y)-coordinates.
+    position2 : astropy.units.m
+        The companion's (x, y)-coordinates.
+    wavelength : astropy.units.um
+
+    Returns
+    -------
+    complex_visibility_function : numpy.ndarray
+    """
+    ucoord, vcoord = map(lambda x: x/wavelength.to(u.m), [ucoord, vcoord])
+    xy_and_uv = list(
+        map(lambda x: ucoord*x.to(u.rad)[0]+vcoord*x.to(u.rad)[1],
+            [position1, position2]))
+    return (flux1.value*np.exp(2*np.pi*1j*xy_and_uv[0].value)\
+        + flux2.value*np.exp(2*np.pi*1j*xy_and_uv[1].value))
+
+
 def get_next_power_of_two(number: Union[int, float]) -> int:
     """Returns the next higher power of two for an integer or float input.
 

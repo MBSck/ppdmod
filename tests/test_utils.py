@@ -93,6 +93,32 @@ def test_uniform_disk_vis(wavelength: u.um) -> None:
     assert np.array_equal(np.real(uniform_disk_vis), uniform_disk_vis)
 
 
+def test_binary() -> None:
+    """Tests the calculation of a binary's brightness."""
+    flux1, flux2 = 5*u.Jy, 2*u.Jy
+    position1, position2 = [5, 10]*u.mas, [-10, -10]*u.mas
+    binary = utils.binary(512, 0.1*u.mas,
+                          flux1, flux2,
+                          position1, position2)
+    assert binary[binary != 0].size == 2
+    assert binary.shape == (512, 512)
+    assert binary.unit == u.Jy
+
+
+def test_binary_vis(wavelength: u.um) -> None:
+    """Tests the calculation of the binary's complex
+    visibility function."""
+    ucoord = np.linspace(80, 100, 20)*u.m
+    flux1, flux2 = 5*u.Jy, 2*u.Jy
+    position1, position2 = [5, 10]*u.mas, [-10, -10]*u.mas
+    binary_vis = utils.binary_vis(flux1, flux2,
+                                  ucoord, ucoord*0,
+                                  position1, position2,
+                                  wavelength)
+    assert isinstance(binary_vis, np.ndarray)
+    assert not np.array_equal(np.real(binary_vis), binary_vis)
+
+
 @pytest.mark.parametrize(
     "number, expected", [(22.5, 32), (100, 128),
                          (560, 1024), (100/0.1, 1024),
