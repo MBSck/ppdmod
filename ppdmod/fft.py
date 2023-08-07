@@ -78,7 +78,3 @@ def interpolate_coordinates(fourier_transform: np.ndarray,
     imag = interpn(
         grid, np.imag(fourier_transform), coordinates, **intp_setting)
     return real+1j*imag
-
-
-if __name__ == "__main__":
-    print(get_frequency_axis(512, 0.1*u.mas, 4.5*u.um))

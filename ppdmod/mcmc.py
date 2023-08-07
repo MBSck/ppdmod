@@ -14,6 +14,7 @@ from .options import OPTIONS
 from .utils import execution_time
 
 
+# TODO: Use different chi square for phases?
 def chi_sq(data: u.quantity, error: u.quantity,
            model_data: u.quantity, lnf: float = 0) -> float:
     """the chi square minimisation.
@@ -68,6 +69,8 @@ def lnprob(theta: np.ndarray) -> float:
             if not parameter.min < theta[index] < parameter.max:
                 return -np.inf
 
+    # TODO: Don't hard code the models here, but make it more flexible.
+    # A dict that also has the params for each model.
     star = Star(**OPTIONS["model.constant_params"])
     temp_grad = AsymmetricSDGreyBodyContinuum(
         **OPTIONS["model.constant_params"], **params)
@@ -93,37 +96,41 @@ def lnprob(theta: np.ndarray) -> float:
                     and str(wavelength) in corr_flux:
                 fourier_transform = fourier_transforms[str(wavelength)]
                 centre = fourier_transform.shape[0]//2
-                total_flux_model = fourier_transform[centre, centre]
 
-                interpolated_corr_flux = interpolate_coordinates(
-                    fourier_transform,
-                    fourier_transform.shape[0],
-                    temp_grad.params["pixel_size"](),
-                    OPTIONS["data.readouts"][index].ucoord,
-                    OPTIONS["data.readouts"][index].vcoord,
-                    wavelength)
-                corr_flux_model = np.abs(interpolated_corr_flux)
+                if "flux" in OPTIONS["fit.data"]:
+                    total_flux_model = fourier_transform[centre, centre]
+                    total_chi_sq += chi_sq(total_flux[str(wavelength)],
+                                           total_flux_err[str(wavelength)],
+                                           total_flux_model)\
+                        * OPTIONS["fit.chi2.weight.total_flux"]
 
-                interpolated_cphase = interpolate_coordinates(
-                    fourier_transform,
-                    fourier_transform.shape[0],
-                    temp_grad.params["pixel_size"](),
-                    OPTIONS["data.readouts"][index].u123coord,
-                    OPTIONS["data.readouts"][index].v123coord,
-                    wavelength)
-                cphase_model = np.product(interpolated_cphase, axis=1)
+                if "vis" in OPTIONS["fit.data"]:
+                    interpolated_corr_flux = interpolate_coordinates(
+                        fourier_transform,
+                        fourier_transform.shape[0],
+                        temp_grad.params["pixel_size"](),
+                        OPTIONS["data.readouts"][index].ucoord,
+                        OPTIONS["data.readouts"][index].vcoord,
+                        wavelength)
+                    corr_flux_model = np.abs(interpolated_corr_flux)
+                    total_chi_sq += chi_sq(corr_flux[str(wavelength)],
+                                           corr_flux_err[str(wavelength)],
+                                           corr_flux_model)\
+                        * OPTIONS["fit.chi2.weight.corr_flux"]
 
-                # TODO: Add total flux here.
-                total_chi_sq += chi_sq(total_flux[str(wavelength)],
-                                       total_flux_err[str(wavelength)],
-                                       total_flux_model)\
-                    * OPTIONS["fit.chi2.weight.total_flux"]
-                total_chi_sq += chi_sq(corr_flux[str(wavelength)],
-                                       corr_flux_err[str(wavelength)],
-                                       corr_flux_model)\
-                    * OPTIONS["fit.chi2.weight.corr_flux"]
-                total_chi_sq += chi_sq(cphase, cphase_err, cphase_model)\
-                    * OPTIONS["fit.chi2.weight.cphases"]
+                if "t3phi" in OPTIONS["fit.data"]:
+                    interpolated_cphase = interpolate_coordinates(
+                        fourier_transform,
+                        fourier_transform.shape[0],
+                        temp_grad.params["pixel_size"](),
+                        OPTIONS["data.readouts"][index].u123coord,
+                        OPTIONS["data.readouts"][index].v123coord,
+                        wavelength)
+                    cphase_model = np.product(interpolated_cphase, axis=1)
+                    total_chi_sq += chi_sq(cphase[str(wavelength)],
+                                           cphase_err[str(wavelength)],
+                                           cphase_model)\
+                        * OPTIONS["fit.chi2.weight.cphases"]
             else:
                 continue
     return np.array(total_chi_sq)
@@ -186,21 +193,3 @@ def run_mcmc(nwalkers: int,
                                         lnprob, pool=pool)
         sampler.run_mcmc(initial, nsteps, progress=True)
     return (sampler.flatchain)[np.argmax(sampler.flatlnprobability)]
-
-
-if __name__ == "__main__":
-    # OPTIONS["fourier.binning"] = 1
-    # star = Star(dim=DIM, dist=DISTANCE, eff_temp=EFF_TEMP, lum=LUMINOSITY)
-    # temp_grad = AsymmetricSDGreyBodyContinuum(dim=DIM, dist=DISTANCE, Tin=INNER_TEMP,
-    #                                           pixel_size=PIXEL_SIZE, Teff=EFF_TEMP,
-    #                                           kappa_abs=KAPPA_ABS, lum=LUMINOSITY,
-    #                                           kappa_cont=KAPPA_ABS_CONT,
-    #                                           rin=0.5, rout=100, Mdust=0.11,
-    #                                           q=0.5, p=0.5, a=0.5, cont_weight=0.5,
-    #                                           pa=150, phi=33, elong=0.5)
-    # model = Model([star, temp_grad])
-    # model.plot_model(4096, 0.1, 4.78301581e-06)
-    # plt.show()
-    # run_mcmc(nwalkers=25, nsteps=100, discard=10)
-    initial = initiate_randomly(PARAMS, 25)
-    lnprob(initial[0])

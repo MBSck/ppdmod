@@ -103,11 +103,3 @@ def get_data(*fits_files: Optional[Union[List[Path], Path]]) -> None:
             readout.get_data_for_wavelengths(wavelengths, key="t3phi"))
         OPTIONS["data.closure_phase_error"].append(
             readout.get_data_for_wavelengths(wavelengths, key="t3phi_err"))
-
-
-if __name__ == "__main__":
-    path = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse/")
-    file = "hd_142666_2019-05-14T05_28_03:2019-05-14T06_12_59_AQUARIUS_FINAL_TARGET_INT.fits"
-    readout = ReadoutFits(path / file).read_file()
-    data = readout.get_data_for_wavelengths(readout.wavelength[50:52], "t3phi")
-    breakpoint()
