@@ -43,10 +43,9 @@ class ReadoutFits:
                                 *wavelengths, key: str) -> Dict[str, np.ndarray]:
         """Gets the data for the given wavelengths."""
         indices = get_closest_indices(*wavelengths, array=self.wavelength)
-        keys = [str(wavelength.value) if isinstance(wavelength, u.Quantity)
-                else str(wavelength) for wavelength in set_tuple_from_args(*wavelengths)]
-        data = {keys[count]: getattr(self, key)[:, index].squeeze().T
-                for count, index in enumerate(indices)}
+        wavelengths = set_tuple_from_args(*wavelengths)
+        data = {str(wavelength): getattr(self, key)[:, index].squeeze().T
+                for wavelength, index in zip(wavelengths, indices)}
         return {key: value for key, value in data.items() if value.size != 0}
 
 
@@ -66,7 +65,7 @@ def set_fit_wavelengths(*wavelengths: u.um) -> None:
         wavelengths *= u.m
     OPTIONS["fit.wavelengths"] = wavelengths.to(u.um).flatten()
 
-
+# TODO: Make this work with two entirely different wavelengths!
 def get_data(*fits_files: Optional[Union[List[Path], Path]]) -> None:
     """Sets the data as a global variable from the input files.
 

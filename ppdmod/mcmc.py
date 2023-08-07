@@ -11,7 +11,7 @@ from .fft import interpolate_coordinates
 from .model import Model
 from .parameter import Parameter
 from .options import OPTIONS
-from .utils import execution_time
+# from .utils import execution_time
 
 
 # TODO: Use different chi square for phases?
@@ -36,7 +36,7 @@ def chi_sq(data: u.quantity, error: u.quantity,
         (data-model_data)**2*inv_sigma_squared-np.log(inv_sigma_squared))
 
 
-@execution_time
+# @execution_time
 def lnprob(theta: np.ndarray) -> float:
     """Takes theta vector and the x, y and the yerr of the theta.
     Returns a number corresponding to how good of a fit the model is to your
@@ -81,23 +81,25 @@ def lnprob(theta: np.ndarray) -> float:
         fourier_transform = model.calculate_complex_visibility(wavelength)
         fourier_transforms[str(wavelength)] = fourier_transform
 
-    total_flux, total_flux_err =\
+    total_fluxes, total_fluxes_err =\
         OPTIONS["data.total_flux"], OPTIONS["data.total_flux_error"]
     corr_fluxes, corr_fluxes_err =\
         OPTIONS["data.correlated_flux"], OPTIONS["data.correlated_flux_error"]
     cphases, cphases_err =\
         OPTIONS["data.closure_phase"], OPTIONS["data.closure_phase_error"]
     total_chi_sq = 0
-    for index, (corr_flux, corr_flux_err, cphase, cphase_err)\
+    for index, (total_flux, total_flux_err, corr_flux,
+                corr_flux_err, cphase, cphase_err)\
             in enumerate(
-                zip(corr_fluxes, corr_fluxes_err, cphases, cphases_err)):
+                zip(total_fluxes, total_fluxes_err, corr_fluxes,
+                    corr_fluxes_err, cphases, cphases_err)):
+
         for wavelength in OPTIONS["fit.wavelengths"]:
-            if str(wavelength) in fourier_transforms\
-                    and str(wavelength) in corr_flux:
+            if str(wavelength) in fourier_transforms:
                 fourier_transform = fourier_transforms[str(wavelength)]
-                centre = fourier_transform.shape[0]//2
 
                 if "flux" in OPTIONS["fit.data"]:
+                    centre = fourier_transform.shape[0]//2
                     total_flux_model = fourier_transform[centre, centre]
                     total_chi_sq += chi_sq(total_flux[str(wavelength)],
                                            total_flux_err[str(wavelength)],
@@ -126,11 +128,13 @@ def lnprob(theta: np.ndarray) -> float:
                         OPTIONS["data.readouts"][index].u123coord,
                         OPTIONS["data.readouts"][index].v123coord,
                         wavelength)
-                    cphase_model = np.product(interpolated_cphase, axis=1)
+                    cphase_model = np.angle(
+                        np.product(interpolated_cphase, axis=1), deg=True)
                     total_chi_sq += chi_sq(cphase[str(wavelength)],
                                            cphase_err[str(wavelength)],
                                            cphase_model)\
-                        * OPTIONS["fit.chi2.weight.cphases"]
+                        * OPTIONS["fit.chi2.weight.cphase"]
+                breakpoint()
             else:
                 continue
     return np.array(total_chi_sq)
@@ -156,8 +160,8 @@ def initiate_randomly(free_parameters: Dict[str, Parameter],
 
 
 def run_mcmc(nwalkers: int,
-             nsteps: int,
-             discard: int,
+             nsteps: Optional[int] = 100,
+             discard: Optional[int] = 10,
              save_path: Optional[Path] = None) -> np.array:
     """Runs the emcee Hastings Metropolitan sampler
 
@@ -186,10 +190,10 @@ def run_mcmc(nwalkers: int,
     np.ndarray
     """
     initial = initiate_randomly(OPTIONS["model.params"], nwalkers)
-    with Pool() as pool:
-        print(f"Executing MCMC with {cpu_count()} cores.")
-        print("--------------------------------------------------------------")
-        sampler = emcee.EnsembleSampler(nwalkers, len(OPTIONS["model.params"]),
-                                        lnprob, pool=pool)
-        sampler.run_mcmc(initial, nsteps, progress=True)
+    # with Pool() as pool:
+    print(f"Executing MCMC with {cpu_count()} cores.")
+    print("--------------------------------------------------------------")
+    sampler = emcee.EnsembleSampler(nwalkers, len(OPTIONS["model.params"]),
+                                    lnprob, pool=None)
+    sampler.run_mcmc(initial, nsteps, progress=True)
     return (sampler.flatchain)[np.argmax(sampler.flatlnprobability)]

@@ -104,6 +104,12 @@ def test_get_data(fits_file: Path, wavelength: u.um) -> None:
     cphase, cphase_err =\
         OPTIONS["data.closure_phase"], OPTIONS["data.closure_phase_error"]
 
+    assert isinstance(total_flux, list)
+    assert isinstance(total_flux_err, list)
+    assert isinstance(corr_flux, list)
+    assert isinstance(corr_flux_err, list)
+    assert isinstance(cphase, list)
+    assert isinstance(cphase_err, list)
     assert all(all(flx.shape == () for flx in flux.values())
                for flux in total_flux)
     assert all(all(flxe.shape == () for flxe in flux_err.values())
