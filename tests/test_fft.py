@@ -1,7 +1,9 @@
+from pathlib import Path
 from typing import Tuple, List
 
 import astropy.units as u
 import numpy as np
+import pandas as pd
 import pytest
 
 from ppdmod.fft import compute_2Dfourier_transform, get_frequency_axis,\
@@ -73,29 +75,42 @@ def test_compute2Dfourier_transform(pixel_size: u.mas) -> None:
     assert ft.dtype == np.complex128
 
 
+# TODO: Add binning calculations for resolution.
 # TODO: Test input for both wavelength in meter and um?
 # TODO: Check that the Parameter and such actually gets the right values (even with
 # the new scheme). Also the set data.
 @pytest.mark.parametrize("dim, binning",
-                         [(512, 1), (1024, 2), (2048, 3), (4096, 4)])
+                         [(dim, binning) for binning in [None, 1, 2, 3, 4]
+                          for dim in [128, 256, 512, 1024, 2048, 4096, 8192, 16384]])
 def test_get_frequency_axis(dim: int, binning: int,
                             pixel_size: u.mas, wavelength: u.um) -> None:
     """Tests the frequency axis calculation and transformation."""
-    OPTIONS["fourier.binning"] = None
+    resolution_and_flux_dir = Path("resolution_and_flux")
+    if not resolution_and_flux_dir.exists():
+        resolution_and_flux_dir.mkdir()
+
+    OPTIONS["fourier.binning"] = binning
     frequency_axis = get_frequency_axis(dim, pixel_size, wavelength)
     frequency_spacing = 1/(pixel_size.to(u.rad).value*dim)*wavelength.to(u.m)
+    if binning is not None:
+        frequency_spacing /= 2**binning
     assert frequency_axis.unit == u.m
     assert frequency_axis.shape == (dim, )
     assert np.isclose(np.diff(frequency_axis)[0], frequency_spacing)
     assert -frequency_axis.min() == 0.5*dim*frequency_spacing
 
-    OPTIONS["fourier.binning"] = binning
-    frequency_axis = get_frequency_axis(dim, pixel_size, wavelength)
-    frequency_spacing = 1/(2**binning*pixel_size.to(u.rad).value*dim)*wavelength.to(u.m)
-    assert frequency_axis.unit == u.m
-    assert frequency_axis.shape == (dim, )
-    assert np.isclose(np.diff(frequency_axis)[0], frequency_spacing)
-    assert -frequency_axis.min() == 0.5*dim*frequency_spacing
+    binning_str = 0 if binning is None else binning
+    data = {"Dimension [px]": [dim], "Binning Factor": [binning_str],
+            "Frequency Spacing [m]": np.around(frequency_spacing, 2),
+            "Pre-binning [px]": [dim*2**binning_str]}
+    resolution_file = resolution_and_flux_dir / "frequency_resolution"
+    try:
+        df = pd.read_csv(resolution_file)
+        new_df = pd.DataFrame(data)
+        df = pd.concat([df, new_df])
+    except FileNotFoundError:
+        df = pd.DataFrame(data)
+    df.to_csv(resolution_file, index=False)
 
 
 @pytest.mark.parametrize(
