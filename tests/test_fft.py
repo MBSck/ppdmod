@@ -6,6 +6,7 @@ import pytest
 
 from ppdmod.fft import compute_2Dfourier_transform, get_frequency_axis,\
     interpolate_coordinates
+from ppdmod.options import OPTIONS
 from ppdmod.utils import uniform_disk, uniform_disk_vis,\
     binary, binary_vis
 
@@ -75,11 +76,26 @@ def test_compute2Dfourier_transform(pixel_size: u.mas) -> None:
 # TODO: Test input for both wavelength in meter and um?
 # TODO: Check that the Parameter and such actually gets the right values (even with
 # the new scheme). Also the set data.
-def test_get_frequency_axis(pixel_size: u.mas, wavelength: u.um) -> None:
+@pytest.mark.parametrize("dim, binning",
+                         [(512, 1), (1024, 2), (2048, 3), (4096, 4)])
+def test_get_frequency_axis(dim: int, binning: int,
+                            pixel_size: u.mas, wavelength: u.um) -> None:
     """Tests the frequency axis calculation and transformation."""
-    frequency_axis = get_frequency_axis(512, pixel_size, wavelength)
+    OPTIONS["fourier.binning"] = None
+    frequency_axis = get_frequency_axis(dim, pixel_size, wavelength)
+    frequency_spacing = 1/(pixel_size.to(u.rad).value*dim)*wavelength.to(u.m)
     assert frequency_axis.unit == u.m
-    assert frequency_axis.shape == (512, )
+    assert frequency_axis.shape == (dim, )
+    assert np.isclose(np.diff(frequency_axis)[0], frequency_spacing)
+    assert -frequency_axis.min() == 0.5*dim*frequency_spacing
+
+    OPTIONS["fourier.binning"] = binning
+    frequency_axis = get_frequency_axis(dim, pixel_size, wavelength)
+    frequency_spacing = 1/(2**binning*pixel_size.to(u.rad).value*dim)*wavelength.to(u.m)
+    assert frequency_axis.unit == u.m
+    assert frequency_axis.shape == (dim, )
+    assert np.isclose(np.diff(frequency_axis)[0], frequency_spacing)
+    assert -frequency_axis.min() == 0.5*dim*frequency_spacing
 
 
 @pytest.mark.parametrize(
@@ -93,6 +109,7 @@ def test_cphases_interpolation(diameter: u.mas, dim: float,
                                fluxes: Tuple[u.Jy], positions: Tuple[List[u.mas]]
                                ) -> None:
     """Tests the interpolation of the closure phases."""
+    OPTIONS["fourier.binning"] = None
     flux1, flux2 = fluxes
     position1, position2 = positions
 
@@ -148,6 +165,7 @@ def test_vis_interpolation(diameter: u.mas, dim: float,
     """This tests the interpolation of the Fourier transform,
     but more importantly, implicitly the unit conversion of the
     frequency axis for the visibilitites/correlated fluxes."""
+    OPTIONS["fourier.binning"] = None
     flux1, flux2 = fluxes
     position1, position2 = positions
     ft_ud = compute_2Dfourier_transform(uniform_disk(pixel_size, dim,

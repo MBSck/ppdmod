@@ -42,8 +42,10 @@ def get_frequency_axis(dim: int,
     -------
     frequency_axis : astropy.units.m/astropy.units.rad
     """
-    return np.fft.fftshift(
-        np.fft.fftfreq(dim, pixel_size.to(u.rad).value))*wavelength.to(u.m)
+    pixel_size = pixel_size.to(u.rad).value
+    if OPTIONS["fourier.binning"] is not None:
+        pixel_size *= 2**OPTIONS["fourier.binning"]
+    return np.fft.fftshift(np.fft.fftfreq(dim, pixel_size))*wavelength.to(u.m)
 
 
 # TODO: Look up how to calculate the closure phases from the fourier transform
