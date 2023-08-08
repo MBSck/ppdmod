@@ -14,26 +14,31 @@ from .options import OPTIONS
 # from .utils import execution_time
 
 
-# TODO: Use different chi square for phases?
 def chi_sq(data: u.quantity, error: u.quantity,
-           model_data: u.quantity, lnf: float = 0) -> float:
+           model_data: u.quantity, lnf: Optional[float] = None) -> float:
     """the chi square minimisation.
 
     Parameters
     ----------
     data : numpy.ndarray
+        The real data.
     error : numpy.ndarray
+        The real data's error.
     model_data : numpy.ndarray
+        The model data.
     lnf : float, optional
+        The error correction term for the real data.
 
     Returns
     -------
     chi_sq : float
     """
-    inv_sigma_squared = 1./np.sum(
-        error**2 + model_data**2*np.exp(2*lnf))
-    return -0.5*np.sum(
-        (data-model_data)**2*inv_sigma_squared-np.log(inv_sigma_squared))
+    if lnf is None:
+        inv_sigma_squared = 1./np.sum(error**2)
+    else:
+        inv_sigma_squared = 1./np.sum(
+            error**2 + model_data**2*np.exp(2*lnf))
+    return -0.5*np.sum((data-model_data)**2*inv_sigma_squared)
 
 
 # @execution_time
