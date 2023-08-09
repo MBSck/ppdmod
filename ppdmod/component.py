@@ -32,7 +32,8 @@ class Component:
         self.params["x"] = Parameter(**STANDARD_PARAMETERS["x"])
         self.params["y"] = Parameter(**STANDARD_PARAMETERS["y"])
         self.params["dim"] = Parameter(**STANDARD_PARAMETERS["dim"])
-        self.params["pixel_size"] = Parameter(**STANDARD_PARAMETERS["pixel_size"])
+        self.params["pixel_size"] = Parameter(
+            **STANDARD_PARAMETERS["pixel_size"])
 
         if any(key in kwargs for key in ["elong", "pa"]) or self.elliptic:
             self.params["pa"] = Parameter(**STANDARD_PARAMETERS["pa"])

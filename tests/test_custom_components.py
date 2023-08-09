@@ -2,7 +2,9 @@ from pathlib import Path
 from typing import Dict, Tuple
 
 import astropy.units as u
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import pytest
 
 from ppdmod.component import NumericalComponent
@@ -12,14 +14,30 @@ from ppdmod.custom_components import Star, TemperatureGradient,\
 from ppdmod.parameter import Parameter
 from ppdmod.data import ReadoutFits
 from ppdmod.options import OPTIONS
-from ppdmod.utils import opacity_to_matisse_opacity, linearly_combine_opacities,\
-    calculate_intensity, get_binned_dimension
+from ppdmod.utils import opacity_to_matisse_opacity,\
+    linearly_combine_opacities, calculate_intensity,\
+    get_binned_dimension, make_workbook, get_next_power_of_two
+
+
+RESOLUTION_DIR = Path("binning")
+if not RESOLUTION_DIR.exists():
+    RESOLUTION_DIR.mkdir()
+
+RESOLUTION_FILE = RESOLUTION_DIR / "resolution.xlsx"
+FLUX_SHEET = "Flux"
+
+make_workbook(
+    RESOLUTION_FILE,
+    {
+        FLUX_SHEET: ["FOV [mas]", "Dimension [px]",
+                     "Flux [Jy]", "Pixel Size [mas/px]"]
+    })
 
 
 @pytest.fixture
 def wavelength() -> u.m:
     """A wavelenght grid."""
-    return (8.28835527e-06*u.m).to(u.um)
+    return (13.000458e-6*u.m).to(u.um)
 
 
 @pytest.fixture
@@ -91,8 +109,9 @@ def star_parameters() -> Dict[str, float]:
 @pytest.fixture
 def temp_gradient_parameters() -> Dict[str, float]:
     """The temperature gradient's parameters."""
-    return {"rin": 0.5, "rout": 100, "dust_mass": 0.11, "q": 0.5,
-            "inner_temp": 1500, "pixel_size": 0.1, "p": 0.5}
+    return {"rin": 0.5, "q": 0.5,
+            "inner_temp": 1500, "inner_sigma": 2000,
+            "pixel_size": 0.1, "p": 0.5}
 
 
 @pytest.fixture
@@ -117,6 +136,7 @@ def asym_temp_gradient(star_parameters: Dict[str, float],
     """Initializes an asymmetric temperature gradient component."""
     return AsymmetricSDTemperatureGradient(**star_parameters,
                                            **temp_gradient_parameters)
+
 
 @pytest.fixture
 def asym_grey_body(star_parameters: Dict[str, float],
@@ -155,10 +175,8 @@ def test_star_stellar_radius_angular(star: Star) -> None:
 @pytest.mark.parametrize("wavelength, threshold",
                          [(8*u.um, 0.1), (9*u.um, 0.1),
                           (10*u.um, 0.1), (11*u.um, 0.1)])
-def test_star_image(star: Star,
-                    grid: Tuple[u.mas, u.mas],
-                    wavelength: u.um,
-                    threshold: float) -> None:
+def test_star_image(star: Star, grid: Tuple[u.mas, u.mas],
+                    wavelength: u.um, threshold: float) -> None:
     """Tests the star's image calculation."""
     image = star._image_function(*grid, wavelength)
     assert image.unit == u.Jy
@@ -187,7 +205,7 @@ def test_temperature_gradient_init(temp_gradient: TemperatureGradient) -> None:
     assert "eff_radius" in temp_gradient.params
     assert "q" in temp_gradient.params
     assert "p" in temp_gradient.params
-    assert "dust_mass" in temp_gradient.params
+    assert "inner_sigma" in temp_gradient.params
     assert "kappa_abs" in temp_gradient.params
 
 
@@ -225,10 +243,8 @@ def test_asym_temperature_gradient_azimuthal_modulation(
 
 def test_temperature_gradient_optical_depth(
         temp_gradient: TemperatureGradient,
-        grid: Tuple[u.mas, u.mas],
-        radius: u.mas,
-        wavelength: u.um,
-        opacity: Parameter) -> None:
+        grid: Tuple[u.mas, u.mas], radius: u.mas,
+        wavelength: u.um, opacity: Parameter) -> None:
     """Tests the temperature gradient's optical depth calculation."""
     temp_gradient.params["kappa_abs"] = opacity
     optical_depth = temp_gradient._calculate_optical_depth(
@@ -237,8 +253,7 @@ def test_temperature_gradient_optical_depth(
 
 
 def test_temperature_gradient_temperature_profile(
-        temp_gradient: TemperatureGradient,
-        radius: u.mas) -> None:
+        temp_gradient: TemperatureGradient, radius: u.mas) -> None:
     """Tests the temperature gradient's temperature profile"""
     temp_profile = temp_gradient._calculate_temperature_profile(radius)
     assert temp_profile.unit == u.K
@@ -260,8 +275,7 @@ def test_asym_grey_body_optical_depth(
 
 
 def test_asym_grey_body_temperature_profile(
-        asym_grey_body: AsymmetricSDGreyBody,
-        radius: u.mas) -> None:
+        asym_grey_body: AsymmetricSDGreyBody, radius: u.mas) -> None:
     """Tests the temperature gradient's temperature profile."""
     temp_profile = asym_grey_body._calculate_temperature_profile(radius)
     assert temp_profile.shape == radius.shape
@@ -271,10 +285,8 @@ def test_asym_grey_body_temperature_profile(
 def test_temperature_gradient_image_function(
         temp_gradient: TemperatureGradient,
         grid: Tuple[u.mas, u.mas],
-        wavelength: u.um,
-        opacity: Parameter) -> None:
+        wavelength: u.um, opacity: Parameter) -> None:
     """Tests the temperature gradient's image function."""
-    OPTIONS["fourier.binning"] = None
     temp_gradient.params["kappa_abs"] = opacity
     image = temp_gradient._image_function(*grid, wavelength)
     assert image.shape == grid[0].shape
@@ -282,17 +294,16 @@ def test_temperature_gradient_image_function(
 
     OPTIONS["fourier.binning"] = 1
     image = temp_gradient._image_function(*grid, wavelength)
+    OPTIONS["fourier.binning"] = None
     assert image.shape == tuple(np.array(grid[0].shape)//2)
     assert image.unit == u.Jy
 
 
 def test_numerical_component_calculate_complex_visibility(
         temp_gradient: TemperatureGradient,
-        wavelength: u.um,
-        opacity: Parameter) -> None:
+        wavelength: u.um, opacity: Parameter) -> None:
     """Tests the numerical component's complex visibility
     function calculation."""
-    OPTIONS["fourier.binning"] = None
     temp_gradient.params["kappa_abs"] = opacity
     dim = temp_gradient.params["dim"]()
     complex_visibility = temp_gradient.calculate_complex_visibility(wavelength)
@@ -302,5 +313,45 @@ def test_numerical_component_calculate_complex_visibility(
     OPTIONS["fourier.binning"] = 2
     binned_dim = get_binned_dimension(dim, OPTIONS["fourier.binning"])
     complex_visibility = temp_gradient.calculate_complex_visibility(wavelength)
+    OPTIONS["fourier.binning"] = None
     assert np.all(complex_visibility != 0)
     assert complex_visibility.shape == (binned_dim, binned_dim)
+
+
+@pytest.mark.parametrize(
+    "fov, pixel_size", [(fov, pixel_size)
+                        for pixel_size in range(1, 3)*u.mas/10
+                        for fov in range(20, 320, 20)])
+def test_flux_resolution(
+        temp_gradient: TemperatureGradient,
+        opacity: Parameter,
+        grid: Tuple[u.mas, u.mas],
+        pixel_size: u.mas,
+        fov: int, wavelength: u.um) -> None:
+    """Tests the resolution of the flux for different pixel sizes
+    and field of views."""
+    temp_gradient.params["dim"].value = dim = get_next_power_of_two(
+        fov/pixel_size.value)
+    temp_gradient.optically_thick = True
+    temp_gradient.const_temperature = True
+    image = temp_gradient._image_function(*grid, wavelength)
+    flux = np.nansum(image)
+
+    data = {"FOV [mas]": [fov], "Dimension [px]": [dim],
+            "Flux [Jy]": [np.around(flux, 8).value],
+            "Pixel Size [mas/px]": [pixel_size]}
+    if RESOLUTION_FILE.exists():
+        df = pd.read_excel(RESOLUTION_FILE, sheet_name=FLUX_SHEET)
+        new_df = pd.DataFrame(data)
+        df = pd.concat([df, new_df])
+    else:
+        df = pd.DataFrame(data)
+    with pd.ExcelWriter(RESOLUTION_FILE, engine="openpyxl",
+                        mode="a", if_sheet_exists="replace") as writer:
+        df.to_excel(writer, sheet_name=FLUX_SHEET, index=False)
+
+    plt.imshow(image.value)
+    plt.title("Temperature Gradient")
+    plt.xlabel("dim [px]")
+    plt.savefig(RESOLUTION_DIR / f"temperature_gradient_dim{dim}.pdf",
+                format="pdf")

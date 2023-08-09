@@ -42,6 +42,7 @@ def chi_sq(data: u.quantity, error: u.quantity,
 
 
 # @execution_time
+# TODO: Make this viable for multiple params and components.
 def lnprob(theta: np.ndarray) -> float:
     """Takes theta vector and the x, y and the yerr of the theta.
     Returns a number corresponding to how good of a fit the model is to your

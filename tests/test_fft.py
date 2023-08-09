@@ -24,8 +24,10 @@ WAVELENGTH_SHEET = "Resolution for Wavelengths"
 make_workbook(
     RESOLUTION_FILE,
     {
-        RESOLUTION_SHEET: ["Dimension [px]", "Frequency Spacing [m]", "Binning Factor", "Pre-binning [px]"],
-        WAVELENGTH_SHEET: ["Dimension [px]", "Frequency Spacing [m]", "Wavelength [um]"], 
+        RESOLUTION_SHEET: ["Dimension [px]", "Frequency Spacing [m]",
+                           "Max Frequency [m]", "Binning Factor", "Pre-binning [px]"],
+        WAVELENGTH_SHEET: ["Dimension [px]", "Frequency Spacing [m]",
+                           "Max Frequency [m]", "Wavelength [um]"],
     })
 
 
@@ -104,13 +106,16 @@ def test_get_frequency_axis(dim: int, binning: int,
     frequency_axis = get_frequency_axis(dim, pixel_size, wavelength)
     frequency_spacing = 1/(pixel_size.to(u.rad).value*dim)*wavelength.to(u.m)
     frequency_spacing /= 2**binning
+    max_frequency = 0.5*dim*frequency_spacing
+    OPTIONS["fourier.binning"] = None
     assert frequency_axis.unit == u.m
     assert frequency_axis.shape == (dim, )
     assert np.isclose(np.diff(frequency_axis)[0], frequency_spacing)
-    assert -frequency_axis.min() == 0.5*dim*frequency_spacing
+    assert -frequency_axis.min() == max_frequency
 
     data = {"Dimension [px]": [dim],
             "Frequency Spacing [m]": np.around(frequency_spacing, 2),
+            "Max Frequency [m]": np.around(max_frequency, 2),
             "Binning Factor": [binning], "Pre-binning [px]": [dim*2**binning]}
     if RESOLUTION_FILE.exists():
         df = pd.read_excel(RESOLUTION_FILE, sheet_name=RESOLUTION_SHEET)
@@ -125,20 +130,22 @@ def test_get_frequency_axis(dim: int, binning: int,
 
 @pytest.mark.parametrize(
     "dim, wl",
-    [(dim, wl) for dim in [2**power for power in range(7, 15)]
-     for wl in range(2, 14, 2)*u.um])
-def test_resolution_per_wavelength(dim: int, pixel_size: u.mas, wl: u.um) -> None:
-    """Tests the frequency axis calculation and transformation."""
-    OPTIONS["fourier.binning"] = None
+    [(dim, wl) for wl in range(2, 14, 2)*u.um
+     for dim in [2**power for power in range(7, 15)]])
+def test_resolution_per_wavelength(dim: int,
+                                   pixel_size: u.mas, wl: u.um) -> None:
+    """Tests the frequency resolution per wavelength."""
     frequency_axis = get_frequency_axis(dim, pixel_size, wl)
     frequency_spacing = 1/(pixel_size.to(u.rad).value*dim)*wl.to(u.m)
+    max_frequency = 0.5*dim*frequency_spacing
     assert frequency_axis.unit == u.m
     assert frequency_axis.shape == (dim, )
     assert np.isclose(np.diff(frequency_axis)[0], frequency_spacing)
-    assert -frequency_axis.min() == 0.5*dim*frequency_spacing
+    assert -frequency_axis.min() == max_frequency
 
     data = {"Dimension [px]": [dim],
             "Frequency Spacing [m]": np.around(frequency_spacing, 2),
+            "Max Frequency [m]": np.around(max_frequency, 2),
             "Wavelength [um]": [wl.value]}
     if RESOLUTION_FILE.exists():
         df = pd.read_excel(RESOLUTION_FILE, sheet_name=WAVELENGTH_SHEET)
@@ -162,12 +169,11 @@ def test_cphases_interpolation(diameter: u.mas, dim: float,
                                fluxes: Tuple[u.Jy], positions: Tuple[List[u.mas]]
                                ) -> None:
     """Tests the interpolation of the closure phases."""
-    OPTIONS["fourier.binning"] = None
     flux1, flux2 = fluxes
     position1, position2 = positions
 
     ft_ud = compute_2Dfourier_transform(uniform_disk(pixel_size, dim,
-                                                  diameter=diameter))
+                                                     diameter=diameter))
     interpolated_ud = interpolate_coordinates(
         ft_ud, dim, pixel_size, u123coord, v123coord, wavelength)
     interpolated_ud = np.product(
@@ -218,7 +224,6 @@ def test_vis_interpolation(diameter: u.mas, dim: float,
     """This tests the interpolation of the Fourier transform,
     but more importantly, implicitly the unit conversion of the
     frequency axis for the visibilitites/correlated fluxes."""
-    OPTIONS["fourier.binning"] = None
     flux1, flux2 = fluxes
     position1, position2 = positions
     ft_ud = compute_2Dfourier_transform(uniform_disk(pixel_size, dim,

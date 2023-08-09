@@ -49,6 +49,7 @@ def make_workbook(file: Path, sheets: Dict[str, List[str]]) -> None:
                 worksheet = workbook.create_sheet(title=sheet)
         else:
             worksheet = workbook[sheet]
+        worksheet.delete_rows(1, worksheet.max_row)
         for col_idx, column_name in enumerate(columns, start=1):
             cell = worksheet.cell(row=1, column=col_idx)
             cell.value = column_name
@@ -245,7 +246,6 @@ def rebin_image(image: np.ndarray,
     return image.sum(-1).sum(1)
 
 
-# TODO: Check if this function does what it should -> Compare to oimodeler.
 def pad_image(image: np.ndarray, padding_factor: int) -> np.ndarray:
     """Pads an image with additional zeros to avoid
     artefacts of aperiodicity before a Fourier transform.
