@@ -1,12 +1,13 @@
 import time
 from pathlib import Path
-from typing import Optional, Union, Any, Tuple, List
+from typing import Optional, Union, Any, Dict, Tuple, List
 
 import astropy.units as u
 import numpy as np
 from astropy.convolution import Gaussian1DKernel, Box1DKernel, convolve
 from astropy.modeling import models
 from numpy.polynomial.polynomial import polyval
+from openpyxl import Workbook, load_workbook
 from scipy.interpolate import interp1d
 from scipy.special import j1
 
@@ -21,6 +22,37 @@ def execution_time(func):
         print(f"Execution time: {time.time() - start_time:.6f} seconds")
         return result
     return wrapper
+
+
+def make_workbook(file: Path, sheets: Dict[str, List[str]]) -> None:
+    """Creates an (.xslx)-sheet with subsheets.
+
+    Parameters
+    ----------
+    file : Path
+    sheets : dict of list
+        A dictionary having the sheet name as they key
+        and a list of columns as the value.
+    """
+    file_existed = True
+    if file.exists():
+        workbook = load_workbook(file)
+    else:
+        workbook = Workbook()
+        file_existed = False
+    for index, (sheet, columns) in enumerate(sheets.items()):
+        if sheet not in workbook.sheetnames:
+            if index == 0 and not file_existed:
+                worksheet = workbook.active
+                worksheet.title = sheet
+            else:
+                worksheet = workbook.create_sheet(title=sheet)
+        else:
+            worksheet = workbook[sheet]
+        for col_idx, column_name in enumerate(columns, start=1):
+            cell = worksheet.cell(row=1, column=col_idx)
+            cell.value = column_name
+    workbook.save(file)
 
 
 def set_tuple_from_args(*args) -> Tuple[Any]:

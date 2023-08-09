@@ -5,41 +5,28 @@ import astropy.units as u
 import numpy as np
 import pandas as pd
 import pytest
-from openpyxl import Workbook
 
 from ppdmod.fft import compute_2Dfourier_transform, get_frequency_axis,\
     interpolate_coordinates
 from ppdmod.options import OPTIONS
-from ppdmod.utils import uniform_disk, uniform_disk_vis,\
+from ppdmod.utils import make_workbook, uniform_disk, uniform_disk_vis,\
     binary, binary_vis
 
 
-RESOLUTION_AND_FLUX_DIR = Path("resolution_and_flux")
+RESOLUTION_AND_FLUX_DIR = Path("binning")
 if not RESOLUTION_AND_FLUX_DIR.exists():
     RESOLUTION_AND_FLUX_DIR.mkdir()
 
-RESOLUTION_FILE = RESOLUTION_AND_FLUX_DIR / "frequency_resolution.xlsx"
-RESOLUTION_SHEET = "Different Binnings"
-WAVELENGTH_SHEET = "Resolution for 12 microns"
+RESOLUTION_FILE = RESOLUTION_AND_FLUX_DIR / "resolution.xlsx"
+RESOLUTION_SHEET = "Different Binnings for 12 um"
+WAVELENGTH_SHEET = "Resolution for Wavelengths"
 
-WORKBOOK = Workbook()
-WORKSHEET = WORKBOOK.active
-WORKSHEET.title = RESOLUTION_SHEET
-RESOLUTION_COLUMNS = ["Dimension [px]", "Frequency Spacing [m]", "Wavelength [um]"]
-
-for COL_IDX, COLUMN_NAME in enumerate(RESOLUTION_COLUMNS, start=1):
-    CELL = WORKSHEET.cell(row=1, column=COL_IDX)
-    CELL.value = COLUMN_NAME
-
-WORKSHEET2 = WORKBOOK.create_sheet(title=WAVELENGTH_SHEET)
-WAVELENGTH_COLUMNS = ["Dimension [px]", "Binning Factor",
-                      "Frequency Spacing [m]", "Pre-binning [px]"]
-
-for COL_IDX, COLUMN_NAME in enumerate(WAVELENGTH_COLUMNS, start=1):
-    CELL = WORKSHEET2.cell(row=1, column=COL_IDX)
-    CELL.value = COLUMN_NAME
-
-WORKBOOK.save(RESOLUTION_FILE)
+make_workbook(
+    RESOLUTION_FILE,
+    {
+        RESOLUTION_SHEET: ["Dimension [px]", "Frequency Spacing [m]", "Binning Factor", "Pre-binning [px]"],
+        WAVELENGTH_SHEET: ["Dimension [px]", "Frequency Spacing [m]", "Wavelength [um]"], 
+    })
 
 
 @pytest.fixture
@@ -122,14 +109,14 @@ def test_get_frequency_axis(dim: int, binning: int,
     assert np.isclose(np.diff(frequency_axis)[0], frequency_spacing)
     assert -frequency_axis.min() == 0.5*dim*frequency_spacing
 
-    data = {"Dimension [px]": [dim], "Binning Factor": [binning],
+    data = {"Dimension [px]": [dim],
             "Frequency Spacing [m]": np.around(frequency_spacing, 2),
-            "Pre-binning [px]": [dim*2**binning]}
-    try:
+            "Binning Factor": [binning], "Pre-binning [px]": [dim*2**binning]}
+    if RESOLUTION_FILE.exists():
         df = pd.read_excel(RESOLUTION_FILE, sheet_name=RESOLUTION_SHEET)
         new_df = pd.DataFrame(data)
         df = pd.concat([df, new_df])
-    except FileNotFoundError:
+    else:
         df = pd.DataFrame(data)
     with pd.ExcelWriter(RESOLUTION_FILE, engine="openpyxl",
                         mode="a", if_sheet_exists="replace") as writer:
@@ -152,12 +139,12 @@ def test_resolution_per_wavelength(dim: int, pixel_size: u.mas, wl: u.um) -> Non
 
     data = {"Dimension [px]": [dim],
             "Frequency Spacing [m]": np.around(frequency_spacing, 2),
-            "Wavelength [um]": [wl]}
-    try:
+            "Wavelength [um]": [wl.value]}
+    if RESOLUTION_FILE.exists():
         df = pd.read_excel(RESOLUTION_FILE, sheet_name=WAVELENGTH_SHEET)
         new_df = pd.DataFrame(data)
         df = pd.concat([df, new_df])
-    except FileNotFoundError:
+    else:
         df = pd.DataFrame(data)
     with pd.ExcelWriter(RESOLUTION_FILE, engine="openpyxl",
                         mode="a", if_sheet_exists="replace") as writer:

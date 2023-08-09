@@ -46,6 +46,10 @@ def test_exection_time() -> None:
     ...
 
 
+def test_make_workbook() -> None:
+    ...
+
+
 def test_set_list_from_args(wavelengths: u.um) -> None:
     """Tests the set lists from args function."""
     arguments = [1, 2, 3]
