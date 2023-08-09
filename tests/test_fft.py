@@ -5,6 +5,7 @@ import astropy.units as u
 import numpy as np
 import pandas as pd
 import pytest
+from openpyxl import Workbook
 
 from ppdmod.fft import compute_2Dfourier_transform, get_frequency_axis,\
     interpolate_coordinates
@@ -17,13 +18,28 @@ RESOLUTION_AND_FLUX_DIR = Path("resolution_and_flux")
 if not RESOLUTION_AND_FLUX_DIR.exists():
     RESOLUTION_AND_FLUX_DIR.mkdir()
 
-RESOLUTION_WAVELENGTH_FILE = RESOLUTION_AND_FLUX_DIR / "frequency_resolution_wavelength.csv"
-if RESOLUTION_WAVELENGTH_FILE.exists():
-    RESOLUTION_WAVELENGTH_FILE.unlink()
+RESOLUTION_FILE = RESOLUTION_AND_FLUX_DIR / "frequency_resolution.xlsx"
+RESOLUTION_SHEET = "Different Binnings"
+WAVELENGTH_SHEET = "Resolution for 12 microns"
 
-RESOLUTION_FILE = RESOLUTION_AND_FLUX_DIR / "frequency_resolution.csv"
-if RESOLUTION_FILE.exists():
-    RESOLUTION_FILE.unlink()
+WORKBOOK = Workbook()
+WORKSHEET = WORKBOOK.active
+WORKSHEET.title = RESOLUTION_SHEET
+RESOLUTION_COLUMNS = ["Dimension [px]", "Frequency Spacing [m]", "Wavelength [um]"]
+
+for COL_IDX, COLUMN_NAME in enumerate(RESOLUTION_COLUMNS, start=1):
+    CELL = WORKSHEET.cell(row=1, column=COL_IDX)
+    CELL.value = COLUMN_NAME
+
+WORKSHEET2 = WORKBOOK.create_sheet(title=WAVELENGTH_SHEET)
+WAVELENGTH_COLUMNS = ["Dimension [px]", "Binning Factor",
+                      "Frequency Spacing [m]", "Pre-binning [px]"]
+
+for COL_IDX, COLUMN_NAME in enumerate(WAVELENGTH_COLUMNS, start=1):
+    CELL = WORKSHEET2.cell(row=1, column=COL_IDX)
+    CELL.value = COLUMN_NAME
+
+WORKBOOK.save(RESOLUTION_FILE)
 
 
 @pytest.fixture
@@ -88,7 +104,6 @@ def test_compute2Dfourier_transform(pixel_size: u.mas) -> None:
     assert ft.dtype == np.complex128
 
 
-# TODO: Add calculation also for different wavelengths, different tables or so?
 # TODO: Test input for both wavelength in meter and um?
 # TODO: Check that the Parameter and such actually gets the right values (even with
 # the new scheme). Also the set data.
@@ -107,22 +122,24 @@ def test_get_frequency_axis(dim: int, binning: int,
     assert np.isclose(np.diff(frequency_axis)[0], frequency_spacing)
     assert -frequency_axis.min() == 0.5*dim*frequency_spacing
 
-    binning_str = 0 if binning is None else binning
-    data = {"Dimension [px]": [dim], "Binning Factor": [binning_str],
+    data = {"Dimension [px]": [dim], "Binning Factor": [binning],
             "Frequency Spacing [m]": np.around(frequency_spacing, 2),
-            "Pre-binning [px]": [dim*2**binning_str]}
+            "Pre-binning [px]": [dim*2**binning]}
     try:
-        df = pd.read_csv(RESOLUTION_FILE)
+        df = pd.read_excel(RESOLUTION_FILE, sheet_name=RESOLUTION_SHEET)
         new_df = pd.DataFrame(data)
         df = pd.concat([df, new_df])
     except FileNotFoundError:
         df = pd.DataFrame(data)
-    df.to_csv(RESOLUTION_FILE, index=False)
+    with pd.ExcelWriter(RESOLUTION_FILE, engine="openpyxl",
+                        mode="a", if_sheet_exists="replace") as writer:
+        df.to_excel(writer, sheet_name=RESOLUTION_SHEET, index=False)
 
 
-@pytest.mark.parametrize("dim, wl",
-                         [(dim, wl) for dim in [2** power for power in range(7, 15)]
-                          for wl in range(2, 14, 2)*u.um])
+@pytest.mark.parametrize(
+    "dim, wl",
+    [(dim, wl) for dim in [2**power for power in range(7, 15)]
+     for wl in range(2, 14, 2)*u.um])
 def test_resolution_per_wavelength(dim: int, pixel_size: u.mas, wl: u.um) -> None:
     """Tests the frequency axis calculation and transformation."""
     OPTIONS["fourier.binning"] = None
@@ -137,12 +154,14 @@ def test_resolution_per_wavelength(dim: int, pixel_size: u.mas, wl: u.um) -> Non
             "Frequency Spacing [m]": np.around(frequency_spacing, 2),
             "Wavelength [um]": [wl]}
     try:
-        df = pd.read_csv(RESOLUTION_WAVELENGTH_FILE)
+        df = pd.read_excel(RESOLUTION_FILE, sheet_name=WAVELENGTH_SHEET)
         new_df = pd.DataFrame(data)
         df = pd.concat([df, new_df])
     except FileNotFoundError:
         df = pd.DataFrame(data)
-    df.to_csv(RESOLUTION_WAVELENGTH_FILE, index=False)
+    with pd.ExcelWriter(RESOLUTION_FILE, engine="openpyxl",
+                        mode="a", if_sheet_exists="replace") as writer:
+        df.to_excel(writer, sheet_name=WAVELENGTH_SHEET, index=False)
 
 
 @pytest.mark.parametrize(
