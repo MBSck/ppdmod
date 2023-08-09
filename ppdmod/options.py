@@ -15,6 +15,7 @@ OPTIONS["model.params"] = {}
 OPTIONS["model.constant_params"] = {}
 
 # NOTE: Fourier transform.
+# TODO: Set these values to 0?
 OPTIONS["fourier.padding"] = None
 OPTIONS["fourier.binning"] = None
 OPTIONS["fourier.backend"] = "numpy"

@@ -13,6 +13,19 @@ from ppdmod.utils import uniform_disk, uniform_disk_vis,\
     binary, binary_vis
 
 
+RESOLUTION_AND_FLUX_DIR = Path("resolution_and_flux")
+if not RESOLUTION_AND_FLUX_DIR.exists():
+    RESOLUTION_AND_FLUX_DIR.mkdir()
+
+RESOLUTION_WAVELENGTH_FILE = RESOLUTION_AND_FLUX_DIR / "frequency_resolution_wavelength.csv"
+if RESOLUTION_WAVELENGTH_FILE.exists():
+    RESOLUTION_WAVELENGTH_FILE.unlink()
+
+RESOLUTION_FILE = RESOLUTION_AND_FLUX_DIR / "frequency_resolution.csv"
+if RESOLUTION_FILE.exists():
+    RESOLUTION_FILE.unlink()
+
+
 @pytest.fixture
 def ucoord() -> u.m:
     """Sets the ucoord."""
@@ -64,7 +77,7 @@ def positions() -> Tuple[List[u.mas]]:
 @pytest.fixture
 def wavelength() -> u.um:
     """Sets the wavelength."""
-    return (1.02322101e-05*u.m).to(u.um)
+    return 12*u.um
 
 
 def test_compute2Dfourier_transform(pixel_size: u.mas) -> None:
@@ -75,25 +88,20 @@ def test_compute2Dfourier_transform(pixel_size: u.mas) -> None:
     assert ft.dtype == np.complex128
 
 
-# TODO: Add binning calculations for resolution.
+# TODO: Add calculation also for different wavelengths, different tables or so?
 # TODO: Test input for both wavelength in meter and um?
 # TODO: Check that the Parameter and such actually gets the right values (even with
 # the new scheme). Also the set data.
 @pytest.mark.parametrize("dim, binning",
-                         [(dim, binning) for binning in [None, 1, 2, 3, 4]
-                          for dim in [128, 256, 512, 1024, 2048, 4096, 8192, 16384]])
+                         [(dim, binning) for binning in range(0, 11)
+                          for dim in [2**power for power in range(7, 15)]])
 def test_get_frequency_axis(dim: int, binning: int,
                             pixel_size: u.mas, wavelength: u.um) -> None:
     """Tests the frequency axis calculation and transformation."""
-    resolution_and_flux_dir = Path("resolution_and_flux")
-    if not resolution_and_flux_dir.exists():
-        resolution_and_flux_dir.mkdir()
-
     OPTIONS["fourier.binning"] = binning
     frequency_axis = get_frequency_axis(dim, pixel_size, wavelength)
     frequency_spacing = 1/(pixel_size.to(u.rad).value*dim)*wavelength.to(u.m)
-    if binning is not None:
-        frequency_spacing /= 2**binning
+    frequency_spacing /= 2**binning
     assert frequency_axis.unit == u.m
     assert frequency_axis.shape == (dim, )
     assert np.isclose(np.diff(frequency_axis)[0], frequency_spacing)
@@ -103,14 +111,38 @@ def test_get_frequency_axis(dim: int, binning: int,
     data = {"Dimension [px]": [dim], "Binning Factor": [binning_str],
             "Frequency Spacing [m]": np.around(frequency_spacing, 2),
             "Pre-binning [px]": [dim*2**binning_str]}
-    resolution_file = resolution_and_flux_dir / "frequency_resolution"
     try:
-        df = pd.read_csv(resolution_file)
+        df = pd.read_csv(RESOLUTION_FILE)
         new_df = pd.DataFrame(data)
         df = pd.concat([df, new_df])
     except FileNotFoundError:
         df = pd.DataFrame(data)
-    df.to_csv(resolution_file, index=False)
+    df.to_csv(RESOLUTION_FILE, index=False)
+
+
+@pytest.mark.parametrize("dim, wl",
+                         [(dim, wl) for dim in [2** power for power in range(7, 15)]
+                          for wl in range(2, 14, 2)*u.um])
+def test_resolution_per_wavelength(dim: int, pixel_size: u.mas, wl: u.um) -> None:
+    """Tests the frequency axis calculation and transformation."""
+    OPTIONS["fourier.binning"] = None
+    frequency_axis = get_frequency_axis(dim, pixel_size, wl)
+    frequency_spacing = 1/(pixel_size.to(u.rad).value*dim)*wl.to(u.m)
+    assert frequency_axis.unit == u.m
+    assert frequency_axis.shape == (dim, )
+    assert np.isclose(np.diff(frequency_axis)[0], frequency_spacing)
+    assert -frequency_axis.min() == 0.5*dim*frequency_spacing
+
+    data = {"Dimension [px]": [dim],
+            "Frequency Spacing [m]": np.around(frequency_spacing, 2),
+            "Wavelength [um]": [wl]}
+    try:
+        df = pd.read_csv(RESOLUTION_WAVELENGTH_FILE)
+        new_df = pd.DataFrame(data)
+        df = pd.concat([df, new_df])
+    except FileNotFoundError:
+        df = pd.DataFrame(data)
+    df.to_csv(RESOLUTION_WAVELENGTH_FILE, index=False)
 
 
 @pytest.mark.parametrize(
@@ -170,7 +202,7 @@ def test_cphases_interpolation(diameter: u.mas, dim: float,
 @pytest.mark.parametrize(
     "diameter, dim",
     [tuple([diameter, dim])
-     for dim in [1024, 2048, 4096]
+     for dim in [2**power for power in range(11, 13)]
      for diameter in [4, 10, 20]*u.mas])
 def test_vis_interpolation(diameter: u.mas, dim: float,
                            ucoord: u.m, vcoord: u.m,
