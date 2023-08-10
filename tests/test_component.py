@@ -6,14 +6,13 @@ import numpy as np
 import pytest
 
 from ppdmod.component import Component, AnalyticalComponent, NumericalComponent
-from ppdmod.fft import compute_2Dfourier_transform
 from ppdmod.parameter import STANDARD_PARAMETERS, Parameter
 
 
 @pytest.fixture
 def component() -> Component:
     """Initializes a component."""
-    return Component()
+    return Component(pixel_size=0.1)
 
 
 @pytest.fixture
@@ -53,7 +52,6 @@ def test_component_calculate_grid(component: Component) -> None:
     Also tests if the phase space is correctly calculated by
     making pictures to check it.
     """
-    component.params["pixel_size"].value = 0.1
     grid = component._calculate_internal_grid()
     dims = (component.params["dim"](),
             component.params["dim"]())
@@ -88,6 +86,59 @@ def test_component_calculate_grid(component: Component) -> None:
     cx.set_title("Phase")
     cx.set_xlabel("dim [px]")
     plt.savefig(phase_dir / f"fourier_space", format="pdf")
+
+
+# TODO: Make image of both radius to infinity and rotated with finite radius.
+def test_radius_calculation(component: Component) -> None:
+    """Tests if the radius calculated from the grid works."""
+    component_dir = Path("component")
+    if not component_dir.exists():
+        component_dir.mkdir()
+
+    grid = component._calculate_internal_grid()
+    plt.imshow(np.hypot(*grid).value)
+    plt.title("Image space")
+    plt.xlabel("dim [px]")
+    plt.savefig(component_dir / "grid_automatic.pdf", format="pdf")
+
+    dim, pixel_size = 512, 0.1
+    plt.imshow(np.hypot(*grid).value)
+    plt.title("Image space")
+    plt.xlabel("dim [px]")
+    plt.savefig(component_dir / "grid_manual.pdf", format="pdf")
+
+    grid = component._calculate_internal_grid(dim, pixel_size)
+    radius = np.hypot(*grid).value
+    radial_profile = np.logical_and(radius > 2, radius < 10)
+    plt.imshow(radius*radial_profile)
+    plt.title("Image space")
+    plt.xlabel("dim [px]")
+    plt.savefig(component_dir / "grid_manual_ring.pdf", format="pdf")
+
+    elliptical_component = Component(pa=33, elong=0.6)
+    assert elliptical_component.elliptic
+    assert elliptical_component.params["pa"]() == 33*u.deg
+    assert elliptical_component.params["elong"]() == 0.6*u.one
+
+    grid = elliptical_component._calculate_internal_grid()
+    plt.imshow(np.hypot(*grid).value)
+    plt.title("Image space")
+    plt.xlabel("dim [px]")
+    plt.savefig(component_dir / "elliptic_grid_automatic.pdf", format="pdf")
+
+    grid = elliptical_component._calculate_internal_grid(dim, pixel_size)
+    plt.imshow(np.hypot(*grid).value)
+    plt.title("Image space")
+    plt.xlabel("dim [px]")
+    plt.savefig(component_dir / "elliptic_grid_manual.pdf", format="pdf")
+
+    grid = elliptical_component._calculate_internal_grid(dim, pixel_size)
+    radius = np.hypot(*grid).value
+    radial_profile = np.logical_and(radius > 2, radius < 10)
+    plt.imshow(radius*radial_profile)
+    plt.title("Image space")
+    plt.xlabel("dim [px]")
+    plt.savefig(component_dir / "elliptic_grid_manual_ring.pdf", format="pdf")
 
 
 def test_translate_fourier(component: Component) -> None:

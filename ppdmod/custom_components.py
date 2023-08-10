@@ -364,6 +364,7 @@ class TemperatureGradient(NumericalComponent):
         spectral_density = calculate_intensity(temperature_profile,
                                                wavelength,
                                                self.params["pixel_size"]())
+        # TODO: Test if this is all correct.
         image = radial_profile*spectral_density
         if not self.optically_thick:
             image *= (1-np.exp(self._calculate_optical_depth(radius, xx,
