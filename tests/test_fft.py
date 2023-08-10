@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Tuple, List
 
 import astropy.units as u
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pytest
@@ -85,12 +86,48 @@ def wavelength() -> u.um:
     return 12*u.um
 
 
-def test_compute2Dfourier_transform(pixel_size: u.mas) -> None:
+def test_compute2Dfourier_transform(pixel_size: u.mas,
+                                    fluxes: Tuple[u.Jy],
+                                    positions: Tuple[List[u.mas]]) -> None:
     """Tests the computation of the 2D fourier transform."""
     ud = uniform_disk(pixel_size, 512, diameter=4*u.mas)
-    ft = compute_2Dfourier_transform(ud)
-    assert ft.shape == ud.shape
-    assert ft.dtype == np.complex128
+    ft_ud = compute_2Dfourier_transform(ud.value)
+    assert ft_ud.shape == ud.shape
+    assert ft_ud.dtype == np.complex128
+
+    fft_dir = Path("fft")
+    if not fft_dir.exists():
+        fft_dir.mkdir()
+    _, (ax, bx, cx) = plt.subplots(1, 3)
+    ax.imshow(ud.value)
+    ax.set_title("Image space")
+    ax.set_xlabel("dim [px]")
+    bx.imshow(np.abs(ft_ud))
+    bx.set_title("Magnitude")
+    bx.set_xlabel("dim [px]")
+    cx.imshow(np.angle(ft_ud))
+    cx.set_title("Phase")
+    cx.set_xlabel("dim [px]")
+    plt.savefig(fft_dir / "fourier_space_ud.pdf", format="pdf")
+
+    flux1, flux2 = fluxes
+    position1, position2 = [0.5, 0.5]*u.mas, [-0.5, -0.5]*u.mas
+    bin = binary(512, pixel_size, flux1, flux2, position1, position2)
+    ft_bin = compute_2Dfourier_transform(bin.value)
+    assert ft_bin.shape == bin.shape
+    assert ft_bin.dtype == np.complex128
+
+    _, (ax, bx, cx) = plt.subplots(1, 3)
+    ax.imshow(bin.value)
+    ax.set_title("Image space")
+    ax.set_xlabel("dim [px]")
+    bx.imshow(np.abs(ft_bin))
+    bx.set_title("Magnitude")
+    bx.set_xlabel("dim [px]")
+    cx.imshow(np.angle(ft_bin))
+    cx.set_title("Phase")
+    cx.set_xlabel("dim [px]")
+    plt.savefig(fft_dir / "fourier_space_bin.pdf", format="pdf")
 
 
 # TODO: Test input for both wavelength in meter and um?

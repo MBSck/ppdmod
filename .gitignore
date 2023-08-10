@@ -1,5 +1,7 @@
 __pycache__/
 ppdmod.egg-info/
+fft/
+component/
 binning/
 padding/
 resolution/

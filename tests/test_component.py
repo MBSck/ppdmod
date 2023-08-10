@@ -65,28 +65,6 @@ def test_component_calculate_grid(component: Component) -> None:
     assert all(axe.unit == u.mas for axe in grid)
     assert all(0.*u.mas in axe for axe in grid)
 
-    # NOTE: Checks the phase space.
-    radius = np.hypot(*grid)
-    radius[radius > 4*u.mas] = 0*u.mas
-    radius[radius != 0*u.mas] = 1*u.mas
-    ft = compute_2Dfourier_transform(radius.value)
-
-    phase_dir = Path("phase")
-    if not phase_dir.exists():
-        phase_dir.mkdir()
-    _, (ax, bx, cx) = plt.subplots(1, 3)
-
-    ax.imshow(radius.value)
-    ax.set_title("Magnitude")
-    ax.set_xlabel("dim [px]")
-    bx.imshow(np.abs(ft))
-    bx.set_title("Magnitude")
-    bx.set_xlabel("dim [px]")
-    cx.imshow(np.angle(ft))
-    cx.set_title("Phase")
-    cx.set_xlabel("dim [px]")
-    plt.savefig(phase_dir / f"fourier_space", format="pdf")
-
 
 # TODO: Make image of both radius to infinity and rotated with finite radius.
 def test_radius_calculation(component: Component) -> None:

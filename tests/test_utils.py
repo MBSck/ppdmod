@@ -186,7 +186,7 @@ def test_pad_image(padding_factor: int, expected: int) -> None:
     bx.imshow(padded_image.value)
     bx.set_title("After-padding")
     bx.set_xlabel("dim [px]")
-    plt.savefig(padding_dir / f"Binning_factor_{padding_factor}.pdf",
+    plt.savefig(padding_dir / f"Padding_factor_{padding_factor}.pdf",
                 format="pdf")
 
     assert image.shape == (64, 64)

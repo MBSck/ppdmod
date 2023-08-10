@@ -17,6 +17,8 @@ def compute_2Dfourier_transform(image: np.ndarray) -> np.ndarray:
     --------
     interpolated_fourier_transform : np.ndarray
     """
+    if isinstance(image, u.Quantity):
+        image = image.value
     if OPTIONS["fourier.backend"] == "numpy":
         return np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(image)))
 
