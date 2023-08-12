@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+|    55 STANDARD_PARAMETERS = {
 from typing import Union, Optional, Any
 
 import astropy.units as u
@@ -28,6 +28,42 @@ STANDARD_PARAMETERS = {
     "fov": {"name": "fov", "value": 0,
             "description": "The interferometric field of view",
             "unit": u.mas, "free": False},
+    "rin": {"name": "rin", "value": 0, "unit": u.mas,
+            "description": "Inner radius of the disk", "free": True},
+    "rout": {"name": "rout", "value": np.inf, "unit": u.mas,
+             "description": "Inner radius of the disk", "free": False},
+    "a": {"name": "a", "value": 0, "unit": u.one,
+          "description": "Azimuthal modulation amplitude", "free": True},
+    "phi": {"name": "a", "value": 0, "unit": u.deg,
+            "description": "Azimuthal modulation angle", "free": True},
+    "inner_temp": {"name": "inner_temp", "value": 0,
+                   "unit": u.K, "free": True,
+                   "description": "Inner temperature"},
+    "q": {"name": "q", "value": 0, "unit": u.one, "free": True,
+          "description": "Power-law exponent for the temperature profile"},
+    "p": {"name": "p", "value": 0, "unit": u.one, "free": True,
+          "description": "Power-law exponent for the dust surface density profile"},
+    "inner_sigma": {"name": "inner_sigma", "value": 0,
+                    "unit": u.g/u.cm**2, "free": True,
+                    "description": "Inner surface density"},
+    "kappa_abs": {"name": "kappa_abs", "value": 0,
+                  "unit": u.cm**2/u.g, "free": False,
+                  "description": "Dust mass absorption coefficient"},
+    "kappa_cont": {"name": "kappa_cont", "value": 0,
+                   "unit": u.cm**2/u.g, "free": False,
+                   "description": "Continuum dust mass absorption coefficient"},
+    "cont_weight": {"name": "cont_weight", "value": 0,
+                    "unit": u.one, "free": True,
+                    "description": "Dust mass continuum absorption coefficient's weight"},
+    "dist": {"name": "dist", "value": 0,
+             "unit": u.pc, "free": False,
+             "description": "Distance of the star"},
+    "eff_temp": {"name": "eff_temp", "value": 0,
+                 "unit": u.K, "free": False,
+                 "description": "The star's effective Temperature"},
+    "eff_radius": {"name": "eff_radius", "value": 0,
+                   "unit": u.Rsun, "free": False,
+                   "description": "The stellar radius"},
 }
 
 

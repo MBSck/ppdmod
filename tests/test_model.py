@@ -96,7 +96,7 @@ def test_model_params(star: Star, temp_gradient: TemperatureGradient) -> None:
     star_expected = ["x", "y", "dim", "eff_temp", "eff_radius", "dist"]
     temp_gradient_expected = ["x", "y", "dim", "eff_temp",
                               "eff_radius", "dist", "inner_temp", "pa",
-                              "elong", "p", "q", "dust_mass", "kappa_abs",
+                              "elong", "p", "q", "inner_sigma", "kappa_abs",
                               "rin", "rout"]
     param_star_names = [param.name for param in model_star.params.values()]
     param_temp_gradient_names = [param.name for

@@ -4,7 +4,7 @@ import astropy.units as u
 import numpy as np
 
 from .component import AnalyticalComponent, NumericalComponent
-from .parameter import Parameter
+from .parameter import STANDARD_PARAMETERS, Parameter
 from .options import OPTIONS
 from .utils import angular_to_distance, calculate_intensity,\
     rebin_image
@@ -47,17 +47,9 @@ class Star(AnalyticalComponent):
         self._image, self._visibility = None, None
         self._stellar_angular_radius = None
 
-        self.params["dist"] = Parameter(name="dist",
-                                        value=0,
-                                        unit=u.pc, free=False,
-                                        description="Distance to the star")
-        self.params["eff_temp"] = Parameter(name="eff_temp", value=0,
-                                            unit=u.K, free=False,
-                                            description="The star's temperature")
-        self.params["eff_radius"] = Parameter(name="eff_radius",
-                                              value=0,
-                                              unit=u.Rsun, free=False,
-                                              description="The stellar radius")
+        self.params["dist"] = Parameter(**STANDARD_PARAMETERS["dist"])
+        self.params["eff_temp"] = Parameter(**STANDARD_PARAMETERS["eff_temp"])
+        self.params["eff_radius"] = Parameter(**STANDARD_PARAMETERS["eff_radius"])
         self._eval(**kwargs)
 
     @property
@@ -171,53 +163,30 @@ class TemperatureGradient(NumericalComponent):
     def __init__(self, **kwargs):
         """The class's constructor."""
         super().__init__(**kwargs)
-        self.params["rin"] = Parameter(name="rin", value=0, unit=u.mas,
-                                       description="Inner radius of the disk")
-        self.params["rout"] = Parameter(name="rout", value=np.inf, unit=u.mas,
-                                        description="Outer radius of the disk")
+        self.params["dist"] = Parameter(**STANDARD_PARAMETERS["dist"])
+        self.params["eff_temp"] = Parameter(**STANDARD_PARAMETERS["eff_temp"])
+        self.params["eff_radius"] = Parameter(**STANDARD_PARAMETERS["eff_radius"])
+
+        self.params["rin"] = Parameter(**STANDARD_PARAMETERS["rin"])
+        self.params["rout"] = Parameter(**STANDARD_PARAMETERS["rout"])
 
         if self.asymmetric:
-            self.params["a"] = Parameter(name="a", value=0, unit=u.one,
-                                         description="Azimuthal modulation amplitude")
-            self.params["phi"] = Parameter(name="phi", value=0, unit=u.deg,
-                                           description="Azimuthal modulation angle")
+            self.params["a"] = Parameter(**STANDARD_PARAMETERS["a"])
+            self.params["phi"] = Parameter(**STANDARD_PARAMETERS["phi"])
 
-        self.params["q"] = Parameter(name="q", value=0, unit=u.one,
-                                     description="Power-law exponent for the temperature profile")
-        self.params["p"] = Parameter(name="p", value=0, unit=u.one,
-                                     description="Power-law exponent for the surface density profile")
+        self.params["q"] = Parameter(**STANDARD_PARAMETERS["q"])
+        self.params["p"] = Parameter(**STANDARD_PARAMETERS["p"])
+        self.params["inner_temp"] = Parameter(**STANDARD_PARAMETERS["inner_temp"])
 
         if self.const_temperature:
             self.params["q"].free = False
+            self.params["inner_temp"].free = False
 
-        self.params["p"].description = "Power-law exponent for the dust surface density profile"
-        self.params["kappa_abs"] = Parameter(name="kappa_abs", value=0,
-                                             unit=u.cm**2/u.g, free=False,
-                                             description="Dust mass absorption coefficient")
-        self.params["inner_temp"] = Parameter(name="inner_temp", value=0,
-                                              unit=u.K, free=False,
-                                              description="Inner radius temperature")
-        self.params["inner_sigma"] = Parameter(name="inner surface density", value=0,
-                                               unit=u.g/u.cm**2, free=True,
-                                               description="Inner radius temperature")
-        self.params["dist"] = Parameter(name="dist", value=0,
-                                        unit=u.pc, free=False,
-                                        description="Distance of the star")
-        self.params["eff_temp"] = Parameter(name="eff_temp", value=0,
-                                            unit=u.K, free=False,
-                                            description="The star's effective Temperature")
-        self.params["eff_radius"] = Parameter(name="eff_radius",
-                                              value=0,
-                                              unit=u.Rsun, free=False,
-                                              description="The stellar radius")
-
+        self.params["inner_sigma"] = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
+        self.params["kappa_abs"] = Parameter(**STANDARD_PARAMETERS["kappa_abs"])
         if self.continuum_contribution:
-            self.params["cont_weight"] = Parameter(name="cont_weight", value=0,
-                                                   unit=u.one, free=True,
-                                                   description="Dust mass continuum absorption coefficient's weight")
-            self.params["kappa_cont"] = Parameter(name="kappa_cont", value=0,
-                                                  unit=u.cm**2/u.g, free=False,
-                                                  description="Continuum dust mass absorption coefficient")
+            self.params["cont_weight"] = Parameter(**STANDARD_PARAMETERS["cont_weight"])
+            self.params["kappa_cont"] = Parameter(**STANDARD_PARAMETERS["kappa_cont"])
         self._eval(**kwargs)
 
     def _calculate_azimuthal_modulation(self, xx: u.mas, yy: u.mas) -> np.ndarray:
