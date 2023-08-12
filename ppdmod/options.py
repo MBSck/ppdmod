@@ -11,8 +11,9 @@ OPTIONS["data.closure_phase_error"] = []
 
 # NOTE: Model. The output can either be 'surface_brightness' or ' jansky_px'
 OPTIONS["model.output"] = "jansky_px"
-OPTIONS["model.params"] = {}
+OPTIONS["model.components_and_params"] = {}
 OPTIONS["model.constant_params"] = {}
+OPTIONS["model.shared_params"] = {}
 
 # NOTE: Fourier transform.
 # TODO: Set these values to 0?

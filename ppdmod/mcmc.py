@@ -14,6 +14,58 @@ from .options import OPTIONS
 # from .utils import execution_time
 
 
+def set_theta_from_params(
+        component_and_params: Dict[str, Dict],
+        shared_params: Optional[Dict[str, Parameter]] = None) -> np.ndarray:
+    """Sets the theta vector from the parameters."""
+    theta = []
+    for component in component_and_params.values():
+        theta.extend([parameter.value for parameter in component.values()])
+    theta.extend([parameter.value for parameter in shared_params.values()])
+    return np.array(theta)
+
+
+def set_params_from_theta(
+        theta: np.ndarray,
+        components_and_params: Dict[str, Dict],
+        shared_params: Optional[Dict[str, Parameter]] = None) -> float:
+    """Sets the parameters from the theta vector."""
+    new_shared_params = {}
+    if shared_params is not None:
+        for key, value in zip(shared_params.keys(),
+                              theta[-len(shared_params):]):
+            new_shared_params[key] = value
+
+    lower, upper = None, None
+    new_components_and_params, lower = {}, None
+    for component, value in components_and_params.items():
+        if component == list(components_and_params.keys())[-1]:
+            upper = -len(shared_params) if shared_params is not None else None
+        new_components_and_params[component] =\
+            dict(zip(value.keys(), theta[lower:upper]))
+        lower = lower + len(value) if lower is not None else len(value)
+    return new_components_and_params, new_shared_params
+
+
+def init_randomly(free_parameters: Dict[str, Parameter],
+                  nwalkers: float) -> np.ndarray:
+    """initialises a random numpy.ndarray from the parameter's limits.
+
+    parameters
+    -----------
+    free_parameters : dict of Parameter
+
+    Returns
+    -------
+    numpy.ndarray
+    """
+    initial = np.ndarray([nwalkers, len(free_parameters)])
+    for index, parameter in enumerate(free_parameters.values()):
+        initial[:, index] = np.random.random(nwalkers)\
+            * np.ptp([parameter.min, parameter.max])+parameter.min
+    return initial
+
+
 def chi_sq(data: u.quantity, error: u.quantity,
            model_data: u.quantity, lnf: Optional[float] = None) -> float:
     """the chi square minimisation.
@@ -70,17 +122,17 @@ def lnprob(theta: np.ndarray) -> float:
 
     # TODO: If more than one model component make all params variable.
     # Do this via an option that takes both the models and the params.
-    for index, parameter in enumerate(OPTIONS["model.params"].values()):
+    for index, parameter in enumerate(params.values()):
         if parameter.free:
             if not parameter.min < theta[index] < parameter.max:
                 return -np.inf
 
-    # TODO: Don't hard code the models here, but make it more flexible.
-    # A dict that also has the params for each model.
-    star = Star(**OPTIONS["model.constant_params"])
-    temp_grad = AsymmetricSDGreyBodyContinuum(
-        **OPTIONS["model.constant_params"], **params)
-    model = Model([star, temp_grad])
+    # Make this possible for theta generated params.
+    components = []
+    for component, parameters in OPTIONS["model.params"].items():
+        components.append(component(**OPTIONS["model.constant_params"],
+                                    **parameters))
+    model = Model(components)
 
     fourier_transforms = {}
     for wavelength in OPTIONS["fit.wavelengths"]:
@@ -140,29 +192,9 @@ def lnprob(theta: np.ndarray) -> float:
                                            cphase_err[str(wavelength)],
                                            cphase_model)\
                         * OPTIONS["fit.chi2.weight.cphase"]
-                breakpoint()
             else:
                 continue
     return np.array(total_chi_sq)
-
-
-def initiate_randomly(free_parameters: Dict[str, Parameter],
-                      nwalkers: float) -> np.ndarray:
-    """initialises a random numpy.ndarray from the parameter's limits.
-
-    parameters
-    -----------
-    free_parameters : dict of Parameter
-
-    Returns
-    -------
-    numpy.ndarray
-    """
-    initial = np.ndarray([nwalkers, len(free_parameters)])
-    for index, parameter in enumerate(free_parameters.values()):
-        initial[:, index] = np.random.random(nwalkers)\
-            * np.ptp([parameter.min, parameter.max])+parameter.min
-    return initial
 
 
 def run_mcmc(nwalkers: int,
@@ -195,7 +227,7 @@ def run_mcmc(nwalkers: int,
     -------
     np.ndarray
     """
-    initial = initiate_randomly(OPTIONS["model.params"], nwalkers)
+    initial = init_randomly(OPTIONS["model.params"], nwalkers)
     # with Pool() as pool:
     print(f"Executing MCMC with {cpu_count()} cores.")
     print("--------------------------------------------------------------")

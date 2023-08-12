@@ -1,4 +1,4 @@
-|    55 STANDARD_PARAMETERS = {
+from dataclasses import dataclass
 from typing import Union, Optional, Any
 
 import astropy.units as u
