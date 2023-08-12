@@ -6,7 +6,8 @@ import astropy.units as u
 import emcee
 import numpy as np
 
-from .custom_components import Star, AsymmetricSDGreyBodyContinuum
+from .custom_components import Star, AsymmetricSDGreyBodyContinuum,\
+    assemble_components
 from .fft import interpolate_coordinates
 from .model import Model
 from .parameter import Parameter
@@ -93,8 +94,24 @@ def chi_sq(data: u.quantity, error: u.quantity,
     return -0.5*np.sum((data-model_data)**2*inv_sigma_squared)
 
 
+def lnprior(param_values: Dict[str, float],
+            shared_param_values: Optional[Dict[str, float]] = None) -> float:
+    """Checks if the priors are in bounds."""
+    if shared_param_values is not None:
+        for value, param in zip(shared_param_values.values(),
+                                OPTIONS["model.shared_params"].values()):
+            if not param.min < value < param.max:
+                return -np.inf
+    for values, params in zip(param_values.values(),
+                              OPTIONS["model.components_and_params"].values()):
+        for value, param in zip(values.values(), params.values()):
+            if param.free:
+                if not param.min < value < param.max:
+                    return -np.inf
+    return 0
+
+
 # @execution_time
-# TODO: Make this viable for multiple params and components.
 def lnprob(theta: np.ndarray) -> float:
     """Takes theta vector and the x, y and the yerr of the theta.
     Returns a number corresponding to how good of a fit the model is to your
@@ -118,21 +135,15 @@ def lnprob(theta: np.ndarray) -> float:
     and then assign them with a dict, to then get them from the dict for the second
     component as well.
     """
-    params = dict(zip(OPTIONS["model.params"].keys(), theta))
+    parameters, shared_params = set_params_from_theta(
+        theta,
+        OPTIONS["model.components_and_params"],
+        OPTIONS["model.shared_params"])
 
-    # TODO: If more than one model component make all params variable.
-    # Do this via an option that takes both the models and the params.
-    for index, parameter in enumerate(params.values()):
-        if parameter.free:
-            if not parameter.min < theta[index] < parameter.max:
-                return -np.inf
+    if np.isinf(lnprior(parameters, shared_params)):
+        return -np.inf
 
-    # Make this possible for theta generated params.
-    components = []
-    for component, parameters in OPTIONS["model.params"].items():
-        components.append(component(**OPTIONS["model.constant_params"],
-                                    **parameters))
-    model = Model(components)
+    model = Model(assemble_components(parameters, shared_params))
 
     fourier_transforms = {}
     for wavelength in OPTIONS["fit.wavelengths"]:
@@ -145,6 +156,7 @@ def lnprob(theta: np.ndarray) -> float:
         OPTIONS["data.correlated_flux"], OPTIONS["data.correlated_flux_error"]
     cphases, cphases_err =\
         OPTIONS["data.closure_phase"], OPTIONS["data.closure_phase_error"]
+
     total_chi_sq = 0
     for index, (total_flux, total_flux_err, corr_flux,
                 corr_flux_err, cphase, cphase_err)\

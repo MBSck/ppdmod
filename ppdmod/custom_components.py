@@ -1,9 +1,10 @@
-from typing import Optional
+import sys
+from typing import Optional, Dict, List
 
 import astropy.units as u
 import numpy as np
 
-from .component import AnalyticalComponent, NumericalComponent
+from .component import Component, AnalyticalComponent, NumericalComponent
 from .parameter import STANDARD_PARAMETERS, Parameter
 from .options import OPTIONS
 from .utils import angular_to_distance, calculate_intensity,\
@@ -333,6 +334,7 @@ class TemperatureGradient(NumericalComponent):
         spectral_density = calculate_intensity(temperature_profile,
                                                wavelength,
                                                self.params["pixel_size"]())
+
         # TODO: Test if this is all correct.
         image = radial_profile*spectral_density
         if not self.optically_thick:
@@ -340,7 +342,7 @@ class TemperatureGradient(NumericalComponent):
                                                              yy, wavelength)))
         image = np.nan_to_num(image, nan=0)
         if self.asymmetric_image:
-            image = self._calculate_azimuthal_modulation(xx, yy, wavelength)\
+            image = self._calculate_azimuthal_modulation(xx, yy)\
                 * (1+image)
 
         if OPTIONS["fourier.binning"] is not None:
@@ -484,3 +486,16 @@ class AsymmetricSDGreyBodyContinuum(AsymmetricSDTemperatureGradient):
     asymmetric_surface_density = True
     const_temperature = True
     continuum_contribution = True
+
+
+def assemble_components(
+        parameters: Dict[str, Dict],
+        shared_params: Optional[Dict[str, Parameter]] = None
+        ) -> List[Component]:
+    """Assembles a model from a dictionary of parameters."""
+    components = []
+    for component, params in parameters.items():
+        comp = getattr(sys.modules[__name__], component)
+        components.append(comp(**params, **shared_params,
+                               **OPTIONS["model.constant_params"]))
+    return components

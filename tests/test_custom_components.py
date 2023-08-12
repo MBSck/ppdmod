@@ -7,11 +7,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ppdmod.component import NumericalComponent
+from ppdmod.component import Component, NumericalComponent
 from ppdmod.custom_components import Star, TemperatureGradient,\
     AsymmetricSDTemperatureGradient, AsymmetricSDGreyBody,\
-    AsymmetricSDGreyBodyContinuum
-from ppdmod.parameter import Parameter
+    AsymmetricSDGreyBodyContinuum, assemble_components
+from ppdmod.parameter import STANDARD_PARAMETERS, Parameter
 from ppdmod.data import ReadoutFits
 from ppdmod.options import OPTIONS
 from ppdmod.utils import opacity_to_matisse_opacity,\
@@ -158,6 +158,10 @@ def asym_continuum_grey_body(star_parameters: Dict[str, float],
                                                    **temp_gradient_parameters)
     asym_grey_body.params["q"] = 0
     return asym_grey_body
+
+
+def test_get_component() -> Component:
+    ...
 
 
 def test_star_init(star: Star) -> None:
@@ -318,23 +322,26 @@ def test_numerical_component_calculate_complex_visibility(
     assert complex_visibility.shape == (binned_dim, binned_dim)
 
 
+# TODO: Maybe set all the different parameters and initialize the model
+# for a constant opacity.
 @pytest.mark.parametrize(
     "fov, pixel_size", [(fov, pixel_size)
                         for pixel_size in range(1, 3)*u.mas/10
                         for fov in range(20, 320, 20)])
 def test_flux_resolution(
-        temp_gradient: TemperatureGradient,
-        opacity: Parameter,
-        grid: Tuple[u.mas, u.mas],
         pixel_size: u.mas,
+        star_parameters: Dict[str, Parameter],
         fov: int, wavelength: u.um) -> None:
     """Tests the resolution of the flux for different pixel sizes
     and field of views."""
-    temp_gradient.params["dim"].value = dim = get_next_power_of_two(
-        fov/pixel_size.value)
-    temp_gradient.optically_thick = True
-    temp_gradient.const_temperature = True
-    image = temp_gradient._image_function(*grid, wavelength)
+    dim = get_next_power_of_two(fov/pixel_size.value)
+    asym_grey_body = AsymmetricSDGreyBodyContinuum(
+        dist=145, eff_temp=7800, eff_radius=1.8,
+        dim=dim, rin=4, a=0.3, phi=33,
+        pixel_size=pixel_size.value, pa=45,
+        elong=1.6, inner_sigma=2000, kappa_abs=1000,
+        kappa_cont=3000, cont_weight=0.5, p=0.5)
+    image = asym_grey_body.calculate_image(wavelength=wavelength)
     flux = np.nansum(image)
 
     data = {"FOV [mas]": [fov], "Dimension [px]": [dim],
@@ -355,3 +362,38 @@ def test_flux_resolution(
     plt.xlabel("dim [px]")
     plt.savefig(RESOLUTION_DIR / f"temperature_gradient_dim{dim}.pdf",
                 format="pdf")
+
+
+def test_assemble_components() -> None:
+    """Tests the model's assemble_model method."""
+    param_names = ["rin", "p", "a", "phi",
+                   "cont_weight", "pa", "elong"]
+    values = [1.5, 0.5, 0.3, 33, 0.2, 45, 1.6]
+    limits = [[0, 20], [0, 1], [0, 1],
+              [0, 360], [0, 1], [0, 360], [1, 50]]
+    params = {name: Parameter(**STANDARD_PARAMETERS[name])
+              for name in param_names}
+    for value, limit, param in zip(values, limits, params.values()):
+        param.set(*limit)
+        param.value = value
+    shared_params = {"p": params["p"]}
+    del params["p"]
+
+    components_and_params = {"Star": params,
+                             "AsymmetricSDGreyBodyContinuum": params}
+    components = assemble_components(components_and_params, shared_params)
+    assert isinstance(components[0], Star)
+    assert isinstance(components[1], AsymmetricSDGreyBodyContinuum)
+    assert all(param not in components[0].params
+               for param in param_names if param not in ["pa", "elong"])
+    assert all(param in components[1].params for param in param_names)
+    assert all(components[1].params[name].value == value
+               for name, value in zip(["pa", "elong"], values[-2:]))
+    assert all(components[1].params[name].value == value
+               for name, value in zip(param_names, values))
+    assert all([components[0].params[name].min,
+                components[0].params[name].max] == limit
+               for name, limit in zip(["pa", "elong"], limits[-2:]))
+    assert all([components[1].params[name].min,
+                components[1].params[name].max] == limit
+               for name, limit in zip(param_names, limits))
