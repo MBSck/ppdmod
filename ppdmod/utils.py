@@ -458,3 +458,39 @@ def calculate_intensity(temp_profile: u.K,
     spectral_radiance = plancks_law(wavelength.to(u.m)).to(
         u.erg/(u.cm**2*u.Hz*u.s*u.rad**2))
     return (spectral_radiance*(pixel_size.to(u.rad))**2).to(u.Jy)
+
+
+def calculate_effective_baselines(uv_coords: u.m,
+                                  axis_ratio: u.dimensionless_unscaled,
+                                  pos_angle: u.rad,
+                                  wavelength: u.um) -> u.dimensionless_unscaled:
+    """Calculates the effective baselines from the projected baselines
+    in mega lambda.
+
+    Parameters
+    ----------
+    uv_coords: u.m
+        The (u, v)-coordinates
+    axis_ratio: u.dimensionless_unscaled
+        The axis ratio of the ellipse
+    pos_angle: u.rad
+        The positional angle of the object
+    wavelength: u.um
+        The wavelength to calulate the MegaLambda
+    """
+    if uv_coords.shape[0] == 3:
+        u_coords, v_coords = map(lambda x: x.squeeze(),
+                                 np.split(uv_coords, 2, axis=2))
+    else:
+        u_coords, v_coords = map(lambda x: x.squeeze(),
+                                 np.split(uv_coords, 2, axis=1))
+
+    projected_baselines = np.hypot(u_coords, v_coords)
+    projected_baselines_angle = np.arctan2(u_coords, v_coords).value
+    atd = np.arctan2(np.sin(projected_baselines_angle-pos_angle),
+                     (np.cos(projected_baselines_angle-pos_angle)))
+    u_coords_eff = projected_baselines*(np.cos(atd)*np.cos(pos_angle)
+                                        - axis_ratio*np.sin(atd)*np.sin(pos_angle))
+    v_coords_eff = projected_baselines*(np.cos(atd)*np.sin(pos_angle)
+                                        + axis_ratio*np.sin(atd)*np.cos(pos_angle))
+    return np.hypot(u_coords_eff, v_coords_eff)/wavelength.value
