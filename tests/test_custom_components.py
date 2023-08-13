@@ -30,7 +30,9 @@ make_workbook(
     RESOLUTION_FILE,
     {
         FLUX_SHEET: ["FOV [mas]", "Dimension [px]",
-                     "Flux [Jy]", "Pixel Size [mas/px]"]
+                     "Dimension**2 [px]",
+                     "Flux [Jy]", "Pixel Size [mas/px]",
+                     "Inner Radius [mas]"]
     })
 
 
@@ -322,31 +324,35 @@ def test_numerical_component_calculate_complex_visibility(
     assert complex_visibility.shape == (binned_dim, binned_dim)
 
 
-# TODO: Maybe set all the different parameters and initialize the model
-# for a constant opacity.
+# NOTE: Fov 420 is 8192 and 820 is 16xxx
+# (not much change for the lower resolutions).
 @pytest.mark.parametrize(
-    "fov, pixel_size", [(fov, pixel_size)
-                        for pixel_size in range(1, 3)*u.mas/10
-                        for fov in range(20, 320, 20)])
+    "rin, fov, pixel_size", [(rin, fov, pixel_size)
+                             for rin in [1, 2, 6, 10]*u.mas
+                             for pixel_size in range(1, 3)*u.mas/10
+                             for fov in [20, 40, 60, 120, 220]])
 def test_flux_resolution(
-        pixel_size: u.mas,
         star_parameters: Dict[str, Parameter],
+        rin: u.mas, pixel_size: u.mas,
         fov: int, wavelength: u.um) -> None:
     """Tests the resolution of the flux for different pixel sizes
     and field of views."""
     dim = get_next_power_of_two(fov/pixel_size.value)
     asym_grey_body = AsymmetricSDGreyBodyContinuum(
         dist=145, eff_temp=7800, eff_radius=1.8,
-        dim=dim, rin=4, a=0.3, phi=33,
+        dim=dim, rin=rin, a=0.3, phi=33,
         pixel_size=pixel_size.value, pa=45,
         elong=1.6, inner_sigma=2000, kappa_abs=1000,
         kappa_cont=3000, cont_weight=0.5, p=0.5)
     image = asym_grey_body.calculate_image(wavelength=wavelength)
     flux = np.nansum(image)
 
-    data = {"FOV [mas]": [fov], "Dimension [px]": [dim],
+    data = {"FOV [mas]": [fov],
+            "Dimension [px]": [fov/pixel_size.value],
+            "Dimension**2 [px]": [dim],
             "Flux [Jy]": [np.around(flux, 8).value],
-            "Pixel Size [mas/px]": [pixel_size]}
+            "Pixel Size [mas/px]": [pixel_size],
+            "Inner Radius [mas]": [rin.value]}
     if RESOLUTION_FILE.exists():
         df = pd.read_excel(RESOLUTION_FILE, sheet_name=FLUX_SHEET)
         new_df = pd.DataFrame(data)
@@ -357,10 +363,15 @@ def test_flux_resolution(
                         mode="a", if_sheet_exists="replace") as writer:
         df.to_excel(writer, sheet_name=FLUX_SHEET, index=False)
 
+    plot_path = RESOLUTION_DIR / "fluxes"
+    if not plot_path.exists():
+        plot_path.mkdir()
+
     plt.imshow(image.value)
     plt.title("Temperature Gradient")
     plt.xlabel("dim [px]")
-    plt.savefig(RESOLUTION_DIR / f"temperature_gradient_dim{dim}.pdf",
+    plt.savefig(plot_path /
+                f"temperature_gradient_dim{dim}_rin{rin.value}_px{pixel_size.value}.pdf",
                 format="pdf")
 
 
