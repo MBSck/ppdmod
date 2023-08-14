@@ -190,8 +190,8 @@ def binary_vis(flux1: u.Jy, flux2: u.Jy,
     xy_and_uv = list(
         map(lambda x: ucoord*x.to(u.rad)[0]+vcoord*x.to(u.rad)[1],
             [position1, position2]))
-    return (flux1.value*np.exp(2*np.pi*1j*xy_and_uv[0].value)\
-        + flux2.value*np.exp(2*np.pi*1j*xy_and_uv[1].value))
+    return (flux1.value*np.exp(2*np.pi*1j*xy_and_uv[0].value)
+            + flux2.value*np.exp(2*np.pi*1j*xy_and_uv[1].value))
 
 
 def get_next_power_of_two(number: Union[int, float]) -> int:
@@ -288,8 +288,8 @@ def qval_to_opacity(qval_file: Path) -> u.cm**2/u.g:
 def transform_opacity(
         wavelength_grid: u.um, opacity: u.cm**2/u.g, wavelength_solution: u.um,
         dl_coeffs: Optional[u.one] = OPTIONS["spectrum.coefficients"]["low"],
-        kernel_width: Optional[float] = 10,
-        spectral_binning: Optional[float] = 7
+        spectral_binning: Optional[float] = 7,
+        kernel_width: Optional[float] = 10
         ) -> u.cm**2/u.g:
     """Transform a spectrum to the real wavlength grid of MATISSE.
 
@@ -315,7 +315,7 @@ def transform_opacity(
         wl_new.append(wavelength)
     wl_new = u.Quantity(wl_new, unit=u.um)
     f_spec_new = interp1d(wavelength_grid, opacity,
-                          kind='cubic', fill_value='extrapolate')
+                          kind="cubic", fill_value="extrapolate")
     spec_new = f_spec_new(wl_new)
 
     # NOTE: Convolve with Gaussian kernel
@@ -323,24 +323,23 @@ def transform_opacity(
                               (2.0*np.sqrt(2.0*np.log(2.0))))
     spec_new[0] = np.nanmedian(spec_new[0:int(kernel.dimension/2.0)])
     spec_new[-1] = np.nanmedian(spec_new[-1:-int(kernel.dimension/2.0)])
-    spec_convolved = convolve(spec_new, kernel, boundary='extend')
+    spec_convolved = convolve(spec_new, kernel, boundary="extend")
 
     # NOTE: Interpolate the convolved spectrum to the input wavelength grid
     f_spec_new = interp1d(wl_new, spec_convolved,
-                          kind='cubic', fill_value='extrapolate')
+                          kind="cubic", fill_value="extrapolate")
     spec_interp = f_spec_new(wavelength_solution)
 
     # NOTE: Apply spectral binning: Convolve with a top-hat kernel of size
     # spectral_binning
     if spectral_binning > 1:
         kernel = Box1DKernel(spectral_binning)
-        spec_final = convolve(spec_interp, kernel, boundary='extend')
+        spec_final = convolve(spec_interp, kernel, boundary="extend")
     else:
         spec_final = spec_interp
     return spec_final*u.cm**2/u.g
 
 
-# TODO: Check the indices here.
 def opacity_to_matisse_opacity(wavelength_solution: u.um,
                                opacity: Optional[u.cm**2/u.g] = None,
                                opacity_file: Optional[Path] = None,
@@ -371,21 +370,23 @@ def opacity_to_matisse_opacity(wavelength_solution: u.um,
         wavelength_grid, opacity = np.loadtxt(
             opacity_file, skiprows=1, unpack=True)
 
-    ind = np.where(np.logical_and(wavelength_solution.min() < wavelength_grid,
-                                  wavelength_grid < wavelength_solution.max()))
+    ind = np.where(np.logical_and(
+        (wavelength_solution.min()-1*u.um) < wavelength_grid,
+        wavelength_grid < (wavelength_solution.max()+1*u.um)))
     wavelength_grid, opacity = wavelength_grid[ind], opacity[ind]
     matisse_opacity = transform_opacity(
         wavelength_grid, opacity, wavelength_solution,
         OPTIONS["spectrum.coefficients"][resolution],
-        OPTIONS["spectrum.kernel_width"],
-        OPTIONS["spectrum.binning"][resolution])
+        OPTIONS["spectrum.binning"],
+        OPTIONS["spectrum.kernel_width"])
     if save_path is not None:
         np.save(save_path, [wavelength_solution, matisse_opacity])
     return matisse_opacity
 
 
 def linearly_combine_opacities(weights: u.one, files: List[Path],
-                               wavelength_solution: u.um) -> np.ndarray:
+                               wavelength_solution: u.um,
+                               resolution: Optional[str] = "low") -> np.ndarray:
     """Linearly combines multiple opacities by their weights.
 
     Parameters
@@ -398,8 +399,8 @@ def linearly_combine_opacities(weights: u.one, files: List[Path],
     """
     total_opacity = None
     for weight, file in zip(weights, files):
-        opacity = opacity_to_matisse_opacity(wavelength_solution,
-                                             qval_file=file)
+        opacity = opacity_to_matisse_opacity(
+            wavelength_solution, qval_file=file, resolution=resolution)
         if total_opacity is None:
             total_opacity = weight*opacity
         else:

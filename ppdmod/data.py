@@ -23,8 +23,12 @@ class ReadoutFits:
             self.wavelength = (hdul["oi_wavelength"].data["eff_wave"]*u.m).to(u.um)
             self.ucoord = hdul["oi_vis"].data["ucoord"]
             self.vcoord = hdul["oi_vis"].data["vcoord"]
-            self.flux = hdul["oi_flux"].data["fluxdata"]
-            self.flux_err = hdul["oi_flux"].data["fluxerr"]
+            try:
+                self.flux = hdul["oi_flux"].data["fluxdata"]
+                self.flux_err = hdul["oi_flux"].data["fluxerr"]
+            except KeyError:
+                self.flux = None
+                self.flux_err = None
             self.vis = hdul["oi_vis"].data["visamp"]
             self.vis_err = hdul["oi_vis"].data["visamperr"]
             self.t3phi = hdul["oi_t3"].data["t3phi"]

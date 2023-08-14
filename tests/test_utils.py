@@ -8,6 +8,7 @@ import pytest
 
 from ppdmod import utils
 from ppdmod.custom_components import AsymmetricSDGreyBodyContinuum
+from ppdmod.options import OPTIONS
 
 from ppdmod.data import ReadoutFits
 
@@ -51,6 +52,14 @@ def wavelengths() -> u.um:
 @pytest.fixture
 def wavelength_solution(fits_file: Path) -> u.um:
     """The wavelength solution of a MATISSE (.fits)-file."""
+    return ReadoutFits(fits_file).wavelength
+
+
+@pytest.fixture
+def high_wavelength_solution() -> u.um:
+    """The wavelength solution of a MATISSE (.fits)-file."""
+    fits_file = Path("/Users/scheuck/Data/reduced_data/jozsef_reductions/") /\
+        "HD_144432_2020-03-13T08_41_26_N_TARGET_FINALCAL_INT.fits"
     return ReadoutFits(fits_file).wavelength
 
 
@@ -286,6 +295,7 @@ def test_qval_to_opacity(qval_file_dir: Path) -> None:
              "Q_Fo_Suto_DHS_f1.0_rv1.5.dat",
              "Q_En_Jaeger_DHS_f1.0_rv1.5.dat"])
 def test_transform_opacity(qval_file_dir: Path, file: str,
+                           high_wavelength_solution: u.um,
                            wavelength_solution: u.um) -> None:
     """Tests the opacity interpolation from one wavelength
     axis to another."""
@@ -295,28 +305,39 @@ def test_transform_opacity(qval_file_dir: Path, file: str,
 
     qval_file = qval_file_dir / file
     wavelength_grid, opacity = utils.qval_to_opacity(qval_file)
-    ind = np.where(np.logical_and(wavelength_solution.min() < wavelength_grid,
-                                  wavelength_grid < wavelength_solution.max()))
-    wavelength_grid, opacity = wavelength_grid[ind], opacity[ind]
-    matisse_opacity = utils.transform_opacity(
-        wavelength_grid, opacity, wavelength_solution)
-
-    _, (ax, bx) = plt.subplots(1, 2, figsize=(12, 5))
-    ax.plot(wavelength_grid.value, opacity.value)
-    ax.set_xlabel(r"$\lambda [um]$")
-    ax.set_ylabel(r"$\kappa [cm^2/g]$")
-    ax.set_title("Before interpolation.")
-    bx.plot(wavelength_solution.value, matisse_opacity.value)
-    bx.set_xlabel(r"$\lambda [um]$")
-    bx.set_ylabel(r"$\kappa [cm^2/g]$")
-    bx.set_title("After interpolation.")
-    plt.savefig(opacity_dir / f"{qval_file.stem}.pdf", format="pdf")
-    plt.close()
 
     assert opacity.unit == u.cm**2/u.g
     assert opacity.shape == wavelength_grid.shape
-    assert matisse_opacity.unit == u.cm**2/u.g
-    assert matisse_opacity.shape == wavelength_solution.shape
+
+    _, axarr = plt.subplots(2, 2, figsize=(12, 12))
+    fields = [["low", "low"], ["low", "high"],
+              ["high", "low"], ["high", "high"]]
+    wavelength_solutions = {"low": wavelength_solution,
+                            "high": high_wavelength_solution}
+    opacities = []
+    for field in fields:
+        ind = np.where(np.logical_and(
+            (wavelength_solutions[field[0]].min()-1*u.um) < wavelength_grid,
+            wavelength_grid < (wavelength_solutions[field[0]].max()+1*u.um)))
+        wl_grid, opc = wavelength_grid[ind], opacity[ind]
+        opacities.append(utils.transform_opacity(
+                wl_grid, opc, wavelength_solutions[field[0]],
+                dl_coeffs=OPTIONS["spectrum.coefficients"][field[1]]))
+
+    for index, (ax, op) in enumerate(zip(axarr.flatten(), opacities)):
+        ax.plot(wl_grid.value, opc.value, label="Original")
+        ax.plot(wavelength_solutions[fields[index][0]].value, op.value, label="After")
+        ax.set_title(f"Wavelength Solution: {fields[index][0].upper()}; "
+                     f"Coefficients: {fields[index][1].upper()}")
+        ax.set_ylabel(r"$\kappa$ (cm$^{2}$g)")
+        ax.set_xlabel(r"$\lambda$ (um)")
+        ax.legend()
+    plt.savefig(opacity_dir / f"{qval_file.stem}_kw10px.pdf", format="pdf")
+    plt.close()
+
+    assert all(opacity.unit == u.cm**2/u.g for opacity in opacities)
+    for field, op in zip(fields, opacities):
+        assert op.shape == wavelength_solutions[field[0]].shape
 
 
 # NOTE: This test, tests nothing.
@@ -333,36 +354,57 @@ def test_opacity_to_matisse_opacity(
 def test_linearly_combine_opacities(
         qval_file_dir: Path,
         qval_files: List[Path],
+        high_wavelength_solution: u.um,
         wavelength_solution: u.um) -> None:
     """Tests the linear combination of interpolated wavelength grids."""
     opacity_dir = Path("opacities")
     if not opacity_dir.exists():
         opacity_dir.mkdir()
 
+    fields = [["low", "low"], ["low", "high"],
+              ["high", "low"], ["high", "high"]]
+    opacities = []
     weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
-    opacity = utils.linearly_combine_opacities(
-        weights, qval_files, wavelength_solution)
-
-    weights = np.append(weights, [0.668])
+    weights_background = np.append(weights, [0.668])
     files = qval_files.copy()
     files.append(qval_file_dir / "Q_SILICA_RV0.1.DAT")
-    opacity_with_silica = utils.linearly_combine_opacities(
-        weights, files, wavelength_solution)
+    wavelength_solutions = {"low": wavelength_solution,
+                            "high": high_wavelength_solution}
+    for field in fields:
+        opacity = []
+        opacity.append(utils.linearly_combine_opacities(
+            weights, qval_files,
+            wavelength_solutions[field[0]], field[1]))
 
-    _, (ax, bx) = plt.subplots(1, 2, figsize=(12, 5))
-    ax.plot(wavelength_solution.value, opacity.value)
-    ax.set_title("Combined Opacities")
-    ax.set_xlabel(r"$\lambda [um]$")
-    ax.set_ylabel(r"$\kappa [cm^2/g]$")
-    bx.plot(wavelength_solution.value, opacity_with_silica.value)
-    bx.set_title("Combined Opacities with Silica")
-    bx.set_xlabel(r"$\lambda [um]$")
-    bx.set_ylabel(r"$\kappa [cm^2/g]$")
+        opacity.append(utils.linearly_combine_opacities(
+            weights_background, files,
+            wavelength_solutions[field[0]], field[1]))
+        opacities.append(opacity)
+
+    _, axarr = plt.subplots(2, 2, figsize=(12, 12))
+    for index, (ax, opacity) in enumerate(zip(axarr.flatten(), opacities)):
+        ax.plot(wavelength_solutions[fields[index][0]].value, opacity[0].value)
+        ax.set_title(f"Wavelength Solution: {fields[index][0].upper()}; "
+                     f"Coefficients: {fields[index][1].upper()}")
+        ax.set_xlabel(r"$\lambda$ (um)")
+        ax.set_ylabel(r"$\kappa$ (cm$^{2}$g)")
     plt.savefig(opacity_dir / "combined_opacities.pdf", format="pdf")
     plt.close()
 
-    assert opacity.unit == u.cm**2/u.g
-    assert opacity_with_silica.unit == u.cm**2/u.g
+    _, axarr = plt.subplots(2, 2, figsize=(12, 12))
+    for index, (ax, opacity) in enumerate(zip(axarr.flatten(), opacities)):
+        ax.plot(wavelength_solutions[fields[index][0]].value, opacity[1].value)
+        ax.set_title(f"Wavelength Solution: {fields[index][0].upper()}; "
+                     f"Coefficients: {fields[index][1].upper()}")
+        ax.set_xlabel(r"$\lambda$ (um)")
+        ax.set_ylabel(r"$\kappa$ (cm$^{2}$g)")
+    plt.savefig(opacity_dir / "combined_opacities_with_silica.pdf", format="pdf")
+    plt.close()
+
+    for field, opacity in zip(fields, opacities):
+        assert all(op.unit == u.cm**2/u.g for op in opacity)
+        assert opacity[0].shape == wavelength_solutions[field[0]].shape
+        assert opacity[1].shape == wavelength_solutions[field[0]].shape
 
 
 @pytest.mark.parametrize(
