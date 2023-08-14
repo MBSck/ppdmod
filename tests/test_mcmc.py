@@ -68,6 +68,7 @@ def test_set_theta_from_params(
                [parameter.value for parameter in shared_params.values()])
 
 
+# TODO: Test order of appearance for parameters.
 def test_set_params_from_theta(
         components_and_params: Dict[str, Dict],
         shared_params: Dict[str, Parameter]) -> None:
@@ -145,4 +146,8 @@ def test_lnprob() -> None:
 
 
 def test_run_mcmc() -> None:
+    ...
+
+
+def test_get_best_fit() -> None:
     ...

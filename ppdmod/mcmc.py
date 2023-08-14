@@ -143,7 +143,8 @@ def lnprob(theta: np.ndarray) -> float:
     if np.isinf(lnprior(parameters, shared_params)):
         return -np.inf
 
-    model = Model(assemble_components(parameters, shared_params))
+    components = assemble_components(parameters, shared_params)
+    model = Model(components)
 
     fourier_transforms = {}
     for wavelength in OPTIONS["fit.wavelengths"]:
@@ -180,7 +181,7 @@ def lnprob(theta: np.ndarray) -> float:
                     interpolated_corr_flux = interpolate_coordinates(
                         fourier_transform,
                         fourier_transform.shape[0],
-                        temp_grad.params["pixel_size"](),
+                        components.params["pixel_size"](),
                         OPTIONS["data.readouts"][index].ucoord,
                         OPTIONS["data.readouts"][index].vcoord,
                         wavelength)
@@ -194,7 +195,7 @@ def lnprob(theta: np.ndarray) -> float:
                     interpolated_cphase = interpolate_coordinates(
                         fourier_transform,
                         fourier_transform.shape[0],
-                        temp_grad.params["pixel_size"](),
+                        components.params["pixel_size"](),
                         OPTIONS["data.readouts"][index].u123coord,
                         OPTIONS["data.readouts"][index].v123coord,
                         wavelength)
@@ -246,4 +247,9 @@ def run_mcmc(nwalkers: int,
     sampler = emcee.EnsembleSampler(nwalkers, len(OPTIONS["model.params"]),
                                     lnprob, pool=None)
     sampler.run_mcmc(initial, nsteps, progress=True)
+    return sampler
+
+
+def get_best_fit(sampler: emcee.EnsembleSampler) -> np.ndarray:
+    """Gets the best fit from the emcee sampler."""
     return (sampler.flatchain)[np.argmax(sampler.flatlnprobability)]
