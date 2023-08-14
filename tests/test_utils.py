@@ -298,27 +298,25 @@ def test_transform_opacity(qval_file_dir: Path, file: str,
     ind = np.where(np.logical_and(wavelength_solution.min() < wavelength_grid,
                                   wavelength_grid < wavelength_solution.max()))
     wavelength_grid, opacity = wavelength_grid[ind], opacity[ind]
-
-    plt.plot(wavelength_grid.value, opacity.value)
-    plt.xlabel(r"$\lambda [um]$")
-    plt.ylabel(r"$\kappa [cm^2/g]$")
-    plt.title(qval_file.stem)
-    plt.savefig(opacity_dir /
-                f"{qval_file.stem}.pdf", format="pdf")
-    plt.close()
-
-    opacity = utils.transform_opacity(
+    matisse_opacity = utils.transform_opacity(
         wavelength_grid, opacity, wavelength_solution)
-    assert opacity.unit == u.cm**2/u.g
-    assert opacity.shape == wavelength_solution.shape
 
-    plt.plot(wavelength_solution.value, opacity.value)
-    plt.xlabel(r"$\lambda [um]$")
-    plt.ylabel(r"$\kappa [cm^2/g]$")
-    plt.title(qval_file.stem)
-    plt.savefig(opacity_dir /
-                f"interpolated_{qval_file.stem}.pdf", format="pdf")
+    _, (ax, bx) = plt.subplots(1, 2, figsize=(12, 5))
+    ax.plot(wavelength_grid.value, opacity.value)
+    ax.set_xlabel(r"$\lambda [um]$")
+    ax.set_ylabel(r"$\kappa [cm^2/g]$")
+    ax.set_title("Before interpolation.")
+    bx.plot(wavelength_solution.value, matisse_opacity.value)
+    bx.set_xlabel(r"$\lambda [um]$")
+    bx.set_ylabel(r"$\kappa [cm^2/g]$")
+    bx.set_title("After interpolation.")
+    plt.savefig(opacity_dir / f"{qval_file.stem}.pdf", format="pdf")
     plt.close()
+
+    assert opacity.unit == u.cm**2/u.g
+    assert opacity.shape == wavelength_grid.shape
+    assert matisse_opacity.unit == u.cm**2/u.g
+    assert matisse_opacity.shape == wavelength_solution.shape
 
 
 # NOTE: This test, tests nothing.
@@ -333,12 +331,38 @@ def test_opacity_to_matisse_opacity(
 
 # TODO: Check if it is combined properly.
 def test_linearly_combine_opacities(
-        qval_files: List[Path], wavelength_solution: u.um) -> None:
+        qval_file_dir: Path,
+        qval_files: List[Path],
+        wavelength_solution: u.um) -> None:
     """Tests the linear combination of interpolated wavelength grids."""
+    opacity_dir = Path("opacities")
+    if not opacity_dir.exists():
+        opacity_dir.mkdir()
+
     weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
     opacity = utils.linearly_combine_opacities(
         weights, qval_files, wavelength_solution)
+
+    weights = np.append(weights, [0.668])
+    files = qval_files.copy()
+    files.append(qval_file_dir / "Q_SILICA_RV0.1.DAT")
+    opacity_with_silica = utils.linearly_combine_opacities(
+        weights, files, wavelength_solution)
+
+    _, (ax, bx) = plt.subplots(1, 2, figsize=(12, 5))
+    ax.plot(wavelength_solution.value, opacity.value)
+    ax.set_title("Combined Opacities")
+    ax.set_xlabel(r"$\lambda [um]$")
+    ax.set_ylabel(r"$\kappa [cm^2/g]$")
+    bx.plot(wavelength_solution.value, opacity_with_silica.value)
+    bx.set_title("Combined Opacities with Silica")
+    bx.set_xlabel(r"$\lambda [um]$")
+    bx.set_ylabel(r"$\kappa [cm^2/g]$")
+    plt.savefig(opacity_dir / "combined_opacities.pdf", format="pdf")
+    plt.close()
+
     assert opacity.unit == u.cm**2/u.g
+    assert opacity_with_silica.unit == u.cm**2/u.g
 
 
 @pytest.mark.parametrize(
