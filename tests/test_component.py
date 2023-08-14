@@ -78,12 +78,14 @@ def test_radius_calculation(component: Component) -> None:
     plt.title("Image space")
     plt.xlabel("dim [px]")
     plt.savefig(component_dir / "grid_automatic.pdf", format="pdf")
+    plt.close()
 
     dim, pixel_size = 512, 0.1
     plt.imshow(np.hypot(*grid).value)
     plt.title("Image space")
     plt.xlabel("dim [px]")
     plt.savefig(component_dir / "grid_manual.pdf", format="pdf")
+    plt.close()
 
     grid = component._calculate_internal_grid(dim, pixel_size)
     radius = np.hypot(*grid).value
@@ -92,6 +94,7 @@ def test_radius_calculation(component: Component) -> None:
     plt.title("Image space")
     plt.xlabel("dim [px]")
     plt.savefig(component_dir / "grid_manual_ring.pdf", format="pdf")
+    plt.close()
 
     elliptical_component = Component(pa=33, elong=0.6)
     assert elliptical_component.elliptic
@@ -103,12 +106,14 @@ def test_radius_calculation(component: Component) -> None:
     plt.title("Image space")
     plt.xlabel("dim [px]")
     plt.savefig(component_dir / "elliptic_grid_automatic.pdf", format="pdf")
+    plt.close()
 
     grid = elliptical_component._calculate_internal_grid(dim, pixel_size)
     plt.imshow(np.hypot(*grid).value)
     plt.title("Image space")
     plt.xlabel("dim [px]")
     plt.savefig(component_dir / "elliptic_grid_manual.pdf", format="pdf")
+    plt.close()
 
     grid = elliptical_component._calculate_internal_grid(dim, pixel_size)
     radius = np.hypot(*grid).value
@@ -117,6 +122,7 @@ def test_radius_calculation(component: Component) -> None:
     plt.title("Image space")
     plt.xlabel("dim [px]")
     plt.savefig(component_dir / "elliptic_grid_manual_ring.pdf", format="pdf")
+    plt.close()
 
 
 def test_translate_fourier(component: Component) -> None:

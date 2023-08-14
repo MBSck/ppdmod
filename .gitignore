@@ -2,6 +2,7 @@ __pycache__/
 ppdmod.egg-info/
 fft/
 component/
+opacities/
 binning/
 padding/
 resolution/

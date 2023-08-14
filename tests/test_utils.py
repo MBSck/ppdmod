@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union
+from typing import Union, List
 
 import astropy.units as u
 import matplotlib.pyplot as plt
@@ -8,13 +8,23 @@ import pytest
 
 from ppdmod import utils
 from ppdmod.data import ReadoutFits
-from ppdmod.options import OPTIONS
 
 
 @pytest.fixture
 def qval_file_dir() -> Path:
     """The qval-file directory."""
     return Path("data/qval")
+
+
+@pytest.fixture
+def qval_files(qval_file_dir: Path) -> List[Path]:
+    files = ["Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat",
+             "Q_Am_Mgolivine_Jae_DHS_f1.0_rv1.5.dat",
+             "Q_Am_Mgpyroxene_Dor_DHS_f1.0_rv1.5.dat",
+             "Q_Fo_Suto_DHS_f1.0_rv0.1.dat",
+             "Q_Fo_Suto_DHS_f1.0_rv1.5.dat",
+             "Q_En_Jaeger_DHS_f1.0_rv1.5.dat"]
+    return list(map(lambda x: qval_file_dir / x, files))
 
 
 @pytest.fixture
@@ -65,7 +75,7 @@ def test_set_list_from_args(wavelengths: u.um) -> None:
     assert arguments == (1*u.m, 2*u.m, 3*u.m)
 
     arguments = utils.set_tuple_from_args(*wavelengths)
-    return arguments == ((8.28835527e-06*u.m).to(u.um),
+    assert arguments == ((8.28835527e-06*u.m).to(u.um),
                          (1.02322101e-05*u.m).to(u.um),)
 
 
@@ -163,6 +173,7 @@ def test_rebin_image(binning_factor: int, expected: int) -> None:
     bx.set_xlabel("dim [px]")
     plt.savefig(binning_dir / f"Binning_factor_{binning_factor}.pdf",
                 format="pdf")
+    plt.close()
 
     assert image.shape == (512, 512)
     assert rebinned_image.shape == (expected, expected)
@@ -188,6 +199,7 @@ def test_pad_image(padding_factor: int, expected: int) -> None:
     bx.set_xlabel("dim [px]")
     plt.savefig(padding_dir / f"Padding_factor_{padding_factor}.pdf",
                 format="pdf")
+    plt.close()
 
     assert image.shape == (64, 64)
     assert padded_image.shape == (expected, expected)
@@ -201,10 +213,47 @@ def test_qval_to_opacity(qval_file_dir: Path) -> None:
     assert opacity.unit == u.cm**2/u.g
 
 
-def test_transform_opacity():
+@pytest.mark.parametrize(
+    "file", ["Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat",
+             "Q_Am_Mgolivine_Jae_DHS_f1.0_rv1.5.dat",
+             "Q_Am_Mgpyroxene_Dor_DHS_f1.0_rv1.5.dat",
+             "Q_Fo_Suto_DHS_f1.0_rv0.1.dat",
+             "Q_Fo_Suto_DHS_f1.0_rv1.5.dat",
+             "Q_En_Jaeger_DHS_f1.0_rv1.5.dat"])
+def test_transform_opacity(qval_file_dir: Path, file: str,
+                           wavelength_solution: u.um) -> None:
     """Tests the opacity interpolation from one wavelength
     axis to another."""
-    ...
+    opacity_dir = Path("opacities")
+    if not opacity_dir.exists():
+        opacity_dir.mkdir()
+
+    qval_file = qval_file_dir / file
+    wavelength_grid, opacity = utils.qval_to_opacity(qval_file)
+    ind = np.where(np.logical_and(wavelength_solution.min() < wavelength_grid,
+                                  wavelength_grid < wavelength_solution.max()))
+    wavelength_grid, opacity = wavelength_grid[ind], opacity[ind]
+
+    plt.plot(wavelength_grid.value, opacity.value)
+    plt.xlabel(r"$\lambda [um]$")
+    plt.ylabel(r"$\kappa [cm^2/g]$")
+    plt.title(qval_file.stem)
+    plt.savefig(opacity_dir /
+                f"{qval_file.stem}.pdf", format="pdf")
+    plt.close()
+
+    opacity = utils.transform_opacity(
+        wavelength_grid, opacity, wavelength_solution)
+    assert opacity.unit == u.cm**2/u.g
+    assert opacity.shape == wavelength_solution.shape
+
+    plt.plot(wavelength_solution.value, opacity.value)
+    plt.xlabel(r"$\lambda [um]$")
+    plt.ylabel(r"$\kappa [cm^2/g]$")
+    plt.title(qval_file.stem)
+    plt.savefig(opacity_dir /
+                f"interpolated_{qval_file.stem}.pdf", format="pdf")
+    plt.close()
 
 
 # NOTE: This test, tests nothing.
@@ -217,20 +266,13 @@ def test_opacity_to_matisse_opacity(
     assert continuum_opacity.unit == u.cm**2/u.g
 
 
+# TODO: Check if it is combined properly.
 def test_linearly_combine_opacities(
-        qval_file_dir: Path, wavelength_solution: u.um) -> None:
+        qval_files: List[Path], wavelength_solution: u.um) -> None:
     """Tests the linear combination of interpolated wavelength grids."""
     weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
-    qval_files = ["Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat",
-                  "Q_Am_Mgolivine_Jae_DHS_f1.0_rv1.5.dat",
-                  "Q_Am_Mgpyroxene_Dor_DHS_f1.0_rv1.5.dat",
-                  "Q_Fo_Suto_DHS_f1.0_rv0.1.dat",
-                  "Q_Fo_Suto_DHS_f1.0_rv1.5.dat",
-                  "Q_En_Jaeger_DHS_f1.0_rv1.5.dat"]
-    qval_paths = list(map(lambda x: qval_file_dir / x, qval_files))
-    opacity = utils.linearly_combine_opacities(weights,
-                                               qval_paths,
-                                               wavelength_solution)
+    opacity = utils.linearly_combine_opacities(
+        weights, qval_files, wavelength_solution)
     assert opacity.unit == u.cm**2/u.g
 
 
@@ -256,3 +298,8 @@ def test_calculate_intensity(wavelength: u.um) -> None:
                                           0.1*u.mas)
     assert intensity.unit == u.Jy
     assert intensity.value < 0.1
+
+
+def test_calculate_effective_baselines() -> None:
+    """Tests the calculation of the effective baselines."""
+    ...

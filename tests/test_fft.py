@@ -109,6 +109,7 @@ def test_compute2Dfourier_transform(pixel_size: u.mas,
     cx.set_title("Phase")
     cx.set_xlabel("dim [px]")
     plt.savefig(fft_dir / "fourier_space_ud.pdf", format="pdf")
+    plt.close()
 
     flux1, flux2 = fluxes
     position1, position2 = [0.5, 0.5]*u.mas, [-0.5, -0.5]*u.mas
@@ -128,6 +129,7 @@ def test_compute2Dfourier_transform(pixel_size: u.mas,
     cx.set_title("Phase")
     cx.set_xlabel("dim [px]")
     plt.savefig(fft_dir / "fourier_space_bin.pdf", format="pdf")
+    plt.close()
 
 
 # TODO: Test input for both wavelength in meter and um?

@@ -344,6 +344,7 @@ def test_flux_resolution(
         pixel_size=pixel_size.value, pa=45,
         elong=1.6, inner_sigma=2000, kappa_abs=1000,
         kappa_cont=3000, cont_weight=0.5, p=0.5)
+    asym_grey_body.optically_thick = True
     image = asym_grey_body.calculate_image(wavelength=wavelength)
     flux = np.nansum(image)
 
@@ -373,6 +374,7 @@ def test_flux_resolution(
     plt.savefig(plot_path /
                 f"temperature_gradient_dim{dim}_rin{rin.value}_px{pixel_size.value}.pdf",
                 format="pdf")
+    plt.close()
 
 
 def test_assemble_components() -> None:

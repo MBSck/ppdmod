@@ -280,25 +280,27 @@ def qval_to_opacity(qval_file: Path) -> u.cm**2/u.g:
     """
     with open(qval_file, "r+", encoding="utf8") as file:
         _, grain_size, density = map(float, file.readline().strip().split())
-    wavelenght_grid, qval = np.loadtxt(qval_file, skiprows=1, unpack=True)
-    return wavelenght_grid*u.um,\
-        3*qval*u.one/(4*(grain_size*u.um).to(u.cm)*(density*u.g/u.cm**3))
+    wavelength_grid, qval = np.loadtxt(qval_file, skiprows=1, unpack=True)
+    return wavelength_grid*u.um,\
+        3*qval/(4*(grain_size*u.um).to(u.cm)*(density*u.g/u.cm**3))
 
 
 def transform_opacity(
-        wavelength_grid: u.um, opacity: u.cm**2/u.g,
-        dl_coeffs: u.one, kernel_width: float,
-        wavelength_solution: u.um, spectral_binning: float):
+        wavelength_grid: u.um, opacity: u.cm**2/u.g, wavelength_solution: u.um,
+        dl_coeffs: Optional[u.one] = OPTIONS["spectrum.coefficients"]["low"],
+        kernel_width: Optional[float] = 10,
+        spectral_binning: Optional[float] = 7
+        ) -> u.cm**2/u.g:
     """Transform a spectrum to the real wavlength grid of MATISSE.
 
     Parameters
     ----------
     wavelength_grid : astropy.units.um
     opacity : astropy.units.cm**2/astropy.units.g
+    wavelength_solution : astropy.units.um
     dl_coeffs : list of float
     kernel_width : float
         The kernel width [px].
-    wavelength_solution : astropy.units.um
     spectral_binning : float
 
     Returns
@@ -338,19 +340,21 @@ def transform_opacity(
     return spec_final*u.cm**2/u.g
 
 
+# TODO: Check the indices here.
 def opacity_to_matisse_opacity(wavelength_solution: u.um,
-                               opacity: Optional[np.ndarray] = None,
+                               opacity: Optional[u.cm**2/u.g] = None,
                                opacity_file: Optional[Path] = None,
                                qval_file: Optional[Path] = None,
                                resolution: Optional[str] = "low",
                                save_path: Optional[Path] = None) -> np.ndarray:
-    """Converts the opacity to the MATISSE wavelength grid.
+    """Interpolates an opacity from its wavelength grid to the
+    MATISSE wavelength grid.
 
     Parameters
     ----------
-    wavelength_solution : u.um
+    wavelength_solution : astropy.units.um
         The MATISSE wavelength solution.
-    opacity : , optional
+    opacity : astropy.units.cm**2/astropy.units.g, optional
         An input opacity.
     opacity_file : pathlib.Path, optional
     qval_file : pathlib.Path, optional
@@ -371,9 +375,9 @@ def opacity_to_matisse_opacity(wavelength_solution: u.um,
                                   wavelength_grid < wavelength_solution.max()))
     wavelength_grid, opacity = wavelength_grid[ind], opacity[ind]
     matisse_opacity = transform_opacity(
-        wavelength_grid, opacity,
+        wavelength_grid, opacity, wavelength_solution,
         OPTIONS["spectrum.coefficients"][resolution],
-        10, wavelength_solution,
+        OPTIONS["spectrum.kernel_width"],
         OPTIONS["spectrum.binning"][resolution])
     if save_path is not None:
         np.save(save_path, [wavelength_solution, matisse_opacity])

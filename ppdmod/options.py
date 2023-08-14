@@ -26,6 +26,7 @@ OPTIONS["spectrum.coefficients"] = {
     "high": [-8.02282965e-05,  3.83260266e-03, 7.60090459e-05, -4.30753848e-07]
 }
 OPTIONS["spectrum.binning"] = {"low": 7, "high": 7}
+OPTIONS["spectrum.kernel_width"] = 10
 
 # NOTE: Fitting.
 OPTIONS["fit.data"] = ["flux", "vis", "t3phi"]
