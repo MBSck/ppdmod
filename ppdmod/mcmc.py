@@ -1,18 +1,16 @@
 from pathlib import Path
-from multiprocessing import Pool, cpu_count
-from typing import Optional, Dict
+from multiprocessing import Pool
+from typing import Tuple, Optional, Dict
 
 import astropy.units as u
 import emcee
 import numpy as np
 
-from .custom_components import Star, AsymmetricSDGreyBodyContinuum,\
-    assemble_components
+from .custom_components import assemble_components
 from .fft import interpolate_coordinates
 from .model import Model
 from .parameter import Parameter
 from .options import OPTIONS
-# from .utils import execution_time
 
 
 def set_theta_from_params(
@@ -94,9 +92,128 @@ def chi_sq(data: u.quantity, error: u.quantity,
     return -0.5*np.sum((data-model_data)**2*inv_sigma_squared)
 
 
+def calculate_observables(fourier_transform: np.ndarray,
+                          vis_ucoord: np.ndarray,
+                          vis_vcoord: np.ndarray,
+                          cphase_ucoord: np.ndarray,
+                          cphase_vcoord: np.ndarray,
+                          pixel_size: u.mas,
+                          wavelength: float) -> Tuple:
+    """Calculates the model's observables.
+
+    Parameters
+    ----------
+    fourier_transform : numpy.ndarray
+        The fourier transform of the model.
+    vis_ucoord : numpy.ndarray
+        The u coordinate of the visibilities.
+    vis_vcoord : numpy.ndarray
+        The v coordinate of the visibilities.
+    cphase_ucoord : numpy.ndarray
+        The u coordinate of the closure phases.
+    cphase_vcoord : numpy.ndarray
+        The v coordinate of the closure phases.
+    wavelength : float
+        The wavelength of the model.
+
+    Returns
+    -------
+    total_flux : float
+        The total flux.
+    corr_flux : float
+        The correlated flux.
+    cphase : float
+        The closure phase.
+    """
+    total_flux, corr_flux, cphase = None, None, None
+    if "flux" in OPTIONS["fit.data"]:
+        centre = fourier_transform.shape[0]//2
+        total_flux = fourier_transform[centre, centre]
+
+    if "vis" in OPTIONS["fit.data"]:
+        interpolated_corr_flux = interpolate_coordinates(
+            fourier_transform, fourier_transform.shape[0],
+            pixel_size, vis_ucoord, vis_vcoord, wavelength)
+        corr_flux = np.abs(interpolated_corr_flux)
+
+    if "cphase" in OPTIONS["fit.data"]:
+        interpolated_cphase = interpolate_coordinates(
+            fourier_transform, fourier_transform.shape[0],
+            pixel_size, cphase_ucoord, cphase_vcoord, wavelength)
+        cphase = np.angle(
+            np.product(interpolated_cphase, axis=1), deg=True)
+    return total_flux, corr_flux, cphase
+
+
+def calculate_observables_chi_sq(
+        total_flux: Dict[str, float],
+        total_flux_err: Dict[str, float],
+        total_flux_model: np.ndarray,
+        corr_flux: Dict[str, float],
+        corr_flux_err: Dict[str, float],
+        corr_flux_model: np.ndarray,
+        cphase: Dict[str, float],
+        cphase_err: Dict[str, float],
+        cphase_model: np.ndarray) -> float:
+    """Calculates the model's observables.
+
+    Parameters
+    ----------
+    total_flux : dict
+        The total flux.
+    total_flux_err : dict
+        The total flux's error.
+    total_flux_model : numpy.ndarray
+        The model's total flux.
+    corr_flux : dict
+        The correlated flux.
+    corr_flux_err : dict
+        The correlated flux's error.
+    corr_flux_model : numpy.ndarray
+        The model's correlated flux.
+    cphase : dict
+        The closure phase.
+    cphase_err : dict
+        The closure phase's error.
+    cphase_model : numpy.ndarray
+        The model's closure phase.
+
+    Returns
+    -------
+    total_chi_sq : float
+        The total chi square.
+    """
+    total_chi_sq = 0
+    if "flux" in OPTIONS["fit.data"]:
+        total_chi_sq += chi_sq(total_flux, total_flux_err, total_flux_model)\
+            * OPTIONS["fit.chi2.weight.total_flux"]
+
+    if "vis" in OPTIONS["fit.data"]:
+        total_chi_sq += chi_sq(corr_flux, corr_flux_err, corr_flux_model)\
+            * OPTIONS["fit.chi2.weight.corr_flux"]
+
+    if "t3phi" in OPTIONS["fit.data"]:
+        total_chi_sq += chi_sq(cphase, cphase_err, cphase_model)\
+            * OPTIONS["fit.chi2.weight.cphase"]
+    return total_chi_sq
+
+
 def lnprior(param_values: Dict[str, float],
             shared_param_values: Optional[Dict[str, float]] = None) -> float:
-    """Checks if the priors are in bounds."""
+    """Checks if the priors are in bounds.
+
+    Parameters
+    ----------
+    param_values : dict
+        The parameters.
+    shared_param_values : dict, optional
+        The shared parameters.
+
+    Returns
+    -------
+    float
+        The log of the prior.
+    """
     if shared_param_values is not None:
         for value, param in zip(shared_param_values.values(),
                                 OPTIONS["model.shared_params"].values()):
@@ -121,19 +238,12 @@ def lnprob(theta: np.ndarray) -> float:
     Parameters
     ----------
     theta: np.ndarray
-        A list of all the parameters that ought to be fitted
-    data: DataHandler
+        The parameters that ought to be fitted.
 
     Returns
     -------
     float
-        The goodness of the fitted model (will be minimised)
-
-    Notes
-    -----
-    If multiple models with the same params are required put them once into theta
-    and then assign them with a dict, to then get them from the dict for the second
-    component as well.
+        The log of the probability.
     """
     parameters, shared_params = set_params_from_theta(
         theta,
@@ -148,8 +258,8 @@ def lnprob(theta: np.ndarray) -> float:
 
     fourier_transforms = {}
     for wavelength in OPTIONS["fit.wavelengths"]:
-        fourier_transform = model.calculate_complex_visibility(wavelength)
-        fourier_transforms[str(wavelength)] = fourier_transform
+        fourier_transforms[str(wavelength.value)] =\
+            model.calculate_complex_visibility(wavelength)
 
     total_fluxes, total_fluxes_err =\
         OPTIONS["data.total_flux"], OPTIONS["data.total_flux_error"]
@@ -164,85 +274,55 @@ def lnprob(theta: np.ndarray) -> float:
             in enumerate(
                 zip(total_fluxes, total_fluxes_err, corr_fluxes,
                     corr_fluxes_err, cphases, cphases_err)):
-
+        readout = OPTIONS["data.readouts"][index]
         for wavelength in OPTIONS["fit.wavelengths"]:
-            if str(wavelength) in fourier_transforms:
-                fourier_transform = fourier_transforms[str(wavelength)]
+            wavelength_str = str(wavelength.value)
+            fourier_transform = fourier_transforms[wavelength_str]
+            total_flux_model, corr_flux_model, cphase_model =\
+                calculate_observables(
+                    fourier_transform,
+                    readout.ucoord, readout.vcoord,
+                    readout.u123coord, readout.v123coord,
+                    components[-1].params["pixel_size"](), wavelength)
 
-                if "flux" in OPTIONS["fit.data"]:
-                    centre = fourier_transform.shape[0]//2
-                    total_flux_model = fourier_transform[centre, centre]
-                    total_chi_sq += chi_sq(total_flux[str(wavelength)],
-                                           total_flux_err[str(wavelength)],
-                                           total_flux_model)\
-                        * OPTIONS["fit.chi2.weight.total_flux"]
-
-                if "vis" in OPTIONS["fit.data"]:
-                    interpolated_corr_flux = interpolate_coordinates(
-                        fourier_transform,
-                        fourier_transform.shape[0],
-                        components.params["pixel_size"](),
-                        OPTIONS["data.readouts"][index].ucoord,
-                        OPTIONS["data.readouts"][index].vcoord,
-                        wavelength)
-                    corr_flux_model = np.abs(interpolated_corr_flux)
-                    total_chi_sq += chi_sq(corr_flux[str(wavelength)],
-                                           corr_flux_err[str(wavelength)],
-                                           corr_flux_model)\
-                        * OPTIONS["fit.chi2.weight.corr_flux"]
-
-                if "t3phi" in OPTIONS["fit.data"]:
-                    interpolated_cphase = interpolate_coordinates(
-                        fourier_transform,
-                        fourier_transform.shape[0],
-                        components.params["pixel_size"](),
-                        OPTIONS["data.readouts"][index].u123coord,
-                        OPTIONS["data.readouts"][index].v123coord,
-                        wavelength)
-                    cphase_model = np.angle(
-                        np.product(interpolated_cphase, axis=1), deg=True)
-                    total_chi_sq += chi_sq(cphase[str(wavelength)],
-                                           cphase_err[str(wavelength)],
-                                           cphase_model)\
-                        * OPTIONS["fit.chi2.weight.cphase"]
-            else:
-                continue
+            total_chi_sq += calculate_observables_chi_sq(
+                total_flux[wavelength_str],
+                total_flux_err[wavelength_str], total_flux_model,
+                corr_flux[wavelength_str],
+                corr_flux_err[wavelength_str], corr_flux_model,
+                cphase[wavelength_str], cphase_err[wavelength_str],
+                cphase_model)
     return np.array(total_chi_sq)
 
 
 def run_mcmc(nwalkers: int,
              nsteps: Optional[int] = 100,
              discard: Optional[int] = 10,
+             ncores: Optional[int] = None,
              save_path: Optional[Path] = None) -> np.array:
-    """Runs the emcee Hastings Metropolitan sampler
+    """Runs the emcee Hastings Metropolitan sampler.
 
     The EnsambleSampler recieves the parameters and the args are passed to
     the 'log_prob()' method (an addtional parameter 'a' can be used to
     determine the stepsize, defaults to None).
 
-    The burn-in is first run to explore the parameter space and then the
-    walkers settle into the maximum of the density. The state variable is
-    then passed to the production run.
-
-    The chain is reset before the production with the state variable being
-    passed. 'rstate0' is the state of the internal random number generator
-
     Parameters
     ----------
-    parameters : dict of Parameter
-    nwalkers : int
-    nsteps : int
-    discard : int
-    wavelengths : float
+    nwalkers : int, optional
+    nsteps : int, optional
+    discard : int, optional
+    ncores : int, optional
     save_path: pathlib.Path, optional
 
     Returns
     -------
-    np.ndarray
+    sampler : numpy.ndarray
     """
     initial = init_randomly(OPTIONS["model.params"], nwalkers)
-    # with Pool() as pool:
-    print(f"Executing MCMC with {cpu_count()} cores.")
+    if ncores is None:
+        ncores = 6
+    # with Pool(processes=ncores) as pool:
+    print(f"Executing MCMC with {ncores} cores.")
     print("--------------------------------------------------------------")
     sampler = emcee.EnsembleSampler(nwalkers, len(OPTIONS["model.params"]),
                                     lnprob, pool=None)

@@ -103,6 +103,16 @@ def test_init_randomly() -> None:
 #     assert chi_sq(data, error, data_model) == expected
 
 
+def test_calculate_observables() -> None:
+    """Tests the calculate_observables function."""
+    ...
+
+
+def test_calculate_observables_chi_sq() -> None:
+    """Tests the calculate_observables chi sq function."""
+    ...
+
+
 @pytest.mark.parametrize(
     "values, expected", [
         ([1.5, 0.5, 0.3, 33, 0.2, 45, 1.6], 0.),
