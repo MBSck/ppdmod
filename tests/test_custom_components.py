@@ -19,19 +19,17 @@ from ppdmod.utils import opacity_to_matisse_opacity,\
     get_binned_dimension, make_workbook, get_next_power_of_two
 
 
-BINNING_DIR = Path("binning")
-if not BINNING_DIR.exists():
-    BINNING_DIR.mkdir()
-
-RESOLUTION_FILE = "resolution.xlsx"
-FLUX_SHEET = "Flux"
+RESOLUTION_FILE = Path("resolution.xlsx")
+FLUX_SHEET = "Fluxes for 13 um"
 
 make_workbook(
     RESOLUTION_FILE,
     {
-        FLUX_SHEET: ["FOV [mas]", "Dimension [px]",
-                     "Dimension**2 [px]",
-                     "Flux [Jy]", "Pixel Size [mas/px]",
+        FLUX_SHEET: ["FOV [mas]",
+                     "Dimension [px]",
+                     "Dimension (Nearest Power of 2) [px]",
+                     "Flux [Jy]",
+                     "Pixel Size [mas/px]",
                      "Inner Radius [mas]"]
     })
 
@@ -350,7 +348,7 @@ def test_flux_resolution(
 
     data = {"FOV [mas]": [fov],
             "Dimension [px]": [fov/pixel_size.value],
-            "Dimension**2 [px]": [dim],
+            "Dimension (Nearest Power of 2) [px]": [dim],
             "Flux [Jy]": [np.around(flux, 8).value],
             "Pixel Size [mas/px]": [pixel_size],
             "Inner Radius [mas]": [rin.value]}
