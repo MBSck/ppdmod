@@ -19,11 +19,11 @@ from ppdmod.utils import opacity_to_matisse_opacity,\
     get_binned_dimension, make_workbook, get_next_power_of_two
 
 
-RESOLUTION_DIR = Path("binning")
-if not RESOLUTION_DIR.exists():
-    RESOLUTION_DIR.mkdir()
+BINNING_DIR = Path("binning")
+if not BINNING_DIR.exists():
+    BINNING_DIR.mkdir()
 
-RESOLUTION_FILE = RESOLUTION_DIR / "resolution.xlsx"
+RESOLUTION_FILE = "resolution.xlsx"
 FLUX_SHEET = "Flux"
 
 make_workbook(
@@ -364,7 +364,7 @@ def test_flux_resolution(
                         mode="a", if_sheet_exists="replace") as writer:
         df.to_excel(writer, sheet_name=FLUX_SHEET, index=False)
 
-    plot_path = RESOLUTION_DIR / "fluxes"
+    plot_path = Path("fluxes")
     if not plot_path.exists():
         plot_path.mkdir()
 

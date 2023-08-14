@@ -1,6 +1,7 @@
 __pycache__/
 ppdmod.egg-info/
 fft/
+fluxes/
 component/
 opacities/
 binning/
@@ -10,3 +11,4 @@ phase/
 interpolation/
 .DS_Store
 *.pdf
+*.xlsx
