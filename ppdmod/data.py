@@ -43,8 +43,8 @@ class ReadoutFits:
             self.v123coord = [self.v1coord, self.v2coord, self.v3coord]
         return self
 
-    def get_data_for_wavelengths(self,
-                                *wavelengths, key: str) -> Dict[str, np.ndarray]:
+    def get_data_for_wavelengths(
+            self, *wavelengths, key: str) -> Dict[str, np.ndarray]:
         """Gets the data for the given wavelengths."""
         indices = get_closest_indices(*wavelengths, array=self.wavelength)
         wavelengths = set_tuple_from_args(*wavelengths)
@@ -69,11 +69,20 @@ def set_fit_wavelengths(*wavelengths: u.um) -> None:
         wavelengths *= u.m
     OPTIONS["fit.wavelengths"] = wavelengths.to(u.um).flatten()
 
+
 # TODO: Make this work with two entirely different wavelengths!
-def get_data(*fits_files: Optional[Union[List[Path], Path]]) -> None:
+def get_data(*fits_files: Optional[Union[List[Path], Path]],
+             wavelengths: Optional[u.um] = None) -> None:
     """Sets the data as a global variable from the input files.
 
     If called without parameters or recalled, it will clear the data.
+
+    Parameters
+    ----------
+    fits_files : list of Path
+        The paths to the MATISSE (.fits)-files.
+    wavelengths : astropy.units.um
+        The wavelengths to be fitted.
     """
     OPTIONS["data.readouts"] = []
     OPTIONS["data.total_flux"],\
@@ -89,10 +98,12 @@ def get_data(*fits_files: Optional[Union[List[Path], Path]]) -> None:
     fits_files = set_tuple_from_args(*fits_files)
     readouts = OPTIONS["data.readouts"] =\
         [ReadoutFits(file) for file in fits_files]
-    if not OPTIONS["fit.wavelengths"]:
+
+    if wavelengths is not None:
+        wavelengths = OPTIONS["fit.wavelengths"]
+    else:
         raise ValueError("Fitting wavelengths must be specified!")
 
-    wavelengths = OPTIONS["fit.wavelengths"]
     for readout in readouts:
         OPTIONS["data.total_flux"].append(
             readout.get_data_for_wavelengths(wavelengths, key="flux"))

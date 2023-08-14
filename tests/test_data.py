@@ -89,6 +89,7 @@ def test_set_fit_wavelenghts(wavelength: u.um) -> None:
     assert not OPTIONS["fit.wavelengths"]
 
 
+# TODO: Test also with a wavelength as an input.
 @pytest.mark.parametrize(
     "wavelength", [([8.28835527e-06]*u.m).to(u.um),
                    ([8.28835527e-06, 1.02322101e-05]*u.m).to(u.um)])
@@ -129,3 +130,22 @@ def test_get_data(fits_file: Path, wavelength: u.um) -> None:
     assert not OPTIONS["data.correlated_flux_error"]
     assert not OPTIONS["data.closure_phase"]
     assert not OPTIONS["data.closure_phase_error"]
+
+    get_data(fits_file, wavelengths=wavelength)
+    assert isinstance(total_flux, list)
+    assert isinstance(total_flux_err, list)
+    assert isinstance(corr_flux, list)
+    assert isinstance(corr_flux_err, list)
+    assert isinstance(cphase, list)
+    assert isinstance(cphase_err, list)
+    assert all(all(flx.shape == () for flx in flux.values())
+               for flux in total_flux)
+    assert all(all(flxe.shape == () for flxe in flux_err.values())
+               for flux_err in total_flux_err)
+    assert all(all(cflx.shape == (6,) for cflx in corr_flux.values())
+               for corr_flux in corr_flux)
+    assert all(all(cflxe.shape == (6,) for cflxe in corr_flux_err.values())
+               for corr_flux_err in corr_flux_err)
+    assert all(all(c.shape == (4,) for c in cp.values()) for cp in cphase)
+    assert all(all(ce.shape == (4,) for ce in cp_err.values())
+               for cp_err in cphase_err)
