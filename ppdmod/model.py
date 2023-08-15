@@ -6,7 +6,7 @@ import numpy as np
 from .component import Component
 from .parameter import Parameter
 from .options import OPTIONS
-from .utils import get_binned_dimension, set_tuple_from_args
+from .utils import get_binned_dimension
 
 
 class Model:
@@ -27,9 +27,9 @@ class Model:
     free_params : dict of Parameter
     """
 
-    def __init__(self, *components: List[Component]) -> None:
+    def __init__(self, components: List[Component]) -> None:
         """Constructor of the class"""
-        self.components = set_tuple_from_args(*components)
+        self.components = components
 
     @property
     def params(self) -> Dict[str, Parameter]:

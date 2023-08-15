@@ -5,7 +5,7 @@ import astropy.units as u
 import numpy as np
 from astropy.io import fits
 
-from .utils import set_tuple_from_args, get_closest_indices
+from .utils import get_closest_indices
 from .options import OPTIONS
 
 
@@ -47,13 +47,14 @@ class ReadoutFits:
             self, *wavelengths, key: str) -> Dict[str, np.ndarray]:
         """Gets the data for the given wavelengths."""
         indices = get_closest_indices(*wavelengths, array=self.wavelength)
-        wavelengths = set_tuple_from_args(*wavelengths)
-        data = {str(wavelength.value): getattr(self, key)[:, index].squeeze().T
-                for wavelength, index in zip(wavelengths, indices)}
+        data = {}
+        for wavelength, index in indices.items():
+            if wavelength not in data:
+                data[wavelength] = getattr(self, key)[:, index].flatten()
         return {key: value for key, value in data.items() if value.size != 0}
 
 
-def set_fit_wavelengths(*wavelengths: u.um) -> None:
+def set_fit_wavelengths(wavelengths: Optional[u.um] = None) -> None:
     """Sets the wavelengths to be fitted for as a global option.
 
     If called without parameters or recalled, it will clear the
@@ -61,16 +62,15 @@ def set_fit_wavelengths(*wavelengths: u.um) -> None:
     """
     OPTIONS["fit.wavelengths"] = []
 
-    if not wavelengths:
+    if wavelengths is None:
         return
 
-    wavelengths = set_tuple_from_args(*wavelengths)
     if not isinstance(wavelengths, u.Quantity):
         wavelengths *= u.m
     OPTIONS["fit.wavelengths"] = wavelengths.to(u.um).flatten()
 
 
-def set_data(*fits_files: Optional[Union[List[Path], Path]],
+def set_data(fits_files: Optional[List[Path]] = None,
              wavelengths: Optional[u.um] = None) -> None:
     """Sets the data as a global variable from the input files.
 
@@ -91,10 +91,9 @@ def set_data(*fits_files: Optional[Union[List[Path], Path]],
     OPTIONS["data.closure_phase"],\
         OPTIONS["data.closure_phase_error"] = [], []
 
-    if not fits_files:
+    if fits_files is None:
         return
 
-    fits_files = set_tuple_from_args(*fits_files)
     readouts = OPTIONS["data.readouts"] =\
         [ReadoutFits(file) for file in fits_files]
 

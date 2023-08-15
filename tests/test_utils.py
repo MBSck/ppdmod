@@ -29,6 +29,7 @@ def qval_files(qval_file_dir: Path) -> List[Path]:
              "Q_En_Jaeger_DHS_f1.0_rv1.5.dat"]
     return list(map(lambda x: qval_file_dir / x, files))
 
+
 @pytest.fixture
 def fits_file() -> Path:
     """A MATISSE (.fits)-file."""
@@ -105,18 +106,6 @@ def test_make_workbook() -> None:
     ...
 
 
-@pytest.mark.parametrize(
-    "args, expected", [([1, 2, 3], (1, 2, 3)),
-                       ((1, 2, 3), (1, 2, 3)),
-                       ([1, 2, 3]*u.m, (1*u.m, 2*u.m, 3*u.m)),
-
-                       ])
-def test_set_list_from_args(args: Any, expected: Any) -> None:
-    """Tests the set lists from args function."""
-    arguments = utils.set_tuple_from_args(*args)
-    assert arguments == expected
-
-
 def test_get_closest_indices(
         wavelength: u.um, wavelengths: u.um,
         wavelength_solution_l_band: u.um,
@@ -124,7 +113,11 @@ def test_get_closest_indices(
     """Tests the get_closest_indices function."""
     index = utils.get_closest_indices(wavelength, array=wavelength_solution)
     indices = utils.get_closest_indices(wavelengths, array=wavelength_solution)
-    assert index.size > 0 and indices.size > 0
+    indices_l_band = utils.get_closest_indices(
+        wavelengths, array=wavelength_solution_l_band)
+    assert len(index) == 1
+    assert len(indices) == 2
+    assert len(indices_l_band) == 1
 
 
 def test_uniform_disk() -> None:

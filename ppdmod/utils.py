@@ -56,31 +56,22 @@ def make_workbook(file: Path, sheets: Dict[str, List[str]]) -> None:
     workbook.save(file)
 
 
-def set_tuple_from_args(*args) -> Tuple[Any]:
-    """Sets the arguments to a tuple if a list is provided
-    as the first argument. Otherwise return the arguments.
-    """
-    if isinstance(args[0], list):
-        return tuple(arg for arg in args[0])
-    if isinstance(args[0], u.Quantity):
-        if isinstance(args[0].value, np.ndarray):
-            return tuple(arg for arg in args[0])
-    return args
-
-
-def get_closest_indices(*values, array: np.ndarray,
-                        rtol: float = 1e-5,
-                        atol: float = 1e-8) -> float:
+def get_closest_indices(
+        values, array: np.ndarray,
+        atol: Optional[float] = 1e-2) -> float:
     """Gets the closest indices of values occurring in a numpy array."""
-    values = set_tuple_from_args(*values)
-    indices = np.concatenate([np.where(array == value)[0] for value in values])
-    if indices.size == 0:
-        diffs = [np.abs(array - value).value for value in values]
-        masks = [np.logical_or(
-            diff <= atol, diff <= rtol * np.abs(array).value)
-                      for diff in diffs]
-        indices = np.concatenate([np.where(mask)[0] for mask in masks])
-    return indices
+    array = array.value if isinstance(array, u.Quantity) else array
+    values = values.value if isinstance(values, u.Quantity) else values
+    if not isinstance(values, (list, tuple, np.ndarray)):
+        values = [values]
+
+    indices = {}
+    for value in values:
+        index = np.where(array == value)[0]
+        if index.size == 0:
+            index = np.where(np.abs(array - value) <= atol)[0]
+        indices[str(value)] = index.astype(int)
+    return {key: value for key, value in indices.items() if value.size != 0}
 
 
 def uniform_disk(pixel_size: u.mas, dim: int,
