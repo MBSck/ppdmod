@@ -4,7 +4,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 
-from ppdmod.data import ReadoutFits, set_fit_wavelengths, get_data
+from ppdmod.data import ReadoutFits, set_fit_wavelengths, set_data
 from ppdmod.options import OPTIONS
 
 
@@ -97,7 +97,7 @@ def test_get_data(fits_file: Path, wavelength: u.um) -> None:
     """Tests the automatic data procurrment from one
     or multiple (.fits)-files."""
     set_fit_wavelengths(*wavelength)
-    get_data(fits_file)
+    set_data(fits_file)
     total_flux, total_flux_err =\
         OPTIONS["data.total_flux"], OPTIONS["data.total_flux_error"]
     corr_flux, corr_flux_err =\
@@ -123,7 +123,7 @@ def test_get_data(fits_file: Path, wavelength: u.um) -> None:
     assert all(all(ce.shape == (4,) for ce in cp_err.values())
                for cp_err in cphase_err)
 
-    get_data()
+    set_data()
     assert not OPTIONS["data.total_flux"]
     assert not OPTIONS["data.total_flux_error"]
     assert not OPTIONS["data.correlated_flux"]
@@ -131,7 +131,7 @@ def test_get_data(fits_file: Path, wavelength: u.um) -> None:
     assert not OPTIONS["data.closure_phase"]
     assert not OPTIONS["data.closure_phase_error"]
 
-    get_data(fits_file, wavelengths=wavelength)
+    set_data(fits_file, wavelengths=wavelength)
     assert isinstance(total_flux, list)
     assert isinstance(total_flux_err, list)
     assert isinstance(corr_flux, list)

@@ -136,7 +136,7 @@ def calculate_observables(fourier_transform: np.ndarray,
             pixel_size, vis_ucoord, vis_vcoord, wavelength)
         corr_flux = np.abs(interpolated_corr_flux)
 
-    if "cphase" in OPTIONS["fit.data"]:
+    if "t3phi" in OPTIONS["fit.data"]:
         interpolated_cphase = interpolate_coordinates(
             fourier_transform, fourier_transform.shape[0],
             pixel_size, cphase_ucoord, cphase_vcoord, wavelength)

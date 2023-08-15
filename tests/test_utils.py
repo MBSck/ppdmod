@@ -431,6 +431,24 @@ def test_calculate_intensity(wavelength: u.um) -> None:
     assert intensity.value < 0.1
 
 
-def test_calculate_effective_baselines() -> None:
+def test_calculate_effective_baselines(fits_file: Path,
+                                       wavelength: u.um) -> None:
     """Tests the calculation of the effective baselines."""
-    ...
+    axis_ratio, pos_angle = 1, 33*u.deg
+    readout = ReadoutFits(fits_file)
+    effective_baselines_mlambda = utils.calculate_effective_baselines(
+        readout.ucoord, readout.vcoord, axis_ratio, pos_angle, wavelength)
+    effective_baselines_meter = utils.calculate_effective_baselines(
+        readout.ucoord, readout.vcoord, axis_ratio, pos_angle)
+
+    assert effective_baselines_meter.unit == u.m
+    assert effective_baselines_meter.size == 6
+    assert effective_baselines_mlambda.unit == u.one
+
+    effective_baselines_mlambda_cp = utils.calculate_effective_baselines(
+        readout.u123coord, readout.v123coord, axis_ratio, pos_angle, wavelength)
+    effective_baselines_meter_cp = utils.calculate_effective_baselines(
+        readout.u123coord, readout.v123coord, axis_ratio, pos_angle)
+    assert effective_baselines_meter_cp.unit == u.m
+    assert effective_baselines_meter_cp.shape == (3, 4)
+    assert effective_baselines_mlambda_cp.unit == u.one

@@ -9,7 +9,7 @@ import pytest
 from ppdmod import mcmc
 from ppdmod.options import OPTIONS
 from ppdmod.parameter import STANDARD_PARAMETERS, Parameter
-from ppdmod.data import ReadoutFits, get_data
+from ppdmod.data import ReadoutFits
 
 
 @pytest.fixture

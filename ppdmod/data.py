@@ -43,12 +43,13 @@ class ReadoutFits:
             self.v123coord = [self.v1coord, self.v2coord, self.v3coord]
         return self
 
+    # TODO: Fix error that wrong wavelengths are found in file where they don't exist.
     def get_data_for_wavelengths(
             self, *wavelengths, key: str) -> Dict[str, np.ndarray]:
         """Gets the data for the given wavelengths."""
         indices = get_closest_indices(*wavelengths, array=self.wavelength)
         wavelengths = set_tuple_from_args(*wavelengths)
-        data = {str(wavelength): getattr(self, key)[:, index].squeeze().T
+        data = {str(wavelength.value): getattr(self, key)[:, index].squeeze().T
                 for wavelength, index in zip(wavelengths, indices)}
         return {key: value for key, value in data.items() if value.size != 0}
 
@@ -71,7 +72,7 @@ def set_fit_wavelengths(*wavelengths: u.um) -> None:
 
 
 # TODO: Make this work with two entirely different wavelengths!
-def get_data(*fits_files: Optional[Union[List[Path], Path]],
+def set_data(*fits_files: Optional[Union[List[Path], Path]],
              wavelengths: Optional[u.um] = None) -> None:
     """Sets the data as a global variable from the input files.
 
@@ -99,7 +100,7 @@ def get_data(*fits_files: Optional[Union[List[Path], Path]],
     readouts = OPTIONS["data.readouts"] =\
         [ReadoutFits(file) for file in fits_files]
 
-    if wavelengths is not None:
+    if wavelengths is None:
         wavelengths = OPTIONS["fit.wavelengths"]
     else:
         raise ValueError("Fitting wavelengths must be specified!")

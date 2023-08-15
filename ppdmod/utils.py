@@ -465,37 +465,47 @@ def calculate_intensity(temp_profile: u.K,
     return (spectral_radiance*(pixel_size.to(u.rad))**2).to(u.Jy)
 
 
-def calculate_effective_baselines(uv_coords: u.m,
-                                  axis_ratio: u.dimensionless_unscaled,
-                                  pos_angle: u.rad,
-                                  wavelength: u.um) -> u.dimensionless_unscaled:
+def calculate_effective_baselines(
+        ucoord: u.m, vcoord: u.m, axis_ratio: u.one,
+        pos_angle: u.deg, wavelength: Optional[u.um] = None
+        ) -> Union[u.m, u.one]:
     """Calculates the effective baselines from the projected baselines
     in mega lambda.
 
     Parameters
     ----------
-    uv_coords: u.m
-        The (u, v)-coordinates
-    axis_ratio: u.dimensionless_unscaled
+    ucoord: astropy.units.m
+        The u coordinate.
+    vcoord: astropy.units.m
+        The v coordinate.
+    axis_ratio: astropy.units.one
         The axis ratio of the ellipse
-    pos_angle: u.rad
+    pos_angle: astropy.units.deg
         The positional angle of the object
-    wavelength: u.um
-        The wavelength to calulate the MegaLambda
-    """
-    if uv_coords.shape[0] == 3:
-        u_coords, v_coords = map(lambda x: x.squeeze(),
-                                 np.split(uv_coords, 2, axis=2))
-    else:
-        u_coords, v_coords = map(lambda x: x.squeeze(),
-                                 np.split(uv_coords, 2, axis=1))
+    wavelength: astropy.units.um, optional
+        The wavelength.
 
-    projected_baselines = np.hypot(u_coords, v_coords)
-    projected_baselines_angle = np.arctan2(u_coords, v_coords).value
-    atd = np.arctan2(np.sin(projected_baselines_angle-pos_angle),
-                     (np.cos(projected_baselines_angle-pos_angle)))
-    u_coords_eff = projected_baselines*(np.cos(atd)*np.cos(pos_angle)
-                                        - axis_ratio*np.sin(atd)*np.sin(pos_angle))
-    v_coords_eff = projected_baselines*(np.cos(atd)*np.sin(pos_angle)
-                                        + axis_ratio*np.sin(atd)*np.cos(pos_angle))
-    return np.hypot(u_coords_eff, v_coords_eff)/wavelength.value
+    Returns
+    -------
+    astropy.units.m or astropy.units.one
+        Returns the projected baselines either in meter or
+        mega lambda.
+    """
+    if not isinstance(ucoord, u.Quantity):
+        ucoord, vcoord = map(lambda x: x*u.m, [ucoord, vcoord])
+    pos_angle = (pos_angle*u.deg).to(u.rad)\
+        if not isinstance(pos_angle, u.Quantity) else pos_angle.to(u.rad)
+    projected_baselines = np.hypot(ucoord, vcoord)
+    projected_baselines_angle = np.arctan2(vcoord, ucoord)
+    atd = np.arctan2(
+        (np.cos(projected_baselines_angle-pos_angle)),
+        np.sin(projected_baselines_angle-pos_angle))
+    ucoord_eff = projected_baselines\
+        * (np.cos(atd)*np.cos(pos_angle)
+           - axis_ratio*np.sin(atd)*np.sin(pos_angle))
+    vcoord_eff = projected_baselines\
+        * (np.cos(atd)*np.sin(pos_angle)
+           + axis_ratio*np.sin(atd)*np.cos(pos_angle))
+    if wavelength is not None:
+        return np.hypot(ucoord_eff, vcoord_eff).value/wavelength.value*u.one
+    return np.hypot(ucoord_eff, vcoord_eff)
