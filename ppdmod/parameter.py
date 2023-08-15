@@ -22,7 +22,7 @@ STANDARD_PARAMETERS = {
                    "description": "Pixel Size", "unit": u.mas, "free": False},
     "dim": {"name": "dim", "value": 128,
             "description": "Dimension in pixels",
-            "unit": u.Quantity(value=1, unit=u.one, dtype=int), "free": False},
+            "unit": u.one, "dtype": int, "free": False},
     "wl": {"name": "wl", "value": 0,
            "description": "Wavelength", "unit": u.m},
     "fov": {"name": "fov", "value": 0,
@@ -77,6 +77,7 @@ class Parameter:
     description: Optional[str] = None
     min: Optional[float] = None
     max: Optional[float] = None
+    dtype: Optional[type] = None
     wavelength: Optional[u.um] = None
 
     def __setattr__(self, key: str, value: Any):
@@ -103,7 +104,7 @@ class Parameter:
             value = self.value[get_closest_indices(*wavelength,
                                                    array=self.wavelength*u.um)]
             value = value[0] if len(value) == 1 else value
-        return value*self.unit
+        return u.Quantity(value, unit=self.unit, dtype=self.dtype)
 
     def __str__(self):
         message = f"Parameter: {self.name} has the value {self.value} and "\

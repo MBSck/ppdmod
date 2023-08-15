@@ -128,7 +128,7 @@ def calculate_observables(fourier_transform: np.ndarray,
     total_flux, corr_flux, cphase = None, None, None
     if "flux" in OPTIONS["fit.data"]:
         centre = fourier_transform.shape[0]//2
-        total_flux = fourier_transform[centre, centre]
+        total_flux = np.abs(fourier_transform[centre, centre])
 
     if "vis" in OPTIONS["fit.data"]:
         interpolated_corr_flux = interpolate_coordinates(
@@ -195,7 +195,7 @@ def calculate_observables_chi_sq(
     if "t3phi" in OPTIONS["fit.data"]:
         total_chi_sq += chi_sq(cphase, cphase_err, cphase_model)\
             * OPTIONS["fit.chi2.weight.cphase"]
-    return total_chi_sq
+    return float(total_chi_sq)
 
 
 def lnprior(param_values: Dict[str, float],
@@ -292,7 +292,7 @@ def lnprob(theta: np.ndarray) -> float:
                 corr_flux_err[wavelength_str], corr_flux_model,
                 cphase[wavelength_str], cphase_err[wavelength_str],
                 cphase_model)
-    return np.array(total_chi_sq)
+    return total_chi_sq
 
 
 def run_mcmc(nwalkers: int,
