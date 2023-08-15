@@ -92,8 +92,6 @@ class Parameter:
         self.value = self._set_to_numpy_array(self.value)
         self.wavelength = self._set_to_numpy_array(self.wavelength, True)
 
-    # TODO: Raises an error if there is no close enough value...
-    # Important maybe later on when non specific values are fitted.
     def __call__(self, *wavelength) -> np.ndarray:
         """Gets the value for the parameter or the corresponding
         values for the wavelengths."""

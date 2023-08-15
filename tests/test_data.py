@@ -89,10 +89,11 @@ def test_set_fit_wavelenghts(wavelength: u.um) -> None:
     assert not OPTIONS["fit.wavelengths"]
 
 
-# TODO: Test also with a wavelength as an input.
 @pytest.mark.parametrize(
-    "wavelength", [([8.28835527e-06]*u.m).to(u.um),
-                   ([8.28835527e-06, 1.02322101e-05]*u.m).to(u.um)])
+    "wavelength",
+    [([8.28835527e-06]*u.m).to(u.um),
+     ([8.28835527e-06, 1.02322101e-05]*u.m).to(u.um),
+     ([3.520375e-06, 8.28835527e-06, 1.02322101e-05]*u.m).to(u.um)])
 def test_get_data(fits_file: Path, wavelength: u.um) -> None:
     """Tests the automatic data procurrment from one
     or multiple (.fits)-files."""

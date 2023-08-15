@@ -8,6 +8,7 @@ import matplotlib.cm as cm
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import colormaps as mcm
 
 from .mcmc import calculate_observables
 from .model import Model
@@ -120,7 +121,7 @@ def plot_observed_vs_model(
     wavelengths = OPTIONS["fit.wavelengths"]
     norm = mcolors.Normalize(vmin=wavelengths.min().value,
                              vmax=wavelengths.max().value)
-    colormap = cm.get_cmap("turbo")
+    colormap = mcm.get_cmap("turbo")
 
     if matplot_axes is not None:
         ax, bx = matplot_axes
@@ -135,7 +136,7 @@ def plot_observed_vs_model(
             data_types.append("t3phi")
 
     figsize = (12, 5) if nplots == 2 else None
-    fig, axarr = plt.subplots(1, nplots, figsize=figsize)
+    _, axarr = plt.subplots(1, nplots, figsize=figsize)
     axarr = dict(zip(data_types, axarr.flatten()))
 
     total_fluxes, total_fluxes_err =\
@@ -164,7 +165,7 @@ def plot_observed_vs_model(
             readout.u123coord, readout.v123coord,
             axis_ratio, pos_angle).max(axis=0)
 
-        for wl_index, wavelength in enumerate(wavelengths):
+        for wavelength in wavelengths:
             wl_str = str(wavelength.value)
             total_flux_model, corr_flux_model, cphase_model =\
                 calculate_observables(
@@ -206,7 +207,8 @@ def plot_observed_vs_model(
 
     sm = cm.ScalarMappable(cmap=colormap, norm=norm)
     sm.set_array([])
-    cbar = plt.colorbar(sm, label="Wavelength (micron)")
+    cbar = plt.colorbar(sm, ax=axarr[data_types[-1]],
+                        label="Wavelength (micron)")
     cbar.set_ticks(wavelengths.value)
     cbar.set_ticklabels([f"{wavelength:.0f}" for wavelength in wavelengths.value])
 

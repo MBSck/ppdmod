@@ -43,7 +43,6 @@ class ReadoutFits:
             self.v123coord = [self.v1coord, self.v2coord, self.v3coord]
         return self
 
-    # TODO: Fix error that wrong wavelengths are found in file where they don't exist.
     def get_data_for_wavelengths(
             self, *wavelengths, key: str) -> Dict[str, np.ndarray]:
         """Gets the data for the given wavelengths."""
@@ -71,7 +70,6 @@ def set_fit_wavelengths(*wavelengths: u.um) -> None:
     OPTIONS["fit.wavelengths"] = wavelengths.to(u.um).flatten()
 
 
-# TODO: Make this work with two entirely different wavelengths!
 def set_data(*fits_files: Optional[Union[List[Path], Path]],
              wavelengths: Optional[u.um] = None) -> None:
     """Sets the data as a global variable from the input files.
@@ -102,8 +100,6 @@ def set_data(*fits_files: Optional[Union[List[Path], Path]],
 
     if wavelengths is None:
         wavelengths = OPTIONS["fit.wavelengths"]
-    else:
-        raise ValueError("Fitting wavelengths must be specified!")
 
     for readout in readouts:
         OPTIONS["data.total_flux"].append(

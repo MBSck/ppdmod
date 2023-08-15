@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, List
+from typing import Union, List, Any
 
 import astropy.units as u
 import matplotlib.pyplot as plt
@@ -29,12 +29,20 @@ def qval_files(qval_file_dir: Path) -> List[Path]:
              "Q_En_Jaeger_DHS_f1.0_rv1.5.dat"]
     return list(map(lambda x: qval_file_dir / x, files))
 
-
 @pytest.fixture
 def fits_file() -> Path:
     """A MATISSE (.fits)-file."""
     return Path("data/fits") /\
         "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits"
+
+
+@pytest.fixture
+def fits_files() -> Path:
+    """A MATISSE (.fits)-file."""
+    fits_files = [
+        "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_HAWAII-2RG_FINAL_TARGET_INT.fits",
+        "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits"]
+    return [Path("data/fits") / file for file in fits_files]
 
 
 @pytest.fixture
@@ -46,7 +54,13 @@ def wavelength() -> u.m:
 @pytest.fixture
 def wavelengths() -> u.um:
     """A wavelength grid."""
-    return ([8.28835527e-06, 1.02322101e-05]*u.m).to(u.um)
+    return [3.520375, 8.502626, 10.001093]*u.um
+
+
+@pytest.fixture
+def wavelength_solution_l_band(fits_files: Path) -> u.um:
+    """The wavelength solution of a MATISSE (.fits)-file."""
+    return ReadoutFits(fits_files[0]).wavelength
 
 
 @pytest.fixture
@@ -91,28 +105,22 @@ def test_make_workbook() -> None:
     ...
 
 
-def test_set_list_from_args(wavelengths: u.um) -> None:
+@pytest.mark.parametrize(
+    "args, expected", [([1, 2, 3], (1, 2, 3)),
+                       ((1, 2, 3), (1, 2, 3)),
+                       ([1, 2, 3]*u.m, (1*u.m, 2*u.m, 3*u.m)),
+
+                       ])
+def test_set_list_from_args(args: Any, expected: Any) -> None:
     """Tests the set lists from args function."""
-    arguments = [1, 2, 3]
-    arguments = utils.set_tuple_from_args(*arguments)
-    assert arguments == (1, 2, 3)
-
-    arguments = 1, 2, 3
-    arguments = utils.set_tuple_from_args(*arguments)
-    assert arguments == (1, 2, 3)
-
-    arguments = [1, 2, 3]*u.m
-    arguments = utils.set_tuple_from_args(*arguments)
-    assert arguments == (1*u.m, 2*u.m, 3*u.m)
-
-    arguments = utils.set_tuple_from_args(*wavelengths)
-    assert arguments == ((8.28835527e-06*u.m).to(u.um),
-                         (1.02322101e-05*u.m).to(u.um),)
+    arguments = utils.set_tuple_from_args(*args)
+    assert arguments == expected
 
 
-def test_get_closest_indices(wavelength: u.um,
-                             wavelengths: u.um,
-                             wavelength_solution: u.um) -> None:
+def test_get_closest_indices(
+        wavelength: u.um, wavelengths: u.um,
+        wavelength_solution_l_band: u.um,
+        wavelength_solution: u.um) -> None:
     """Tests the get_closest_indices function."""
     index = utils.get_closest_indices(wavelength, array=wavelength_solution)
     indices = utils.get_closest_indices(wavelengths, array=wavelength_solution)

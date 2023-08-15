@@ -68,13 +68,19 @@ def set_tuple_from_args(*args) -> Tuple[Any]:
     return args
 
 
-def get_closest_indices(*values, array: np.ndarray) -> float:
+def get_closest_indices(*values, array: np.ndarray,
+                        rtol: float = 1e-5,
+                        atol: float = 1e-8) -> float:
     """Gets the closest indices of values occurring in a numpy array."""
     values = set_tuple_from_args(*values)
-    indices = np.array([np.where(array == value)[0] for value in values])
+    indices = np.concatenate([np.where(array == value)[0] for value in values])
     if indices.size == 0:
-        indices = [np.abs(array - value).argmin() for value in values][0]
-    return indices.flatten()
+        diffs = [np.abs(array - value).value for value in values]
+        masks = [np.logical_or(
+            diff <= atol, diff <= rtol * np.abs(array).value)
+                      for diff in diffs]
+        indices = np.concatenate([np.where(mask)[0] for mask in masks])
+    return indices
 
 
 def uniform_disk(pixel_size: u.mas, dim: int,
