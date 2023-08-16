@@ -282,6 +282,8 @@ def lnprob(theta: np.ndarray) -> float:
         readout = OPTIONS["data.readouts"][index]
         for wavelength in OPTIONS["fit.wavelengths"]:
             wavelength_str = str(wavelength.value)
+            if wavelength_str not in corr_fluxes:
+                continue
             fourier_transform = fourier_transforms[wavelength_str]
             total_flux_model, corr_flux_model, cphase_model =\
                 calculate_observables(
