@@ -143,9 +143,14 @@ def test_set_params_from_theta(
         list(new_shared_parameters.values())
 
 
-def test_init_randomly() -> None:
+# TODO: Tests somehow that all components end up where they need to go.
+@pytest.mark.parametrize("nwalkers", [5, 10, 25, 35])
+def test_init_randomly(nwalkers: int,
+                       components_and_params: Dict[str, Dict],
+                       shared_params: Dict[str, Parameter]) -> None:
     """Tests the init_randomly function."""
-    ...
+    theta = mcmc.init_randomly(nwalkers)
+    assert theta.shape == (nwalkers, 12)
 
 
 # TODO: Finish test.

@@ -15,11 +15,13 @@ from .options import OPTIONS
 
 # TODO: Check if the order is preserved here.
 def set_theta_from_params(
-        component_and_params: List[List[Dict]],
+        components_and_params: List[List[Dict]],
         shared_params: Optional[Dict[str, Parameter]] = None) -> np.ndarray:
     """Sets the theta vector from the parameters."""
     theta = []
-    for (_, params) in component_and_params:
+    for (_, params) in components_and_params:
+        if not params:
+            continue
         theta.extend([parameter.value for parameter in params.values()])
     theta.extend([parameter.value for parameter in shared_params.values()])
     return np.array(theta)
@@ -47,22 +49,28 @@ def set_params_from_theta(
     return new_components_and_params, new_shared_params
 
 
-def init_randomly(free_parameters: Dict[str, Parameter],
-                  nwalkers: float) -> np.ndarray:
+def init_randomly(nwalkers: float) -> np.ndarray:
     """initialises a random numpy.ndarray from the parameter's limits.
 
     parameters
     -----------
-    free_parameters : dict of Parameter
+    components_and_params : list of list of dict
 
     Returns
     -------
-    numpy.ndarray
+    theta : numpy.ndarray
     """
-    initial = np.ndarray([nwalkers, len(free_parameters)])
-    for index, parameter in enumerate(free_parameters.values()):
+    theta = set_theta_from_params(
+        OPTIONS["model.components_and_params"],
+        OPTIONS["model.shared_params"])
+    params = []
+    for (_, param) in OPTIONS["model.components_and_params"]:
+        params.extend(param.values())
+
+    initial = np.ndarray([nwalkers, len(theta)])
+    for index, params in enumerate(params):
         initial[:, index] = np.random.random(nwalkers)\
-            * np.ptp([parameter.min, parameter.max])+parameter.min
+            * np.ptp([params.min, params.max])+params.min
     return initial
 
 
@@ -299,7 +307,7 @@ def lnprob(theta: np.ndarray) -> float:
 def run_mcmc(nwalkers: int,
              nsteps: Optional[int] = 100,
              discard: Optional[int] = 10,
-             ncores: Optional[int] = None,
+             ncores: Optional[int] = 6,
              save_path: Optional[Path] = None) -> np.array:
     """Runs the emcee Hastings Metropolitan sampler.
 
@@ -319,15 +327,13 @@ def run_mcmc(nwalkers: int,
     -------
     sampler : numpy.ndarray
     """
-    initial = init_randomly(OPTIONS["model.params"], nwalkers)
-    if ncores is None:
-        ncores = 6
-    # with Pool(processes=ncores) as pool:
+    theta = init_randomly(nwalkers)
+    ndim = theta.shape[1]
     print(f"Executing MCMC with {ncores} cores.")
     print("--------------------------------------------------------------")
-    sampler = emcee.EnsembleSampler(nwalkers, len(OPTIONS["model.params"]),
-                                    lnprob, pool=None)
-    sampler.run_mcmc(initial, nsteps, progress=True)
+    # with Pool(processes=ncores) as pool:
+    sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, pool=None)
+    sampler.run_mcmc(theta, nsteps, progress=True)
     return sampler
 
 
