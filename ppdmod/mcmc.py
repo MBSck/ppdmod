@@ -60,18 +60,12 @@ def init_randomly(nwalkers: float) -> np.ndarray:
     -------
     theta : numpy.ndarray
     """
-    theta = set_theta_from_params(
-        OPTIONS["model.components_and_params"],
-        OPTIONS["model.shared_params"])
     params = []
     for (_, param) in OPTIONS["model.components_and_params"]:
         params.extend(param.values())
-
-    initial = np.ndarray([nwalkers, len(theta)])
-    for index, params in enumerate(params):
-        initial[:, index] = np.random.random(nwalkers)\
-            * np.ptp([params.min, params.max])+params.min
-    return initial
+    params.extend(OPTIONS["model.shared_params"].values())
+    return np.array([[np.random.uniform(param.min, param.max)
+                      for param in params] for _ in range(nwalkers)])
 
 
 def chi_sq(data: u.quantity, error: u.quantity,
@@ -226,8 +220,9 @@ def lnprior(components_and_params: List[List[Dict]],
     if shared_params is not None:
         for value, param in zip(shared_params.values(),
                                 OPTIONS["model.shared_params"].values()):
-            if not param.min < value < param.max:
-                return -np.inf
+            if param.free:
+                if not param.min < value < param.max:
+                    return -np.inf
     for (_, values), (_, params) in zip(
             components_and_params, OPTIONS["model.components_and_params"]):
         for value, param in zip(values.values(), params.values()):
@@ -259,7 +254,8 @@ def lnprob(theta: np.ndarray) -> float:
         OPTIONS["model.components_and_params"],
         OPTIONS["model.shared_params"])
 
-    if np.isinf(lnprior(parameters, shared_params)):
+    lnp = lnprior(parameters, shared_params)
+    if np.isinf(lnp):
         return -np.inf
 
     components = assemble_components(parameters, shared_params)
@@ -306,9 +302,7 @@ def lnprob(theta: np.ndarray) -> float:
 
 def run_mcmc(nwalkers: int,
              nsteps: Optional[int] = 100,
-             discard: Optional[int] = 10,
-             ncores: Optional[int] = 6,
-             save_path: Optional[Path] = None) -> np.array:
+             ncores: Optional[int] = 6) -> np.ndarray:
     """Runs the emcee Hastings Metropolitan sampler.
 
     The EnsambleSampler recieves the parameters and the args are passed to

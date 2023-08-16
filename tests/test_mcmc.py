@@ -326,6 +326,7 @@ def test_lnprob(fits_files: List[Path], wavelengths: u.um) -> None:
     data.set_data()
 
 
+# TODO: Finish test.
 def test_run_mcmc() -> None:
     """Tests the run_mcmc function."""
     ...
