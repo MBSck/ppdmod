@@ -488,13 +488,14 @@ class AsymmetricSDGreyBodyContinuum(AsymmetricSDTemperatureGradient):
     continuum_contribution = True
 
 
+# TODO: Check that this is working properly.
 def assemble_components(
         parameters: Dict[str, Dict],
         shared_params: Optional[Dict[str, Parameter]] = None
         ) -> List[Component]:
     """Assembles a model from a dictionary of parameters."""
     components = []
-    for component, params in parameters.items():
+    for (component, params) in parameters:
         comp = getattr(sys.modules[__name__], component)
         components.append(comp(**params, **shared_params,
                                **OPTIONS["model.constant_params"]))

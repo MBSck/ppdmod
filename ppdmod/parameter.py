@@ -92,15 +92,16 @@ class Parameter:
         self.value = self._set_to_numpy_array(self.value)
         self.wavelength = self._set_to_numpy_array(self.wavelength, True)
 
-    def __call__(self, *wavelength) -> np.ndarray:
+    def __call__(self, wavelength: Optional[u.um] = None) -> np.ndarray:
         """Gets the value for the parameter or the corresponding
         values for the wavelengths."""
         if self.wavelength is None:
             value = self.value
         else:
-            # HACK: Setting the wavelength to u.um is a hack.
-            value = self.value[get_closest_indices(*wavelength,
-                                                   array=self.wavelength*u.um)]
+            # Hack: Multiplying by microns makes it work.
+            indices = list(get_closest_indices(
+                wavelength, array=self.wavelength*u.um).values())
+            value = self.value[indices]
             value = value[0] if len(value) == 1 else value
         return u.Quantity(value, unit=self.unit, dtype=self.dtype)
 

@@ -390,8 +390,8 @@ def test_assemble_components() -> None:
     shared_params = {"p": params["p"]}
     del params["p"]
 
-    components_and_params = {"Star": params,
-                             "AsymmetricSDGreyBodyContinuum": params}
+    components_and_params = [["Star", params],
+                             ["AsymmetricSDGreyBodyContinuum", params]]
     components = assemble_components(components_and_params, shared_params)
     assert isinstance(components[0], Star)
     assert isinstance(components[1], AsymmetricSDGreyBodyContinuum)

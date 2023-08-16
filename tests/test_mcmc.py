@@ -57,9 +57,9 @@ def components_and_params() -> Dict[str, Dict]:
                       "AsymmetricSDGreyBody", "TemperatureGradient",
                       "AsymmetricSDTemperatureGradient"]
     components = random.sample(all_components, 3)
-    return {component: {key: Parameter(**STANDARD_PARAMETERS[key])
-            for key in random.sample(list(STANDARD_PARAMETERS.keys()), 4)}
-            for component in components}
+    return [[component, {key: Parameter(**STANDARD_PARAMETERS[key])
+            for key in random.sample(list(STANDARD_PARAMETERS.keys()), 4)}]
+            for component in components]
 
 
 @pytest.fixture
@@ -107,7 +107,7 @@ def model(dim: int, pixel_size: u.mas,
         elong=axis_ratio, inner_sigma=2000, kappa_abs=1000,
         kappa_cont=3000, cont_weight=0.5, p=0.5)
     outer_ring.optically_thick = True
-    return Model(star, inner_ring, outer_ring)
+    return Model([star, inner_ring, outer_ring])
 
 
 def test_set_theta_from_params(
@@ -116,7 +116,7 @@ def test_set_theta_from_params(
     """Tests the set_theta_from_params function."""
     theta = mcmc.set_theta_from_params(components_and_params,
                                        shared_params)
-    len_params = sum(len(params) for params in components_and_params.values())
+    len_params = sum(len(params) for (_, params) in components_and_params)
     assert theta.size == len_params+len(shared_params)
     assert all(theta[-len(shared_params):] ==
                [parameter.value for parameter in shared_params.values()])
@@ -133,10 +133,10 @@ def test_set_params_from_theta(
         mcmc.set_params_from_theta(
             theta, components_and_params, shared_params)
     all_params = []
-    for params in components_and_params.values():
+    for (_, params) in components_and_params:
         all_params.extend(list(map(lambda x: x.value, params.values())))
     new_params = []
-    for params in new_components_and_params.values():
+    for (_, params) in new_components_and_params:
         new_params.extend(list(params.values()))
     assert all_params == new_params
     assert list(map(lambda x: x.value, shared_params.values())) ==\
@@ -253,8 +253,8 @@ def test_lnprior(values: List[float], expected: float) -> None:
     shared_params = {"p": params["p"]}
     del params["p"]
 
-    components_and_params = {"Star": params,
-                             "AsymmetricSDGreyBodyContinuum": shared_params}
+    components_and_params = [["Star", params],
+                             ["AsymmetricSDGreyBodyContinuum", shared_params]]
 
     theta = mcmc.set_theta_from_params(components_and_params,
                                        shared_params)
@@ -299,8 +299,8 @@ def test_lnprob(fits_files: List[Path], wavelengths: u.um) -> None:
     del params["pa"]
     del params["elong"]
 
-    components_and_params = {"Star": params,
-                             "AsymmetricSDGreyBodyContinuum": params}
+    components_and_params = [["Star", params],
+                             ["AsymmetricSDGreyBodyContinuum", params]]
 
     OPTIONS["model.components_and_params"] = components_and_params
     OPTIONS["model.shared_params"] = shared_params

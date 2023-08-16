@@ -82,17 +82,15 @@ def temp_gradient(star_parameters: Dict[str, float],
 
 def test_model_init(star: Star, temp_gradient: TemperatureGradient) -> None:
     """Tests the model's initialization."""
-    model = Model(star, temp_gradient)
     model_list = Model([star, temp_gradient])
     model_list_one_comp = Model([star])
-    assert model.components == (star, temp_gradient,)
     assert model_list.components == (star, temp_gradient,)
     assert model_list_one_comp.components == (star,)
 
 
 def test_model_params(star: Star, temp_gradient: TemperatureGradient) -> None:
     """Tests the model's parameters property."""
-    model_star, model_temp_gradient = Model(star), Model(temp_gradient)
+    model_star, model_temp_gradient = Model([star]), Model([temp_gradient])
     star_expected = ["x", "y", "dim", "eff_temp", "eff_radius", "dist"]
     temp_gradient_expected = ["x", "y", "dim", "eff_temp",
                               "eff_radius", "dist", "inner_temp", "pa",
@@ -109,7 +107,7 @@ def test_model_params(star: Star, temp_gradient: TemperatureGradient) -> None:
 def test_model_free_params(star: Star,
                            temp_gradient: TemperatureGradient) -> None:
     """Tests the model's parameters property."""
-    model_star, model_temp_gradient = Model(star), Model(temp_gradient)
+    model_star, model_temp_gradient = Model([star]), Model([temp_gradient])
     temp_gradient_expected = ["pa", "elong", "p", "q", "rin", "rout"]
     param_temp_gradient_names = [param.name for
                                  param in model_temp_gradient.params.values()]
@@ -125,7 +123,7 @@ def test_calculate_image(star: Star,
     """Tests the model's image calculation."""
     OPTIONS["fourier.binning"] = None
     temp_gradient.params["kappa_abs"] = opacity
-    model = Model(star, temp_gradient)
+    model = Model([star, temp_gradient])
     image = model.calculate_image(512, 0.1, wavelength)
     assert image.unit == u.Jy
     assert image.shape == (512, 512)
@@ -138,7 +136,7 @@ def test_calculate_complex_visibility(
     """Tests the model's complex visibility function calculation."""
     OPTIONS["fourier.binning"] = None
     temp_gradient.params["kappa_abs"] = opacity
-    model = Model(star, temp_gradient)
+    model = Model([star, temp_gradient])
     complex_vis = model.calculate_complex_visibility(wavelength)
     binned_dim = get_binned_dimension(star.params["dim"](),
                                       OPTIONS["fourier.binning"])

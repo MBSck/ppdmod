@@ -1,6 +1,6 @@
 from pathlib import Path
 from multiprocessing import Pool
-from typing import Tuple, Optional, Dict
+from typing import Tuple, Optional, List, Dict
 
 import astropy.units as u
 import emcee
@@ -13,36 +13,37 @@ from .parameter import Parameter
 from .options import OPTIONS
 
 
+# TODO: Check if the order is preserved here.
 def set_theta_from_params(
-        component_and_params: Dict[str, Dict],
+        component_and_params: List[List[Dict]],
         shared_params: Optional[Dict[str, Parameter]] = None) -> np.ndarray:
     """Sets the theta vector from the parameters."""
     theta = []
-    for component in component_and_params.values():
-        theta.extend([parameter.value for parameter in component.values()])
+    for (_, params) in component_and_params:
+        theta.extend([parameter.value for parameter in params.values()])
     theta.extend([parameter.value for parameter in shared_params.values()])
     return np.array(theta)
 
 
 def set_params_from_theta(
         theta: np.ndarray,
-        components_and_params: Dict[str, Dict],
+        components_and_params: List[List[Dict]],
         shared_params: Optional[Dict[str, Parameter]] = None) -> float:
     """Sets the parameters from the theta vector."""
     new_shared_params = {}
     if shared_params is not None:
-        for key, value in zip(shared_params.keys(),
+        for key, param in zip(shared_params.keys(),
                               theta[-len(shared_params):]):
-            new_shared_params[key] = value
+            new_shared_params[key] = param
 
     lower, upper = None, None
-    new_components_and_params, lower = {}, None
-    for component, value in components_and_params.items():
-        if component == list(components_and_params.keys())[-1]:
+    new_components_and_params, lower = [], None
+    for (component, params) in components_and_params:
+        if component == components_and_params[-1][0]:
             upper = -len(shared_params) if shared_params is not None else None
-        new_components_and_params[component] =\
-            dict(zip(value.keys(), theta[lower:upper]))
-        lower = lower + len(value) if lower is not None else len(value)
+        new_components_and_params.append(
+            [component, dict(zip(params.keys(), theta[lower:upper]))])
+        lower = lower + len(params) if lower is not None else len(params)
     return new_components_and_params, new_shared_params
 
 
@@ -198,15 +199,15 @@ def calculate_observables_chi_sq(
     return float(total_chi_sq)
 
 
-def lnprior(param_values: Dict[str, float],
-            shared_param_values: Optional[Dict[str, float]] = None) -> float:
+def lnprior(components_and_params: List[List[Dict]],
+            shared_params: Optional[Dict[str, float]] = None) -> float:
     """Checks if the priors are in bounds.
 
     Parameters
     ----------
-    param_values : dict
-        The parameters.
-    shared_param_values : dict, optional
+    components_and_params : list of list of dict
+        The components and parameters.
+    shared_params : dict, optional
         The shared parameters.
 
     Returns
@@ -214,13 +215,13 @@ def lnprior(param_values: Dict[str, float],
     float
         The log of the prior.
     """
-    if shared_param_values is not None:
-        for value, param in zip(shared_param_values.values(),
+    if shared_params is not None:
+        for value, param in zip(shared_params.values(),
                                 OPTIONS["model.shared_params"].values()):
             if not param.min < value < param.max:
                 return -np.inf
-    for values, params in zip(param_values.values(),
-                              OPTIONS["model.components_and_params"].values()):
+    for (_, values), (_, params) in zip(
+            components_and_params, OPTIONS["model.components_and_params"]):
         for value, param in zip(values.values(), params.values()):
             if param.free:
                 if not param.min < value < param.max:

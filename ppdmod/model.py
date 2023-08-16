@@ -29,7 +29,7 @@ class Model:
 
     def __init__(self, components: List[Component]) -> None:
         """Constructor of the class"""
-        self.components = components
+        self.components = tuple(components)
 
     @property
     def params(self) -> Dict[str, Parameter]:

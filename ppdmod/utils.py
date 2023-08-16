@@ -70,7 +70,7 @@ def get_closest_indices(
         index = np.where(array == value)[0]
         if index.size == 0:
             index = np.where(np.abs(array - value) <= atol)[0]
-        indices[str(value)] = index.astype(int)
+        indices[str(value)] = index.astype(int).squeeze()
     return {key: value for key, value in indices.items() if value.size != 0}
 
 

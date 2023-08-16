@@ -84,7 +84,7 @@ def model(dim: int, pixel_size: u.mas,
         elong=axis_ratio, inner_sigma=2000, kappa_abs=1000,
         kappa_cont=3000, cont_weight=0.5, p=0.5)
     outer_ring.optically_thick = True
-    return Model(star, inner_ring, outer_ring)
+    return Model([star, inner_ring, outer_ring])
 
 
 def log_prior(theta):
