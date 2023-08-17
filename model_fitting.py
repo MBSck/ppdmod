@@ -18,7 +18,7 @@ from ppdmod.options import OPTIONS
 # TODO: Check data procurrement.
 
 data.set_fit_wavelengths([3.520375, 10.001093]*u.um)
-path = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse")
+path = Path("tests/data/fits/")
 fits_files = [
     "hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_HAWAII-2RG_FINAL_TARGET_INT.fits",
     "hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_AQUARIUS_FINAL_TARGET_INT.fits",
