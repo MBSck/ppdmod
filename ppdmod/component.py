@@ -107,7 +107,8 @@ class AnalyticalComponent(Component):
                   "analytical components are derived."
 
     def _image_function(self, xx: u.mas, yy: u.mas,
-                        wavelength: Optional[u.um] = None) -> Optional[u.Quantity]:
+                        wavelength: Optional[u.Quantity[u.um]] = None
+                        ) -> Optional[u.Quantity]:
         """Calculates the image from a 2D grid.
 
         Parameters
@@ -125,7 +126,8 @@ class AnalyticalComponent(Component):
         return
 
     def _visibility_function(self,
-                             wavelength: Optional[u.um] = None) -> np.ndarray:
+                             wavelength: Optional[u.Quantity[u.um]] = None
+                             ) -> np.ndarray:
         """Calculates the complex visibility of the the component's image.
 
         Parameters
@@ -140,7 +142,7 @@ class AnalyticalComponent(Component):
 
     def calculate_image(self, dim: Optional[float] = None,
                         pixel_size: Optional[float] = None,
-                        wavelength: Optional[u.um] = None) -> u.Jy:
+                        wavelength: Optional[u.Quantity[u.um]] = None) -> u.Jy:
         """Calculates a 2D image.
 
         Parameters
@@ -159,7 +161,7 @@ class AnalyticalComponent(Component):
         return self._image_function(x_arr, y_arr, wavelength)
 
     def calculate_complex_visibility(self,
-                                     wavelength: Optional[u.um] = None
+                                     wavelength: Optional[u.Qunantity[u.um]] = None
                                      ) -> np.ndarray:
         """Calculates the complex visibility of the the component's image.
 
@@ -219,7 +221,7 @@ class NumericalComponent(Component):
 
     def calculate_image(self, dim: Optional[float] = None,
                         pixel_size: Optional[float] = None,
-                        wavelength: Optional[u.um] = None) -> u.Jy:
+                        wavelength: Optional[u.Quantity[u.um]] = None) -> u.Jy:
         """Calculates a 2D image.
 
         Parameters
@@ -237,9 +239,8 @@ class NumericalComponent(Component):
         x_arr, y_arr = self._calculate_internal_grid(dim, pixel_size)
         return self._image_function(x_arr, y_arr, wavelength)
 
-    def calculate_complex_visibility(self,
-                                     wavelength: Optional[u.um] = None
-                                     ) -> np.ndarray:
+    def calculate_complex_visibility(
+            self, wavelength: Optional[u.Quantity[u.um]] = None) -> np.ndarray:
         """Calculates the complex visibility of the the component's image.
 
         Parameters
