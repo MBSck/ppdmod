@@ -74,6 +74,7 @@ a.set(min=0., max=1.)
 phi.set(min=0, max=360)
 
 inner_ring = {"rin": rin, "rout": rout}
+inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
 rin = Parameter(**STANDARD_PARAMETERS["rin"])
 a = Parameter(**STANDARD_PARAMETERS["a"])
@@ -84,6 +85,7 @@ a.set(min=0., max=1.)
 phi.set(min=0, max=360)
 
 outer_ring = {"rin": rin, "a": a, "phi": phi}
+outer_ring_labels = [f"or_{label}" for label in outer_ring]
 
 p = Parameter(**STANDARD_PARAMETERS["p"])
 pa = Parameter(**STANDARD_PARAMETERS["pa"])
@@ -100,6 +102,7 @@ inner_sigma.set(min=0, max=10000)
 OPTIONS["model.shared_params"] = {"p": p, "pa": pa, "elong": elong,
                                   "inner_sigma": inner_sigma,
                                   "cont_weight": cont_weight}
+shared_params_labels = [f"sh_{label}" for label in OPTIONS["model.shared_params"]]
 
 OPTIONS["model.components_and_params"] = [
     ["Star", {}],
@@ -115,21 +118,18 @@ print("Binned Dimension",
 print("Binned and padded Dimension",
       dim*2**-OPTIONS["fourier.binning"]*2**OPTIONS["fourier.padding"])
 
+labels = inner_ring_labels + outer_ring_labels + shared_params_labels
+
 
 if __name__ == "__main__":
-    nwalkers = 25
-    theta_random = mcmc.init_randomly(nwalkers)[0]
-    components = custom_components.assemble_components(
-        *mcmc.set_params_from_theta(theta_random))
-    m = model.Model(components)
-    # plot.plot_model(2048, 0.1, m,
-    #                 OPTIONS["fit.wavelengths"][1],
-    #                 savefig=Path("before_model.pdf"))
-
-    sampler = mcmc.run_mcmc(nwalkers, ncores=8)
-    theta = mcmc.get_best_fit(sampler)
+    nburnin, nsteps, nwalkers = 10, 100, 25
+    sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin, ncores=8)
+    theta = mcmc.get_best_fit(sampler, discard=nburnin)
     components_and_params, shared_params = mcmc.set_params_from_theta(theta)
-    # plot.plot_chains(sampler)
+
+    # TODO: Add labels here.
+    plot.plot_chains(sampler, labels, discard=nburnin)
+    plot.plot_corner(sampler, labels, discard=nburnin)
     components = model.assemble_components(
         components_and_params, shared_params)
     m = model.Model(components)
