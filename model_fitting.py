@@ -28,7 +28,7 @@ fits_files = list(map(lambda x: path / x, fits_files))
 data.set_data(fits_files)
 
 wavelength_axes = list(
-    map(lambda x: data.ReadoutFits(path / x).wavelength, fits_files))
+    map(lambda x: data.ReadoutFits(x).wavelength, fits_files))
 wavelength_axes = np.sort(np.unique(np.concatenate(wavelength_axes)))
 
 weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
