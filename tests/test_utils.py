@@ -182,7 +182,7 @@ def test_get_binned_dimension(dimension: int,
                               binning_factor: int, expected: int) -> None:
     """Tests if the binned dimension is properly calculated from
     the binning factor."""
-    assert utils.get_binned_dimension(dimension, binning_factor) == expected
+    assert utils.get_new_dimension(dimension, binning_factor) == expected
 
 
 @pytest.mark.parametrize(

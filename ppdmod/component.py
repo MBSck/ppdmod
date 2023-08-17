@@ -4,9 +4,8 @@ import astropy.units as u
 import numpy as np
 
 from .fft import compute_2Dfourier_transform
-from .options import OPTIONS
 from .parameter import STANDARD_PARAMETERS, Parameter
-from .utils import get_binned_dimension
+from .utils import get_new_dimension
 
 
 class Component:
@@ -154,7 +153,6 @@ class AnalyticalComponent(Component):
         -------
         image : astropy.units.Quantity
         """
-        dim = get_binned_dimension(dim, OPTIONS["fourier.binning"])
         x_arr, y_arr = self._calculate_internal_grid(dim, pixel_size)
         return self._image_function(x_arr, y_arr, wavelength)
 

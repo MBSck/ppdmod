@@ -249,10 +249,7 @@ def lnprob(theta: np.ndarray) -> float:
     float
         The log of the probability.
     """
-    parameters, shared_params = set_params_from_theta(
-        theta,
-        OPTIONS["model.components_and_params"],
-        OPTIONS["model.shared_params"])
+    parameters, shared_params = set_params_from_theta(theta)
 
     lnp = lnprior(parameters, shared_params)
     if np.isinf(lnp):
@@ -325,7 +322,6 @@ def run_mcmc(nwalkers: int,
     """
     theta = init_randomly(nwalkers)
     ndim = theta.shape[1]
-    breakpoint()
     print(f"Executing MCMC with {ncores} cores.")
     print("--------------------------------------------------------------")
     with Pool(processes=ncores) as pool:

@@ -6,7 +6,7 @@ import numpy as np
 from .component import Component
 from .parameter import Parameter
 from .options import OPTIONS
-from .utils import get_binned_dimension
+from .utils import get_new_dimension
 
 
 class Model:
@@ -85,7 +85,8 @@ class Model:
         -------
         image : astropy.unity.Jy
         """
-        dim = get_binned_dimension(dim, OPTIONS["fourier.binning"])
+        dim = get_new_dimension(
+            dim, OPTIONS["fourier.binning"], OPTIONS["fourier.padding"])
         image = np.zeros((dim, dim))*u.Jy
         for component in self.components:
             image += component.calculate_image(dim, pixel_size, wavelength)

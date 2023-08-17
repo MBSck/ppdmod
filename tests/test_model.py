@@ -10,7 +10,7 @@ from ppdmod.model import Model
 from ppdmod.data import ReadoutFits
 from ppdmod.parameter import Parameter
 from ppdmod.options import OPTIONS
-from ppdmod.utils import get_binned_dimension, linearly_combine_opacities
+from ppdmod.utils import get_new_dimension, linearly_combine_opacities
 
 
 @pytest.fixture
@@ -138,7 +138,7 @@ def test_calculate_complex_visibility(
     temp_gradient.params["kappa_abs"] = opacity
     model = Model([star, temp_gradient])
     complex_vis = model.calculate_complex_visibility(wavelength)
-    binned_dim = get_binned_dimension(star.params["dim"](),
+    binned_dim = get_new_dimension(star.params["dim"](),
                                       OPTIONS["fourier.binning"])
     assert not isinstance(complex_vis, u.Quantity)\
         and isinstance(complex_vis, np.ndarray)

@@ -16,7 +16,7 @@ from ppdmod.data import ReadoutFits
 from ppdmod.options import OPTIONS
 from ppdmod.utils import opacity_to_matisse_opacity,\
     linearly_combine_opacities, calculate_intensity,\
-    get_binned_dimension, make_workbook, get_next_power_of_two
+    get_new_dimension, make_workbook, get_next_power_of_two
 
 
 RESOLUTION_FILE = Path("resolution.xlsx")
@@ -315,7 +315,7 @@ def test_numerical_component_calculate_complex_visibility(
     assert complex_visibility.shape == (dim, dim)
 
     OPTIONS["fourier.binning"] = 2
-    binned_dim = get_binned_dimension(dim, OPTIONS["fourier.binning"])
+    binned_dim = get_new_dimension(dim, OPTIONS["fourier.binning"])
     complex_visibility = temp_gradient.calculate_complex_visibility(wavelength)
     OPTIONS["fourier.binning"] = None
     assert np.all(complex_visibility != 0)

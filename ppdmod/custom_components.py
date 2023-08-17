@@ -8,7 +8,7 @@ from .component import Component, AnalyticalComponent, NumericalComponent
 from .parameter import STANDARD_PARAMETERS, Parameter
 from .options import OPTIONS
 from .utils import angular_to_distance, calculate_intensity,\
-    rebin_image
+    get_new_dimension, rebin_image, pad_image
 
 
 class Star(AnalyticalComponent):
@@ -103,8 +103,10 @@ class Star(AnalyticalComponent):
                              wavelength: Optional[u.um] = None) -> np.ndarray:
         """The component's _visibility_function."""
         if self._visibility is None:
-            self._visibility = np.ones((self.params["dim"](),
-                                        self.params["dim"]()))
+            dim = get_new_dimension(self.params["dim"](),
+                                    OPTIONS["fourier.binning"],
+                                    OPTIONS["fourier.padding"])
+            self._visibility = np.ones((dim, dim))
         return self._visibility\
             * calculate_intensity(self.params["eff_temp"](),
                                   wavelength,
@@ -346,6 +348,8 @@ class TemperatureGradient(NumericalComponent):
 
         if OPTIONS["fourier.binning"] is not None:
             image = rebin_image(image, OPTIONS["fourier.binning"])
+        if OPTIONS["fourier.padding"] is not None:
+            image = pad_image(image, OPTIONS["fourier.padding"])
         return image
 
 

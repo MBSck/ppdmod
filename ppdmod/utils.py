@@ -1,6 +1,6 @@
 import time
 from pathlib import Path
-from typing import Optional, Union, Any, Dict, Tuple, List
+from typing import Optional, Union, Any, Dict, List
 
 import astropy.units as u
 import numpy as np
@@ -207,11 +207,14 @@ def get_next_power_of_two(number: Union[int, float]) -> int:
     return int(2**np.ceil(np.log2(number)))
 
 
-def get_binned_dimension(dim: int, binning_factor: int) -> int:
+def get_new_dimension(dim: int,
+                      binning_factor: Optional[int] = None,
+                      padding_factor: Optional[int] = None) -> int:
     """Gets the binned dimension from the original dimension
     and the binning factor."""
     binning_factor = binning_factor if binning_factor is not None else 0
-    return int(dim*2**-binning_factor)
+    padding_factor = padding_factor if padding_factor is not None else 0
+    return int(dim*2**-binning_factor*2**padding_factor)
 
 
 def rebin_image(image: np.ndarray,
@@ -234,7 +237,7 @@ def rebin_image(image: np.ndarray,
     """
     if binning_factor is None:
         return image
-    new_dim = get_binned_dimension(image.shape[-1], binning_factor)
+    new_dim = get_new_dimension(image.shape[-1], binning_factor)
     binned_shape = (new_dim, int(image.shape[-1] / new_dim),
                     new_dim, int(image.shape[-1] / new_dim))
     image = image.reshape(binned_shape)
