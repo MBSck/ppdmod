@@ -76,7 +76,7 @@ class Star(AnalyticalComponent):
         return self._stellar_angular_radius
 
     def _image_function(self, xx: u.mas, yy: u.mas,
-                        wavelength: Optional[u.m] = None,
+                        wavelength: Optional[u.Quantity[u.m]] = None,
                         ) -> Optional[u.Quantity]:
         """Calculates the image from a 2D grid.
 
@@ -100,7 +100,8 @@ class Star(AnalyticalComponent):
                                                self.stellar_radius_angular)
 
     def _visibility_function(self,
-                             wavelength: Optional[u.um] = None) -> np.ndarray:
+                             wavelength: Optional[u.Quantity[u.um]] = None
+                             ) -> np.ndarray:
         """The component's _visibility_function."""
         if self._visibility is None:
             dim = get_new_dimension(self.params["dim"](),

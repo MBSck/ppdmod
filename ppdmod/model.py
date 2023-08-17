@@ -65,7 +65,7 @@ class Model:
         return {key: value for key, value in self.params.items() if value.free}
 
     def calculate_image(self, dim: int, pixel_size: float,
-                        wavelength: Optional[u.m] = None) -> u.Jy:
+                        wavelength: Optional[u.Quantity[u.m]] = None) -> u.Jy:
         """Compute and return an image.
 
         The returned image as the x,y dimension dim in pixel with
@@ -92,9 +92,8 @@ class Model:
             image += component.calculate_image(dim, pixel_size, wavelength)
         return image
 
-    def calculate_complex_visibility(self,
-                                     wavelength: Optional[u.m] = None
-                                     ) -> np.ndarray:
+    def calculate_complex_visibility(
+            self, wavelength: Optional[u.Quantity[u.m]] = None) -> np.ndarray:
         """Compute and return the complex coherent flux for an array of u,v
         (and optionally wavelength and time) coordinates.
 

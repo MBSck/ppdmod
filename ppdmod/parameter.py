@@ -78,7 +78,7 @@ class Parameter:
     min: Optional[float] = None
     max: Optional[float] = None
     dtype: Optional[type] = None
-    wavelength: Optional[u.um] = None
+    wavelength: Optional[u.Quantity[u.um]] = None
 
     def __setattr__(self, key: str, value: Any):
         """Sets an attribute."""
@@ -92,7 +92,7 @@ class Parameter:
         self.value = self._set_to_numpy_array(self.value)
         self.wavelength = self._set_to_numpy_array(self.wavelength, True)
 
-    def __call__(self, wavelength: Optional[u.um] = None) -> np.ndarray:
+    def __call__(self, wavelength: Optional[u.Quantity[u.um]] = None) -> np.ndarray:
         """Gets the value for the parameter or the corresponding
         values for the wavelengths."""
         if self.wavelength is None:

@@ -1,6 +1,6 @@
 import time
 from pathlib import Path
-from typing import Optional, Union, Any, Dict, List
+from typing import Optional, Union, Dict, List
 
 import astropy.units as u
 import numpy as np
@@ -75,7 +75,7 @@ def get_closest_indices(
 
 
 def uniform_disk(pixel_size: u.mas, dim: int,
-                 diameter: Optional[u.mas] = None) -> u.one:
+                 diameter: Optional[u.Quantity[u.mas]] = None) -> u.one:
     """The brightness profile of a uniform disk.
 
     Parameters
@@ -287,7 +287,7 @@ def qval_to_opacity(qval_file: Path) -> u.cm**2/u.g:
 
 def transform_opacity(
         wavelength_grid: u.um, opacity: u.cm**2/u.g, wavelength_solution: u.um,
-        dl_coeffs: Optional[u.one] = OPTIONS["spectrum.coefficients"]["low"],
+        dl_coeffs: Optional[u.Quantity[u.one]] = OPTIONS["spectrum.coefficients"]["low"],
         spectral_binning: Optional[float] = 7,
         kernel_width: Optional[float] = 10
         ) -> u.cm**2/u.g:
@@ -341,7 +341,7 @@ def transform_opacity(
 
 
 def opacity_to_matisse_opacity(wavelength_solution: u.um,
-                               opacity: Optional[u.cm**2/u.g] = None,
+                               opacity: Optional[u.Quantity[u.cm**2/u.g]] = None,
                                opacity_file: Optional[Path] = None,
                                qval_file: Optional[Path] = None,
                                resolution: Optional[str] = "low",
@@ -440,7 +440,7 @@ def angular_to_distance(angular_diameter: u.mas, distance: u.pc) -> u.m:
 # Got it down from 3.5s to 0.66s for 3 wavelengths. It is 0.19s per wl.
 def calculate_intensity(temp_profile: u.K,
                         wavelength: u.um,
-                        pixel_size: Optional[u.rad] = None) -> np.ndarray:
+                        pixel_size: Optional[u.Quantity[u.rad]] = None) -> np.ndarray:
     """Calculates the blackbody_profile via Planck's law and the
     emissivity_factor for a given wavelength, temperature- and
     dust surface density profile.
@@ -467,8 +467,8 @@ def calculate_intensity(temp_profile: u.K,
 
 def calculate_effective_baselines(
         ucoord: u.m, vcoord: u.m, axis_ratio: u.one,
-        pos_angle: u.deg, wavelength: Optional[u.um] = None
-        ) -> Union[u.m, u.one]:
+        pos_angle: u.deg, wavelength: Optional[u.Quantity[u.um]] = None
+        ) -> Union[u.Quantity[u.m], u.Quantity[u.one]]:
     """Calculates the effective baselines from the projected baselines
     in mega lambda.
 

@@ -1,4 +1,4 @@
-from typing import Union, Optional, Self, Dict, List
+from typing import Optional, Self, Dict, List
 from pathlib import Path
 
 import astropy.units as u
@@ -54,7 +54,7 @@ class ReadoutFits:
         return {key: value for key, value in data.items() if value.size != 0}
 
 
-def set_fit_wavelengths(wavelengths: Optional[u.um] = None) -> None:
+def set_fit_wavelengths(wavelengths: Optional[u.Quantity[u.um]] = None) -> None:
     """Sets the wavelengths to be fitted for as a global option.
 
     If called without parameters or recalled, it will clear the
@@ -71,7 +71,7 @@ def set_fit_wavelengths(wavelengths: Optional[u.um] = None) -> None:
 
 
 def set_data(fits_files: Optional[List[Path]] = None,
-             wavelengths: Optional[u.um] = None) -> None:
+             wavelengths: Optional[u.Quantity[u.um]] = None) -> None:
     """Sets the data as a global variable from the input files.
 
     If called without parameters or recalled, it will clear the data.
