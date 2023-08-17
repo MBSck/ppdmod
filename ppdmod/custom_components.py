@@ -154,7 +154,6 @@ class TemperatureGradient(NumericalComponent):
     name = "Asymmetric Temperature Gradient"
     shortname = "AsymTempGrad"
     elliptic = True
-    asymmetric = False
     asymmetric_image = False
     asymmetric_surface_density = False
     optically_thick = False
@@ -171,7 +170,7 @@ class TemperatureGradient(NumericalComponent):
         self.params["rin"] = Parameter(**STANDARD_PARAMETERS["rin"])
         self.params["rout"] = Parameter(**STANDARD_PARAMETERS["rout"])
 
-        if self.asymmetric:
+        if self.asymmetric_image or self.asymmetric_surface_density:
             self.params["a"] = Parameter(**STANDARD_PARAMETERS["a"])
             self.params["phi"] = Parameter(**STANDARD_PARAMETERS["phi"])
 
@@ -391,7 +390,6 @@ class AsymmetricSDTemperatureGradient(TemperatureGradient):
     """
     name = "Asymmetric Temperature Gradient"
     shortname = "AsymTempGrad"
-    asymmetric = True
     asymmetric_surface_density = True
 
 
@@ -436,9 +434,53 @@ class AsymmetricSDGreyBody(AsymmetricSDTemperatureGradient):
     """
     name = "Asymmetric Grey Body"
     shortname = "AsymGreyBody"
-    asymmetric = True
     asymmetric_surface_density = True
     const_temperature = True
+
+
+class SymmetricSDGreyBodyContinuum(TemperatureGradient):
+    """A ring defined by a radial temperature profile in r^q
+    that is multiplied by an azimuthal modulation.
+    and an asymmetric radial dust surface density profile in r^p.
+
+    Parameters
+    ----------
+    rin : float
+        Inner radius of the disk [mas].
+    rout : float
+        Outer radius of the disk [mas].
+    inner_temp : float
+        Inner radius temperature [K].
+    inner_sigma : float
+        Inner surface density [g/cm^2].
+    a : float
+        Azimuthal modulation amplitude.
+    phi : float
+        Azimuthal modulation angle [deg].
+    q : float
+        Power-law exponent for the temperature profile.
+    p : float
+        Power-law exponent for the dust surface density profile.
+    kappa_abs : float or oimInterp
+        Dust mass absorption coefficient [cm2.g-1].
+    dist : float
+        Distance of the star [pc].
+    pa : float
+        Positional angle [deg].
+    elong : float
+        Elongation of the disk.
+    dim : float
+        Dimension of the image.
+
+    Attributes
+    ----------
+    params : dict with keys of str and values of Parameter
+        Dictionary of parameters.
+    """
+    name = "Symmetric Continuum Grey Body"
+    shortname = "SymContinuumGreyBody"
+    const_temperature = True
+    continuum_contribution = True
 
 
 class AsymmetricSDGreyBodyContinuum(AsymmetricSDTemperatureGradient):
@@ -482,7 +524,6 @@ class AsymmetricSDGreyBodyContinuum(AsymmetricSDTemperatureGradient):
     """
     name = "Asymmetric Continuum Grey Body"
     shortname = "AsymContinuumGreyBody"
-    asymmetric = True
     asymmetric_surface_density = True
     const_temperature = True
     continuum_contribution = True

@@ -49,7 +49,7 @@ class Model:
         params = {}
         for index, component in enumerate(self.components):
             for name, parameter in component.params.items():
-                if parameter not in params.values():
+                if name not in params:
                     params[f"c{index+1}_{component.shortname.replace(' ', '_')}_{name}"] = parameter
         return params
 

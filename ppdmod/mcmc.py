@@ -27,11 +27,11 @@ def set_theta_from_params(
     return np.array(theta)
 
 
-def set_params_from_theta(
-        theta: np.ndarray,
-        components_and_params: List[List[Dict]],
-        shared_params: Optional[Dict[str, Parameter]] = None) -> float:
+def set_params_from_theta(theta: np.ndarray) -> float:
     """Sets the parameters from the theta vector."""
+    components_and_params = OPTIONS["model.components_and_params"]
+    shared_params = OPTIONS["model.shared_params"]
+
     new_shared_params = {}
     if shared_params is not None:
         for key, param in zip(shared_params.keys(),
@@ -325,11 +325,12 @@ def run_mcmc(nwalkers: int,
     """
     theta = init_randomly(nwalkers)
     ndim = theta.shape[1]
+    breakpoint()
     print(f"Executing MCMC with {ncores} cores.")
     print("--------------------------------------------------------------")
-    # with Pool(processes=ncores) as pool:
-    sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, pool=None)
-    sampler.run_mcmc(theta, nsteps, progress=True)
+    with Pool(processes=ncores) as pool:
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, pool=pool)
+        sampler.run_mcmc(theta, nsteps, progress=True)
     return sampler
 
 

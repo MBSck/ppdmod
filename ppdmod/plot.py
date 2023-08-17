@@ -75,10 +75,12 @@ def plot_model(dim: int, pixel_size: u.mas,
                model: Model, wavelength: u.um,
                savefig: Optional[Path] = None) -> None:
     """Plots the model."""
+    pixel_size = pixel_size.value\
+        if isinstance(pixel_size, u.Quantity) else pixel_size
     image = model.calculate_image(
         dim, pixel_size, wavelength).value
     disk_max = np.sort(image.flatten())[::-1][1]
-    ax_extent = (dim*pixel_size.value)//2
+    ax_extent = (dim*pixel_size)//2
     plt.imshow(image, vmax=disk_max,
                extent=(-ax_extent, ax_extent,
                        -ax_extent, ax_extent))
