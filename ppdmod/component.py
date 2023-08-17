@@ -79,7 +79,7 @@ class Component:
             pa_rad = self.params["pa"]().to(u.rad)
             xp = x_arr*np.cos(pa_rad)-y_arr*np.sin(pa_rad)
             yp = x_arr*np.sin(pa_rad)+y_arr*np.cos(pa_rad)
-            return xp*self.params["elong"](), yp
+            return xp, yp/self.params["elong"]()
         return x_arr, y_arr
 
     def _translate_fourier_transform(self, ucoord: u.m, vcoord: u.m,

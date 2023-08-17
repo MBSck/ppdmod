@@ -173,6 +173,8 @@ def plot_observed_vs_model(
 
         for wavelength in wavelengths:
             wl_str = str(wavelength.value)
+            if wl_str not in corr_flux:
+                continue
             total_flux_model, corr_flux_model, cphase_model =\
                 calculate_observables(
                     fourier_transforms[wl_str],

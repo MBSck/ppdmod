@@ -10,6 +10,7 @@ plots/
 resolution/
 phase/
 interpolation/
+results_model/
 .DS_Store
 *.pdf
 *.xlsx

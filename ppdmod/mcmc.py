@@ -330,8 +330,7 @@ def run_mcmc(nwalkers: int,
     print(f"Executing MCMC with {ncores} cores.")
     print(f"{' ':-^50}")
     with Pool(processes=ncores) as pool:
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob,
-                                        threads=ncores, pool=pool)
+        sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, pool=pool)
         if nsteps_burnin > 0:
             print("Running burn-in...")
             sampler.run_mcmc(theta, nsteps_burnin, progress=True)
