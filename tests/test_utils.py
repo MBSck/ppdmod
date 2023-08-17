@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, List, Any
+from typing import Union, List
 
 import astropy.units as u
 import matplotlib.pyplot as plt

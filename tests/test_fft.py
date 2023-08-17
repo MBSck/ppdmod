@@ -180,7 +180,7 @@ def test_get_frequency_axis(dim: int, binning: int,
 
 @pytest.mark.parametrize(
     "dim, wl",
-    [(dim, wl) for wl in range(2, 14, 2)*u.um
+    [(dim, wl) for wl in (range(5, 140, 5)*u.um)/10
      for dim in [2**power for power in range(7, 15)]])
 def test_resolution_per_wavelength(dim: int,
                                    pixel_size: u.mas, wl: u.um) -> None:
