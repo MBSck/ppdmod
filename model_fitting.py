@@ -127,14 +127,12 @@ if __name__ == "__main__":
     #                 savefig=Path("before_model.pdf"))
 
     sampler = mcmc.run_mcmc(nwalkers, ncores=8)
-    # samples = sampler.get_chain()
-    # theta = mcmc.get_best_fit(sampler)
-    # components_and_params, shared_params = mcmc.set_params_from_theta(theta)
-    # # plot.plot_chains(sampler)
-    # components = model.assemble_components(
-    #     components_and_params, shared_params)
-    # m = model.Model(components)
-    #
-    # plot.plot_model(2048, 0.1, m,
-    #                 OPTIONS["fit.wavelengths"][1],
-    #                 savefig=Path("model.pdf"))
+    theta = mcmc.get_best_fit(sampler)
+    components_and_params, shared_params = mcmc.set_params_from_theta(theta)
+    # plot.plot_chains(sampler)
+    components = model.assemble_components(
+        components_and_params, shared_params)
+    m = model.Model(components)
+    plot.plot_model(2048, 0.1, m,
+                    OPTIONS["fit.wavelengths"][1],
+                    savefig=Path("model.pdf"))

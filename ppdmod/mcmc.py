@@ -301,6 +301,7 @@ def lnprob(theta: np.ndarray) -> float:
 
 def run_mcmc(nwalkers: int,
              nsteps: Optional[int] = 100,
+             nsteps_burnin: Optional[int] = 0,
              ncores: Optional[int] = 6) -> np.ndarray:
     """Runs the emcee Hastings Metropolitan sampler.
 
@@ -319,17 +320,29 @@ def run_mcmc(nwalkers: int,
     Returns
     -------
     sampler : numpy.ndarray
+
+    Notes
+    -----
+    Burn-in should be the same as later discarded.
     """
     theta = init_randomly(nwalkers)
     ndim = theta.shape[1]
     print(f"Executing MCMC with {ncores} cores.")
-    print("--------------------------------------------------------------")
+    print(f"{' ':-^50}")
     with Pool(processes=ncores) as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, pool=pool)
+        if nsteps_burnin > 0:
+            print("Running burn-in...")
+            sampler.run_mcmc(theta, nsteps_burnin, progress=True)
+            print("Running production...")
+        sampler.reset()
         sampler.run_mcmc(theta, nsteps, progress=True)
     return sampler
 
 
-def get_best_fit(sampler: emcee.EnsembleSampler) -> np.ndarray:
+def get_best_fit(sampler: emcee.EnsembleSampler,
+                 discard: Optional[int] = 0) -> np.ndarray:
     """Gets the best fit from the emcee sampler."""
-    return (sampler.flatchain)[np.argmax(sampler.flatlnprobability)]
+    samples = sampler.get_chain(flat=True, discard=discard)
+    probability = sampler.get_log_prob(flat=True, discard=discard)
+    return samples[np.argmax(probability)]

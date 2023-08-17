@@ -112,7 +112,7 @@ def log_probability(theta, x, y, yerr):
 
 
 @pytest.fixture
-def samples() -> None:
+def sampler() -> None:
     """Runs emcee. Example from emcee homepage."""
 
     # Choose the "true" parameters.
@@ -140,7 +140,7 @@ def samples() -> None:
         nwalkers, ndim, log_probability, args=(x, y, yerr)
     )
     sampler.run_mcmc(pos, 5000, progress=True)
-    return sampler.get_chain()
+    return sampler
 
 
 @pytest.fixture
@@ -149,17 +149,17 @@ def labels() -> List[str]:
     return ["m", "b", "log(f)"]
 
 
-def test_plot_corner(samples: np.ndarray,
+def test_plot_corner(sampler: np.ndarray,
                      labels: List[str]) -> None:
     """Tests the plot corner function."""
-    plot_corner(samples, labels,
+    plot_corner(sampler, labels,
                 savefig=PLOT_DIR / "corner.pdf")
 
 
-def test_plot_chains(samples: np.ndarray,
+def test_plot_chains(sampler: np.ndarray,
                      labels: List[str]) -> None:
     """Tests the plot chains function."""
-    plot_chains(samples, labels,
+    plot_chains(sampler, labels,
                 savefig=PLOT_DIR / "chains.pdf")
 
 

@@ -16,7 +16,8 @@ from .options import OPTIONS
 from .utils import calculate_effective_baselines
 
 
-def plot_corner(samples: np.ndarray, labels: List[str],
+def plot_corner(sampler: np.ndarray, labels: List[str],
+                discard: Optional[int] = 0,
                 savefig: Optional[Path] = None) -> None:
     """Plots the corner of the posterior spread.
 
@@ -29,7 +30,9 @@ def plot_corner(samples: np.ndarray, labels: List[str],
     savefig : pathlib.Path, optional
         The save path. The default is None.
     """
-    corner.corner(samples, show_titles=True,
+    samples = sampler.get_chain(discard=discard, flat=True)
+    corner.corner(samples,
+                  show_titles=True,
                   labels=labels, plot_datapoints=True,
                   quantiles=[0.16, 0.5, 0.84])
 
@@ -40,7 +43,8 @@ def plot_corner(samples: np.ndarray, labels: List[str],
     plt.close()
 
 
-def plot_chains(samples: np.ndarray, labels: List[str],
+def plot_chains(sampler: np.ndarray, labels: List[str],
+                discard: Optional[int] = 0,
                 savefig: Optional[Path] = None) -> None:
     """Plots the fitter's chains.
 
@@ -53,11 +57,11 @@ def plot_chains(samples: np.ndarray, labels: List[str],
     savefig : pathlib.Path, optional
         The save path. The default is None.
     """
+    samples = sampler.get_chain(discard=discard)
     _, axes = plt.subplots(len(labels), figsize=(10, 7), sharex=True)
 
     for index, label in enumerate(labels):
-        axes[index].plot(samples[:, :, index],
-                         "k", alpha=0.3)
+        axes[index].plot(samples[:, :, index], "k", alpha=0.3)
         axes[index].set_xlim(0, len(samples))
         axes[index].set_ylabel(label)
         axes[index].yaxis.set_label_coords(-0.1, 0.5)
