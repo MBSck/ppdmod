@@ -1,4 +1,4 @@
-from typing import Optional, Self, Dict, List
+from typing import Optional, Dict, List
 from pathlib import Path
 
 import astropy.units as u
@@ -17,7 +17,7 @@ class ReadoutFits:
         self.fits_file = Path(fits_file)
         self.read_file()
 
-    def read_file(self) -> Self:
+    def read_file(self):
         """Reads the data of the (.fits)-files into vectors."""
         with fits.open(Path(self.fits_file)) as hdul:
             self.wavelength = (hdul["oi_wavelength"].data["eff_wave"]*u.m).to(u.um)
@@ -54,7 +54,8 @@ class ReadoutFits:
         return {key: value for key, value in data.items() if value.size != 0}
 
 
-def set_fit_wavelengths(wavelengths: Optional[u.Quantity[u.um]] = None) -> None:
+def set_fit_wavelengths(
+        wavelengths: Optional[u.Quantity[u.um]] = None) -> None:
     """Sets the wavelengths to be fitted for as a global option.
 
     If called without parameters or recalled, it will clear the
