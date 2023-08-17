@@ -6,6 +6,7 @@ component/
 opacities/
 binning/
 padding/
+plots/
 resolution/
 phase/
 interpolation/

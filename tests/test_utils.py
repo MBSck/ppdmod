@@ -73,9 +73,7 @@ def wavelength_solution(fits_file: Path) -> u.um:
 @pytest.fixture
 def high_wavelength_solution() -> u.um:
     """The wavelength solution of a MATISSE (.fits)-file."""
-    fits_file = Path("/Users/scheuck/Data/reduced_data/jozsef_reductions/") /\
-        "HD_144432_2020-03-13T08_41_26_N_TARGET_FINALCAL_INT.fits"
-    return ReadoutFits(fits_file).wavelength
+    return np.load(Path("data") / "high_wavelength_solution.npy")*u.um
 
 
 @pytest.fixture

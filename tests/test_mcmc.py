@@ -127,11 +127,12 @@ def test_set_params_from_theta(
         components_and_params: Dict[str, Dict],
         shared_params: Dict[str, Parameter]) -> None:
     """Tests the set_params_from_theta function."""
+    OPTIONS["model.components_and_params"] = components_and_params
+    OPTIONS["model.shared_params"] = shared_params
     theta = mcmc.set_theta_from_params(components_and_params,
                                        shared_params)
     new_components_and_params, new_shared_parameters =\
-        mcmc.set_params_from_theta(
-            theta, components_and_params, shared_params)
+        mcmc.set_params_from_theta(theta)
     all_params = []
     for (_, params) in components_and_params:
         all_params.extend(list(map(lambda x: x.value, params.values())))
@@ -142,15 +143,38 @@ def test_set_params_from_theta(
     assert list(map(lambda x: x.value, shared_params.values())) ==\
         list(new_shared_parameters.values())
 
+    OPTIONS["model.components_and_params"] = []
+    OPTIONS["model.shared_params"] = []
+
 
 # TODO: Tests somehow that all components end up where they need to go.
 @pytest.mark.parametrize("nwalkers", [5, 10, 25, 35])
-def test_init_randomly(nwalkers: int,
-                       components_and_params: Dict[str, Dict],
-                       shared_params: Dict[str, Parameter]) -> None:
+def test_init_randomly(nwalkers: int) -> None:
     """Tests the init_randomly function."""
+    values = [1.5, 0.5, 0.3, 33, 0.2, 45, 1.6]
+    param_names = ["rin", "p", "a", "phi",
+                   "cont_weight", "pa", "elong"]
+    limits = [[0, 20], [0, 1], [0, 1],
+              [0, 360], [0, 1], [0, 360], [1, 50]]
+    params = {name: Parameter(**STANDARD_PARAMETERS[name])
+              for name in param_names}
+    for value, limit, param in zip(values, limits, params.values()):
+        param.set(*limit)
+        param.value = value
+    shared_params = {"p": params["p"]}
+    del params["p"]
+
+    components_and_params = [["Star", params],
+                             ["AsymmetricSDGreyBodyContinuum", params]]
+
+    OPTIONS["model.components_and_params"] = components_and_params
+    OPTIONS["model.shared_params"] = shared_params
+
     theta = mcmc.init_randomly(nwalkers)
-    assert theta.shape == (nwalkers, 12)
+    assert theta.shape == (nwalkers, len(param_names)*2-1)
+
+    OPTIONS["model.components_and_params"] = []
+    OPTIONS["model.shared_params"] = []
 
 
 # TODO: Finish test.
@@ -261,26 +285,26 @@ def test_lnprior(values: List[float], expected: float) -> None:
     components_and_params = [["Star", params],
                              ["AsymmetricSDGreyBodyContinuum", shared_params]]
 
+    OPTIONS["model.components_and_params"] = components_and_params
+    OPTIONS["model.shared_params"] = shared_params
+
     theta = mcmc.set_theta_from_params(components_and_params,
                                        shared_params)
     new_components_and_params, new_shared_parameters =\
-        mcmc.set_params_from_theta(
-            theta, components_and_params, shared_params)
+        mcmc.set_params_from_theta(theta)
 
-    OPTIONS["model.components_and_params"] = components_and_params
-    OPTIONS["model.shared_params"] = shared_params
     assert mcmc.lnprior(new_components_and_params,
                         new_shared_parameters) == expected
 
-    OPTIONS["model.components_and_params"] = {}
-    OPTIONS["model.shared_params"] = {}
+    OPTIONS["model.components_and_params"] = []
+    OPTIONS["model.shared_params"] = []
 
 
 def test_lnprob(fits_files: List[Path], wavelengths: u.um) -> None:
     """Tests the lnprob function."""
-    static_params_dict = {"dim": 2048, "dist": 145, "pixel_size": 0.1,
-                          "eff_temp": 7800, "eff_radius": 1.8,
-                          "kappa_abs": 1000, "kappa_cont": 3000}
+    static_params = {"dim": 2048, "dist": 145, "pixel_size": 0.1,
+                     "eff_temp": 7800, "eff_radius": 1.8,
+                     "kappa_abs": 1000, "kappa_cont": 3000}
     param_names = ["rin", "p", "a", "phi",
                    "inner_sigma", "cont_weight", "pa", "elong"]
     values = [1.5, 0.5, 0.3, 33, 2000, 0.5, 45, 1.6]
@@ -288,16 +312,11 @@ def test_lnprob(fits_files: List[Path], wavelengths: u.um) -> None:
               [100, 10000], [0, 1], [0, 360], [1, 50]]
     params = {name: Parameter(**STANDARD_PARAMETERS[name])
               for name in param_names}
-    static_params = {key: Parameter(**STANDARD_PARAMETERS[key])
-                     for key in static_params_dict.keys()}
-    for value, param in zip(static_params_dict.values(),
-                            static_params.values()):
-        param.value = value
 
     for value, limit, param in zip(values, limits, params.values()):
         param.set(*limit)
         param.value = value
-    params = {**static_params, **params}
+
     shared_params = {"p": params["p"], "pa": params["pa"],
                      "elong": params["elong"]}
     del params["p"]
@@ -307,16 +326,16 @@ def test_lnprob(fits_files: List[Path], wavelengths: u.um) -> None:
     components_and_params = [["Star", params],
                              ["AsymmetricSDGreyBodyContinuum", params]]
 
-    OPTIONS["model.components_and_params"] = components_and_params
-    OPTIONS["model.shared_params"] = shared_params
     data.set_fit_wavelengths(wavelengths)
     data.set_data(fits_files)
+    OPTIONS["model.constant_params"] = static_params
+    OPTIONS["model.components_and_params"] = components_and_params
+    OPTIONS["model.shared_params"] = shared_params
 
     theta = mcmc.set_theta_from_params(
         components_and_params, shared_params)
 
     chi_sq = mcmc.lnprob(theta)
-
     assert chi_sq != 0
     assert isinstance(chi_sq, float)
 
