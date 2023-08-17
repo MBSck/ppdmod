@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from pprint import pprint
 
@@ -13,6 +14,9 @@ from ppdmod import utils
 from ppdmod.parameter import STANDARD_PARAMETERS, Parameter
 from ppdmod.options import OPTIONS
 
+
+# NOTE: Turns off numpys automated parellelization.
+os.environ["OMP_NUM_THREADS"] = "1"
 
 # TODO: Check wavelength axis for opacity interpolation.
 # TODO: Check data procurrement.
@@ -32,7 +36,7 @@ wavelength_axes = list(
 wavelength_axes = np.sort(np.unique(np.concatenate(wavelength_axes)))
 
 weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
-qval_file_dir = Path("/Users/scheuck/Data/opacities/QVAL")
+qval_file_dir = Path("/data/beegfs/astro-storage/groups/matisse/scheuck/data/QVAL")
 qval_files = ["Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat",
               "Q_Am_Mgolivine_Jae_DHS_f1.0_rv1.5.dat",
               "Q_Am_Mgpyroxene_Dor_DHS_f1.0_rv1.5.dat",
@@ -43,7 +47,7 @@ qval_paths = list(map(lambda x: qval_file_dir / x, qval_files))
 opacity = utils.linearly_combine_opacities(
     weights, qval_paths, wavelength_axes)
 continuum_opacity = utils.opacity_to_matisse_opacity(
-    wavelength_axes, qval_file=qval_file_dir / "Q_SILICA_RV0.1.DAT")
+    wavelength_axes, qval_file=qval_file_dir / "Q_silica_rv0.1.dat")
 
 kappa_abs = Parameter(name="kappa_abs", value=opacity,
                       wavelength=wavelength_axes,
@@ -54,7 +58,7 @@ kappa_cont = Parameter(name="kappa_cont", value=continuum_opacity,
                        unit=u.cm**2/u.g, free=False,
                        description="Continuum dust mass absorption coefficient")
 
-fov, pixel_size = 220, 0.1
+fov, pixel_size = 200, 0.1
 dim = utils.get_next_power_of_two(fov / pixel_size)
 
 OPTIONS["model.constant_params"] = {
@@ -109,8 +113,8 @@ OPTIONS["model.components_and_params"] = [
     ["SymmetricSDGreyBodyContinuum", inner_ring],
     ["AsymmetricSDGreyBodyContinuum", outer_ring],
 ]
-OPTIONS["fourier.binning"] = 3
-OPTIONS["fourier.padding"] = 2
+OPTIONS["fourier.binning"] = 4
+OPTIONS["fourier.padding"] = 3
 print("Binned Dimension",
       dim*2**-OPTIONS["fourier.binning"],
       "Resolution",
@@ -122,17 +126,24 @@ labels = inner_ring_labels + outer_ring_labels + shared_params_labels
 
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 10, 100, 25
-    sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin, ncores=8)
+    result_dir = Path("results_model")
+    if not result_dir.exists():
+        result_dir.mkdir()
+
+    nburnin, nsteps, nwalkers = 10, 100, 60
+    sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin, ncores=30)
     theta = mcmc.get_best_fit(sampler, discard=nburnin)
-    components_and_params, shared_params = mcmc.set_params_from_theta(theta)
+    np.save(result_dir / "best_fit_params.npy", theta)
+    new_params = dict(zip(labels, theta))
 
     # TODO: Add labels here.
-    plot.plot_chains(sampler, labels, discard=nburnin)
-    plot.plot_corner(sampler, labels, discard=nburnin)
-    components = model.assemble_components(
+    plot.plot_chains(sampler, labels, discard=nburnin, savefig=result_dir / "chains.pdf")
+    plot.plot_corner(sampler, labels, discard=nburnin, savefig=result_dir / "corner.pdf")
+    components_and_params, shared_params = mcmc.set_params_from_theta(theta)
+    components = custom_components.assemble_components(
         components_and_params, shared_params)
     m = model.Model(components)
-    plot.plot_model(2048, 0.1, m,
-                    OPTIONS["fit.wavelengths"][1],
-                    savefig=Path("model.pdf"))
+    plot.plot_model(2048, 0.1, m, OPTIONS["fit.wavelengths"][1],
+                    savefig=result_dir / "model.pdf")
+    plot.plot_observed_vs_model(m, 0.1*u.mas, new_params["elong"],
+                               new_params["pa"], savefig=result_dir / "fit_results.pdf")
