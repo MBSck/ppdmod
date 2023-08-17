@@ -49,9 +49,10 @@ class Component:
                 else:
                     self.params[key].value = value
 
-    def _calculate_internal_grid(self, dim: Optional[float] = None,
-                                 pixel_size: Optional[float] = None,
-                                 ) -> Tuple[u.mas, u.mas]:
+    def _calculate_internal_grid(
+            self, dim: Optional[float] = None,
+            pixel_size: Optional[float] = None
+            ) -> Tuple[u.Quantity[u.mas], u.Quantity[u.mas]]:
         """Calculates the model grid.
 
         Parameters
@@ -90,8 +91,9 @@ class Component:
             [ucoord, vcoord])
         return np.exp(-2*1j*np.pi*(ucoord*x+vcoord*y)).value
 
-    def _translate_coordinates(self,
-                               xx: u.mas, yy: u.mas) -> Tuple[u.mas, u.mas]:
+    def _translate_coordinates(
+            self, xx: u.mas, yy: u.mas
+            ) -> Tuple[u.Quantity[u.mas], u.Quantity[u.mas]]:
         """Shifts the coordinates according to an offset."""
         xx, yy = map(lambda x: u.Quantity(value=x, unit=u.mas), [xx, yy])
         return xx-self.params["x"](), yy-self.params["y"]()

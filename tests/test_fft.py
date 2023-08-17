@@ -74,13 +74,13 @@ def pixel_size() -> u.mas:
 
 
 @pytest.fixture
-def fluxes() -> Tuple[u.Jy]:
+def fluxes() -> Tuple[u.Quantity[u.Jy]]:
     """The fluxes of a binary."""
     return 5*u.Jy, 2*u.Jy
 
 
 @pytest.fixture
-def positions() -> Tuple[List[u.mas]]:
+def positions() -> Tuple[List[u.Quantity[u.mas]]]:
     """The positions of a binary."""
     return [5, 10]*u.mas, [-10, -10]*u.mas
 
@@ -92,8 +92,9 @@ def wavelength() -> u.m:
 
 
 def test_compute2Dfourier_transform(pixel_size: u.mas,
-                                    fluxes: Tuple[u.Jy],
-                                    positions: Tuple[List[u.mas]]) -> None:
+                                    fluxes: Tuple[u.Quantity[u.Jy]],
+                                    positions: Tuple[List[u.Quantity[u.mas]]]
+                                    ) -> None:
     """Tests the computation of the 2D fourier transform."""
     ud = uniform_disk(pixel_size, 512, diameter=4*u.mas)
     ft_ud = compute_2Dfourier_transform(ud.value)
@@ -219,7 +220,8 @@ def test_resolution_per_wavelength(dim: int,
 def test_vis_interpolation(diameter: u.mas, dim: float,
                            ucoord: u.m, vcoord: u.m,
                            pixel_size: u.mas, wavelength: u.um,
-                           fluxes: Tuple[u.Jy], positions: Tuple[List[u.mas]]
+                           fluxes: Tuple[u.Quantity[u.Jy]],
+                           positions: Tuple[List[u.Quantity[u.mas]]]
                            ) -> None:
     """This tests the interpolation of the Fourier transform,
     but more importantly, implicitly the unit conversion of the
@@ -277,7 +279,6 @@ def test_vis_interpolation(diameter: u.mas, dim: float,
                        np.abs(np.angle(interpolated_bin)), atol=1e-2)
 
 
-
 @pytest.mark.parametrize(
     "diameter, dim",
     [tuple([diameter, dim])
@@ -286,7 +287,8 @@ def test_vis_interpolation(diameter: u.mas, dim: float,
 def test_cphases_interpolation(diameter: u.mas, dim: float,
                                u123coord: u.m, v123coord: u.m,
                                pixel_size: u.mas, wavelength: u.um,
-                               fluxes: Tuple[u.Jy], positions: Tuple[List[u.mas]]
+                               fluxes: Tuple[u.Quantity[u.Jy]],
+                               positions: Tuple[List[u.Quantity[u.mas]]]
                                ) -> None:
     """Tests the interpolation of the closure phases."""
     fft_dir = Path("fft")
