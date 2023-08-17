@@ -161,7 +161,7 @@ class AnalyticalComponent(Component):
         return self._image_function(x_arr, y_arr, wavelength)
 
     def calculate_complex_visibility(self,
-                                     wavelength: Optional[u.Qunantity[u.um]] = None
+                                     wavelength: Optional[u.Quantity[u.um]] = None
                                      ) -> np.ndarray:
         """Calculates the complex visibility of the the component's image.
 
