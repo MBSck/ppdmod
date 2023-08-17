@@ -67,7 +67,7 @@ STANDARD_PARAMETERS = {
 }
 
 
-@dataclass(kw_only=True)
+@dataclass()
 class Parameter:
     """Defines a parameter."""
     name: str
