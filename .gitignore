@@ -14,3 +14,5 @@ results_model/
 .DS_Store
 *.pdf
 *.xlsx
+*.txt
+*results*
