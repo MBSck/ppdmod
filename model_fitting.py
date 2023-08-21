@@ -35,8 +35,8 @@ if __name__ == "__main__":
     wavelength_axes = np.sort(np.unique(np.concatenate(wavelength_axes)))
 
     weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
-    # qval_file_dir = Path("/data/beegfs/astro-storage/groups/matisse/scheuck/data/QVAL")
-    qval_file_dir = Path("/Users/scheuck/Data/opacities/QVAL")
+    qval_file_dir = Path("/data/beegfs/astro-storage/groups/matisse/scheuck/data/QVAL")
+    # qval_file_dir = Path("/Users/scheuck/Data/opacities/QVAL")
     qval_files = ["Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat",
                   "Q_Am_Mgolivine_Jae_DHS_f1.0_rv1.5.dat",
                   "Q_Am_Mgpyroxene_Dor_DHS_f1.0_rv1.5.dat",
@@ -58,7 +58,7 @@ if __name__ == "__main__":
                            unit=u.cm**2/u.g, free=False,
                            description="Continuum dust mass absorption coefficient")
 
-    fov, pixel_size = 200, 0.1
+    fov, pixel_size = 220, 0.1
     dim = utils.get_next_power_of_two(fov / pixel_size)
 
     OPTIONS["model.constant_params"] = {
@@ -113,7 +113,7 @@ if __name__ == "__main__":
         ["SymmetricSDGreyBodyContinuum", inner_ring],
         ["AsymmetricSDGreyBodyContinuum", outer_ring],
     ]
-    OPTIONS["fourier.binning"] = 4
+    OPTIONS["fourier.binning"] = 3
     OPTIONS["fourier.padding"] = 3
     print("Binned Dimension",
           dim*2**-OPTIONS["fourier.binning"],
@@ -124,13 +124,13 @@ if __name__ == "__main__":
 
     labels = inner_ring_labels + outer_ring_labels + shared_params_labels
 
-    result_dir = Path("results_model")
+    result_dir = Path("results_model_nsteps2500_nwalkers100")
     if not result_dir.exists():
         result_dir.mkdir()
 
-    nburnin, nsteps, nwalkers = 10, 100, 60
+    nburnin, nsteps, nwalkers = 100, 500, 50
     theta = mcmc.init_randomly(nwalkers)[10]
-    sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin, ncores=30)
+    sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin, ncores=25)
     theta = mcmc.get_best_fit(sampler, discard=nburnin)
     np.save(result_dir / "best_fit_params.npy", theta)
     new_params = dict(zip(labels, theta))
@@ -143,7 +143,7 @@ if __name__ == "__main__":
     components = custom_components.assemble_components(
         components_and_params, shared_params)
     m = model.Model(components)
-    plot.plot_model(2048, 0.1, m, OPTIONS["fit.wavelengths"][1],
+    plot.plot_model(4096, 0.1, m, OPTIONS["fit.wavelengths"][1],
                     savefig=result_dir / "model.pdf")
     plot.plot_observed_vs_model(m, 0.1*u.mas, new_params["sh_elong"],
                                 new_params["sh_pa"],
