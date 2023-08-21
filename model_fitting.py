@@ -35,8 +35,8 @@ if __name__ == "__main__":
     wavelength_axes = np.sort(np.unique(np.concatenate(wavelength_axes)))
 
     weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
-    qval_file_dir = Path("/data/beegfs/astro-storage/groups/matisse/scheuck/data/QVAL")
-    # qval_file_dir = Path("/Users/scheuck/Data/opacities/QVAL")
+    # qval_file_dir = Path("/data/beegfs/astro-storage/groups/matisse/scheuck/data/QVAL")
+    qval_file_dir = Path("/Users/scheuck/Data/opacities/QVAL")
     qval_files = ["Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat",
                   "Q_Am_Mgolivine_Jae_DHS_f1.0_rv1.5.dat",
                   "Q_Am_Mgpyroxene_Dor_DHS_f1.0_rv1.5.dat",
@@ -47,7 +47,7 @@ if __name__ == "__main__":
     opacity = utils.linearly_combine_opacities(
         weights, qval_paths, wavelength_axes)
     continuum_opacity = utils.opacity_to_matisse_opacity(
-        wavelength_axes, qval_file=qval_file_dir / "Q_silica_rv0.1.dat")
+        wavelength_axes, qval_file=qval_file_dir / "Q_amorph_c_rv0.1.dat")
 
     kappa_abs = Parameter(name="kappa_abs", value=opacity,
                           wavelength=wavelength_axes,
@@ -71,9 +71,9 @@ if __name__ == "__main__":
     a = Parameter(**STANDARD_PARAMETERS["a"])
     phi = Parameter(**STANDARD_PARAMETERS["phi"])
 
-    rin.set(min=0, max=20)
+    rin.set(min=0, max=2)
+    rout.set(min=2, max=7)
     rout.free = True
-    rout.set(min=0, max=20)
     a.set(min=0., max=1.)
     phi.set(min=0, max=360)
 
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     a = Parameter(**STANDARD_PARAMETERS["a"])
     phi = Parameter(**STANDARD_PARAMETERS["phi"])
 
-    rin.set(min=0, max=30)
+    rin.set(min=7, max=50)
     a.set(min=0., max=1.)
     phi.set(min=0, max=360)
 
@@ -101,12 +101,13 @@ if __name__ == "__main__":
     pa.set(min=0, max=360)
     elong.set(min=0, max=1)
     cont_weight.set(min=0., max=1.)
-    inner_sigma.set(min=0, max=10000)
+    inner_sigma.set(min=0, max=1e-3)
 
     OPTIONS["model.shared_params"] = {"p": p, "pa": pa, "elong": elong,
                                       "inner_sigma": inner_sigma,
                                       "cont_weight": cont_weight}
-    shared_params_labels = [f"sh_{label}" for label in OPTIONS["model.shared_params"]]
+    shared_params_labels = [f"sh_{label}"
+                            for label in OPTIONS["model.shared_params"]]
 
     OPTIONS["model.components_and_params"] = [
         ["Star", {}],
@@ -128,13 +129,13 @@ if __name__ == "__main__":
     if not result_dir.exists():
         result_dir.mkdir()
 
-    nburnin, nsteps, nwalkers = 100, 500, 50
+    nburnin, nsteps, nwalkers = 100, 400, 50
     theta = mcmc.init_randomly(nwalkers)[10]
     sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin, ncores=25)
     theta = mcmc.get_best_fit(sampler, discard=nburnin)
     np.save(result_dir / "best_fit_params.npy", theta)
     new_params = dict(zip(labels, theta))
-    #
+
     plot.plot_chains(sampler, labels, discard=nburnin, savefig=result_dir / "chains.pdf")
     plot.plot_corner(sampler, labels, discard=nburnin, savefig=result_dir / "corner.pdf")
     OPTIONS["fourier.binning"] = None
