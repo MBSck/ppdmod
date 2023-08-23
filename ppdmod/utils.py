@@ -433,7 +433,7 @@ def angular_to_distance(angular_diameter: u.mas, distance: u.pc) -> u.m:
     where 'd' is the diameter of the object and 'D' is the distance from the
     observer to the object and ..math::`\\delta` is the angular diameter.
     """
-    return (angular_diameter.to(u.rad).value*distance.to(u.au)).to(u.m)
+    return (angular_diameter.to(u.rad).value*distance.to(u.m))
 
 
 # TODO: Maybe even optimize calculation time further in the future
