@@ -6,6 +6,8 @@ from scipy.interpolate import interpn
 from .options import OPTIONS
 
 
+# NOTE: Combining real and conjugate may yield an error with the sign in the
+# the middle of the fft.
 def compute_2Dfourier_transform(image: np.ndarray) -> np.ndarray:
     """Calculates the Fourier transform.
 
@@ -20,12 +22,21 @@ def compute_2Dfourier_transform(image: np.ndarray) -> np.ndarray:
     if isinstance(image, u.Quantity):
         image = image.value
     if OPTIONS["fourier.backend"] == "numpy":
-        return np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(image)))
-
-    ft_input = pyfftw.empty_aligned(image.shape, dtype="complex128")
-    ft_input[:] = np.fft.ifftshift(image)
-    ft_output = pyfftw.empty_aligned(image.shape, dtype="complex128")
-    return np.fft.fftshift(pyfftw.FFTW(ft_input, ft_output, axes=(-2, -1))())
+        real_fft = np.fft.rfft2(np.fft.ifftshift(image))
+    else:
+        fft_input = pyfftw.empty_aligned(image.shape, dtype=str(image.dtype))
+        # fft_output = pyfftw.empty_aligned(
+        #     (image.shape[0], image.shape[1]//2+1), dtype="complex128")
+        fft_input[...] = np.fft.fftshift(image.copy())
+        fft_object = pyfftw.builders.rfft2(fft_input)
+        # fft_object = pyfftw.FFTW(
+        #     fft_input, fft_output,
+        #     axes=(0, 1), direction="FFTW_FORWARD")
+        real_fft = fft_object()
+    conjugated_fft = np.conjugate(np.vstack(
+        (real_fft[0, 1:-1][::-1], real_fft[1:, 1:-1][::-1, ::-1])))
+    combined_fft = np.concatenate((real_fft, conjugated_fft), axis=1)
+    return np.fft.fftshift(combined_fft)
 
 
 def get_frequency_axis(dim: int,
