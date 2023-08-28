@@ -1,12 +1,15 @@
+import time
 from pathlib import Path
 from typing import Tuple, List
 
 import astropy.units as u
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy
 import pandas as pd
 import pytest
 
+from ppdmod.data import ReadoutFits
 from ppdmod.fft import compute_2Dfourier_transform, get_frequency_axis,\
     interpolate_coordinates
 from ppdmod.options import OPTIONS
@@ -17,6 +20,7 @@ from ppdmod.utils import make_workbook, uniform_disk, uniform_disk_vis,\
 RESOLUTION_FILE = Path("resolution.xlsx")
 RESOLUTION_SHEET = "Binnings for 13 um"
 WAVELENGTH_SHEET = "Resolutions for Wavelengths"
+TIME_SHEET = "Execution Times of FFT"
 
 make_workbook(
     RESOLUTION_FILE,
@@ -34,12 +38,28 @@ make_workbook(
                            "Max Frequency [m]",
                            "Lambda/2B (B = 130 m) [mas]",
                            "Wavelength [um]"],
+        TIME_SHEET: ["Dimension [px]",
+                     "Numpy FFT Time [s]",
+                     "Numpy RFFT Time [s]",
+                     "Scipy RFFT Time [s]",
+                     "PYFFTW RFFT Time [s]"]
     })
 
 
 FFT_DIR = Path("fft")
 if not FFT_DIR.exists():
     FFT_DIR.mkdir()
+
+
+@pytest.fixture
+def readouts():
+    path = Path("/Users/scheuck/Data/reduced_data/hd142666/matisse")
+    fits_files = [
+        "hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_HAWAII-2RG_FINAL_TARGET_INT.fits",
+        "hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_AQUARIUS_FINAL_TARGET_INT.fits",
+        "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_HAWAII-2RG_FINAL_TARGET_INT.fits",
+        "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits"]
+    return [ReadoutFits(file) for file in [path / file for file in fits_files]]
 
 @pytest.fixture
 def ucoord() -> u.m:
@@ -93,6 +113,8 @@ def positions() -> Tuple[List[u.Quantity[u.mas]]]:
 def wavelength() -> u.m:
     """A wavelenght grid."""
     return (13.000458e-6*u.m).to(u.um)
+
+# TODO: Do all tests for both fourier transform options.
 
 
 # def test_compute2Dfourier_transform(pixel_size: u.mas,
@@ -182,6 +204,16 @@ def wavelength() -> u.m:
 #     with pd.ExcelWriter(RESOLUTION_FILE, engine="openpyxl",
 #                         mode="a", if_sheet_exists="replace") as writer:
 #         df.to_excel(writer, sheet_name=RESOLUTION_SHEET, index=False)
+
+
+def test_compile_full_fourier_from_real():
+    ...
+
+
+def test_uv_coordinate_overlap():
+    """Tests the uv coordinate overlap with the
+    real fourier transform."""
+    ...
 #
 #
 # @pytest.mark.parametrize(
@@ -361,52 +393,99 @@ def wavelength() -> u.m:
 #     else:
 #         assert np.allclose(cphase_ud, interpolated_ud, atol=1e-2)
 #         assert np.allclose(np.abs(cphase_bin), np.abs(interpolated_bin), atol=1e-2)
+#
+#
+# @pytest.mark.parametrize(
+#     "diameter, dim",
+#     [tuple([diameter, dim])
+#      for dim in [1024, 2048, 4096]
+#      for diameter in [1, 2, 3, 4, 5, 6, 10, 20]*u.mas])
+# def test_numpy_vs_fftw(diameter: u.mas, dim: float,
+#                        u123coord: u.m, v123coord: u.m,
+#                        pixel_size: u.mas,
+#                        fluxes: Tuple[u.Quantity[u.Jy]],
+#                        positions: Tuple[List[u.Quantity[u.mas]]]
+#                        ) -> None:
+#     """Compares the numpy vs the pyfftw implementation of the
+#     Fourier transform."""
+#     flux1, flux2 = fluxes
+#     position1, position2 = positions
+#     image_ud = uniform_disk(pixel_size, dim, diameter=diameter)
+#     image_bin = binary(dim, pixel_size, flux1, flux2, position1, position2)
+#
+#     OPTIONS["fourier.backend"] = "numpy"
+#     numpy_ft_ud = compute_2Dfourier_transform(image_ud)
+#     numpy_ft_bin = compute_2Dfourier_transform(image_bin)
+#
+#     OPTIONS["fourier.backend"] = "pyfftw"
+#     pyfftw_ft_ud = compute_2Dfourier_transform(image_ud)
+#     pyfftw_ft_bin = compute_2Dfourier_transform(image_bin)
+#
+#     _, ((ax, bx), (cx, dx)) = plt.subplots(2, 2)
+#     ax.imshow(np.abs(numpy_ft_ud))
+#     ax.set_title("Magnitude Numpy UD")
+#     ax.set_xlabel("dim [px]")
+#     bx.imshow(np.abs(pyfftw_ft_ud))
+#     bx.set_title("Magnitude PyFFTW UD")
+#     bx.set_xlabel("dim [px]")
+#     cx.imshow(np.abs(numpy_ft_bin))
+#     cx.set_title("Magnitude Numpy Bin")
+#     cx.set_xlabel("dim [px]")
+#     dx.imshow(np.abs(pyfftw_ft_bin))
+#     dx.set_title("Magnitude PyFFTW Bin")
+#     dx.set_xlabel("dim [px]")
+#     plt.savefig(
+#         FFT_DIR / f"numpy_vs_pyfftw_dim{dim}_dia{diameter.value}.pdf",
+#         format="pdf")
+#     plt.close()
+#
+#     assert np.allclose(numpy_ft_ud, pyfftw_ft_ud, atol=1e-2)
+#     assert np.allclose(numpy_ft_bin, pyfftw_ft_bin)
+#     OPTIONS["fourier.backend"] = "numpy"
 
 
-@pytest.mark.parametrize(
-    "diameter, dim",
-    [tuple([diameter, dim])
-     for dim in [1024, 2048, 4096]
-     for diameter in [1, 2, 3, 4, 5, 6, 10, 20]*u.mas])
-def test_numpy_vs_fftw(diameter: u.mas, dim: float,
-                       u123coord: u.m, v123coord: u.m,
-                       pixel_size: u.mas, wavelength: u.um,
-                       fluxes: Tuple[u.Quantity[u.Jy]],
-                       positions: Tuple[List[u.Quantity[u.mas]]]
-                       ) -> None:
-    """Compares the numpy vs the pyfftw implementation of the
-    Fourier transform."""
-    flux1, flux2 = fluxes
-    position1, position2 = positions
-    image_ud = uniform_disk(pixel_size, dim, diameter=diameter)
-    image_bin = binary(dim, pixel_size, flux1, flux2, position1, position2)
+# TODO: Make test that checks for speed of only rfft.
+@pytest.mark.parametrize("dim", [2**power for power in range(10, 14)])
+def test_fft_speeds(dim: int, pixel_size: u.mas, wavelength: u.um) -> None:
+    """Tests the speed of the different Fourier transforms."""
+    image_ud = uniform_disk(pixel_size, dim, diameter=5*u.mas)
+    st_numpy_fft = time.time()
+    numpy_fft = np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(image_ud)))
+    et_numpy_fft = time.time()-st_numpy_fft
 
     OPTIONS["fourier.backend"] = "numpy"
-    numpy_ft_ud = compute_2Dfourier_transform(image_ud)
-    numpy_ft_bin = compute_2Dfourier_transform(image_bin)
+    st_numpy_rfft = time.time()
+    numpy_rfft = compute_2Dfourier_transform(image_ud)
+    et_numpy_rfft = time.time()-st_numpy_rfft
+
+    OPTIONS["fourier.backend"] = "scipy"
+    st_scipy_rfft = time.time()
+    scipy_fft = compute_2Dfourier_transform(image_ud)
+    et_scipy_rfft = time.time()-st_numpy_rfft
 
     OPTIONS["fourier.backend"] = "pyfftw"
-    pyfftw_ft_ud = compute_2Dfourier_transform(image_ud)
-    pyfftw_ft_bin = compute_2Dfourier_transform(image_bin)
+    st_pyfftw_rfft = time.time()
+    pyfftw_rfft = compute_2Dfourier_transform(image_ud)
+    et_pyfftw_rfft = time.time()-st_pyfftw_rfft
+    pyfftw_rfft = scipy.fft.ifftshift(image_ud)
 
-    _, ((ax, bx), (cx, dx)) = plt.subplots(2, 2)
-    ax.imshow(np.abs(numpy_ft_ud))
-    ax.set_title("Magnitude Numpy UD")
-    ax.set_xlabel("dim [px]")
-    bx.imshow(np.abs(pyfftw_ft_ud))
-    bx.set_title("Magnitude PyFFTW UD")
-    bx.set_xlabel("dim [px]")
-    cx.imshow(np.abs(numpy_ft_bin))
-    cx.set_title("Magnitude Numpy Bin")
-    cx.set_xlabel("dim [px]")
-    dx.imshow(np.abs(pyfftw_ft_bin))
-    dx.set_title("Magnitude PyFFTW Bin")
-    dx.set_xlabel("dim [px]")
-    plt.savefig(
-        FFT_DIR / f"numpy_vs_pyfftw_dim{dim}_dia{diameter.value}.pdf",
-        format="pdf")
-    plt.close()
+    data = {"Dimension [px]": [dim],
+            "Numpy FFT Time [s]": [et_numpy_fft],
+            "Numpy RFFT Time [s]": [et_numpy_rfft],
+            "Scipy RFFT Time [s]": [et_scipy_rfft],
+            "PYFFTW RFFT Time [s]": [et_pyfftw_rfft]}
 
-    assert np.allclose(numpy_ft_ud, pyfftw_ft_ud, atol=1e-2)
-    assert np.allclose(numpy_ft_bin, pyfftw_ft_bin)
+    if RESOLUTION_FILE.exists():
+        df = pd.read_excel(RESOLUTION_FILE, sheet_name=TIME_SHEET)
+        new_df = pd.DataFrame(data)
+        df = pd.concat([df, new_df])
+    else:
+        df = pd.DataFrame(data)
+    with pd.ExcelWriter(RESOLUTION_FILE, engine="openpyxl",
+                        mode="a", if_sheet_exists="replace") as writer:
+        df.to_excel(writer, sheet_name=TIME_SHEET, index=False)
+
+    assert np.allclose(numpy_fft, numpy_rfft, atol=1e-2)
+    assert np.allclose(numpy_fft, scipy_fft, atol=1e-2)
+    # assert np.allclose(numpy_fft, pyfftw_rfft, atol=1e-2)
     OPTIONS["fourier.backend"] = "numpy"
