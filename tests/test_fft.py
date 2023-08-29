@@ -110,63 +110,68 @@ def wavelength() -> u.m:
     return (13.000458e-6*u.m).to(u.um)
 
 
-# @pytest.mark.parametrize("backend", ["numpy", "scipy"])
-# def test_compute2Dfourier_transform(pixel_size: u.mas, backend: str,
-#                                     fluxes: Tuple[u.Quantity[u.Jy]],
-#                                     positions: Tuple[List[u.Quantity[u.mas]]]
-#                                     ) -> None:
-#     """Tests the computation of the 2D fourier transform."""
-#     OPTIONS["fourier.backend"] = backend
-#     dim = 512
-#     ud = uniform_disk(pixel_size, dim, diameter=4*u.mas)
-#     rfft_ud = fft.compute_real2Dfourier_transform(ud.value)
-#     assert rfft_ud.shape == (ud.shape[0], ud.shape[1]//2+1)
-#     assert rfft_ud.dtype == np.complex128
-#
-#     fft_dir = Path("fft")
-#     if not fft_dir.exists():
-#         fft_dir.mkdir()
-#
-#     _, (ax, bx, cx) = plt.subplots(1, 3)
-#     ax.imshow(ud.value)
-#     ax.set_title("Image space")
-#     ax.set_xlabel("dim [px]")
-#     bx.imshow(np.abs(rfft_ud))
-#     bx.set_title("Magnitude")
-#     bx.set_xlabel("dim [px]")
-#     cx.imshow(np.angle(rfft_ud))
-#     cx.set_title("Phase")
-#     cx.set_xlabel("dim [px]")
-#     plt.savefig(
-#         fft_dir / f"backend_{backend}_fourier_space_ud.pdf", format="pdf")
-#     plt.close()
-#
-#     flux1, flux2 = fluxes
-#     position1, position2 = [0.5, 0.5]*u.mas, [-0.5, -0.5]*u.mas
-#     bin = binary(dim, pixel_size, flux1, flux2, position1, position2)
-#     rfft_bin = fft.compute_real2Dfourier_transform(bin.value)
-#     assert rfft_bin.shape == (bin.shape[0], bin.shape[1]//2+1)
-#     assert rfft_bin.dtype == np.complex128
-#
-#     _, (ax, bx, cx) = plt.subplots(1, 3)
-#     ax.imshow(bin.value)
-#     ax.set_title("Image space")
-#     ax.set_xlabel("dim [px]")
-#     bx.imshow(np.abs(rfft_bin))
-#     bx.set_title("Magnitude")
-#     bx.set_xlabel("dim [px]")
-#     cx.imshow(np.angle(rfft_bin))
-#     cx.set_title("Phase")
-#     cx.set_xlabel("dim [px]")
-#     plt.savefig(
-#         fft_dir / f"backend_{backend}_fourier_space_bin.pdf", format="pdf")
-#     plt.close()
-#     OPTIONS["fourier.backend"] = "numpy"
+@pytest.mark.parametrize("backend", ["numpy", "scipy"])
+def test_compute2Dfourier_transform(pixel_size: u.mas, backend: str,
+                                    fluxes: Tuple[u.Quantity[u.Jy]],
+                                    positions: Tuple[List[u.Quantity[u.mas]]]
+                                    ) -> None:
+    """Tests the computation of the 2D fourier transform."""
+    OPTIONS["fourier.backend"] = backend
+    dim = 512
+    ud = uniform_disk(pixel_size, dim, diameter=4*u.mas)
+    rfft2_ud = fft.compute_real2Dfourier_transform(ud.value)
+    test = np.fft.fft2(np.fft.fftshift(ud.value))
+    _, (ax, bx) = plt.subplots(1, 2)
+    ax.imshow(np.angle(test))
+    bx.imshow(np.angle(rfft2_ud))
+    plt.show()
+    breakpoint()
+    
+    assert rfft2_ud.shape == (ud.shape[0], ud.shape[1]//2+1)
+    assert rfft2_ud.dtype == np.complex128
 
+    _, (ax, bx, cx) = plt.subplots(1, 3)
+    ax.imshow(ud.value)
+    ax.set_title("Image space")
+    ax.set_xlabel("dim [px]")
+    bx.imshow(np.abs(rfft2_ud))
+    bx.set_title("Magnitude")
+    bx.set_xlabel("dim [px]")
+    cx.imshow(np.angle(rfft2_ud))
+    cx.set_title("Phase")
+    cx.set_xlabel("dim [px]")
+    # plt.savefig(
+    #     FFT_DIR / f"backend_{backend}_fourier_space_ud.pdf", format="pdf")
+    plt.show()
+    plt.close()
 
+    flux1, flux2 = fluxes
+    position1, position2 = [0.5, 0.5]*u.mas, [-0.5, -0.5]*u.mas
+    bin = binary(dim, pixel_size, flux1, flux2, position1, position2)
+    rfft2_bin = fft.compute_real2Dfourier_transform(bin.value)
+    assert rfft2_bin.shape == (bin.shape[0], bin.shape[1]//2+1)
+    assert rfft2_bin.dtype == np.complex128
+
+    _, (ax, bx, cx) = plt.subplots(1, 3)
+    ax.imshow(bin.value)
+    ax.set_title("Image space")
+    ax.set_xlabel("dim [px]")
+    bx.imshow(np.abs(rfft2_bin))
+    bx.set_title("Magnitude")
+    bx.set_xlabel("dim [px]")
+    cx.imshow(np.angle(rfft2_bin))
+    cx.set_title("Phase")
+    cx.set_xlabel("dim [px]")
+    plt.savefig(
+        FFT_DIR / f"backend_{backend}_fourier_space_bin.pdf", format="pdf")
+    plt.close()
+    OPTIONS["fourier.backend"] = "numpy"
+#
+#
 # # TODO: Test input for both wavelength in meter and um?
-# # TODO: Check that the Parameter and such actually gets the right values (even with
-# the new scheme). Also the set data.
+# # TODO: Move these todo's… Wrong file?
+# # TODO: Check that the Parameter and such actually gets the right values
+# # (even with the new scheme). Also the set data.
 # @pytest.mark.parametrize("dim, binning",
 #                          [(dim, binning) for binning in range(0, 11)
 #                           for dim in [2**power for power in range(7, 15)]])
@@ -236,150 +241,170 @@ def wavelength() -> u.m:
 #     with pd.ExcelWriter(RESOLUTION_FILE, engine="openpyxl",
 #                         mode="a", if_sheet_exists="replace") as writer:
 #         df.to_excel(writer, sheet_name=WAVELENGTH_SHEET, index=False)
+
+
+# @pytest.mark.parametrize(
+#     "diameter, dim",
+#     [tuple([diameter, dim])
+#      for dim in [2**power for power in range(11, 13)]
+#      for diameter in [4, 10, 20]*u.mas])
+# def test_compile_full_fourier_from_real(
+#         diameter: u.mas, dim: int,
+#         ucoord: u.m, vcoord: u.m, pixel_size: u.mas,
+#         wavelength: u.um, fluxes: Tuple[u.Quantity[u.Jy]],
+#         positions: Tuple[List[u.Quantity[u.mas]]]) -> None:
+#     """Tests the stiching together of the two parts of
+#     the real fourier transform into the full fourier transform."""
+#     flux1, flux2 = fluxes
+#     position1, position2 = positions
 #
+#     ud = uniform_disk(pixel_size, dim, diameter=diameter).value
+#     bin = binary(dim, pixel_size, flux1, flux2, position1, position2).value
+#     fft_ud = np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(ud)))
+#     fft_bin = np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(bin)))
+#     rfft_ud = fft.compute_real2Dfourier_transform(ud)
+#     compiled_fft_ud = fft.compile_full_fourier_from_real(rfft_ud)
+#     rfft_bin = fft.compute_real2Dfourier_transform(bin)
+#     compiled_fft_bin = fft.compile_full_fourier_from_real(rfft_bin)
 #
-def test_compile_full_fourier_from_real():
-    ...
+#     assert np.allclose(fft_ud, compiled_fft_ud)
+#     assert np.allclose(fft_bin, compiled_fft_bin)
 
 
 # TODO: Do the same for the cphases triangles.
-def test_uv_coordinate_mirroring(pixel_size: u.mas) -> None:
-    """Tests the uv coordinate mirroring."""
-    dim = 512
-    ud = uniform_disk(pixel_size, dim, 4*u.mas)
-    frequency_axis_y = fft.get_frequency_axis(dim, pixel_size, 10*u.um, axis=1)
-    frequency_axis_x = fft.get_frequency_axis(dim, pixel_size, 10*u.um, axis=0)
-    rfft = fft.compute_real2Dfourier_transform(ud.value)
-
-    _, (ax, bx) = plt.subplots(1, 2)
-    ax.imshow(
-        np.abs(rfft), extent=[0, frequency_axis_x.max().value,
-                              frequency_axis_y.min().value,
-                              frequency_axis_y.max().value])
-    bx.imshow(
-        np.abs(rfft), extent=[0, frequency_axis_x.max().value,
-                              frequency_axis_y.min().value,
-                              frequency_axis_y.max().value])
-
-    array_configs = ["small", "medium", "large", "UTs"]
-    colors = ["blue", "orange", "green", "red"]
-    for config, color in zip(array_configs, colors):
-        vis_ucoord, vis_vcoord =\
-            np.load(f"data/uv_coords/{config}_uvcoords.npy")
-        vis_index = np.where(vis_ucoord < 0)
-        ax.scatter(vis_ucoord, vis_vcoord,
-                   label=config, color=color, alpha=0.6)
-        vis_ucoord_mirrored, vis_vcoord_mirrored, vis_conjugates =\
-            fft.mirror_uv_coords(vis_ucoord, vis_vcoord, copy=True)
-        ax.scatter(vis_ucoord_mirrored,
-                   vis_vcoord_mirrored, marker="x", color=color)
-
-        assert all(vis_index[0] == np.where(vis_conjugates)[0])
-        assert all(vis_ucoord[vis_index] == -vis_ucoord_mirrored[vis_index])
-        assert all(vis_vcoord[vis_index] == -vis_vcoord_mirrored[vis_index])
-        assert vis_ucoord.size == vis_ucoord_mirrored.size
-        assert vis_vcoord.size == vis_vcoord_mirrored.size
-
-        cphases_ucoord, cphases_vcoord = np.load(
-            f"data/uv_coords/{config}_uv123coords.npy")
-        bx.scatter(cphases_ucoord.flatten(), cphases_vcoord.flatten(),
-                   label=config, color=color, alpha=0.6)
-        cphases_ucoord_mirrored, cphases_vcoord_mirrored, cphase_conjugates =\
-            fft.mirror_uv_coords(cphases_ucoord, cphases_vcoord, copy=True)
-        bx.scatter(cphases_ucoord_mirrored.flatten(),
-                   cphases_vcoord_mirrored.flatten(),
-                   color=color, marker="x")
-
-        cphase_index = np.where(cphases_ucoord < 0)
-        assert all(cphase_index[0] == np.where(cphase_conjugates)[0])
-        assert all(cphases_ucoord[cphase_index] ==
-                   -cphases_ucoord_mirrored[cphase_index])
-        assert all(cphases_vcoord[cphase_index] ==
-                   -cphases_vcoord_mirrored[cphase_index])
-        assert cphases_ucoord.size == cphases_ucoord_mirrored.size
-        assert cphases_vcoord.size == cphases_vcoord_mirrored.size
-
-    ax.set_xlim([-200, 200])
-    ax.set_ylim([-200, 200])
-    ax.set_title("UV Coordinates Mirrored")
-    ax.set_xlabel("u (m)")
-    ax.set_ylabel("v (m)")
-    ax.legend(loc="upper left", fontsize="small")
-
-    bx.set_title("UV Triangles Mirrored")
-    bx.set_xlabel("u (m)")
-    bx.set_ylabel("v (m)")
-    bx.set_xlim([-200, 200])
-    bx.set_ylim([-200, 200])
-    bx.legend(loc="upper left", fontsize="small")
-    plt.savefig(FFT_DIR / "uv_coords_mirrored.pdf", format="pdf")
-    plt.close()
-
-
-# TODO: Angle of the interpolated values is the negative of the calculated value?
-@pytest.mark.parametrize(
-    "diameter, dim",
-    [tuple([diameter, dim])
-     for dim in [2**power for power in range(11, 13)]
-     for diameter in [4, 10, 20]*u.mas])
-def test_vis_interpolation(diameter: u.mas, dim: float,
-                           ucoord: u.m, vcoord: u.m,
-                           pixel_size: u.mas, wavelength: u.um,
-                           fluxes: Tuple[u.Quantity[u.Jy]],
-                           positions: Tuple[List[u.Quantity[u.mas]]]
-                           ) -> None:
-    """This tests the interpolation of the Fourier transform,
-    but more importantly, implicitly the unit conversion of the
-    frequency axis for the visibilitites/correlated fluxes."""
-    fft_dir = Path("fft")
-    if not fft_dir.exists():
-        fft_dir.mkdir()
-    flux1, flux2 = fluxes
-    position1, position2 = positions
-    rfft_ud = fft.compute_real2Dfourier_transform(
-        uniform_disk(pixel_size, dim, diameter=diameter))
-    vis_ud = uniform_disk_vis(diameter, ucoord, vcoord, wavelength)
-    rfft_bin = fft.compute_real2Dfourier_transform(
-        binary(dim, pixel_size, flux1, flux2, position1, position2))
-    vis_bin = binary_vis(flux1, flux2,
-                         ucoord, vcoord,
-                         position1, position2,
-                         wavelength)
-    interpolated_ud = fft.interpolate_coordinates(
-        rfft_ud, dim, pixel_size, ucoord, vcoord, wavelength)
-    interpolated_bin = fft.interpolate_coordinates(
-        rfft_bin, dim, pixel_size, ucoord, vcoord, wavelength)
-
-    # ft_max = get_frequency_axis(dim, pixel_size, wavelength).max()
-    # _, (ax, bx) = plt.subplots(1, 2)
-    # ax.imshow(np.angle(ft_ud),
-    #           extent=[-ft_max, ft_max,
-    #                   -ft_max, ft_max])
-    # ax.scatter(ucoord, vcoord)
-    # ax.title("Magnitude Uniform Disk")
-    # ax.set_xlabel("u [m]")
-    # ax.set_ylabel("v [m]")
-    # bx.imshow(np.angle(ft_bin),
-    #           extent=[-ft_max, ft_max,
-    #                   -ft_max, ft_max])
-    # bx.scatter(ucoord, vcoord)
-    # bx.set_title("Magnitude Binary")
-    # bx.set_xlabel("u [m]")
-    # plt.savefig(fft_dir /
-    #             f"dim{dim}_dia{diameter.value}_px{pixel_size.value}_"
-    #             f"wav{wavelength.value}_uv_interpolated_magnitude.pdf",
-    #             format="pdf")
-    # plt.close()
-
-    interpolated_ud /= rfft_ud.max()
-    interpolated_ud = np.real(interpolated_ud)
-    assert np.allclose(vis_ud, interpolated_ud, atol=1e-2)
-    assert np.allclose(np.abs(vis_bin),
-                       np.abs(interpolated_bin), atol=1e0)
-    assert np.allclose(np.abs(np.angle(vis_bin)),
-                       np.abs(np.angle(interpolated_bin)), atol=1e-2)
-
-
+# def test_uv_coordinate_mirroring(pixel_size: u.mas) -> None:
+#     """Tests the uv coordinate mirroring."""
+#     dim = 512
+#     ud = uniform_disk(pixel_size, dim, 4*u.mas)
+#     frequency_axis_x = fft.get_frequency_axis(dim, pixel_size, 10*u.um, axis=1)
+#     frequency_axis_y = fft.get_frequency_axis(dim, pixel_size, 10*u.um, axis=0)
+#     rfft = fft.compute_real2Dfourier_transform(ud.value)
+#
+#     _, (ax, bx) = plt.subplots(1, 2)
+#     ax.imshow(
+#         np.abs(rfft), extent=[0, frequency_axis_x.max().value,
+#                               frequency_axis_y.min().value,
+#                               frequency_axis_y.max().value])
+#     bx.imshow(
+#         np.abs(rfft), extent=[0, frequency_axis_x.max().value,
+#                               frequency_axis_y.min().value,
+#                               frequency_axis_y.max().value])
+#
+#     array_configs = ["small", "medium", "large", "UTs"]
+#     colors = ["blue", "orange", "green", "red"]
+#     for config, color in zip(array_configs, colors):
+#         vis_ucoord, vis_vcoord =\
+#             np.load(f"data/uv_coords/{config}_uvcoords.npy")
+#         vis_index = np.where(vis_ucoord < 0)
+#         ax.scatter(vis_ucoord, vis_vcoord,
+#                    label=config, color=color, alpha=0.6)
+#         vis_ucoord_mirrored, vis_vcoord_mirrored, vis_conjugates =\
+#             fft.mirror_uv_coords(vis_ucoord, vis_vcoord)
+#         ax.scatter(vis_ucoord_mirrored,
+#                    vis_vcoord_mirrored, marker="x", color=color)
+#
+#         assert all(vis_index[0] == np.where(vis_conjugates)[0])
+#         assert all(vis_ucoord[vis_index] == -vis_ucoord_mirrored[vis_index])
+#         assert all(vis_vcoord[vis_index] == -vis_vcoord_mirrored[vis_index])
+#         assert vis_ucoord.size == vis_ucoord_mirrored.size
+#         assert vis_vcoord.size == vis_vcoord_mirrored.size
+#
+#         cphases_ucoord, cphases_vcoord = np.load(
+#             f"data/uv_coords/{config}_uv123coords.npy")
+#         bx.scatter(cphases_ucoord.flatten(), cphases_vcoord.flatten(),
+#                    label=config, color=color, alpha=0.6)
+#         cphases_ucoord_mirrored, cphases_vcoord_mirrored, cphase_conjugates =\
+#             fft.mirror_uv_coords(cphases_ucoord, cphases_vcoord)
+#         bx.scatter(cphases_ucoord_mirrored.flatten(),
+#                    cphases_vcoord_mirrored.flatten(),
+#                    color=color, marker="x")
+#
+#         cphase_index = np.where(cphases_ucoord < 0)
+#         assert all(cphase_index[0] == np.where(cphase_conjugates)[0])
+#         assert all(cphases_ucoord[cphase_index] ==
+#                    -cphases_ucoord_mirrored[cphase_index])
+#         assert all(cphases_vcoord[cphase_index] ==
+#                    -cphases_vcoord_mirrored[cphase_index])
+#         assert cphases_ucoord.size == cphases_ucoord_mirrored.size
+#         assert cphases_vcoord.size == cphases_vcoord_mirrored.size
+#
+#     ax.set_xlim([-200, 200])
+#     ax.set_ylim([-200, 200])
+#     ax.set_title("UV Coordinates Mirrored")
+#     ax.set_xlabel("u (m)")
+#     ax.set_ylabel("v (m)")
+#     ax.legend(loc="upper left", fontsize="small")
+#
+#     bx.set_title("UV Triangles Mirrored")
+#     bx.set_xlabel("u (m)")
+#     bx.set_ylabel("v (m)")
+#     bx.set_xlim([-200, 200])
+#     bx.set_ylim([-200, 200])
+#     bx.legend(loc="upper left", fontsize="small")
+#     plt.savefig(FFT_DIR / "uv_coords_mirrored.pdf", format="pdf")
+#     plt.close()
+#
+#
+# # FIXME: Angle of the interpolated values is the negative of the
+# # calculated value?
+# @pytest.mark.parametrize(
+#     "diameter, dim",
+#     [tuple([diameter, dim])
+#      for dim in [2**power for power in range(11, 13)]
+#      for diameter in [4, 10, 20]*u.mas])
+# def test_vis_interpolation(diameter: u.mas, dim: float,
+#                            ucoord: u.m, vcoord: u.m,
+#                            pixel_size: u.mas, wavelength: u.um,
+#                            fluxes: Tuple[u.Quantity[u.Jy]],
+#                            positions: Tuple[List[u.Quantity[u.mas]]]
+#                            ) -> None:
+#     """This tests the interpolation of the Fourier transform,
+#     but more importantly, implicitly the unit conversion of the
+#     frequency axis for the visibilitites/correlated fluxes."""
+#     flux1, flux2 = fluxes
+#     position1, position2 = positions
+#     vis_ud = uniform_disk_vis(diameter, ucoord, vcoord, wavelength)
+#     vis_bin = binary_vis(
+#         flux1, flux2, ucoord, vcoord, position1, position2, wavelength)
+#
+#     rfft_ud = fft.compute_real2Dfourier_transform(
+#         uniform_disk(pixel_size, dim, diameter=diameter))
+#     rfft_bin = fft.compute_real2Dfourier_transform(
+#         binary(dim, pixel_size, flux1, flux2, position1, position2))
+#
+#     interpolated_ud = fft.interpolate_coordinates(
+#         rfft_ud, dim, pixel_size, ucoord, vcoord, wavelength)
+#     interpolated_bin = fft.interpolate_coordinates(
+#         rfft_bin, dim, pixel_size, ucoord, vcoord, wavelength)
+#
+#     interpolated_ud /= rfft_ud.max()
+#     interpolated_ud = np.real(interpolated_ud)
+#     assert np.allclose(vis_ud, interpolated_ud, atol=1e-2)
+#     assert np.allclose(np.abs(vis_bin),
+#                        np.abs(interpolated_bin), atol=1e0)
+#     assert np.allclose(np.abs(np.angle(vis_bin)),
+#                        np.abs(np.angle(interpolated_bin)), atol=1e-2)
+#
+#     for config in ["small", "medium", "large", "UTs"]:
+#         ucoord, vcoord =\
+#             np.load(f"data/uv_coords/{config}_uvcoords.npy")
+#         ucoord, vcoord = ucoord*u.m, vcoord*u.m
+#         vis_ud = uniform_disk_vis(diameter, ucoord, vcoord, wavelength)
+#         vis_bin = binary_vis(
+#             flux1, flux2, ucoord, vcoord, position1, position2, wavelength)
+#         interpolated_ud = fft.interpolate_coordinates(
+#             rfft_ud, dim, pixel_size, ucoord, vcoord, wavelength)
+#         interpolated_bin = fft.interpolate_coordinates(
+#             rfft_bin, dim, pixel_size, ucoord, vcoord, wavelength)
+#         interpolated_ud /= rfft_ud.max()
+#         interpolated_ud = np.real(interpolated_ud)
+#         assert np.allclose(vis_ud, interpolated_ud, atol=1e-2)
+#         assert np.allclose(np.abs(vis_bin),
+#                            np.abs(interpolated_bin), atol=1e0)
+#         assert np.allclose(np.abs(np.angle(vis_bin)),
+#                            np.abs(np.angle(interpolated_bin)), atol=1e-2)
+#
+#
 # @pytest.mark.parametrize(
 #     "diameter, dim",
 #     [tuple([diameter, dim])
@@ -392,40 +417,21 @@ def test_vis_interpolation(diameter: u.mas, dim: float,
 #                                positions: Tuple[List[u.Quantity[u.mas]]]
 #                                ) -> None:
 #     """Tests the interpolation of the closure phases."""
-#     fft_dir = Path("fft")
-#     if not fft_dir.exists():
-#         fft_dir.mkdir()
-#
 #     flux1, flux2 = fluxes
 #     position1, position2 = positions
-#
 #     rfft_ud = fft.compute_real2Dfourier_transform(
 #         uniform_disk(pixel_size, dim, diameter=diameter))
-#     interpolated_ud = fft.interpolate_coordinates(
-#         rfft_ud, dim, pixel_size, u123coord, v123coord, wavelength)
-#     interpolated_ud = np.product(
-#         interpolated_ud/rfft_ud[dim//2, dim//2], axis=1)
-#     interpolated_ud = np.real(interpolated_ud)
-#
 #     rfft_bin = fft.compute_real2Dfourier_transform(
 #         binary(dim, pixel_size, flux1, flux2, position1, position2))
+#
+#     interpolated_ud = fft.interpolate_coordinates(
+#         rfft_ud, dim, pixel_size, u123coord, v123coord, wavelength)
+#     interpolated_ud =\
+#         np.real(np.product(interpolated_ud/rfft_ud.max(), axis=1))
+#
 #     interpolated_bin = fft.interpolate_coordinates(
 #         rfft_bin, dim, pixel_size, u123coord, v123coord, wavelength)
 #     interpolated_bin = np.angle(np.product(interpolated_bin, axis=1))
-#
-#     # ft_max = (dim/2)*get_frequency_axis(dim, pixel_size, wavelength)
-#     # _, (ax, bx) = plt.subplots(1, 2)
-#     # ax.imshow(np.angle(ft_ud),
-#     #           extent=[-ft_max, ft_max,
-#     #                   -ft_max, ft_max])
-#     # ax.set_title("Phase Uniform disk")
-#     # ax.set_xlabel("u [m]")
-#     # ax.set_ylabel("v [m]")
-#     # ax.imshow(np.angle(ft_bin),
-#     #           extent=[-ft_max, ft_max,
-#     #                   -ft_max, ft_max])
-#     # bx.set_title("Phase Binary")
-#     # bx.set_xlabel("u [m]")
 #
 #     cphase_ud, cphase_bin = [], []
 #     for ucoord, vcoord in zip(u123coord, v123coord):
@@ -436,17 +442,9 @@ def test_vis_interpolation(diameter: u.mas, dim: float,
 #         tmp_cphase_ud = uniform_disk_vis(diameter, ucoord, vcoord, wavelength)
 #         cphase_ud.append(tmp_cphase_ud)
 #         cphase_bin.append(tmp_cphase_bin)
-#         # ax.scatter(ucoord, vcoord)
-#         # bx.scatter(ucoord, vcoord)
 #
 #     cphase_ud = np.product(cphase_ud, axis=0)
 #     cphase_bin = np.angle(np.product(cphase_bin, axis=0))
-#
-#     plt.savefig(fft_dir /
-#                 f"dim{dim}_dia{diameter.value}_px{pixel_size.value}_"
-#                 f"wav{wavelength.value}_uv_interpolated_phase.pdf",
-#                 format="pdf")
-#     plt.close()
 #
 #     # NOTE: Resolution is too low at 1024 to successfully fit a binary...
 #     if dim == 1024:
@@ -455,7 +453,39 @@ def test_vis_interpolation(diameter: u.mas, dim: float,
 #                            np.abs(np.angle(interpolated_bin)), atol=1e1)
 #     else:
 #         assert np.allclose(cphase_ud, interpolated_ud, atol=1e-2)
-#         assert np.allclose(np.abs(cphase_bin), np.abs(interpolated_bin), atol=1e-2)
+#         assert np.allclose(np.abs(cphase_bin), np.abs(interpolated_bin),
+#                            atol=1e-2)
+#
+#     for config in ["small", "medium", "large", "UTs"]:
+#         cphases_ucoord, cphases_vcoord = np.load(
+#             f"data/uv_coords/{config}_uv123coords.npy")
+#         interpolated_bin = fft.interpolate_coordinates(
+#             rfft_bin, dim, pixel_size, u123coord, v123coord, wavelength)
+#         interpolated_bin = np.angle(np.product(interpolated_bin, axis=1))
+#
+#         cphase_ud, cphase_bin = [], []
+#         for ucoord, vcoord in zip(u123coord, v123coord):
+#             tmp_cphase_bin = binary_vis(flux1, flux2,
+#                                         ucoord, vcoord,
+#                                         position1, position2,
+#                                         wavelength)
+#             tmp_cphase_ud = uniform_disk_vis(diameter, ucoord,
+#                                              vcoord, wavelength)
+#             cphase_ud.append(tmp_cphase_ud)
+#             cphase_bin.append(tmp_cphase_bin)
+#
+#         cphase_ud = np.product(cphase_ud, axis=0)
+#         cphase_bin = np.angle(np.product(cphase_bin, axis=0))
+#
+#         # NOTE: Resolution is too low at 1024 to successfully fit a binary...
+#         if dim == 1024:
+#             assert np.allclose(cphase_ud, interpolated_ud, atol=1e-1)
+#             assert np.allclose(np.abs(cphase_bin),
+#                                np.abs(np.angle(interpolated_bin)), atol=1e1)
+#         else:
+#             assert np.allclose(cphase_ud, interpolated_ud, atol=1e-2)
+#             assert np.allclose(np.abs(cphase_bin), np.abs(interpolated_bin),
+#                                atol=1e-2)
 #
 #
 # @pytest.mark.parametrize(
