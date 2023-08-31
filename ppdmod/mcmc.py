@@ -231,7 +231,6 @@ def lnprior(components_and_params: List[List[Dict]],
     return 0
 
 
-# @execution_time
 def lnprob(theta: np.ndarray) -> float:
     """Takes theta vector and the x, y and the yerr of the theta.
     Returns a number corresponding to how good of a fit the model is to your

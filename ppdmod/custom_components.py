@@ -170,11 +170,7 @@ class TemperatureGradient(NumericalComponent):
         self.params["eff_temp"] = Parameter(**STANDARD_PARAMETERS["eff_temp"])
         self.params["eff_radius"] = Parameter(**STANDARD_PARAMETERS["eff_radius"])
 
-        # HACK: Make this innermost radius better as rn.
-        self.params["rin0"] = Parameter(**STANDARD_PARAMETERS["rin"])
-        self.params["rin0"].name = "rin0"
-        self.params["rin0"].description = "rin0"
-        self.params["rin0"].free = False
+        self.params["rin0"] = None
 
         self.params["rin"] = Parameter(**STANDARD_PARAMETERS["rin"])
         self.params["rout"] = Parameter(**STANDARD_PARAMETERS["rout"])
@@ -241,9 +237,10 @@ class TemperatureGradient(NumericalComponent):
         Notes
         -----
         """
-        inner_radius = self.params["rin"]() \
-            if self.innermost_radius is None else self.innermost_radius
-
+        # TODO: Test if this works in the case of multiple inner radii.
+        inner_radius = self.params["rin0"]()\
+            if self.params["rin0"] is not None else self.params["rin"]()
+            
         surface_density = self.params["inner_sigma"]()\
             * (radius / inner_radius)**(-self.params["p"]())
         if self.asymmetric_surface_density:

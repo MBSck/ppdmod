@@ -131,21 +131,22 @@ if __name__ == "__main__":
 
     nburnin, nsteps, nwalkers = 100, 400, 50
     theta = mcmc.init_randomly(nwalkers)[10]
-    sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin, ncores=25)
-    theta = mcmc.get_best_fit(sampler, discard=nburnin)
-    np.save(result_dir / "best_fit_params.npy", theta)
-    new_params = dict(zip(labels, theta))
-
-    plot.plot_chains(sampler, labels, discard=nburnin, savefig=result_dir / "chains.pdf")
-    plot.plot_corner(sampler, labels, discard=nburnin, savefig=result_dir / "corner.pdf")
-    OPTIONS["fourier.binning"] = None
-    OPTIONS["fourier.padding"] = None
-    components_and_params, shared_params = mcmc.set_params_from_theta(theta)
-    components = custom_components.assemble_components(
-        components_and_params, shared_params)
-    m = model.Model(components)
-    plot.plot_model(4096, 0.1, m, OPTIONS["fit.wavelengths"][1],
-                    savefig=result_dir / "model.pdf")
-    plot.plot_observed_vs_model(m, 0.1*u.mas, new_params["sh_elong"],
-                                new_params["sh_pa"],
-                                savefig=result_dir / "fit_results.pdf")
+    mcmc.lnprob(theta)
+    # sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin, ncores=25)
+    # theta = mcmc.get_best_fit(sampler, discard=nburnin)
+    # np.save(result_dir / "best_fit_params.npy", theta)
+    # new_params = dict(zip(labels, theta))
+    #
+    # plot.plot_chains(sampler, labels, discard=nburnin, savefig=result_dir / "chains.pdf")
+    # plot.plot_corner(sampler, labels, discard=nburnin, savefig=result_dir / "corner.pdf")
+    # OPTIONS["fourier.binning"] = None
+    # OPTIONS["fourier.padding"] = None
+    # components_and_params, shared_params = mcmc.set_params_from_theta(theta)
+    # components = custom_components.assemble_components(
+    #     components_and_params, shared_params)
+    # m = model.Model(components)
+    # plot.plot_model(4096, 0.1, m, OPTIONS["fit.wavelengths"][1],
+    #                 savefig=result_dir / "model.pdf")
+    # plot.plot_observed_vs_model(m, 0.1*u.mas, new_params["sh_elong"],
+    #                             new_params["sh_pa"],
+    #                             savefig=result_dir / "fit_results.pdf")

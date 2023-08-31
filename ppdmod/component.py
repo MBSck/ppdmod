@@ -3,9 +3,8 @@ from typing import Optional, Tuple
 import astropy.units as u
 import numpy as np
 
-from .fft import compute_2Dfourier_transform
+from .fft import compute_real2Dfourier_transform
 from .parameter import STANDARD_PARAMETERS, Parameter
-from .utils import get_new_dimension
 
 
 class Component:
@@ -252,4 +251,4 @@ class NumericalComponent(Component):
         complex_visibility_function : numpy.ndarray
         """
         image = self.calculate_image(wavelength=wavelength)
-        return compute_2Dfourier_transform(image.value)
+        return compute_real2Dfourier_transform(image.value)
