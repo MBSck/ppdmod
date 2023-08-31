@@ -80,12 +80,12 @@ def uniform_disk(pixel_size: u.mas, dim: int,
 
     Parameters
     ----------
-    diameter : astropy.units.mas
-        The uniform disk's diameter.
     pixel_size : astropy.units.mas
         The size of a pixel in the image.
     dim : float
         The image's dimension [px].
+    diameter : astropy.units.mas, optional
+        The uniform disk's diameter.
 
     Returns
     -------

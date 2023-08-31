@@ -109,6 +109,8 @@ def wavelength() -> u.m:
     """A wavelenght grid."""
     return (13.000458e-6*u.m).to(u.um)
 
+# TODO: Add tests for both the fft2 and rfft2 with the new modular system.
+
 
 @pytest.mark.parametrize("backend", ["numpy", "scipy"])
 def test_compute2Dfourier_transform(pixel_size: u.mas, backend: str,

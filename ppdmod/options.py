@@ -11,6 +11,7 @@ OPTIONS["data.closure_phase_error"] = []
 
 # NOTE: Model. The output can either be 'surface_brightness' or ' jansky_px'
 OPTIONS["model.output"] = "jansky_px"
+OPTIONS["model.matryoshka"] = None
 OPTIONS["model.components_and_params"] = {}
 OPTIONS["model.constant_params"] = {}
 OPTIONS["model.shared_params"] = {}
@@ -19,6 +20,7 @@ OPTIONS["model.shared_params"] = {}
 OPTIONS["fourier.padding"] = None
 OPTIONS["fourier.binning"] = None
 OPTIONS["fourier.backend"] = "numpy"
+OPTIONS["fourier.method"] = "complex"
 
 # NOTE: Spectrum.
 OPTIONS["spectrum.coefficients"] = {

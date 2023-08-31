@@ -240,7 +240,6 @@ class TemperatureGradient(NumericalComponent):
         # TODO: Test if this works in the case of multiple inner radii.
         inner_radius = self.params["rin0"]()\
             if self.params["rin0"] is not None else self.params["rin"]()
-            
         surface_density = self.params["inner_sigma"]()\
             * (radius / inner_radius)**(-self.params["p"]())
         if self.asymmetric_surface_density:
