@@ -2,15 +2,17 @@ from typing import Optional, Dict
 
 import astropy.units as u
 import numpy as np
-import pyfftw
 import scipy
 from scipy.interpolate import interpn
 
 from .options import OPTIONS
 
+# TODO: Maybe think of better interpolation settings?
+MODULES = {"numpy": np, "scipy": scipy}
+INTERP_SETTINGS = {"method": "linear",
+                   "fill_value": None, "bounds_error": True}
 
-# TODO: Pyfftw does not seem to work as fast as it should.
-# Is actually slower than numpy and especially scipy.
+
 def compute_real2Dfourier_transform(image: np.ndarray) -> np.ndarray:
     """Calculates the Fourier transform.
 
@@ -24,20 +26,12 @@ def compute_real2Dfourier_transform(image: np.ndarray) -> np.ndarray:
     """
     if isinstance(image, u.Quantity):
         image = image.value
-    image = np.fft.fftshift(image)
-    if OPTIONS["fourier.backend"] == "numpy":
-        rfft = np.fft.rfft2(image)
-    elif OPTIONS["fourier.backend"] == "scipy":
-        rfft = scipy.fft.rfft2(image)
-    else:
-        fft_input = pyfftw.empty_aligned(
-            image.shape, dtype=str(image.dtype))
-        fft_input[...] = image
-        fft_object = pyfftw.builders.fft2(
-            fft_input, axes=(0, 1), auto_align_input=False,
-            auto_contiguous=False, avoid_copy=True)
-        rfft = fft_object()
-    return np.fft.ifftshift(rfft, axes=(0,))
+    image = np.fft.ifftshift(image)
+    fft_backend = MODULES[OPTIONS["fourier.backend"]]
+    if OPTIONS["fourier.method"] == "real":
+        return np.fft.fftshift(
+            fft_backend.fft.rfft2(image), axes=(0,))
+    return np.fft.fftshift(fft_backend.fft.fft2(image))
 
 
 def get_frequency_axis(
@@ -153,17 +147,23 @@ def interpolate_coordinates(fourier_transform: np.ndarray,
     """
     if isinstance(ucoord, u.Quantity) and isinstance(vcoord, u.Quantity):
         ucoord, vcoord = ucoord.value, vcoord.value
-    intp_setting = {"method": "linear",
-                    "fill_value": None, "bounds_error": True}
-    grid = (get_frequency_axis(dim, pixel_size, wavelength, axis=0),
-            get_frequency_axis(dim, pixel_size, wavelength, axis=1))
-    ucoord, vcoord, conjugates = mirror_uv_coords(ucoord, vcoord)
+
+    if OPTIONS["fourier.method"] == "real":
+        grid = (get_frequency_axis(dim, pixel_size, wavelength, axis=0),
+                get_frequency_axis(dim, pixel_size, wavelength, axis=1))
+        ucoord, vcoord, conjugates = mirror_uv_coords(ucoord, vcoord)
+    else:
+        grid = (get_frequency_axis(dim, pixel_size, wavelength, axis=0),
+                get_frequency_axis(dim, pixel_size, wavelength, axis=0))
+
     coordinates = np.transpose([vcoord, ucoord])
     real = interpn(
-        grid, np.real(fourier_transform), coordinates, **intp_setting)
+        grid, np.real(fourier_transform), coordinates, **INTERP_SETTINGS)
     imag = interpn(
-        grid, np.imag(fourier_transform), coordinates, **intp_setting)
+        grid, np.imag(fourier_transform), coordinates, **INTERP_SETTINGS)
     interpolated_values = real+1j*imag
-    interpolated_values[np.where(conjugates.T)] =\
-        np.conjugate(interpolated_values[np.where(conjugates.T)])
+
+    if OPTIONS["fourier.method"] == "real":
+        interpolated_values[np.where(conjugates.T)] =\
+            np.conjugate(interpolated_values[np.where(conjugates.T)])
     return interpolated_values
