@@ -7,6 +7,8 @@ import numpy as np
 from .component import Component, AnalyticalComponent, NumericalComponent
 from .parameter import STANDARD_PARAMETERS, Parameter
 from .options import OPTIONS
+from .spectral import calculate_surface_density_profile,\
+    calculate_temperature_profile, calculate_azimuthal_modulation
 from .utils import angular_to_distance, calculate_intensity,\
     get_new_dimension, rebin_image, pad_image
 
@@ -114,7 +116,6 @@ class Star(AnalyticalComponent):
                                   self.stellar_radius_angular).value
 
 
-# TODO: Think of doing all conversions in properties -> Quicker?
 class TemperatureGradient(NumericalComponent):
     """A ring defined by a radial temperature profile in r^q
     that is multiplied by an azimuthal modulation.
@@ -166,6 +167,7 @@ class TemperatureGradient(NumericalComponent):
     def __init__(self, **kwargs):
         """The class's constructor."""
         super().__init__(**kwargs)
+        self.radius = None
         self.params["dist"] = Parameter(**STANDARD_PARAMETERS["dist"])
         self.params["eff_temp"] = Parameter(**STANDARD_PARAMETERS["eff_temp"])
         self.params["eff_radius"] = Parameter(**STANDARD_PARAMETERS["eff_radius"])
@@ -175,141 +177,46 @@ class TemperatureGradient(NumericalComponent):
         self.params["rin"] = Parameter(**STANDARD_PARAMETERS["rin"])
         self.params["rout"] = Parameter(**STANDARD_PARAMETERS["rout"])
 
-        if self.asymmetric_image or self.asymmetric_surface_density:
-            self.params["a"] = Parameter(**STANDARD_PARAMETERS["a"])
-            self.params["phi"] = Parameter(**STANDARD_PARAMETERS["phi"])
+        self.params["a"] = Parameter(**STANDARD_PARAMETERS["a"])
+        self.params["phi"] = Parameter(**STANDARD_PARAMETERS["phi"])
 
         self.params["q"] = Parameter(**STANDARD_PARAMETERS["q"])
-        self.params["p"] = Parameter(**STANDARD_PARAMETERS["p"])
         self.params["inner_temp"] = Parameter(**STANDARD_PARAMETERS["inner_temp"])
+
+        self.params["p"] = Parameter(**STANDARD_PARAMETERS["p"])
+        self.params["inner_sigma"] = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
+        self.params["kappa_abs"] = Parameter(**STANDARD_PARAMETERS["kappa_abs"])
+        self.params["cont_weight"] = Parameter(**STANDARD_PARAMETERS["cont_weight"])
+        self.params["kappa_cont"] = Parameter(**STANDARD_PARAMETERS["kappa_cont"])
 
         if self.const_temperature:
             self.params["q"].free = False
             self.params["inner_temp"].free = False
 
-        self.params["inner_sigma"] = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
-        self.params["kappa_abs"] = Parameter(**STANDARD_PARAMETERS["kappa_abs"])
+        if not self.asymmetric_image or not self.asymmetric_surface_density:
+            self.params["a"].free = False
+            self.params["phi"].free = False
+
         if self.continuum_contribution:
-            self.params["cont_weight"] = Parameter(**STANDARD_PARAMETERS["cont_weight"])
-            self.params["kappa_cont"] = Parameter(**STANDARD_PARAMETERS["kappa_cont"])
+            self.params["cont_weight"].free = False
+            self.params["kappa_cont"].free = False
         self._eval(**kwargs)
 
-    def _calculate_azimuthal_modulation(self, xx: u.mas, yy: u.mas) -> np.ndarray:
-        r"""Calculates the azimuthal modulation.
-
-        Parameters
-        ----------
-        xx : astropy.units.mas
-            The x-coordinate grid.
-        yy : astropy.units.mas
-            The y-coordinate grid.
-
-        Returns
-        -------
-        azimuthal_modulation : astropy.units.one
-
-        Notes
-        -----
-        Derived via trigonometry from Lazareff et al. 2017's:
-
-        $ F(r) = F_{0}(r)\cdot\left(1+\sum_{j=1}^{m}()c_{j}\cos(j\phi)+s_{j}\sin(j\phi)\right)$
-        """
-        return self.params["a"]()\
-            * np.cos(np.arctan2(yy, xx)-self.params["phi"]().to(u.rad))
-
-    def _calculate_surface_density_profile(self, radius: u.mas,
-                                           xx: u.mas, yy: u.mas) -> u.g/u.cm**2:
-        """Calculates the surface density profile.
-
-        This can be azimuthally varied if so specified.
-
-        Parameters
-        ----------
-        xx : astropy.units.mas
-            The x-coordinate grid.
-        yy : astropy.units.mas
-            The y-coordinate grid.
-
-        Returns
-        -------
-        surface_density_profile : astropy.units.g/astropy.units.cm**2
-
-        Notes
-        -----
-        """
-        # TODO: Test if this works in the case of multiple inner radii.
-        inner_radius = self.params["rin0"]()\
-            if self.params["rin0"] is not None else self.params["rin"]()
-        surface_density = self.params["inner_sigma"]()\
-            * (radius / inner_radius)**(-self.params["p"]())
-        if self.asymmetric_surface_density:
-            return surface_density\
-                * (1+self._calculate_azimuthal_modulation(xx, yy))
-        return surface_density
-
-    def _calculate_optical_depth(self, radius: u.mas,
-                                 xx: u.mas, yy: u.mas,
-                                 wavelength: u.um) -> u.one:
-        """Calculates and returns the optical depth
-
-        Parameters
-        ----------
-        xx : astropy.units.mas
-            The x-coordinate grid.
-        yy : astropy.units.mas
-            The y-coordinate grid.
-        wavelength : astropy.units.um
-
-        Returns
-        -------
-        optical_depth : u.one
-        """
-        sigma_profile = self._calculate_surface_density_profile(radius, xx, yy)
+    def _get_opacity(self, wavelength: u.um) -> u.cm**2/u.g:
+        """Set the opacity from wavelength."""
         if self.continuum_contribution:
             opacity = self.params["kappa_abs"](wavelength) +\
-                    self.params["cont_weight"]() *\
-                    self.params["kappa_cont"](wavelength)
+                      self.params["cont_weight"]() *\
+                      self.params["kappa_cont"](wavelength)
         else:
             opacity = self.params["kappa_abs"](wavelength)
-        return -sigma_profile*opacity
+        return opacity
 
-    def _calculate_temperature_profile(self, radius: u.mas) -> u.K:
-        """Calculates the temperature profile.
-
-        Can be specified to be either as a r^q power law or an a
-        constant/idealised temperature profile derived from the star's
-        temperature, its radius and the observer's distance to the star.
-        It will then be only contingent on those values.
-
-        Parameters
-        ----------
-        radius : astropy.units.mas
-
-        Returns
-        -------
-        temperature_profile : astropy.units.K
-
-        Notes
-        -----
-        In case of a radial power law the formula is
-
-        .. math:: T = T_0 * (1+\\frac{r}{R_0})^\\q.
-
-        In case of a constant grey body profile the stellar radius is
-        calculated from its lumionsity via
-
-        .. math:: R_* = \\sqrt{\\frac{L_*}{4\\pi\\sigma_sb\\T_*^4}}.
-
-        And with this the individual grain's temperature profile is
-
-        .. math:: T_{grain} = \\sqrt{\\frac{R_*}{2r}}\\cdot T_*.
-        """
-        if self.const_temperature:
-            radius = angular_to_distance(radius, self.params["dist"]())
-            return np.sqrt(self.params["eff_radius"]().to(u.m)/(2*radius))\
-                * self.params["eff_temp"]()
-        return self.params["inner_temp"]()\
-            * (radius / self.params["rin"]())**(-self.params["q"]())
+    def _get_radius(self, xx: u.mas, yy: u.mas) -> u.mas:
+        """Calculates the radius."""
+        if self.radius is None:
+            self.radius = np.hypot(xx, yy)
+        return self.radius
 
     def _image_function(self, xx: u.mas, yy: u.mas,
                         wavelength: u.um) -> u.Jy:
@@ -331,27 +238,42 @@ class TemperatureGradient(NumericalComponent):
         """
         # TODO: Is there a difference between first setting all 0
         # and then calculating or the other way around?
-        radius = np.hypot(xx, yy)
+        radius = self._get_radius(xx, yy)
         if not np.isinf(self.params["rout"]()):
             radial_profile = np.logical_and(radius > self.params["rin"](),
                                             radius < self.params["rout"]())
         else:
             radial_profile = radius > self.params["rin"]()
-        temperature_profile = self._calculate_temperature_profile(radius)
-        spectral_density = calculate_intensity(temperature_profile,
-                                               wavelength,
-                                               self.params["pixel_size"]())
+        innermost_radius = self.params["rin0"]()\
+            if self.params["rin0"] is not None else self.params["rin"]()
 
-        # TODO: Test if this is all correct.
+        temperature_profile = calculate_temperature_profile(
+            angular_to_distance(radius, self.params["dist"]()).value,
+            self.params["eff_radius"]().value,
+            self.params["eff_temp"]().value,
+            self.params["inner_temp"]().value,
+            innermost_radius.value, self.params["q"]().value,
+            int(self.const_temperature))
+
+        surface_density = calculate_surface_density_profile(
+            radius.value, xx.value, yy.value,
+            self.params["a"]().value, self.params["phi"]().value,
+            innermost_radius.value, self.params["inner_sigma"]().value,
+            self.params["p"]().value, int(self.asymmetric_surface_density))
+        optical_depth = surface_density*self._get_opacity(wavelength).value
+
+        spectral_density = calculate_intensity(
+            temperature_profile*u.K, wavelength, self.params["pixel_size"]())
+
+        # TODO: Test if this is all correct. Probably not -> Fix.
         image = radial_profile*spectral_density
         if not self.optically_thick:
-            image *= (1-np.exp(self._calculate_optical_depth(radius, xx,
-                                                             yy, wavelength)))
-        image = np.nan_to_num(image, nan=0)
+            image *= (1-np.exp(-optical_depth))
         if self.asymmetric_image:
             image = self._calculate_azimuthal_modulation(xx, yy)\
                 * (1+image)
 
+        image = np.nan_to_num(image, nan=0)
         if OPTIONS["fourier.binning"] is not None:
             image = rebin_image(image, OPTIONS["fourier.binning"])
         if OPTIONS["fourier.padding"] is not None:

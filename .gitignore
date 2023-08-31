@@ -2,6 +2,7 @@ __pycache__/
 ppdmod.egg-info/
 fft/
 fluxes/
+build/
 component/
 opacities/
 binning/
@@ -16,3 +17,5 @@ results_model/
 *.xlsx
 *.txt
 *results*
+*.c
+*cpython*
