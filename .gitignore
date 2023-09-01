@@ -21,3 +21,4 @@ line_profiler/
 *cpython*
 *.html
 *.c
+*.exe
