@@ -2,7 +2,7 @@ import numpy as np
 
 cimport numpy as cnp
 cimport cython
-from libc.math cimport cos, atan2, sqrt, pow
+from libc.math cimport cos, atan2, sqrt, exp
 
 cnp.import_array()
 DTYPE = np.float64
@@ -12,9 +12,9 @@ ctypedef cnp.float64_t DTYPE_t
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
-@cython.nonecheck(False)
+@cython.initializedcheck(False)
 def calculate_const_temperature(
-        double [:, :] radius, double stellar_radius, double stellar_temperature):
+        double[:, ::1] radius, double stellar_radius, double stellar_temperature):
     """Calculates the temperature profile.
 
     Can be specified to be either as a r^q power law or an a
@@ -54,8 +54,8 @@ def calculate_const_temperature(
     cdef Py_ssize_t x_max = radius.shape[0]
     cdef Py_ssize_t y_max = radius.shape[1]
 
-    temperature = np.zeros((x_max, y_max), dtype=np.float64)
-    cdef double [:, :] temperature_view = temperature
+    temperature = np.empty((x_max, y_max), dtype=DTYPE)
+    cdef double[:, ::1] temperature_view = temperature
 
     cdef Py_ssize_t x, y
     cdef double radius_val, temp_val
@@ -70,10 +70,10 @@ def calculate_const_temperature(
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
-@cython.nonecheck(False)
 @cython.cpow(True)
+@cython.initializedcheck(False)
 def calculate_temperature_power_law(
-        double [:, :] radius, double inner_temp,
+        double[:, ::1] radius, double inner_temp,
         double inner_radius, double q):
     """Calculates the temperature profile.
 
@@ -121,7 +121,7 @@ def calculate_temperature_power_law(
     cdef Py_ssize_t y_max = radius.shape[1]
 
     temperature = np.empty((x_max, y_max), dtype=DTYPE)
-    cdef double [:, :] temperature_view = temperature
+    cdef double[:, ::1] temperature_view = temperature
 
     cdef Py_ssize_t x, y
     cdef double radius_val, temp_val
@@ -136,9 +136,9 @@ def calculate_temperature_power_law(
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
-@cython.nonecheck(False)
+@cython.initializedcheck(False)
 def calculate_azimuthal_modulation(
-        double [:, :] xx, double [:, :] yy, double a, double phi):
+        double[:, ::1] xx, double[:, ::1] yy, double a, double phi):
     r"""Calculates the azimuthal modulation.
 
     Parameters
@@ -165,8 +165,8 @@ def calculate_azimuthal_modulation(
     cdef Py_ssize_t x_max = xx.shape[0]
     cdef Py_ssize_t y_max = xx.shape[1]
 
-    modulation = np.zeros((x_max, y_max), dtype=np.float64)
-    cdef double [:, :] modulation_view = modulation
+    modulation = np.empty((x_max, y_max), dtype=DTYPE)
+    cdef double[:, ::1] modulation_view = modulation
 
     cdef Py_ssize_t x, y
     cdef double xx_val, yy_val, temp_val
@@ -182,11 +182,11 @@ def calculate_azimuthal_modulation(
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
-@cython.nonecheck(False)
 @cython.cpow(True)
+@cython.initializedcheck(False)
 def calculate_surface_density_profile(
-        double [:, :] radius, double [:, :] xx,
-        double [:, :] yy, double a, double phi,
+        double[:, ::1] radius, double[:, ::1] xx,
+        double[:, ::1] yy, double a, double phi,
         double inner_radius, double inner_sigma, double p):
     """Calculates the surface density profile.
 
@@ -207,8 +207,8 @@ def calculate_surface_density_profile(
     cdef Py_ssize_t x_max = xx.shape[0]
     cdef Py_ssize_t y_max = xx.shape[1]
 
-    sigma_profile = np.zeros((x_max, y_max), dtype=np.float64)
-    cdef double [:, :] sigma_profile_view = sigma_profile
+    sigma_profile = np.empty((x_max, y_max), dtype=DTYPE)
+    cdef double[:, ::1] sigma_profile_view = sigma_profile
 
     cdef Py_ssize_t x, y
     cdef double radius_val, temp_val
@@ -218,3 +218,51 @@ def calculate_surface_density_profile(
             temp_val = inner_sigma*(radius_val/inner_radius)**(-p)
             sigma_profile_view[x, y] = temp_val
     return sigma_profile
+
+
+@cython.boundscheck(False)
+@cython.initializedcheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+@cython.cpow(True)
+@cython.initializedcheck(False)
+def calculate_intensity(
+        double[:, ::1] temperature_profile, double wavelength, double pixel_size):
+    """Calculates the blackbody_profile via Planck's law and the
+    emissivity_factor for a given wavelength, temperature- and
+    dust surface density profile.
+
+    Parameters
+    ----------
+    wavelengths : astropy.units.cm
+        Wavelength value(s).
+    temp_profile : astropy.units.K
+        Temperature profile.
+    pixel_size : astropy.units.rad
+        The pixel size.
+
+    Returns
+    -------
+    intensity : astropy.units.Jy
+        Intensity per pixel [Jy/px]
+    """
+    cdef double c = 2.99792458e+10   # cm/s
+    cdef double c2 = 8.98755179e+20  # cm²/s²
+    cdef double h = 6.62607015e-27   # erg s
+    cdef double kb = 1.380649e-16    # erg/K
+    cdef double nu = c/wavelength    # Hz
+    cdef Py_ssize_t x_max = temperature_profile.shape[0]
+    cdef Py_ssize_t y_max = temperature_profile.shape[1]
+
+    intensity = np.empty((x_max, y_max), dtype=DTYPE)
+    cdef double[:, ::1] intensity_view = intensity
+
+    cdef Py_ssize_t x, y
+    cdef double temperature_val, temp_val
+    for x in range(x_max):
+        for y in range(y_max):
+            temperature_val = temperature_profile[x, y]
+            temp_val = 1.0/(exp(h*nu/(kb*temperature_val))-1.0)
+            temp_val = 2.0*h*nu**3/c2*temp_val
+            intensity_view[x, y] = temp_val*pixel_size**2*1.0e+23  # Jy/px
+    return intensity
