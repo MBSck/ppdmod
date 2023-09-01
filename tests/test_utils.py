@@ -421,6 +421,16 @@ def test_angular_to_distance(distance: u.Quantity,
     assert np.isclose(diameter, expected.to(u.m), atol=1e-3)
 
 
+@pytest.mark.parametrize(
+    "distance, diameter", [(2.06*u.km, 1*u.cm), (1*u.au, 725.27*u.km),
+                           (1*u.lyr, 45_866_916*u.km), (1*u.pc, 1*u.au)])
+def test_distance_to_angular(distance: u.Quantity,
+                             diameter: u.Quantity) -> None:
+    """Tests the angular diameter to diameter calculation."""
+    angular_diameter = utils.distance_to_angular(diameter, distance)
+    assert np.isclose(angular_diameter.to(u.arcsec), 1*u.arcsec, atol=1e-2)
+
+
 def test_calculate_intensity(wavelength: u.um) -> None:
     """Tests the intensity calculation [Jy/px]."""
     intensity = utils.calculate_intensity(7800*u.K,

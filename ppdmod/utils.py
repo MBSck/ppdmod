@@ -1,11 +1,10 @@
-import time
+import time as time
 from pathlib import Path
 from typing import Optional, Union, Dict, List
 
 import astropy.units as u
 import numpy as np
 from astropy.convolution import Gaussian1DKernel, Box1DKernel, convolve
-from astropy.modeling import models
 from numpy.polynomial.polynomial import polyval
 from openpyxl import Workbook, load_workbook
 from scipy.interpolate import interp1d
@@ -436,33 +435,32 @@ def angular_to_distance(angular_diameter: u.mas, distance: u.pc) -> u.m:
     return (angular_diameter.to(u.rad).value*distance.to(u.m))
 
 
-# TODO: Maybe even optimize calculation time further in the future
-# Got it down from 3.5s to 0.66s for 3 wavelengths. It is 0.19s per wl.
-def calculate_intensity(temp_profile: u.K,
-                        wavelength: u.um,
-                        pixel_size: Optional[u.Quantity[u.rad]] = None) -> np.ndarray:
-    """Calculates the blackbody_profile via Planck's law and the
-    emissivity_factor for a given wavelength, temperature- and
-    dust surface density profile.
+def distance_to_angular(diameter: u.mas, distance: u.pc) -> u.m:
+    """Converts an angular diameter of an object at a certain distance
+    from the observer from mas to meters.
 
     Parameters
     ----------
-    wavelengths : astropy.units.um
-        Wavelength value(s).
-    temp_profile : astropy.units.K
-        Temperature profile.
-    pixel_size : astropy.units.rad, optional
-        The pixel size.
+    angular_diameter : astropy.units.mas
+        The angular diameter of an object.
+    distance : astropy.units.pc
+        The distance to the object.
 
     Returns
     -------
-    intensity : astropy.units.Jy
-        Intensity per pixel [Jy/px]
+    diameter : astropy.units.m
+        The diameter of the object.
+
+    Notes
+    -----
+    The formula for the angular diameter small angle approximation is
+
+    .. math:: \\delta = \\frac{d}{D}
+
+    where 'd' is the diameter of the object and 'D' is the distance from the
+    observer to the object and ..math::`\\delta` is the angular diameter.
     """
-    plancks_law = models.BlackBody(temperature=temp_profile)
-    spectral_radiance = plancks_law(wavelength.to(u.m)).to(
-        u.erg/(u.cm**2*u.Hz*u.s*u.rad**2))
-    return (spectral_radiance*(pixel_size.to(u.rad))**2).to(u.Jy)
+    return ((diameter.to(u.m)/distance.to(u.m))*u.rad).to(u.mas)
 
 
 def calculate_effective_baselines(

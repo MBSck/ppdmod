@@ -125,9 +125,9 @@ if __name__ == "__main__":
 
     labels = inner_ring_labels + outer_ring_labels + shared_params_labels
 
-    result_dir = Path("results_model_nsteps2500_nwalkers100")
-    if not result_dir.exists():
-        result_dir.mkdir()
+    # result_dir = Path("results_model_nsteps2500_nwalkers100")
+    # if not result_dir.exists():
+    #     result_dir.mkdir()
 
     nburnin, nsteps, nwalkers = 100, 400, 50
     theta = mcmc.init_randomly(nwalkers)[10]
@@ -137,6 +137,7 @@ if __name__ == "__main__":
     # np.save(result_dir / "best_fit_params.npy", theta)
     # new_params = dict(zip(labels, theta))
     #
+
     # plot.plot_chains(sampler, labels, discard=nburnin, savefig=result_dir / "chains.pdf")
     # plot.plot_corner(sampler, labels, discard=nburnin, savefig=result_dir / "corner.pdf")
     # OPTIONS["fourier.binning"] = None

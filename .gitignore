@@ -17,5 +17,6 @@ results_model/
 *.xlsx
 *.txt
 *results*
-*.c
 *cpython*
+*.html
+*.c
