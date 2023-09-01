@@ -427,7 +427,7 @@ def angular_to_distance(angular_diameter: u.mas, distance: u.pc) -> u.m:
     -----
     The formula for the angular diameter small angle approximation is
 
-    .. math:: \\delta = \\frac{d}{D}
+    .. math:: d = \\delta*D
 
     where 'd' is the diameter of the object and 'D' is the distance from the
     observer to the object and ..math::`\\delta` is the angular diameter.

@@ -2,7 +2,7 @@ import numpy as np
 
 cimport numpy as cnp
 cimport cython
-from libc.math cimport cos, atan2, sqrt, exp
+from libc.math cimport cos, atan2, sqrt, exp, pow
 
 cnp.import_array()
 DTYPE = np.float64
@@ -128,9 +128,49 @@ def calculate_temperature_power_law(
     for x in range(x_max):
         for y in range(y_max):
             radius_val = radius[x, y]
-            temp_val = (radius_val/inner_radius)**(-q)*inner_temp
+            temp_val = inner_temp*pow(radius_val/inner_radius, -q)
             temperature_view[x, y] = temp_val
     return temperature
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+@cython.cpow(True)
+@cython.initializedcheck(False)
+def calculate_surface_density_profile(
+        double[:, ::1] radius, double inner_radius,
+        double inner_sigma, double p):
+    """Calculates the surface density profile.
+
+    This can be azimuthally varied if so specified.
+
+    Parameters
+    ----------
+    radius : astropy.units.mas
+        The radial grid.
+
+    Returns
+    -------
+    surface_density_profile : astropy.units.g/astropy.units.cm**2
+
+    Notes
+    -----
+    """
+    cdef Py_ssize_t x_max = radius.shape[0]
+    cdef Py_ssize_t y_max = radius.shape[1]
+
+    sigma_profile = np.empty((x_max, y_max), dtype=DTYPE)
+    cdef double[:, ::1] sigma_profile_view = sigma_profile
+
+    cdef Py_ssize_t x, y
+    cdef double radius_val, temp_val
+    for x in range(x_max):
+        for y in range(y_max):
+            radius_val = radius[x, y]
+            temp_val = inner_sigma*pow(radius_val/inner_radius, -p)
+            sigma_profile_view[x, y] = temp_val
+    return sigma_profile
 
 
 @cython.boundscheck(False)
@@ -180,44 +220,27 @@ def calculate_azimuthal_modulation(
 
 
 @cython.boundscheck(False)
-@cython.wraparound(False)
-@cython.cdivision(True)
-@cython.cpow(True)
 @cython.initializedcheck(False)
-def calculate_surface_density_profile(
-        double[:, ::1] radius, double[:, ::1] xx,
-        double[:, ::1] yy, double a, double phi,
-        double inner_radius, double inner_sigma, double p):
-    """Calculates the surface density profile.
+@cython.wraparound(False)
+@cython.initializedcheck(False)
+def calculate_optical_thickness(
+        double[:, ::1] surface_density_profile, double opacity):
+    """Calculates the optical depth from the surface density and
+    opacity profiles."""
+    cdef Py_ssize_t x_max = surface_density_profile.shape[0]
+    cdef Py_ssize_t y_max = surface_density_profile.shape[1]
 
-    This can be azimuthally varied if so specified.
-
-    Parameters
-    ----------
-    radius : astropy.units.mas
-        The radial grid.
-
-    Returns
-    -------
-    surface_density_profile : astropy.units.g/astropy.units.cm**2
-
-    Notes
-    -----
-    """
-    cdef Py_ssize_t x_max = xx.shape[0]
-    cdef Py_ssize_t y_max = xx.shape[1]
-
-    sigma_profile = np.empty((x_max, y_max), dtype=DTYPE)
-    cdef double[:, ::1] sigma_profile_view = sigma_profile
+    optical_thickness = np.empty((x_max, y_max), dtype=DTYPE)
+    cdef double[:, ::1] optical_thickness_view = optical_thickness
 
     cdef Py_ssize_t x, y
-    cdef double radius_val, temp_val
+    cdef double surface_density_val, temp_val
     for x in range(x_max):
         for y in range(y_max):
-            radius_val = radius[x, y]
-            temp_val = inner_sigma*(radius_val/inner_radius)**(-p)
-            sigma_profile_view[x, y] = temp_val
-    return sigma_profile
+            surface_density_val = surface_density_profile[x, y]
+            temp_val = 1.0-exp(-surface_density_val*opacity)
+            optical_thickness_view[x, y] = temp_val
+    return optical_thickness
 
 
 @cython.boundscheck(False)
@@ -251,6 +274,7 @@ def calculate_intensity(
     cdef double h = 6.62607015e-27   # erg s
     cdef double kb = 1.380649e-16    # erg/K
     cdef double nu = c/wavelength    # Hz
+    cdef double bb_to_jy = 1.0e+23   # Jy
     cdef Py_ssize_t x_max = temperature_profile.shape[0]
     cdef Py_ssize_t y_max = temperature_profile.shape[1]
 
@@ -263,6 +287,6 @@ def calculate_intensity(
         for y in range(y_max):
             temperature_val = temperature_profile[x, y]
             temp_val = 1.0/(exp(h*nu/(kb*temperature_val))-1.0)
-            temp_val = 2.0*h*nu**3/c2*temp_val
-            intensity_view[x, y] = temp_val*pixel_size**2*1.0e+23  # Jy/px
+            temp_val = 2.0*h*pow(nu, 3)/c2*temp_val
+            intensity_view[x, y] = temp_val*pow(pixel_size, 2)*bb_to_jy
     return intensity

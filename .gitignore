@@ -12,6 +12,7 @@ resolution/
 phase/
 interpolation/
 results_model/
+line_profiler/
 .DS_Store
 *.pdf
 *.xlsx

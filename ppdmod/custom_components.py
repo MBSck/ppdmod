@@ -3,13 +3,15 @@ from typing import Optional, Dict, List
 
 import astropy.units as u
 import numpy as np
+from astropy.modeling import models
 
 from .component import Component, AnalyticalComponent, NumericalComponent
 from .parameter import STANDARD_PARAMETERS, Parameter
 from .options import OPTIONS
-from .spectral import calculate_surface_density_profile,\
-    calculate_temperature_profile, calculate_azimuthal_modulation
-from .utils import angular_to_distance, calculate_intensity,\
+from .spectral import calculate_const_temperature,\
+    calculate_temperature_power_law, calculate_azimuthal_modulation,\
+    calculate_surface_density_profile, calculate_intensity
+from .utils import distance_to_angular,\
     get_new_dimension, rebin_image, pad_image
 
 
@@ -64,18 +66,18 @@ class Star(AnalyticalComponent):
         -------
         stellar_radius_angular : astropy.units.mas
             The parallax of the stellar radius.
-
-        Notes
-        -----
-        The formula for the angular diameter $ \delta = \frac{d}{D} $ is used,
-        where 'D' is distance to the centre of the star from the observer and
-        'd' the distance from the object to the centre of the star.
-        This produces an output in radians.
         """
         if self._stellar_angular_radius is None:
-            self._stellar_angular_radius = self.params["eff_radius"]().to(u.m)\
-                / self.params["dist"]().to(u.m)*u.rad
+            self._stellar_angular_radius = distance_to_angular(
+                self.params["eff_radius"](), self.params["dist"]())
         return self._stellar_angular_radius
+
+    def caclculate_stellar_flux(self, wavelength: u.um) -> u.Jy:
+        """Calculates the flux of the star."""
+        plancks_law = models.BlackBody(temperature=self.params["eff_temp"]())
+        spectral_radiance = plancks_law(wavelength.to(u.m)).to(
+            u.erg/(u.cm**2*u.Hz*u.s*u.rad**2))
+        return (spectral_radiance*self.stellar_radius_angular**2).to(u.Jy)
 
     def _image_function(self, xx: u.mas, yy: u.mas,
                         wavelength: Optional[u.Quantity[u.m]] = None,
@@ -97,9 +99,7 @@ class Star(AnalyticalComponent):
             val = np.abs(xx)+np.abs(yy)
             index = np.unravel_index(np.argmin(val), np.shape(val))
             self._image[index] = 1
-        return self._image*calculate_intensity(self.params["eff_temp"](),
-                                               wavelength,
-                                               self.stellar_radius_angular)
+        return self._image*self.caclculate_stellar_flux(wavelength)
 
     def _visibility_function(self,
                              wavelength: Optional[u.Quantity[u.um]] = None
@@ -110,10 +110,8 @@ class Star(AnalyticalComponent):
                                     OPTIONS["fourier.binning"],
                                     OPTIONS["fourier.padding"])
             self._visibility = np.ones((dim, dim))
-        return self._visibility\
-            * calculate_intensity(self.params["eff_temp"](),
-                                  wavelength,
-                                  self.stellar_radius_angular).value
+
+        return self._visibility*self.caclculate_stellar_flux(wavelength)
 
 
 class TemperatureGradient(NumericalComponent):
@@ -168,6 +166,8 @@ class TemperatureGradient(NumericalComponent):
         """The class's constructor."""
         super().__init__(**kwargs)
         self.radius = None
+        self._stellar_angular_radius = None
+
         self.params["dist"] = Parameter(**STANDARD_PARAMETERS["dist"])
         self.params["eff_temp"] = Parameter(**STANDARD_PARAMETERS["eff_temp"])
         self.params["eff_radius"] = Parameter(**STANDARD_PARAMETERS["eff_radius"])
@@ -201,6 +201,21 @@ class TemperatureGradient(NumericalComponent):
             self.params["cont_weight"].free = False
             self.params["kappa_cont"].free = False
         self._eval(**kwargs)
+
+    @property
+    def stellar_radius_angular(self) -> u.mas:
+        r"""Calculates the parallax from the stellar radius and the distance to
+        the object.
+
+        Returns
+        -------
+        stellar_radius_angular : astropy.units.mas
+            The parallax of the stellar radius.
+        """
+        if self._stellar_angular_radius is None:
+            self._stellar_angular_radius = distance_to_angular(
+                self.params["eff_radius"](), self.params["dist"]())
+        return self._stellar_angular_radius
 
     def _get_opacity(self, wavelength: u.um) -> u.cm**2/u.g:
         """Set the opacity from wavelength."""
@@ -247,38 +262,44 @@ class TemperatureGradient(NumericalComponent):
         innermost_radius = self.params["rin0"]()\
             if self.params["rin0"] is not None else self.params["rin"]()
 
-        temperature_profile = calculate_temperature_profile(
-            angular_to_distance(radius, self.params["dist"]()).value,
-            self.params["eff_radius"]().value,
-            self.params["eff_temp"]().value,
-            self.params["inner_temp"]().value,
-            innermost_radius.value, self.params["q"]().value,
-            int(self.const_temperature))
+        if self.const_temperature:
+            temperature = calculate_const_temperature(
+                radius.value, self.stellar_radius_angular.value,
+                self.params["eff_temp"]().value)
+        else:
+            temperature = calculate_temperature_power_law(
+                radius.value, self.params["inner_temp"]().value,
+                innermost_radius.value)
 
-        surface_density = calculate_surface_density_profile(
-            radius.value, xx.value, yy.value,
-            self.params["a"]().value, self.params["phi"]().value,
-            innermost_radius.value, self.params["inner_sigma"]().value,
-            self.params["p"]().value, int(self.asymmetric_surface_density))
-        optical_depth = surface_density*self._get_opacity(wavelength).value
+        brightness = calculate_intensity(
+            temperature, wavelength.to(u.cm).value,
+            self.params["pixel_size"]().to(u.rad).value)
 
-        spectral_density = calculate_intensity(
-            temperature_profile*u.K, wavelength, self.params["pixel_size"]())
-
-        # TODO: Test if this is all correct. Probably not -> Fix.
-        image = radial_profile*spectral_density
         if not self.optically_thick:
-            image *= (1-np.exp(-optical_depth))
+            surface_density = calculate_surface_density_profile(
+                radius.value, innermost_radius.value,
+                self.params["inner_sigma"]().value, self.params["p"]().value)
+
+            if self.asymmetric_surface_density:
+                surface_density *= 1+calculate_azimuthal_modulation(
+                    xx.value, yy.value, self.params["a"]().value,
+                    self.params["phi"]().to(u.rad).value)
+
+            optical_depth = surface_density*self._get_opacity(wavelength).value
+            brightness *= 1-np.exp(-optical_depth)
+
         if self.asymmetric_image:
-            image = self._calculate_azimuthal_modulation(xx, yy)\
-                * (1+image)
+            brightness *= 1+calculate_azimuthal_modulation(
+                xx.value, yy.value, self.params["a"]().value,
+                self.params["phi"]().to(u.rad).value)
+        image = radial_profile*brightness
 
         image = np.nan_to_num(image, nan=0)
         if OPTIONS["fourier.binning"] is not None:
             image = rebin_image(image, OPTIONS["fourier.binning"])
         if OPTIONS["fourier.padding"] is not None:
             image = pad_image(image, OPTIONS["fourier.padding"])
-        return image
+        return image*u.Jy
 
 
 class AsymmetricSDTemperatureGradient(TemperatureGradient):
