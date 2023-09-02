@@ -1,4 +1,7 @@
-#include <stdio.h>
+#include <iostream>
+#include <tuple>
+
+
 
 double* set_linspace(
     float start, float end, int dim,
@@ -28,11 +31,20 @@ double* set_meshgrid(double* grid, int dim, int axis = 0) {
   return mesh;
 }
 
+std::tuple<double*, double*> calculate_grid(int dim, float pixel_size) {
+  double* linspace = set_linspace(-0.5, 0.5, dim, dim*pixel_size);
+  double* mesh_x = set_meshgrid(linspace, dim, 1);
+  double* mesh_y = set_meshgrid(linspace, dim, 0);
+  return std::make_tuple(mesh_x, mesh_y);
+}
 
 int main() {
   int dim = 10;
-  float factor = dim*0.1;
-  double* linspace = set_linspace(-0.5, 0.5, dim, factor);
-  double* mesh_y = set_meshgrid(linspace, dim, 0);
+  float pixel_size = 0.1;
+  float factor = dim*pixel_size;
+  double* xx, *yy;
+  std::tie(xx, yy) = calculate_grid(dim, pixel_size);
+  for ( int i = 0; i < dim*dim; i++ )
+    printf("%f\n", yy[i]);
   return 0;
 }
