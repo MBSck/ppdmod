@@ -2,6 +2,16 @@
 #include <array>
 #include <cmath>
 #include <tuple>
+#include "spectral.h"
+
+
+namespace constants {
+  const double c = 2.99792458e+10;  // cm/s
+  const double c2 = 8.98755179e+20; // cm²/s²
+  const double h = 6.62607015e-27;  // erg s
+  const double kb = 1.380649e-16;   // erg/K
+  const double bb_to_jy = 1.0e+23;  // Jy
+}
 
 
 double *set_linspace(
@@ -46,9 +56,13 @@ std::tuple<double*, double*> calculate_grid(
 }
 
 
-// double* calculate_radius(double* xx, double* yy, int dim) {
-//   
-// }
+double *calculate_radius(double *xx, double *yy, int dim) {
+  double *radius = static_cast<double*>(malloc(dim*dim*sizeof(double)));
+  for ( int i = 0; i < dim*dim; ++i ) {
+    radius[i] = sqrt(pow(xx[i], 2) + pow(yy[i], 2));
+  }
+  return radius;
+}
 
 
 double *calculate_const_temperature(
@@ -102,18 +116,13 @@ double *calculate_optical_thickness(
 
 double *calculate_intensity(
     double *temperature_profile, double wavelength, double pixel_size, int dim) {
-  double c = 2.99792458e+10;  // cm/s
-  double c2 = 8.98755179e+20; // cm²/s²
-  double h = 6.62607015e-27;  // erg s
-  double kb = 1.380649e-16;   // erg/K
-  double nu = c/wavelength;   // Hz
-  double bb_to_jy = 1.0e+23;  // Jy
+  double nu = constants::c/wavelength;   // Hz
   double *intensity = static_cast<double*>(malloc(dim*dim*sizeof(double)));
   double temp_val = 0.0;
   for ( int i = 0; i < dim*dim; ++i ) {
-      temp_val = 1.0/(exp(h*nu/(kb*temperature_profile[i]))-1.0);
-      temp_val = 2.0*h*pow(nu, 3)/c2*temp_val;
-      intensity[i] = temp_val*pow(pixel_size, 2)*bb_to_jy;
+      temp_val = 1.0/(exp(constants::h*nu/(constants::kb*temperature_profile[i]))-1.0);
+      temp_val = 2.0*constants::h*pow(nu, 3)/constants::c2*temp_val;
+      intensity[i] = temp_val*pow(pixel_size, 2)*constants::bb_to_jy;
   }
   return intensity;
 }
@@ -121,10 +130,15 @@ double *calculate_intensity(
 
 
 int main() {
-  int dim = 100;
+  int dim = 16;
   float pixel_size = 0.1;
   float factor = dim*pixel_size;
   double *xx, *yy;
   std::tie(xx, yy) = calculate_grid(dim, pixel_size, 0.5, 0.33, true);
+  double *radius = calculate_radius(xx, yy, dim);
+  // for ( int i = 0; i < dim*dim; ++i ) {
+  //   std::cout << radius[i] << std::endl;
+  // }
+  std::cout << radius[137] << std::endl;
   return 0;
 }
