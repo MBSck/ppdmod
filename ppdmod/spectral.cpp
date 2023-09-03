@@ -2,6 +2,8 @@
 #include <array>
 #include <cmath>
 #include <tuple>
+// #include <boost/python.hpp>
+// #include <Python.h>
 #include "spectral.h"
 
 
@@ -128,7 +130,6 @@ double *calculate_intensity(
 }
 
 
-
 int main() {
   int dim = 16;
   float pixel_size = 0.1;
@@ -136,9 +137,10 @@ int main() {
   double *xx, *yy;
   std::tie(xx, yy) = calculate_grid(dim, pixel_size, 0.5, 0.33, true);
   double *radius = calculate_radius(xx, yy, dim);
-  // for ( int i = 0; i < dim*dim; ++i ) {
-  //   std::cout << radius[i] << std::endl;
-  // }
-  std::cout << radius[137] << std::endl;
+  double *temperature_power_law = calculate_temperature_power_law(radius, 1500.0, 0.5, 0.5, dim);
+  for ( int i = 0; i < dim*dim; ++i ) {
+    std::cout << temperature_power_law[i] << std::endl;
+  }
   return 0;
+
 }

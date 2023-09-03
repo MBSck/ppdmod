@@ -17,6 +17,7 @@ line_profiler/
 *.pdf
 *.xlsx
 *.txt
+!CMakeLists.txt
 *results*
 *cpython*
 *.html
