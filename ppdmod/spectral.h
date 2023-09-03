@@ -1,22 +1,15 @@
 #ifndef SPECTRAL_H
 #define SPECTRAL_H
 
-#include <tuple>
 
-namespace constants {
-  extern const double c;
-  extern const double c2;
-  extern const double h;
-  extern const double kb;
-  extern const double bb_to_jy;
-}
+struct Grid;
 
-double *set_linspace(float start, float end, int dim, float factor);
+double *set_linspace(float start, float end, int dim, double factor);
 
 double *create_meshgrid(double *grid, int dim, int axis);
 
-std::tuple<double*, double*> calculate_grid(
-    int dim, float pixel_size, float pa, float elong, bool elliptic);
+struct Grid calculate_grid(
+    int dim, float pixel_size, float pa, float elong, int elliptic);
 
 double *calculate_radius(double *xx, double *yy, int dim);
 
@@ -38,5 +31,36 @@ double *calculate_optical_thickness(
 
 double *calculate_intensity(
     double *temperature_profile, double wavelength, double pixel_size, int dim);
+
+static char set_linspace_docstring[] =
+    "";
+
+static PyObject *spectral_set_linspace(PyObject *self, PyObject *args);
+
+static char module_docstring[] =
+    "";
+
+// static PyMethodDef module_methods[] = {
+//     {"chi2", spectral_set_linspace, METH_VARARGS | METH_KEYWORDS, set_linspace_docstring},
+//     {NULL, NULL, 0, NULL}
+// };
+//
+// static PyModuleDef mymodule = {
+//     PyModuleDef_HEAD_INIT,
+//     "_spectral",      // Module name
+//     module_docstring,  // Module docstring
+//     -1,           // Module state size, -1 means global variables are supported
+//     module_methods   // Method table
+// };
+//
+// PyMODINIT_FUNC init_spectral(void)
+// {
+//     PyObject *m = PyModule_Create(&mymodule);
+//
+//     /* Load `numpy` functionality. */
+//     import_array();
+// }
+
+
 
 #endif
