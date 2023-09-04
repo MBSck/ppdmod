@@ -119,7 +119,7 @@ double *optical_thickness(
   return optical_thickness;
 }
 
-double bb(double temperature, double wavelength, int dim) {
+double bb(double temperature, double wavelength) {
   double nu = c/wavelength;   // Hz
   return (2.0*h*pow(nu, 3)/c2)*(1.0/(exp(h*nu/(kb*temperature))-1.0));
 }
@@ -136,18 +136,18 @@ double *intensity(
 
 
 int main() {
-  int dim = 4;
-  float pixel_size = 0.1;
-  float factor = dim*pixel_size;
-  double *xx, *yy;
-  double *x = linspace(-0.5, 0.5, dim, 1.0F);
-  double *mesh_x = meshgrid(x, dim, 1);
-  double *mesh_y = meshgrid(x, dim, 0);
-  struct Grid grid1D = grid(dim, pixel_size, 0.5, 0.33, 0);
-  double *r = radius(grid1D.xx, grid1D.yy, dim);
-  double *temperature = temperature_power_law(r, 1500.0, 0.5, 0.5, dim);
-  for ( int i = 0; i < dim*dim; ++i ) {
-    printf("%f\n", mesh_y[i]);
-  }
+  // int dim = 4;
+  // float pixel_size = 0.1;
+  // float factor = dim*pixel_size;
+  // double *xx, *yy;
+  // double *x = linspace(-0.5, 0.5, dim, 1.0F);
+  // double *mesh_x = meshgrid(x, dim, 1);
+  // double *mesh_y = meshgrid(x, dim, 0);
+  // struct Grid grid1D = grid(dim, pixel_size, 0.5, 0.33, 0);
+  // double *r = radius(grid1D.xx, grid1D.yy, dim);
+  // double *temperature = temperature_power_law(r, 1500.0, 0.5, 0.5, dim);
+  // for ( int i = 0; i < dim*dim; ++i ) {
+  //   printf("%f\n", mesh_y[i]);
+  // }
   return 0;
 }

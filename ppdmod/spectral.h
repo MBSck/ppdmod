@@ -29,7 +29,7 @@ double *azimuthal_modulation(
 double *optical_thickness(
     double *surface_density_profile, float opacity, int dim);
 
-double bb(double temperature, double wavelength, int dim);
+double bb(double temperature, double wavelength);
 
 double *intensity(
     double *temperature_profile, double wavelength, double pixel_size, int dim);
