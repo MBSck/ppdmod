@@ -1,10 +1,11 @@
-    27 static PyObject *spectral_optical_thickness(PyObject*self, PyObject *args) … {
+#include <Python.h>
 #include <numpy/arrayobject.h>
 #include "spectral.h"
 
 
 static char module_docstring[] =
     "This module contains functionality to calculate temperature gradient models";
+
 static char linspace_docstring[] =
     "Calculates a linear grid."
     ""
@@ -22,6 +23,7 @@ static char linspace_docstring[] =
     "Returns"
     "-------"
     "linear_grid : astropy.units.mas"; ;
+
 static char meshgrid_docstring[] =
     "Calculates a meshgrid."
     ""
@@ -37,6 +39,7 @@ static char meshgrid_docstring[] =
     "Returns"
     "-------"
     "mesh : astropy.units.mas";
+
 static char grid_docstring[] =
     "Calculates the grid."
     ""
@@ -55,6 +58,7 @@ static char grid_docstring[] =
     "-------"
     "xx : astropy.units.mas"
     "yy : astropy.units.mas";
+
 static char radius_docstring[] =
     "Calculates the radius."
     ""
@@ -64,11 +68,11 @@ static char radius_docstring[] =
     "    The x-coordinate grid."
     "yy : astropy.units.mas"
     "    The y-coordinate grid."
-    "dim : int"
     ""
     "Returns"
     "-------"
     "radius : astropy.units.mas";
+
 static char constant_temperature_docstring[] =
     "Calculates a constant temperature profile."
     ""
@@ -80,7 +84,6 @@ static char constant_temperature_docstring[] =
     "    The radius of the star."
     "stellar_temperature : astropy.units.K"
     "    The effective temperature of the star."
-    "dim : int"
     ""
     "Returns"
     "-------"
@@ -95,6 +98,7 @@ static char constant_temperature_docstring[] =
     "And with this the individual grain's temperature profile is"
     ""
     ".. math:: T_{grain} = \\sqrt{\\frac{R_*}{2r}}\\cdot T_*.";
+
 static char temperature_power_law_docstring[] =
     "Calculates a temperature power law profile."
     ""
@@ -107,7 +111,6 @@ static char temperature_power_law_docstring[] =
     "inner_radius : astropy.units.m"
     "    The radius of the innermost grain."
     "q : astropy.units.one"
-    "dim : int"
     ""
     "Returns"
     "-------"
@@ -118,6 +121,7 @@ static char temperature_power_law_docstring[] =
     "In case of a radial power law the formula is"
     ""
     ".. math:: T = T_0 * (1+\\frac{r}{R_0})^\\q.";
+
 static char surface_density_profile_docstring[] =
     "Calculates the surface density profile."
     ""
@@ -125,11 +129,11 @@ static char surface_density_profile_docstring[] =
     "----------"
     "radius : astroy.units.mas"
     "    The radial grid."
-    "dim : int"
     ""
     "Returns"
     "-------"
     "surface_density_profile : astropy.units.g/astropy.units.cm**2";
+
 static char azimuthal_modulation_docstring[] =
     "Calculates the azimuthal modulation."
     ""
@@ -143,7 +147,6 @@ static char azimuthal_modulation_docstring[] =
     "    The amplitude of the modulation."
     "phi : astropy.units.rad"
     "    The phase of the modulation."
-    "dim : int"
     ""
     "Returns"
     "-------"
@@ -154,6 +157,7 @@ static char azimuthal_modulation_docstring[] =
     "Derived via trigonometry from Lazareff et al. 2017's:"
     ""
     "$ F(r) = F_{0}(r)\\cdot\\left(1+\\sum_{j=1}^{m}()c_{j}\\cos(j\\phi)+s_{j}\\sin(j\\phi)\\right)$";
+
 static char optical_thickness_docstring[] =
     "Calculates the optical thickness."
     ""
@@ -161,11 +165,11 @@ static char optical_thickness_docstring[] =
     "----------"
     "surface_density_profile : astropy.units.g/astropy.units.cm**2"
     "opacity : astropy.units.g/astropy.units.cm**2"
-    "dim : int"
     ""
     "Returns"
     "-------"
     "optical_thickness : astropy.units.one";
+
 static char bb_docstring[] =
     "Calculates the black body radiation."
     ""
@@ -173,11 +177,11 @@ static char bb_docstring[] =
     "----------"
     "temperature : astropy.units.K"
     "wavelength : astropy.units.cm"
-    "dim : int"
     ""
     "Returns"
     "-------"
     "intensity : astropy.units.erg/astropy.units.cm**2/astropy.units.sr/astropy.units.Hz";
+
 static char intensity_docstring[] =
     "Calculates the intensity."
     ""
@@ -186,14 +190,12 @@ static char intensity_docstring[] =
     "temperature_profile : astropy.units.K"
     "wavelength : astropy.units.cm"
     "pixel_size : astropy.units.rad"
-    "dim : int"
     ""
     "Returns"
     "-------"
     "intensity : astropy.units.Jy";
     
   
-
 static PyObject *spectral_linespace(PyObject*self, PyObject *args);
 static PyObject *spectral_meshgrid(PyObject*self, PyObject *args);
 static PyObject *spectral_grid(PyObject*self, PyObject *args);
@@ -206,6 +208,7 @@ static PyObject *spectral_optical_thickness(PyObject*self, PyObject *args);
 static PyObject *spectral_bb(PyObject*self, PyObject *args);
 static PyObject *spectral_intensity(PyObject*self, PyObject *args);
 
+
 static PyMethodDef module_methods[] = {
     {"set_linspace", spectral_linespace, METH_VARARGS, linspace_docstring},
     {"create_meshgrid", spectral_meshgrid, METH_VARARGS, meshgrid_docstring},
@@ -217,7 +220,7 @@ static PyMethodDef module_methods[] = {
     {"azimuthal_modulation", spectral_azimuthal_modulation, METH_VARARGS, azimuthal_modulation_docstring},
     {"optical_thickness", spectral_optical_thickness, METH_VARARGS, optical_thickness_docstring},
     {"bb", spectral_bb, METH_VARARGS, bb_docstring},
-    {"intensity", intensity, METH_VARARGS, intensity_docstring},
+    {"intensity", spectral_intensity, METH_VARARGS, intensity_docstring},
 };
 
 
@@ -250,12 +253,15 @@ static PyObject *spectral_linspace(PyObject*self, PyObject *args)
     int dim;
     double factor;
 
-    if (!PyArg_ParseTuple(args, "ddif", &start, &stop, &dim, &factor))
+    if (!PyArg_ParseTuple(args, "ffid", &start, &stop, &dim, &factor))
         return NULL;
 
     double *linear_grid = linspace(start, stop, dim, factor);
-    // PyObject *linear_grid_array = PyArray_FROM_OTF(linear_grid, NPY_DOUBLE, NPY_IN_ARRAY);
-    // PyObject *ret = Py_BuildValue("O", linear_grid_array);
+    PyObject *linear_grid_array = PyArray_SimpleNewFromData(1, &dim, NPY_DOUBLE, linear_grid);
+    PyObject *ret = Py_BuildValue("O", linear_grid_array);
+
+    Py_XDECREF(linear_grid_array);
+
     return ret;
 }
 
@@ -264,7 +270,7 @@ static PyObject *spectral_meshgrid(PyObject*self, PyObject *args)
     double *linear_grid_obj;
     int axis;
 
-    if (!PyArg_ParseTuple(args, "Oii", &linear_grid_obj, &axis))
+    if (!PyArg_ParseTuple(args, "Oi", &linear_grid_obj, &axis))
         return NULL;
 
     PyObject *linear_grid_array = PyArray_FROM_OTF(linear_grid_obj, NPY_DOUBLE, NPY_IN_ARRAY);
@@ -274,15 +280,15 @@ static PyObject *spectral_meshgrid(PyObject*self, PyObject *args)
         return NULL;
     }
 
-    int N = (int)PyArray_DIM(linear_grid_array, 0);
-    double *x = (double*)PyArray_DATA(linear_grid_array);
-    double *meshgrid_obj = meshgrid(x, N, axis);
+    int dim = (int)PyArray_SIZE((PyArrayObject*)linear_grid_array);
+    int dims = dim*dim;
+
+    double *linear_grid = (double*)PyArray_DATA(linear_grid_array);
+    double *meshgrid_obj = meshgrid(linear_grid, dim, axis);
+    PyObject *mesh_array = PyArray_SimpleNewFromData(1, &dims, NPY_DOUBLE, meshgrid_obj);
+    PyObject *ret = Py_BuildValue("O", mesh_array);
 
     Py_XDECREF(linear_grid_array);
-
-    PyObject *mesh_array = PyArray_FROM_OTF(meshgrid_obj, NPY_DOUBLE, NPY_IN_ARRAY);
-    PyObject *ret = Py_BuildValue("OO", mesh_array);
-
     Py_XDECREF(mesh_array);
 
     return ret;
@@ -298,9 +304,9 @@ static PyObject *spectral_grid(PyObject*self, PyObject *args)
 
     int dims = dim*dim;
 
-    struct Grid grid = grid(dim, pixel_size, pa, elong, elliptic);
-    PyObject *mesh_x_array = PyArray_SimpleNewFromData(1, &dims, NPY_DOUBLE, grid.xx);
-    PyObject *mesh_y_array = PyArray_SimpleNewFromData(1, &dims, NPY_DOUBLE, grid.yy);
+    struct Grid grid_obj = grid(dim, pixel_size, pa, elong, elliptic);
+    PyObject *mesh_x_array = PyArray_SimpleNewFromData(1, &dims, NPY_DOUBLE, grid_obj.xx);
+    PyObject *mesh_y_array = PyArray_SimpleNewFromData(1, &dims, NPY_DOUBLE, grid_obj.yy);
     PyObject *ret = Py_BuildValue("OO", mesh_x_array, mesh_y_array);
 
     Py_XDECREF(mesh_x_array);
@@ -325,15 +331,14 @@ static PyObject *spectral_radius(PyObject*self, PyObject *args)
         return NULL;
     }
 
-    int dim = (int)PyArray_DIM(xx_array, 0);
+    int dim = (int)PyArray_SIZE((PyArrayObject*)xx_array);
     int dims = dim*dim;
 
     double *xx = (double*)PyArray_DATA(xx_array);
     double *yy = (double*)PyArray_DATA(yy_array);
-
     double *radius_obj = radius(xx, yy, dim);
     PyObject *radius_array = PyArray_SimpleNewFromData(1, &dims, NPY_DOUBLE, radius_obj);
-    PyObject *ret = Py_BuildValue("OO", radius_array);
+    PyObject *ret = Py_BuildValue("O", radius_array);
         
     Py_XDECREF(xx_array);
     Py_XDECREF(yy_array);
@@ -358,7 +363,7 @@ static PyObject *spectral_constant_temperature(PyObject*self, PyObject *args)
         return NULL;
     }
 
-    int dim = (int)PyArray_DIM(radius_array, 0);
+    int dim = (int)PyArray_SIZE((PyArrayObject*)radius_array);
     int dims = dim*dim;
 
     double *radius = (double*)PyArray_DATA(radius_array);
@@ -387,7 +392,7 @@ static PyObject *spectral_temperature_power_law(PyObject*self, PyObject *args)
         return NULL;
     }
 
-    int dim = (int)PyArray_DIM(radius_array, 0);
+    int dim = (int)PyArray_SIZE((PyArrayObject*)radius_array);
     int dims = dim*dim;
 
     double *radius = (double*)PyArray_DATA(radius_array);
@@ -404,9 +409,9 @@ static PyObject *spectral_temperature_power_law(PyObject*self, PyObject *args)
 static PyObject *spectral_surface_density_profile(PyObject*self, PyObject *args)
 {
     double *radius_obj;
-    float inner_radius;
+    float inner_radius, inner_sigma, p;
 
-    if (!PyArg_ParseTuple(args, "Off", &radius_obj, &inner_radius))
+    if (!PyArg_ParseTuple(args, "Offf", &radius_obj, &inner_radius, &inner_sigma, &p))
         return NULL;
 
     PyObject *radius_array = PyArray_FROM_OTF(radius_obj, NPY_DOUBLE, NPY_IN_ARRAY);
@@ -416,11 +421,11 @@ static PyObject *spectral_surface_density_profile(PyObject*self, PyObject *args)
         return NULL;
     }
 
-    int dim = (int)PyArray_DIM(radius_array, 0);
+    int dim = (int)PyArray_SIZE((PyArrayObject*)radius_array);
     int dims = dim*dim;
 
     double *radius = (double*)PyArray_DATA(radius_array);
-    double *sigma_profile_obj = surface_density_profile(radius, inner_radius, dim);
+    double *sigma_profile_obj = surface_density_profile(radius, inner_radius, inner_sigma, p, dim);
     PyObject *sigma_profile_array = PyArray_SimpleNewFromData(1, &dims, NPY_DOUBLE, sigma_profile_obj);
     PyObject *ret = Py_BuildValue("O", sigma_profile_array);
 
@@ -447,12 +452,11 @@ static PyObject *spectral_azimuthal_modulation(PyObject*self, PyObject *args)
         return NULL;
     }
 
-    int dim = (int)PyArray_DIM(xx_array, 0);
+    int dim = (int)PyArray_SIZE((PyArrayObject*)xx_array);
     int dims = dim*dim;
 
     double *xx = (double*)PyArray_DATA(xx_array);
     double *yy = (double*)PyArray_DATA(yy_array);
-
     double *azimuthal_modulation_obj = azimuthal_modulation(xx, yy, a, phi, dim);
     PyObject *azimuthal_modulation_array = PyArray_SimpleNewFromData(1, &dims, NPY_DOUBLE, azimuthal_modulation_obj);
     PyObject *ret = Py_BuildValue("O", azimuthal_modulation_array);
@@ -479,7 +483,7 @@ static PyObject *spectral_optical_thickness(PyObject*self, PyObject *args)
         return NULL;
     }
 
-    int dim = (int)PyArray_DIM(surface_density_profile_array, 0);
+    int dim = (int)PyArray_SIZE((PyArrayObject*)surface_density_profile_array);
     int dims = dim*dim;
 
     double *surface_density_profile = (double*)PyArray_DATA(surface_density_profile_array);
@@ -493,7 +497,7 @@ static PyObject *spectral_optical_thickness(PyObject*self, PyObject *args)
     return ret;
 }
 
-static PyObject bb(PyObject*self, PyObject *args)
+static PyObject *spectral_bb(PyObject*self, PyObject *args)
 {
     double temperature, wavelength;
 
@@ -505,7 +509,7 @@ static PyObject bb(PyObject*self, PyObject *args)
     return ret;
 }
 
-static PyObject intensity(PyObject*self, PyObject *args)
+static PyObject *spectral_intensity(PyObject*self, PyObject *args)
 {
     double *temperature_profile_obj, wavelength, pixel_size;
 
@@ -514,17 +518,17 @@ static PyObject intensity(PyObject*self, PyObject *args)
 
     PyObject *temperature_profile_array = PyArray_FROM_OTF(temperature_profile_obj, NPY_DOUBLE, NPY_IN_ARRAY);
 
-    if ( == NULL) {
+    if ( temperature_profile_array == NULL) {
         Py_XDECREF(temperature_profile_array);
         return NULL;
     }
 
-    int dim = (int)PyArray_DIM(surface_density_profile_array, 0);
+    int dim = (int)PyArray_SIZE((PyArrayObject*)temperature_profile_array);
     int dims = dim*dim;
 
     double *temperature_profile = (double*)PyArray_DATA(temperature_profile_array);
 
-    double intensity_obj = intensity(temperature_profile, wavelength, pixel_size, dim);
+    double *intensity_obj = intensity(temperature_profile, wavelength, pixel_size, dim);
     PyObject *intensity_array = PyArray_SimpleNewFromData(1, &dims, NPY_DOUBLE, intensity_obj);
     PyObject *ret = Py_BuildValue("O", intensity_array);
 

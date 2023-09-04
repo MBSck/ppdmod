@@ -2,9 +2,13 @@
 #define SPECTRAL_H
 
 
-struct Grid;
+struct Grid {
+  double *xx;
+  double *yy;
+};
 
-double *linspace(float start, float end, int dim, double factor);
+
+double *linspace(float start, float stop, int dim, double factor);
 
 double *meshgrid(double *linear_grid, int dim, int axis);
 

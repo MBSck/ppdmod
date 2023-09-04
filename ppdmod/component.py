@@ -71,7 +71,7 @@ class Component:
             if pixel_size is None else pixel_size
         dim = u.Quantity(value=dim, unit=u.one, dtype=int)
         pixel_size = u.Quantity(value=pixel_size, unit=u.mas)
-        v = np.linspace(-0.5, 0.5, dim, endpoint=False)\
+        v = np.linspace(-0.5, 0.5, dim, endpoint=False, dtype=np.float64)\
             * pixel_size.to(u.mas)*dim
         x_arr, y_arr = np.meshgrid(v, v)
         if self.elliptic:
@@ -236,7 +236,12 @@ class NumericalComponent(Component):
         image : astropy.units.Quantity
         """
         x_arr, y_arr = self._calculate_internal_grid(dim, pixel_size)
-        return self._image_function(x_arr, y_arr, wavelength)
+        from line_profiler import LineProfiler
+        lp = LineProfiler()
+        lp_wrapper = lp(self._image_function)
+        image = lp_wrapper(x_arr, y_arr, wavelength)
+        lp.print_stats()
+        return image
 
     def calculate_complex_visibility(
             self, wavelength: Optional[u.Quantity[u.um]] = None) -> np.ndarray:

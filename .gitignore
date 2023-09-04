@@ -22,3 +22,4 @@ line_profiler/
 *cpython*
 *.html
 *.exe
+cython_src/*.c

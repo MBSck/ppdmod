@@ -104,7 +104,11 @@ class Model:
         complex_visibility_function : numpy.ndarray
             The complex coherent flux. The same size as u & v.
         """
+        from line_profiler import LineProfiler
+        lp = LineProfiler()
         res = complex(0, 0)
         for component in self.components:
-            res += component.calculate_complex_visibility(wavelength)
+            lp_wrapper = lp(component.calculate_complex_visibility)
+            res += lp_wrapper(wavelength)
+        lp.print_stats()
         return res

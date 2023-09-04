@@ -10,22 +10,16 @@ const double h = 6.62607015e-27;  // erg s
 const double kb = 1.380649e-16;   // erg/K
 const double bb_to_jy = 1.0e+23;  // Jy
 
-struct Grid {
-  double *xx;
-  double *yy;
-};
-
 
 double *linspace(
-    float start, float end, int dim, double factor) {
+    float start, float stop, int dim, double factor) {
   int grid_length = dim;
-  double step = (end - start)/dim;
+  double step = (stop - start)/dim;
   double *linear_grid = malloc(sizeof(double)*dim);
   for ( int i = 0; i < dim; ++i )
     linear_grid[i] = (start + i * step) * factor;
   return linear_grid;
 }
-
 
 double *meshgrid(double *linear_grid, int dim, int axis) {
   double *mesh = malloc(dim*dim*sizeof(double));
@@ -129,25 +123,12 @@ double *intensity(
     double *temperature_profile, double wavelength, double pixel_size, int dim) {
   double *intensity = malloc(dim*dim*sizeof(double));
   for ( int i = 0; i < dim*dim; ++i ) {
-      intensity[i] = bb(temperature_profile[i], wavelength, dim)*pow(pixel_size, 2)*bb_to_jy;
+      intensity[i] = bb(temperature_profile[i], wavelength)*pow(pixel_size, 2)*bb_to_jy;
   }
   return intensity;
 }
 
 
 int main() {
-  // int dim = 4;
-  // float pixel_size = 0.1;
-  // float factor = dim*pixel_size;
-  // double *xx, *yy;
-  // double *x = linspace(-0.5, 0.5, dim, 1.0F);
-  // double *mesh_x = meshgrid(x, dim, 1);
-  // double *mesh_y = meshgrid(x, dim, 0);
-  // struct Grid grid1D = grid(dim, pixel_size, 0.5, 0.33, 0);
-  // double *r = radius(grid1D.xx, grid1D.yy, dim);
-  // double *temperature = temperature_power_law(r, 1500.0, 0.5, 0.5, dim);
-  // for ( int i = 0; i < dim*dim; ++i ) {
-  //   printf("%f\n", mesh_y[i]);
-  // }
   return 0;
 }

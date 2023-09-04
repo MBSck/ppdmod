@@ -1,7 +1,6 @@
 from setuptools import setup, Extension
 
 import numpy as np
-import numpy.distutils.misc_util
 from Cython.Compiler import Options
 
 Options.docstrings = True
@@ -10,8 +9,8 @@ Options.language_level = 3
 Options.profile = False
 
 
-extensions = [Extension("_spectral_c", ["c_src/_spectral.c", "c_src/spectral.c"]),
-              Extension("_spectral_cy", ["cython_src/spectral.pyx"],)]
+extensions = [Extension("ppdmod._spectral_c", ["c_src/_spectral.c", "c_src/spectral.c"]),
+              Extension("ppdmod._spectral_cy", ["cython_src/spectral.pyx"],)]
 
 setup(
     name="ppdmod",
