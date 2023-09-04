@@ -130,6 +130,12 @@ static char surface_density_profile_docstring[] =
     "----------\n"
     "radius : astroy.units.mas\n"
     "    The radial grid.\n"
+    "inner_sigma : astropy.units.g/astropy.units.cm**2\n"
+    "    The temperature of the innermost grain.\n"
+    "inner_radius : astropy.units.m\n"
+    "    The radius of the innermost grain.\n"
+    "q : astropy.units.one\n"
+    "\n"
     "\n"
     "Returns\n"
     "-------\n"
@@ -366,11 +372,11 @@ static PyObject *spectral_constant_temperature(PyObject*self, PyObject *args)
         return NULL;
     }
 
-    long long dim = (long long)PyArray_SIZE((PyArrayObject*)radius_array);
-    long long dims = dim*dim;
+    long long dims = (long long)PyArray_SIZE((PyArrayObject*)radius_array);
+    long long dim = sqrt(dims);
 
     double *radius = (double*)PyArray_DATA(radius_array);
-    double *const_temperature_obj = const_temperature(radius, stellar_radius, stellar_temperature, dim);
+    double *const_temperature_obj = constant_temperature(radius, stellar_radius, stellar_temperature, dim);
     PyObject *const_temperature_array = PyArray_SimpleNewFromData(1, &dims, NPY_DOUBLE, const_temperature_obj);
     PyObject *ret = Py_BuildValue("O", const_temperature_array);
 
@@ -476,7 +482,7 @@ static PyObject *spectral_optical_thickness(PyObject*self, PyObject *args)
     double *surface_density_profile_obj;
     float opacity;
 
-    if (!PyArg_ParseTuple(args, "Off", &surface_density_profile_obj, &opacity))
+    if (!PyArg_ParseTuple(args, "Of", &surface_density_profile_obj, &opacity))
         return NULL;
 
     PyObject *surface_density_profile_array = PyArray_FROM_OTF(surface_density_profile_obj, NPY_DOUBLE, NPY_IN_ARRAY);

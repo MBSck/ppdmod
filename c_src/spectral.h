@@ -17,7 +17,7 @@ struct Grid grid(
 
 double *radius(double *xx, double *yy, long long dim);
 
-double *const_temperature(
+double *constant_temperature(
     double *radius, float stellar_radius, float stellar_temperature, long long dim);
 
 double *temperature_power_law(

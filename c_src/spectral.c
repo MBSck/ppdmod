@@ -65,7 +65,7 @@ double *radius(double *xx, double *yy, long long dim) {
 }
 
 
-double *const_temperature(
+double *constant_temperature(
     double *radius, float stellar_radius, float stellar_temperature, long long dim) {
   double *const_temperature = malloc(dim*dim*sizeof(double));
   for ( long long i = 0; i < dim*dim; ++i ) {
