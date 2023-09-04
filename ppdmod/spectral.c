@@ -27,15 +27,15 @@ double *linspace(
 }
 
 
-double *meshgrid(double *grid, int dim, int axis) {
+double *meshgrid(double *linear_grid, int dim, int axis) {
   double *mesh = malloc(dim*dim*sizeof(double));
   double temp = 0.0;
   for ( int i = 0; i < dim; ++i ) {
       for ( int j = 0; j < dim; ++j ) {
         if (axis == 0) {
-          temp = grid[i];
+          temp = linear_grid[i];
         } else {
-          temp = grid[j];
+          temp = linear_grid[j];
         }
         mesh[i*dim+j] = temp;
       }

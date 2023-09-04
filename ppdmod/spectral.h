@@ -6,7 +6,7 @@ struct Grid;
 
 double *linspace(float start, float end, int dim, double factor);
 
-double *meshgrid(double *grid, int dim, int axis);
+double *meshgrid(double *linear_grid, int dim, int axis);
 
 struct Grid grid(
     int dim, float pixel_size, float pa, float elong, int elliptic);
