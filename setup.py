@@ -9,7 +9,7 @@ Options.language_level = 3
 Options.profile = False
 
 
-extensions = [Extension("ppdmod._spectral_c", ["c_src/_spectral.c", "c_src/spectral.c"]),
+extensions = [Extension("ppdmod._spectral", ["c_src/_spectral.c", "c_src/spectral.c"]),
               Extension("ppdmod._spectral_cy", ["cython_src/spectral.pyx"],)]
 
 setup(

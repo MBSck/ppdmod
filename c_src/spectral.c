@@ -13,11 +13,11 @@ const double bb_to_jy = 1.0e+23;  // Jy
 
 double *linspace(
     float start, float stop, int dim, double factor) {
-  int grid_length = dim;
   double step = (stop - start)/dim;
-  double *linear_grid = malloc(sizeof(double)*dim);
-  for ( int i = 0; i < dim; ++i )
+  double *linear_grid = malloc(dim*sizeof(double));
+  for ( int i = 0; i < dim; ++i ) {
     linear_grid[i] = (start + i * step) * factor;
+  }
   return linear_grid;
 }
 

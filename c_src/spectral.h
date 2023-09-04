@@ -9,7 +9,6 @@ struct Grid {
 
 
 double *linspace(float start, float stop, int dim, double factor);
-
 double *meshgrid(double *linear_grid, int dim, int axis);
 
 struct Grid grid(

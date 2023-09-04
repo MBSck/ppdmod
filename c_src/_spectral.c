@@ -1,5 +1,6 @@
 #include <Python.h>
 #include <numpy/arrayobject.h>
+#include <stdio.h>
 #include "spectral.h"
 
 
@@ -196,7 +197,7 @@ static char intensity_docstring[] =
     "intensity : astropy.units.Jy";
     
   
-static PyObject *spectral_linespace(PyObject*self, PyObject *args);
+static PyObject *spectral_linspace(PyObject*self, PyObject *args);
 static PyObject *spectral_meshgrid(PyObject*self, PyObject *args);
 static PyObject *spectral_grid(PyObject*self, PyObject *args);
 static PyObject *spectral_radius(PyObject*self, PyObject *args);
@@ -210,8 +211,8 @@ static PyObject *spectral_intensity(PyObject*self, PyObject *args);
 
 
 static PyMethodDef module_methods[] = {
-    {"set_linspace", spectral_linespace, METH_VARARGS, linspace_docstring},
-    {"create_meshgrid", spectral_meshgrid, METH_VARARGS, meshgrid_docstring},
+    {"linspace", spectral_linspace, METH_VARARGS, linspace_docstring},
+    {"meshgrid", spectral_meshgrid, METH_VARARGS, meshgrid_docstring},
     {"grid", spectral_grid, METH_VARARGS, grid_docstring},
     {"radius", spectral_radius, METH_VARARGS, radius_docstring},
     {"constant_temperature", spectral_constant_temperature, METH_VARARGS, constant_temperature_docstring},
@@ -221,54 +222,55 @@ static PyMethodDef module_methods[] = {
     {"optical_thickness", spectral_optical_thickness, METH_VARARGS, optical_thickness_docstring},
     {"bb", spectral_bb, METH_VARARGS, bb_docstring},
     {"intensity", spectral_intensity, METH_VARARGS, intensity_docstring},
+    {NULL, NULL, 0, NULL}
 };
 
-
-PyMODINIT_FUNC PyInit__web(void)
+PyMODINIT_FUNC *PyInit__spectral(void)
 {
-	PyObject *module;
-	static struct PyModuleDef moduledef = {
-		PyModuleDef_HEAD_INIT,
-		"_spectral",
+    PyObject *module;
+    static struct PyModuleDef mymodule = {
+        PyModuleDef_HEAD_INIT,
+        "spectral",
 		module_docstring,
-		-1,
+        -1,
 		module_methods,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-	};
+    };
 
-	module = PyModule_Create(&moduledef);
-	if (!module)
+    module = PyModule_Create(&mymodule); 
+	if (module == NULL)
 		return NULL;
 
 	import_array();
-	return module;
+    return module;
 }
+
 
 static PyObject *spectral_linspace(PyObject*self, PyObject *args)
 {
     float start, stop;
-    int dim;
+    long int dim;
     double factor;
 
-    if (!PyArg_ParseTuple(args, "ffid", &start, &stop, &dim, &factor))
+    if (!PyArg_ParseTuple(args, "ffld", &start, &stop, &dim, &factor))
         return NULL;
 
     double *linear_grid = linspace(start, stop, dim, factor);
     PyObject *linear_grid_array = PyArray_SimpleNewFromData(1, &dim, NPY_DOUBLE, linear_grid);
-    PyObject *ret = Py_BuildValue("O", linear_grid_array);
 
-    Py_XDECREF(linear_grid_array);
+    // Handle the NumPy array creation error
+    if (linear_grid_array == NULL) {
+        Py_XDECREF(linear_grid_array);
+        free(linear_grid);
+        return NULL;
+    }
 
-    return ret;
+    return linear_grid_array;
 }
 
 static PyObject *spectral_meshgrid(PyObject*self, PyObject *args)
 {
     double *linear_grid_obj;
-    int axis;
+    long int axis;
 
     if (!PyArg_ParseTuple(args, "Oi", &linear_grid_obj, &axis))
         return NULL;
@@ -280,8 +282,8 @@ static PyObject *spectral_meshgrid(PyObject*self, PyObject *args)
         return NULL;
     }
 
-    int dim = (int)PyArray_SIZE((PyArrayObject*)linear_grid_array);
-    int dims = dim*dim;
+    long int dim = (int)PyArray_SIZE((PyArrayObject*)linear_grid_array);
+    long int dims = dim*dim;
 
     double *linear_grid = (double*)PyArray_DATA(linear_grid_array);
     double *meshgrid_obj = meshgrid(linear_grid, dim, axis);
@@ -331,8 +333,8 @@ static PyObject *spectral_radius(PyObject*self, PyObject *args)
         return NULL;
     }
 
-    int dim = (int)PyArray_SIZE((PyArrayObject*)xx_array);
-    int dims = dim*dim;
+    long int dim = (int)PyArray_SIZE((PyArrayObject*)xx_array);
+    long int dims = dim*dim;
 
     double *xx = (double*)PyArray_DATA(xx_array);
     double *yy = (double*)PyArray_DATA(yy_array);
@@ -363,8 +365,8 @@ static PyObject *spectral_constant_temperature(PyObject*self, PyObject *args)
         return NULL;
     }
 
-    int dim = (int)PyArray_SIZE((PyArrayObject*)radius_array);
-    int dims = dim*dim;
+    long int dim = (int)PyArray_SIZE((PyArrayObject*)radius_array);
+    long int dims = dim*dim;
 
     double *radius = (double*)PyArray_DATA(radius_array);
     double *const_temperature_obj = const_temperature(radius, stellar_radius, stellar_temperature, dim);
@@ -392,8 +394,8 @@ static PyObject *spectral_temperature_power_law(PyObject*self, PyObject *args)
         return NULL;
     }
 
-    int dim = (int)PyArray_SIZE((PyArrayObject*)radius_array);
-    int dims = dim*dim;
+    long int dim = (int)PyArray_SIZE((PyArrayObject*)radius_array);
+    long int dims = dim*dim;
 
     double *radius = (double*)PyArray_DATA(radius_array);
     double *temperature_power_law_obj = temperature_power_law(radius, inner_temp, inner_radius, q, dim);
@@ -421,8 +423,8 @@ static PyObject *spectral_surface_density_profile(PyObject*self, PyObject *args)
         return NULL;
     }
 
-    int dim = (int)PyArray_SIZE((PyArrayObject*)radius_array);
-    int dims = dim*dim;
+    long int dim = (int)PyArray_SIZE((PyArrayObject*)radius_array);
+    long int dims = dim*dim;
 
     double *radius = (double*)PyArray_DATA(radius_array);
     double *sigma_profile_obj = surface_density_profile(radius, inner_radius, inner_sigma, p, dim);
@@ -452,8 +454,8 @@ static PyObject *spectral_azimuthal_modulation(PyObject*self, PyObject *args)
         return NULL;
     }
 
-    int dim = (int)PyArray_SIZE((PyArrayObject*)xx_array);
-    int dims = dim*dim;
+    long int dim = (int)PyArray_SIZE((PyArrayObject*)xx_array);
+    long int dims = dim*dim;
 
     double *xx = (double*)PyArray_DATA(xx_array);
     double *yy = (double*)PyArray_DATA(yy_array);
@@ -483,8 +485,8 @@ static PyObject *spectral_optical_thickness(PyObject*self, PyObject *args)
         return NULL;
     }
 
-    int dim = (int)PyArray_SIZE((PyArrayObject*)surface_density_profile_array);
-    int dims = dim*dim;
+    long int dim = (int)PyArray_SIZE((PyArrayObject*)surface_density_profile_array);
+    long int dims = dim*dim;
 
     double *surface_density_profile = (double*)PyArray_DATA(surface_density_profile_array);
     double *optical_thickness_obj = optical_thickness(surface_density_profile, opacity, dim);
@@ -523,8 +525,8 @@ static PyObject *spectral_intensity(PyObject*self, PyObject *args)
         return NULL;
     }
 
-    int dim = (int)PyArray_SIZE((PyArrayObject*)temperature_profile_array);
-    int dims = dim*dim;
+    long int dim = (int)PyArray_SIZE((PyArrayObject*)temperature_profile_array);
+    long int dims = dim*dim;
 
     double *temperature_profile = (double*)PyArray_DATA(temperature_profile_array);
 
