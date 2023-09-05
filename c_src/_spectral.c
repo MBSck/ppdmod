@@ -201,6 +201,15 @@ static char intensity_docstring[] =
     "Returns\n"
     "-------\n"
     "intensity : astropy.units.Jy\n";
+
+static char flat_disk_docstring[] =
+    "Calculates the intensity.\n"
+    "\n"
+    "Parameters\n"
+    "----------\n"
+    "\n"
+    "Returns\n"
+    "-------\n";
     
   
 static PyObject *spectral_linspace(PyObject*self, PyObject *args);
@@ -214,6 +223,7 @@ static PyObject *spectral_azimuthal_modulation(PyObject*self, PyObject *args);
 static PyObject *spectral_optical_thickness(PyObject*self, PyObject *args);
 static PyObject *spectral_bb(PyObject*self, PyObject *args);
 static PyObject *spectral_intensity(PyObject*self, PyObject *args);
+static PyObject *spectral_flat_disk(PyObject*self, PyObject *args);
 
 
 static PyMethodDef module_methods[] = {
@@ -228,6 +238,7 @@ static PyMethodDef module_methods[] = {
     {"optical_thickness", spectral_optical_thickness, METH_VARARGS, optical_thickness_docstring},
     {"bb", spectral_bb, METH_VARARGS, bb_docstring},
     {"intensity", spectral_intensity, METH_VARARGS, intensity_docstring},
+    {"flat_disk", flat_disk, METH_VARARGS, flat_disk_docstring},
     {NULL, NULL, 0, NULL}
 };
 
@@ -529,4 +540,43 @@ static PyObject *spectral_intensity(PyObject*self, PyObject *args)
     Py_XDECREF(temperature_profile_array);
             
     return intensity_array;
+}
+
+
+static PyObject *spectral_flat_disk(PyObject*self, PyObject *args)
+{
+    double *radius_obj, *xx_obj, *yy_obj;
+    double wavelength, pixel_size;
+    double stellar_radius, stellar_temperature;
+    double inner_temp, inner_radius, q;
+    double opacity, inner_sigma, p;
+    double a, phi;
+    int modulated, const_temperature;
+
+    if (!PyArg_ParseTuple(args, "OOOddddddddddddpp", &radius_obj, &xx_obj, &yy_obj,
+                          &wavelength, &pixel_size, &stellar_radius, &stellar_temperature,
+                          &inner_temp, &inner_radius, &q, &opacity, &inner_sigma, &p,
+                          &a, &phi, &modulated, &const_temperature))
+        return NULL;
+
+    double *radius = (double*)PyArray_DATA(radius_obj);
+    double *xx = (double*)PyArray_DATA(xx_obj);
+    double *yy = (double*)PyArray_DATA(yy_obj);
+
+    if ( radius == NULL || xx == NULL || yy == NULL) {
+        Py_XDECREF(radius);
+        Py_XDECREF(xx);
+        Py_XDECREF(yy);
+        return NULL;
+    }
+
+    long long dims = (long long)PyArray_SIZE((PyArrayObject*)radius);
+    long long dim = sqrt(dims);
+
+    double *flat_disk_obj = flat_disk(radius, xx, yy, wavelength, pixel_size,
+                                      stellar_radius, stellar_temperature, inner_temp,
+                                      inner_radius, q, opacity, inner_sigma, p, a, phi, dim,
+                                      modulated, const_temperature);
+    PyObject *flat_disk_array = PyArray_SimpleNewFromData(1, &dims, NPY_DOUBLE, flat_disk_obj);
+    return flat_disk_array;
 }

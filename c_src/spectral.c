@@ -128,6 +128,34 @@ double *intensity(
   return intensity;
 }
 
+double *flat_disk(double *radius, double *xx, double *yy, double wavelength,
+                  double pixel_size,
+                  double stellar_radius, double stellar_temperature,
+                  double inner_temp, double inner_radius, double q, double opacity,
+                  double inner_sigma, double p, double a, double phi, long long dim,
+                  int modulated, int const_temperature) {
+  double modulation = 1.0;
+  double radius_val, temperature, surface_density, thickness, blackbody;
+  double *brightness = malloc(dim*dim*sizeof(double));
+
+  for ( long long i = 0; i < dim*dim; ++i ) {
+    radius_val = radius[i];
+    if (const_temperature) {
+      temperature = stellar_temperature*sqrt(stellar_radius/(2.0*radius_val));
+    } else {
+      temperature = inner_temp*pow(radius_val/inner_radius, -q);
+    }
+    surface_density = inner_sigma*pow(radius_val/inner_radius, -p);
+    if (modulated) {
+      modulation = a*cos(atan2(yy[i], xx[i])-phi);
+    }
+    thickness = 1.0-exp(-surface_density*modulation*opacity);
+    blackbody = bb(temperature, wavelength)*pow(pixel_size, 2)*bb_to_jy;
+    brightness[i] = blackbody*thickness;
+  }
+  return brightness;
+}
+
 int main() {
   return 0;
 }

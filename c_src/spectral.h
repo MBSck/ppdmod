@@ -38,4 +38,11 @@ double bb(double temperature, double wavelength);
 double *intensity(
     double *temperature_profile, double wavelength, double pixel_size, long long dim);
 
+double *flat_disk(
+    double *radius, double *xx, double *yy, double wavelength, double pixel_size,
+    double stellar_radius, double stellar_temperature,
+    double inner_temp, double inner_radius, double q, double opacity,
+    double inner_sigma, double p, double a, double phi, long long dim,
+    int modulated, int const_temperature);
+
 #endif
