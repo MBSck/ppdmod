@@ -12,11 +12,11 @@ const double bb_to_jy = 1.0e+23;  // Jy
 
 
 double *linspace(
-    float start, float stop, long long dim, double factor) {
+    double start, double stop, long long dim, double factor) {
   double step = (stop - start)/dim;
   double *linear_grid = malloc(dim*sizeof(double));
   for ( long long i = 0; i < dim; ++i ) {
-    linear_grid[i] = (start + i * step) * factor;
+    linear_grid[i] = (start + (double)i * step) * factor;
   }
   return linear_grid;
 }
@@ -38,7 +38,7 @@ double *meshgrid(double *linear_grid, long long dim, int axis) {
 }
 
 struct Grid grid(
-    long long dim, float pixel_size, float pa, float elong, int elliptic) {
+    long long dim, double pixel_size, double pa, double elong, int elliptic) {
   struct Grid grid;
   double *x = linspace(-0.5, 0.5, dim, dim*pixel_size);
   grid.xx = meshgrid(x, dim, 1);
@@ -66,7 +66,7 @@ double *radius(double *xx, double *yy, long long dim) {
 
 
 double *constant_temperature(
-    double *radius, float stellar_radius, float stellar_temperature, long long dim) {
+    double *radius, double stellar_radius, double stellar_temperature, long long dim) {
   double *const_temperature = malloc(dim*dim*sizeof(double));
   for ( long long i = 0; i < dim*dim; ++i ) {
     const_temperature[i] = stellar_temperature*sqrt(stellar_radius/(2.0*radius[i]));
@@ -75,7 +75,7 @@ double *constant_temperature(
 }
 
 double *temperature_power_law(
-    double *radius, float inner_temp, float inner_radius, float q, long long dim) {
+    double *radius, double inner_temp, double inner_radius, double q, long long dim) {
   double *temperature_power_law = malloc(dim*dim*sizeof(double));
   for ( long long i = 0; i < dim*dim; ++i ) {
     temperature_power_law[i] = inner_temp*pow(radius[i]/inner_radius, -q);
@@ -84,8 +84,8 @@ double *temperature_power_law(
 }
 
 double *surface_density_profile(
-    double *radius, float inner_radius,
-    float inner_sigma, float p, long long dim) {
+    double *radius, double inner_radius,
+    double inner_sigma, double p, long long dim) {
   double *sigma_profile = malloc(dim*dim*sizeof(double));
   for ( long long i = 0; i < dim*dim; ++i ) {
     sigma_profile[i]= inner_sigma*pow(radius[i]/inner_radius, -p);
@@ -105,7 +105,7 @@ double *azimuthal_modulation(
 
 
 double *optical_thickness(
-    double *surface_density_profile, float opacity, long long dim) {
+    double *surface_density_profile, double opacity, long long dim) {
   double *optical_thickness = malloc(dim*dim*sizeof(double));
   for ( long long i = 0; i < dim*dim; ++i ) {
     optical_thickness[i] = 1.0-exp(-surface_density_profile[i]*opacity);
@@ -127,7 +127,6 @@ double *intensity(
   }
   return intensity;
 }
-
 
 int main() {
   return 0;

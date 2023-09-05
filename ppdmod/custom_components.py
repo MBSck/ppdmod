@@ -8,7 +8,7 @@ from astropy.modeling import models
 from .component import Component, AnalyticalComponent, NumericalComponent
 from .parameter import STANDARD_PARAMETERS, Parameter
 from .options import OPTIONS
-from .spectral import calculate_const_temperature,\
+from ._spectral_cy import calculate_const_temperature,\
     calculate_temperature_power_law, calculate_azimuthal_modulation,\
     calculate_surface_density_profile, calculate_intensity
 from .utils import distance_to_angular,\
