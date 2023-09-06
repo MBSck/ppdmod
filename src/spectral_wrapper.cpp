@@ -39,7 +39,7 @@ py::array_t<double> py_temperature_power_law(
 
 py::array_t<double> py_surface_density_profile(
   py::array_t<double, py::array::c_style | py::array::forcecast> radius,
-  float inner_radius, float inner_sigma, float p, long long dim) {
+  float inner_radius, double inner_sigma, float p, long long dim) {
     std::vector<double> radius_vec(radius.size());
 
     std::memcpy(radius_vec.data(), radius.data(), radius.size()*sizeof(double));

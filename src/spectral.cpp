@@ -45,7 +45,7 @@ std::vector<double> temperature_power_law(
 
 std::vector<double> surface_density_profile(
   const std::vector<double> &radius, float inner_radius,
-  float inner_sigma, float p, long long dim) {
+  double inner_sigma, float p, long long dim) {
   std::vector<double> sigma_profile;
 
   std::transform(
@@ -60,7 +60,7 @@ std::vector<double> surface_density_profile(
 
 
 std::vector<double> azimuthal_modulation(
-  std::vector<double> &xx, const std::vector<double> &yy,
+  const std::vector<double> &xx, const std::vector<double> &yy,
   float a, double phi, long long dim) {
   std::vector<double> modulation;
 

@@ -8,9 +8,9 @@ from astropy.modeling import models
 from .component import Component, AnalyticalComponent, NumericalComponent
 from .parameter import STANDARD_PARAMETERS, Parameter
 from .options import OPTIONS
-from ._spectral_cy import calculate_const_temperature,\
-    calculate_temperature_power_law, calculate_azimuthal_modulation,\
-    calculate_surface_density_profile, calculate_intensity
+from ._spectral_cy import const_temperature,\
+    temperature_power_law, azimuthal_modulation,\
+    surface_density_profile, intensity
 from .utils import distance_to_angular,\
     get_new_dimension, rebin_image, pad_image
 
@@ -263,25 +263,25 @@ class TemperatureGradient(NumericalComponent):
             if self.params["rin0"] is not None else self.params["rin"]()
 
         if self.const_temperature:
-            temperature = calculate_const_temperature(
+            temperature = const_temperature(
                 radius.value, self.stellar_radius_angular.value,
                 self.params["eff_temp"]().value)
         else:
-            temperature = calculate_temperature_power_law(
+            temperature = temperature_power_law(
                 radius.value, self.params["inner_temp"]().value,
                 innermost_radius.value)
 
-        brightness = calculate_intensity(
+        brightness = intensity(
             temperature, wavelength.to(u.cm).value,
             self.params["pixel_size"]().to(u.rad).value)
 
         if not self.optically_thick:
-            surface_density = calculate_surface_density_profile(
+            surface_density = surface_density_profile(
                 radius.value, innermost_radius.value,
                 self.params["inner_sigma"]().value, self.params["p"]().value)
 
             if self.asymmetric_surface_density:
-                surface_density *= 1+calculate_azimuthal_modulation(
+                surface_density *= 1+azimuthal_modulation(
                     xx.value, yy.value, self.params["a"]().value,
                     self.params["phi"]().to(u.rad).value)
 
@@ -289,7 +289,7 @@ class TemperatureGradient(NumericalComponent):
             brightness *= 1-np.exp(-optical_depth)
 
         if self.asymmetric_image:
-            brightness *= 1+calculate_azimuthal_modulation(
+            brightness *= 1+azimuthal_modulation(
                 xx.value, yy.value, self.params["a"]().value,
                 self.params["phi"]().to(u.rad).value)
         image = radial_profile*brightness
