@@ -1,15 +1,12 @@
 from setuptools import setup
 
-from pathlib import Path
-
-import numpy as np
 from pybind11.setup_helpers import Pybind11Extension, build_ext
 
 
 spectral_cpp = Pybind11Extension(
-    "_spectral",
-    [str(fname) for fname in Path("src").glob("*.cpp")],
-    include_dirs=["include"],
+    "ppdmod._spectral",
+    ["src/spectral.cpp", "src/_spectral.cpp"],
+    include_dirs=["include/"],
     extra_compile_args=["-O3", "-march=native", "-fno-math-errno"])
 
 setup(
@@ -19,7 +16,7 @@ setup(
     author_email="martenscheuck@gmail.com",
     url="https://github.com/MBSck/ppdmod",
     packages=["ppdmod"],
-    readme="README.md",
+    # readme="README.md",
     description="A package for modelling and model-fitting protoplanetary disks",
     classifiers=[
         "Development Status :: 1 - Planning",
@@ -33,7 +30,6 @@ setup(
         "Topic :: Scientific/Engineering :: Astronomy",
         "Topic :: Scientific/Engineering :: Physics",
     ],
-    include_dirs=[np.get_include()],
     install_requires=[
         'importlib-metadata; python_version<"3.8"',
         "astropy >=5.1",
