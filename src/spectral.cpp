@@ -15,7 +15,8 @@ namespace conversions {
 }
 
 std::vector<double> constant_temperature(
-    const std::vector<double> &radius, double stellar_radius, double stellar_temperature, long long dim) {
+  const std::vector<double> &radius, double stellar_radius,
+  float stellar_temperature, long long dim) {
   std::vector<double> const_temperature;
 
   std::transform(
@@ -28,7 +29,8 @@ std::vector<double> constant_temperature(
 }
 
 std::vector<double> temperature_power_law(
-    const std::vector<double> &radius, double inner_temp, double inner_radius, double q, long long dim) {
+  const std::vector<double> &radius, float inner_radius,
+  float inner_temp, float q, long long dim) {
   std::vector<double> temperature;
 
   std::transform(
@@ -37,13 +39,13 @@ std::vector<double> temperature_power_law(
     std::back_inserter(temperature),
     [=](double x) -> double { return inner_temp*pow(x/inner_radius, -q); }
   );
-   
+
   return temperature;
 }
 
 std::vector<double> surface_density_profile(
-    const std::vector<double> &radius, double inner_radius,
-    double inner_sigma, double p, long long dim) {
+  const std::vector<double> &radius, float inner_radius,
+  float inner_sigma, float p, long long dim) {
   std::vector<double> sigma_profile;
 
   std::transform(
@@ -58,7 +60,8 @@ std::vector<double> surface_density_profile(
 
 
 std::vector<double> azimuthal_modulation(
-    std::vector<double> &xx, const std::vector<double> &yy, double a, double phi, long long dim) {
+  std::vector<double> &xx, const std::vector<double> &yy,
+  float a, double phi, long long dim) {
   std::vector<double> modulation;
 
   for ( long long i = 0; i < dim*dim; ++i ) {
@@ -69,11 +72,11 @@ std::vector<double> azimuthal_modulation(
 
 
 std::vector<double> optical_thickness(
-    const std::vector<double> &surface_density_profile, double opacity, long long dim) {
+  const std::vector<double> &surface_density, double opacity, long long dim) {
   std::vector<double> thickness;
   std::transform(
-    surface_density_profile.begin(),
-    surface_density_profile.end(),
+    surface_density.begin(),
+    surface_density.end(),
     std::back_inserter(thickness),
     [=](double x) -> double { return 1.0-exp(-x*opacity); }
   );
@@ -87,27 +90,26 @@ double bb(double temperature, double wavelength) {
 
 
 std::vector<double> intensity(
-    const std::vector<double> &temperature_profile, double wavelength, double pixel_size, long long dim) {
+  const std::vector<double> &temperature_profile, double wavelength, double pixel_size, long long dim) {
   std::vector<double> intensity;
 
   std::transform(
-      temperature_profile.begin(),
-      temperature_profile.end(),
-      std::back_inserter(intensity),
-      [=](double x) -> double {
+    temperature_profile.begin(),
+    temperature_profile.end(),
+    std::back_inserter(intensity),
+    [=](double x) -> double {
       return bb(x, wavelength)*pow(pixel_size, 2)*conversions::bb_to_jy ; }
-      );
+  );
   return intensity;
 }
 
 std::vector<double> flat_disk(
-    const std::vector<double> &radius, const std::vector<double> &xx,
-    const std::vector<double> &yy, double wavelength,
-    double pixel_size,
-    double stellar_radius, float stellar_temperature,
-    float inner_temp, float inner_radius, float q, double opacity,
-    float inner_sigma, float p, float a, double phi, long long dim,
-    int modulated, int const_temperature) {
+  const std::vector<double> &radius, const std::vector<double> &xx,
+  const std::vector<double> &yy, double wavelength, double pixel_size,
+  double stellar_radius, float stellar_temperature,
+  float inner_temp, float inner_radius, float q, double opacity,
+  float inner_sigma, float p, float a, double phi, long long dim,
+  bool modulated, bool const_temperature) {
   double modulation = 1.0;
   double radius_val, temperature, surface_density, thickness, blackbody;
   std::vector<double> brightness;

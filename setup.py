@@ -5,7 +5,7 @@ from pybind11.setup_helpers import Pybind11Extension, build_ext
 
 spectral_cpp = Pybind11Extension(
     "ppdmod._spectral",
-    ["src/spectral.cpp", "src/_spectral.cpp"],
+    ["src/spectral.cpp", "src/spectral_wrapper.cpp"],
     include_dirs=["include/"],
     extra_compile_args=["-O3", "-march=native", "-fno-math-errno"])
 
