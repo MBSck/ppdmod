@@ -9,11 +9,11 @@ DTYPE = np.float64
 ctypedef cnp.float64_t DTYPE_t
 
 
-cdef readonly double c = 2.99792458e+10   # cm/s
-cdef readonly double c2 = 8.98755179e+20  # cm²/s²
-cdef readonly double h = 6.62607015e-27   # erg s
-cdef readonly double kb = 1.380649e-16    # erg/K
-cdef readonly double bb_to_jy = 1.0e+23   # Jy
+cdef double c = 2.99792458e+10   # cm/s
+cdef double c2 = 8.98755179e+20  # cm²/s²
+cdef double h = 6.62607015e-27   # erg s
+cdef double kb = 1.380649e-16    # erg/K
+cdef double bb_to_jy = 1.0e+23   # Jy
 
 
 @cython.boundscheck(False)
@@ -250,14 +250,6 @@ def optical_thickness(
     return optical_thickness
 
 
-@cython.cdivision(True)
-@cython.cpow(True)
-@cython.initializedcheck(False)
-def bb(double temperature, double frequency):
-    """Planck's blackbody function."""
-    return (2.0*h*pow(frequency, 3)/c2)*(1.0/(exp(h*nu/(kb*temperature_val))-1.0))
-
-
 @cython.boundscheck(False)
 @cython.initializedcheck(False)
 @cython.wraparound(False)
@@ -296,39 +288,7 @@ def intensity(
     for x in range(x_max):
         for y in range(y_max):
             temperature_val = temperature_profile[x, y]
-            intensity_view[x, y] = bb(temperature, wavelength)*pow(pixel_size, 2)*bb_to_jy
+            temp_val = 1.0/(exp(h*nu/(kb*temperature_val))-1.0)
+            temp_val = 2.0*h*pow(nu, 3)/c2*temp_val
+            intensity_view[x, y] = temp_val*pow(pixel_size, 2)*bb_to_jy
     return intensity
-
-
-def flat_disk(double[:, ::1] radius, double[:, ::1] xx,
-              double[:, ::1] yy, double wavelength, double pixel_size,
-              float inner_radius, float inner_temp, float q,
-              float inner_sigma, float p, double opacity,
-              float a, double phi, int modulated, int const_temperature):
-    """A flat disk model."""
-    cdef double nu = c/wavelength    # Hz
-    cdef double modulation = 1.0
-    cdef Py_ssize_t x_max = radius.shape[0]
-    cdef Py_ssize_t y_max = radius.shape[1]
-
-    brightness = np.empty((x_max, y_max), dtype=DTYPE)
-    cdef double[:, ::1] brightness_view = brightness
-
-    cdef Py_ssize_t x, y
-    cdef double radius_val, xx_val, yy_val
-    cdef double temperature, surface_density, modulation, thickness
-    for x in range(x_max):
-        for y in range(y_max):
-            radius_val = radius[x, y]
-            xx_val, yy_val = xx[x, y], yy[x, y]
-            if const_temperature:
-                temperature = sqrt(stellar_radius/(2.0*radius_val))*stellar_temperature
-            else:
-                temperature = inner_temp*pow(radius_val/inner_radius, -q)
-            surface_density = inner_sigma*pow(radius_val/inner_radius, -p)
-            if modulated:
-                modulation = a*cos(atan2(yy_val, xx_val)-phi)
-            thickness = 1.0-exp(-surface_density*modulation*opacity)
-            blackbody = bb(temperature, frequency)*pow(pixel_size, 2)*bb_to_jy
-            brightness[x, y] = blackbody*thickness
-    return brightness

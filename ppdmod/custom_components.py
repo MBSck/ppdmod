@@ -10,7 +10,7 @@ from .parameter import STANDARD_PARAMETERS, Parameter
 from .options import OPTIONS
 from ._spectral_cy import const_temperature,\
     temperature_power_law, azimuthal_modulation,\
-    surface_density_profile, intensity
+    optical_thickness, surface_density_profile, intensity
 from .utils import distance_to_angular,\
     get_new_dimension, rebin_image, pad_image
 
@@ -251,9 +251,7 @@ class TemperatureGradient(NumericalComponent):
         -------
         image : astropy.units.Jy
         """
-        # TODO: Is there a difference between first setting all 0
-        # and then calculating or the other way around?
-        radius = self._get_radius(xx, yy)
+        radius, thickness = self._get_radius(xx, yy), 1
         if not np.isinf(self.params["rout"]()):
             radial_profile = np.logical_and(radius > self.params["rin"](),
                                             radius < self.params["rout"]())
@@ -268,8 +266,8 @@ class TemperatureGradient(NumericalComponent):
                 self.params["eff_temp"]().value)
         else:
             temperature = temperature_power_law(
-                radius.value, self.params["inner_temp"]().value,
-                innermost_radius.value)
+                radius.value, innermost_radius.value,
+                self.params["inner_temp"]().value, self.params["q"]().value)
 
         brightness = intensity(
             temperature, wavelength.to(u.cm).value,
@@ -285,14 +283,13 @@ class TemperatureGradient(NumericalComponent):
                     xx.value, yy.value, self.params["a"]().value,
                     self.params["phi"]().to(u.rad).value)
 
-            optical_depth = surface_density*self._get_opacity(wavelength).value
-            brightness *= 1-np.exp(-optical_depth)
+            thickness = optical_thickness(surface_density, self._get_opacity(wavelength).value)
 
         if self.asymmetric_image:
             brightness *= 1+azimuthal_modulation(
                 xx.value, yy.value, self.params["a"]().value,
                 self.params["phi"]().to(u.rad).value)
-        image = radial_profile*brightness
+        image = radial_profile*brightness*thickness
 
         image = np.nan_to_num(image, nan=0)
         if OPTIONS["fourier.binning"] is not None:

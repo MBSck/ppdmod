@@ -16,6 +16,10 @@ Options.profile = False
 #     include_dirs=["include/"],
 #     extra_compile_args=["-O3", "-march=native", "-fno-math-errno"])
 
+
+extensions = [Extension("ppdmod._spectral_cy", ["cython_src/spectral.pyx"],
+                        extra_compile_args=["-O3", "-march=native", "-fno-math-errno"])]
+
 setup(
     name="ppdmod",
     version="0.9.0",
@@ -53,6 +57,5 @@ setup(
         "pandas >= 2.1.0",
     ],
     include_dirs=[np.get_include()],
-    ext_modules=[Extension("ppdmod._spectral_cy", ["cython_src/spectral.pyx"])],
-    extra_compile_args=["-O3", "-march=native", "-fno-math-errno"]
+    ext_modules=extensions,
 )

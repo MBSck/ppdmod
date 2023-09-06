@@ -5,6 +5,8 @@ import numpy as np
 
 from .fft import compute_real2Dfourier_transform
 from .parameter import STANDARD_PARAMETERS, Parameter
+from .options import OPTIONS
+from .utils import rebin_image, get_new_dimension
 
 
 class Component:
@@ -235,12 +237,26 @@ class NumericalComponent(Component):
         -------
         image : astropy.units.Quantity
         """
-        x_arr, y_arr = self._calculate_internal_grid(dim, pixel_size)
-        from line_profiler import LineProfiler
-        lp = LineProfiler()
-        lp_wrapper = lp(self._image_function)
-        image = lp_wrapper(x_arr, y_arr, wavelength)
-        lp.print_stats()
+        if OPTIONS["model.matryoshka"]:
+            image = None
+            for binning_factor in OPTIONS["model.matryoshka.binning_factors"]:
+                binning_factor = binning_factor if binning_factor is not None else 0
+                x_arr, y_arr = self._calculate_internal_grid(dim, pixel_size*2**-binning_factor)
+                image_part = rebin_image(self._image_function(x_arr, y_arr, wavelength), binning_factor) 
+                if image is None:
+                    image = image_part
+                else:
+                    dim = get_new_dimension(dim, binning_factor)
+                    start = (image.shape[0]-image_part.shape[0])//2
+                    end = start + image.shape[0]
+                    image[start:end, start:end] = image_part
+        else:
+            x_arr, y_arr = self._calculate_internal_grid(dim, pixel_size)
+            from line_profiler import LineProfiler
+            lp = LineProfiler()
+            lp_wrapper = lp(self._image_function)
+            image = lp_wrapper(x_arr, y_arr, wavelength)
+            lp.print_stats()
         return image
 
     def calculate_complex_visibility(
