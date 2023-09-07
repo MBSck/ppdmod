@@ -253,20 +253,20 @@ class TemperatureGradient(NumericalComponent):
         """
         radius, thickness = self._get_radius(xx, yy), 1
         if not np.isinf(self.params["rout"]()):
-            radial_profile = np.logical_and(radius > self.params["rin"](),
-                                            radius < self.params["rout"]())
+            radial_profile = np.logical_and(radius > self.params["rin"]().value,
+                                            radius < self.params["rout"]().value)
         else:
-            radial_profile = radius > self.params["rin"]()
+            radial_profile = radius > self.params["rin"]().value
         innermost_radius = self.params["rin0"]()\
             if self.params["rin0"] is not None else self.params["rin"]()
 
         if self.const_temperature:
             temperature = const_temperature(
-                radius.value, self.stellar_radius_angular.value,
+                radius, self.stellar_radius_angular.value,
                 self.params["eff_temp"]().value)
         else:
             temperature = temperature_power_law(
-                radius.value, innermost_radius.value,
+                radius, innermost_radius.value,
                 self.params["inner_temp"]().value, self.params["q"]().value)
 
         brightness = intensity(
@@ -275,19 +275,19 @@ class TemperatureGradient(NumericalComponent):
 
         if not self.optically_thick:
             surface_density = surface_density_profile(
-                radius.value, innermost_radius.value,
+                radius, innermost_radius.value,
                 self.params["inner_sigma"]().value, self.params["p"]().value)
 
             if self.asymmetric_surface_density:
                 surface_density *= 1+azimuthal_modulation(
-                    xx.value, yy.value, self.params["a"]().value,
+                    xx, yy, self.params["a"]().value,
                     self.params["phi"]().to(u.rad).value)
 
             thickness = optical_thickness(surface_density, self._get_opacity(wavelength).value)
 
         if self.asymmetric_image:
             brightness *= 1+azimuthal_modulation(
-                xx.value, yy.value, self.params["a"]().value,
+                xx, yy, self.params["a"]().value,
                 self.params["phi"]().to(u.rad).value)
         image = radial_profile*brightness*thickness
 

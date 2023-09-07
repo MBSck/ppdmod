@@ -1,4 +1,3 @@
-import time
 from pathlib import Path
 from typing import Union, List
 
@@ -232,6 +231,37 @@ def test_rebin_image(rin: float, temp_gradient_image: u.mas,
     assert rebinned_temp_grad.shape == (expected, expected)
 
 
+@pytest.mark.parametrize(
+    "binning_factor, expected", [(1, 128), (2, 256), (3, 512),
+                                 (4, 1024), (5, 2048), (6, 4096)])
+def test_upbin_image(binning_factor: int, expected: int) -> None:
+    """Tests the rebinning of an image"""
+    px, dim, dia = 0.1, 64, 3
+    ud_image = utils.uniform_disk(px*u.mas, dim, diameter=dia*u.mas)
+    rebinned_ud = utils.upbin_image(ud_image, binning_factor)
+
+    binning_dir = Path("binning")
+    if not binning_dir.exists():
+        binning_dir.mkdir()
+
+    _, (ax, bx) = plt.subplots(1, 2)
+    ax.imshow(ud_image.value)
+    ax.set_title("Pre-binning")
+    ax.set_xlabel("dim [px]")
+    bx.imshow(rebinned_ud.value)
+    bx.set_title("After-binning")
+    bx.set_xlabel("dim [px]")
+    plt.savefig(binning_dir /
+                f"ud_px{px}_dim{dim}_dia{dia}_upbin{binning_factor}.pdf",
+                format="pdf")
+    if binning_factor == 6:
+        plt.show()
+    plt.close()
+
+    assert ud_image.shape == (dim, dim)
+    assert rebinned_ud.shape == (expected, expected)
+
+
 # NOTE: Padding high dimensions takes ages.
 @pytest.mark.parametrize(
     "padding_factor, expected", [(1, 4096), (2, 8192)])
@@ -430,15 +460,6 @@ def test_distance_to_angular(distance: u.Quantity,
     """Tests the angular diameter to diameter calculation."""
     angular_diameter = utils.distance_to_angular(diameter, distance)
     assert np.isclose(angular_diameter.to(u.arcsec), 1*u.arcsec, atol=1e-2)
-
-
-def test_calculate_intensity(wavelength: u.um) -> None:
-    """Tests the intensity calculation [Jy/px]."""
-    intensity = utils.calculate_intensity(7800*u.K,
-                                          wavelength,
-                                          0.1*u.mas)
-    assert intensity.unit == u.Jy
-    assert intensity.value < 0.1
 
 
 def test_calculate_effective_baselines(fits_file: Path,

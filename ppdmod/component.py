@@ -3,6 +3,7 @@ from typing import Optional, Tuple
 import astropy.units as u
 import numpy as np
 
+from ._spectral_cy import grid
 from .fft import compute_real2Dfourier_transform
 from .parameter import STANDARD_PARAMETERS, Parameter
 from .options import OPTIONS
@@ -73,15 +74,9 @@ class Component:
             if pixel_size is None else pixel_size
         dim = u.Quantity(value=dim, unit=u.one, dtype=int)
         pixel_size = u.Quantity(value=pixel_size, unit=u.mas)
-        v = np.linspace(-0.5, 0.5, dim, endpoint=False, dtype=np.float64)\
-            * pixel_size.to(u.mas)*dim
-        x_arr, y_arr = np.meshgrid(v, v)
-        if self.elliptic:
-            pa_rad = self.params["pa"]().to(u.rad)
-            xp = x_arr*np.cos(pa_rad)-y_arr*np.sin(pa_rad)
-            yp = x_arr*np.sin(pa_rad)+y_arr*np.cos(pa_rad)
-            return xp, yp/self.params["elong"]()
-        return x_arr, y_arr
+        return grid(dim, pixel_size.value,
+                    self.params["elong"]().value,
+                    self.params["pa"]().to(u.rad).value, self.elliptic)
 
     def _translate_fourier_transform(self, ucoord: u.m, vcoord: u.m,
                                      wavelength: u.um) -> u.one:

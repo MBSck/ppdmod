@@ -241,8 +241,6 @@ def rebin_image(image: np.ndarray,
     -------
     rebinned_image : numpy.ndarray
         The rebinned image.
-    dimension : int, optional
-        The new dimension of the image.
     """
     if binning_factor is None:
         return image
@@ -253,6 +251,27 @@ def rebin_image(image: np.ndarray,
     if OPTIONS["model.output"] == "surface_brightness":
         return image.mean(-1).mean(1)
     return image.sum(-1).sum(1)
+
+
+def upbin_image(image: np.ndarray,
+                upbinning_factor: Optional[int] = None) -> np.ndarray:
+    """Bins a 2D-image up according to the binning factor.
+
+    Parameters
+    ----------
+    image : numpy.ndarray
+        The image to be rebinned.
+    binning_factor : int, optional
+        The binning factor. The default is 0
+
+    Returns
+    -------
+    rebinned_image : numpy.ndarray
+        The rebinned image.
+    """
+    upbinning_factor = upbinning_factor if upbinning_factor is not None else 0
+    upbinning = 2**upbinning_factor
+    return np.kron(image, np.ones((upbinning, upbinning)))/(upbinning*upbinning)
 
 
 def pad_image(image: np.ndarray, padding_factor: int) -> np.ndarray:
