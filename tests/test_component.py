@@ -46,26 +46,6 @@ def test_eval(component: Component) -> None:
     assert component.params["dim"]() == 512
 
 
-def test_component_calculate_grid(component: Component) -> None:
-    """Tests the grid calculation of the numerical component.
-
-    Also tests if the phase space is correctly calculated by
-    making pictures to check it.
-    """
-    grid = component._calculate_internal_grid()
-    dims = (component.params["dim"](),
-            component.params["dim"]())
-    assert all(axe.shape == dims for axe in grid)
-    assert all(axe.unit == u.mas for axe in grid)
-    assert all(0.*u.mas in axe for axe in grid)
-
-    dim, pixel_size = 512, 0.1
-    grid = component._calculate_internal_grid(dim, pixel_size)
-    assert all(axe.shape == (512, 512) for axe in grid)
-    assert all(axe.unit == u.mas for axe in grid)
-    assert all(0.*u.mas in axe for axe in grid)
-
-
 # TODO: Make image of both radius to infinity and rotated with finite radius.
 def test_radius_calculation(component: Component) -> None:
     """Tests if the radius calculated from the grid works."""

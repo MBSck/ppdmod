@@ -19,11 +19,11 @@ from ppdmod.utils import opacity_to_matisse_opacity,\
     make_workbook, get_next_power_of_two
 
 
-RESOLUTION_FILE = Path("resolution.xlsx")
+FLUX_FILE = Path("flux.xlsx")
 FLUX_SHEET = "Fluxes for 13 um"
 
 make_workbook(
-    RESOLUTION_FILE,
+    FLUX_FILE,
     {
         FLUX_SHEET: ["FOV [mas]",
                      "Dimension [px]",
@@ -208,11 +208,8 @@ def test_temperature_gradient_init(temp_gradient: TemperatureGradient) -> None:
     assert "p" in temp_gradient.params
     assert "inner_sigma" in temp_gradient.params
     assert "kappa_abs" in temp_gradient.params
-
-
-def test_asymmetric_temperature_gradient_init(
-        asym_temp_gradient: AsymmetricSDTemperatureGradient) -> None:
-    """Tests the asymmetric temperature gradient's initialization."""
+    assert "kappa_cont" in asym_continuum_grey_body.params
+    assert "cont_weight" in asym_continuum_grey_body.params
     assert "a" in asym_temp_gradient.params
     assert "phi" in asym_temp_gradient.params
 
@@ -283,13 +280,13 @@ def test_flux_resolution(
             "Flux [Jy]": [np.around(flux, 8).value],
             "Pixel Size [mas/px]": [pixel_size],
             "Inner Radius [mas]": [rin.value]}
-    if RESOLUTION_FILE.exists():
-        df = pd.read_excel(RESOLUTION_FILE, sheet_name=FLUX_SHEET)
+    if FLUX_FILE.exists():
+        df = pd.read_excel(FLUX_FILE, sheet_name=FLUX_SHEET)
         new_df = pd.DataFrame(data)
         df = pd.concat([df, new_df])
     else:
         df = pd.DataFrame(data)
-    with pd.ExcelWriter(RESOLUTION_FILE, engine="openpyxl",
+    with pd.ExcelWriter(FLUX_FILE, engine="openpyxl",
                         mode="a", if_sheet_exists="replace") as writer:
         df.to_excel(writer, sheet_name=FLUX_SHEET, index=False)
 

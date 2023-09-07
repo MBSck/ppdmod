@@ -13,6 +13,16 @@ from scipy.special import j1
 from .options import OPTIONS
 
 
+def take_time_average(func, *args, nsteps=10):
+    """Takes a time average of the code."""
+    execution_times = []
+    for _ in range(nsteps):
+        time_st = time.perf_counter()
+        return_val = func(*args)
+        execution_times.append(time.perf_counter()-time_st)
+    return return_val, np.array(execution_times).mean()
+
+
 def execution_time(func):
     """Prints the execution time of the decorated function."""
     def wrapper(*args, **kwargs):

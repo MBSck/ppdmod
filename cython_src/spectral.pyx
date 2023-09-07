@@ -2,7 +2,7 @@ import numpy as np
 
 cimport numpy as cnp
 cimport cython
-from libc.math cimport cos, atan2, sqrt, exp, pow
+from libc.math cimport sin, cos, atan2, sqrt, exp, pow
 
 cnp.import_array()
 DTYPE = np.float64
@@ -14,6 +14,87 @@ cdef double c2 = 8.98755179e+20  # cm²/s²
 cdef double h = 6.62607015e-27   # erg s
 cdef double kb = 1.380649e-16    # erg/K
 cdef double bb_to_jy = 1.0e+23   # Jy
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+@cython.initializedcheck(False)
+def grid(int dim, float pixel_size,
+         float elong, double pa, int elliptic):
+    """Calculates the model grid.
+
+    Parameters
+    ----------
+    dim : float, optional
+    pixel_size : float, optional
+
+    Returns
+    -------
+    xx : astropy.units.mas
+        The x-coordinate grid.
+    yy : astropy.units.mas
+        The y-coordinate grid.
+    """
+    linspace = np.empty((dim, ), dtype=DTYPE)
+    x_arr = np.empty((dim, dim), dtype=DTYPE)
+    y_arr = np.empty((dim, dim), dtype=DTYPE)
+    radius = np.empty((dim, dim), dtype=DTYPE)
+
+    cdef double[::1] linspace_view = linspace
+    cdef double[:, ::1] x_arr_view = x_arr
+    cdef double[:, ::1] y_arr_view = y_arr
+    cdef double[:, ::1] radius_view = radius
+
+    cdef double step =  1.0/dim
+    cdef float factor = dim*pixel_size
+
+    cdef Py_ssize_t x
+    for x in range(dim):
+        linspace_view[x] = (-0.5 + x * step) * factor;
+
+    cdef Py_ssize_t y
+    cdef double linspace_val
+    for x in range(dim):
+        for y in range(dim):
+            linspace_val = linspace_view[y]
+            x_arr_view[x, y] = linspace_val
+            y_arr_view[y, x] = linspace_val
+
+    cdef double xx_val, yy_val
+    cdef double temp_x, temp_y
+    for x in range(dim):
+        for y in range(dim):
+            xx_val, yy_val = x_arr_view[x, y], y_arr_view[x, y]
+            if elliptic:
+                temp_x = xx_val*cos(pa)-yy_val*sin(pa)
+                temp_y = (xx_val*sin(pa)+yy_val*cos(pa))/elong
+            else:
+                temp_x, temp_y = xx_val, yy_val
+            x_arr_view[x, y], y_arr_view[x, y] = temp_x, temp_y
+    return x_arr, y_arr
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.cdivision(True)
+@cython.cpow(True)
+@cython.initializedcheck(False)
+def radius(double[:, ::1] xx, double[:, ::1] yy):
+    """Calculates the model radius."""
+    cdef Py_ssize_t x_max = xx.shape[0]
+    cdef Py_ssize_t y_max = yy.shape[1]
+
+    radius = np.empty((x_max, y_max), dtype=DTYPE)
+    cdef double[:, ::1] radius_view = radius
+
+    cdef double xx_val, yy_val
+    cdef Py_ssize_t x, y
+    for x in range(x_max):
+        for y in range(y_max):
+            xx_val, yy_val = xx[x, y], yy[x, y]
+            radius_view[x, y] = sqrt(pow(xx_val, 2)+pow(yy_val, 2))
+    return radius
 
 
 @cython.boundscheck(False)

@@ -1,5 +1,5 @@
-import time
 from pathlib import Path
+from typing import Tuple
 
 import astropy.units as u
 import numpy as np
@@ -15,46 +15,49 @@ from ppdmod.parameter import Parameter
 
 
 CALCULATION_FILE = Path("calculations.xlsx")
+GRID, RADIUS = "Grid", "Radius"
 CONST_TEMPERATURE = "Constant Temperature"
 TEMPERATURE_POWER = "Temperature Power Law"
 AZIMUTHAL_MODULATION = "Azimuthal Modulation"
 SURFACE_DENSITY = "Surface Density"
 OPTICAL_THICKNESS = "Optical Thickness"
 INTENSITY = "Intensity"
-FLAT_DISK = "Flat Disk"
 
 utils.make_workbook(
     CALCULATION_FILE,
     {
+        GRID: ["Dimension [px]",
+               "Python Time [s]",
+               "Cython Time [s]",
+               "Factor"],
+        RADIUS: ["Dimension [px]",
+                 "Python Time [s]",
+                 "Cython Time [s]",
+                 "Factor"],
         CONST_TEMPERATURE: ["Dimension [px]",
                             "Python Time [s]",
-                            "Cython Time [s]"],
-                            #"C Time [s]"],
+                            "Cython Time [s]",
+                            "Factor"],
         TEMPERATURE_POWER: ["Dimension [px]",
                             "Python Time [s]",
-                            "Cython Time [s]"],
-                            #"C Time [s]"],
+                            "Cython Time [s]",
+                            "Factor"],
         AZIMUTHAL_MODULATION: ["Dimension [px]",
                                "Python Time [s]",
-                               "Cython Time [s]"],
-                               #"C Time [s]"],
+                               "Cython Time [s]",
+                               "Factor"],
         SURFACE_DENSITY: ["Dimension [px]",
                           "Python Time [s]",
-                          "Cython Time [s]"],
-                          #"C Time [s]"],
+                          "Cython Time [s]",
+                          "Factor"],
         OPTICAL_THICKNESS: ["Dimension [px]",
                             "Python Time [s]",
-                            "Cython Time [s]"],
-                            #"C Time [s]"],
+                            "Cython Time [s]",
+                            "Factor"],
         INTENSITY: ["Dimension [px]",
                     "Python Time [s]",
                     "Cython Time [s]",
-                    "Cython Time [s]"],
-                    #"C Time [s]"],
-        FLAT_DISK: ["Dimension [px]",
-                    "Python Time [s]",
-                    "Cython Time [s]"],
-                    #"C Time [s]"],
+                    "Factor"],
     })
 
 DIMENSION = [2**power for power in range(7, 14)]
@@ -147,6 +150,36 @@ def opacity(qval_file_dir: Path,
                      description="Dust mass absorption coefficient")
 
 
+def grid(dim: int, pixel_size: float, pa: float,
+         elong: float, elliptic: bool) -> Tuple[u.Quantity[u.mas], u.Quantity[u.mas]]:
+    """Calculates the model grid.
+
+    Parameters
+    ----------
+    dim : float, optional
+    pixel_size : float, optional
+
+    Returns
+    -------
+    xx : astropy.units.mas
+        The x-coordinate grid.
+    yy : astropy.units.mas
+        The y-coordinate grid.
+    """
+    dim = u.Quantity(value=dim, unit=u.one, dtype=int)
+    pixel_size = u.Quantity(value=pixel_size, unit=u.mas)
+    pa = u.Quantity(value=pa, unit=u.deg)
+    v = np.linspace(-0.5, 0.5, dim, endpoint=False, dtype=np.float64)\
+        * pixel_size.to(u.mas)*dim
+    x_arr, y_arr = np.meshgrid(v, v)
+    if elliptic:
+        pa_rad = pa.to(u.rad)
+        xp = x_arr*np.cos(pa_rad)-y_arr*np.sin(pa_rad)
+        yp = x_arr*np.sin(pa_rad)+y_arr*np.cos(pa_rad)
+        return xp, yp/elong
+    return x_arr, y_arr
+
+
 def calculate_temperature_profile(
         radius: u.mas, distance: u.pc,
         stellar_radius: u.Rsun,
@@ -183,72 +216,71 @@ def calculate_surface_density_profile(
     """Calculates the surface density profile."""
     return inner_sigma*(radius/inner_radius)**(-p)
 
-
-# def test_asymmetric_temperature_gradient_init(
-#         asym_continuum_grey_body: AsymmetricSDGreyBodyContinuum) -> None:
-#     """Tests the asymmetric temperature gradient's initialization."""
-#     assert "kappa_cont" in asym_continuum_grey_body.params
-#     assert "cont_weight" in asym_continuum_grey_body.params
+def calculate_optical_thickness(surface: u.g/u.cm**2, opacity: u.cm**2/u.g):
+    """Calculate the optical thickness."""
+    return 1-np.exp(-surface*opacity)
 
 
-# def test_temperature_gradient_surface_density_profile(
-#         temp_gradient: TemperatureGradient,
-#         grid: Tuple[u.Quantity[u.mas], u.Quantity[u.mas]],
-#         radius: u.mas) -> None:
-#     """Tests the temperature gradient's surface density profile calculation."""
-#     surface_density = temp_gradient._calculate_surface_density_profile(radius, *grid)
-#     assert surface_density.unit == u.g/u.cm**2
+
+@pytest.mark.parametrize("dim", DIMENSION)
+def test_grid(dim: int) -> None:
+    """Tests the grid calculation."""
+    pixel_size, elong, pa = 0.1*u.mas, 0.5*u.one, 33*u.deg
+
+    (cython_xx, cython_yy), cython_et = utils.take_time_average(
+            _spectral_cy.grid,
+            *(dim, pixel_size.value, elong.value, pa.to(u.rad).value, True))
+    
+    (python_xx, python_yy), python_et = utils.take_time_average(
+            grid, *(dim, pixel_size, pa, elong, True))
+
+    data = {"Dimension [px]": [dim],
+            "Python Time [s]": [python_et],
+            "Cython Time [s]": [cython_et],
+            "Factor": [python_et/cython_et]}
+
+    if CALCULATION_FILE.exists():
+        df = pd.read_excel(CALCULATION_FILE, sheet_name=GRID)
+        new_df = pd.DataFrame(data)
+        df = pd.concat([df, new_df])
+    else:
+        df = pd.DataFrame(data)
+    with pd.ExcelWriter(CALCULATION_FILE, engine="openpyxl",
+                        mode="a", if_sheet_exists="replace") as writer:
+        df.to_excel(writer, sheet_name=GRID, index=False)
+
+    assert np.allclose(cython_xx, python_xx.value)
+    assert np.allclose(cython_yy, python_yy.value)
 
 
-# def test_asym_temperature_gradient_azimuthal_modulation(
-#         asym_temp_gradient: AsymmetricSDTemperatureGradient,
-#         grid: Tuple[u.Quantity[u.mas], u.Quantity[u.mas]]) -> None:
-#     """Tests the temperature gradient's azimuthal modulation."""
-#     asym_temp_gradient.params["a"].value = 0.5
-#     asym_temp_gradient.params["phi"].value = 33
-#     assert asym_temp_gradient._calculate_azimuthal_modulation(*grid).unit == u.one
+@pytest.mark.parametrize("dim", DIMENSION)
+def test_radius(dim: int) -> None:
+    """Test the calculation of the radius."""
+    pixel_size, elong, pa = 0.1*u.mas, 0.5*u.one, 33*u.deg
+    cython_xx, cython_yy = _spectral_cy.grid(
+            dim, pixel_size.value, elong.value, pa.to(u.rad).value, True)
+    python_xx, python_yy = grid(dim, pixel_size, pa, elong, True)
 
+    cython_radius, cython_et = utils.take_time_average(_spectral_cy.radius, *(cython_xx, cython_yy))
+    python_radius, python_et = utils.take_time_average(np.hypot, *(python_xx, python_yy))
 
-# def test_temperature_gradient_optical_depth(
-#         temp_gradient: TemperatureGradient,
-#         grid: Tuple[u.Quantity[u.mas], u.Quantity[u.mas]],
-#         radius: u.mas,
-#         wavelength: u.um, opacity: Parameter) -> None:
-#     """Tests the temperature gradient's optical depth calculation."""
-#     temp_gradient.params["kappa_abs"] = opacity
-#     optical_depth = temp_gradient._calculate_optical_depth(
-#         radius, *grid, wavelength)
-#     assert optical_depth.unit == u.one
+    data = {"Dimension [px]": [dim],
+            "Python Time [s]": [python_et],
+            "Cython Time [s]": [cython_et],
+            "Factor": [python_et/cython_et]}
 
+    if CALCULATION_FILE.exists():
+        df = pd.read_excel(CALCULATION_FILE, sheet_name=RADIUS)
+        new_df = pd.DataFrame(data)
+        df = pd.concat([df, new_df])
+    else:
+        df = pd.DataFrame(data)
+    with pd.ExcelWriter(CALCULATION_FILE, engine="openpyxl",
+                        mode="a", if_sheet_exists="replace") as writer:
+        df.to_excel(writer, sheet_name=RADIUS, index=False)
 
-# def test_temperature_gradient_temperature_profile(
-#         temp_gradient: TemperatureGradient, radius: u.mas) -> None:
-#     """Tests the temperature gradient's temperature profile"""
-#     temp_profile = temp_gradient._calculate_temperature_profile(radius)
-#     assert temp_profile.unit == u.K
+    assert np.allclose(cython_radius, python_radius.value)
 
-
-# def test_asym_grey_body_optical_depth(
-#         asym_continuum_grey_body: AsymmetricSDGreyBodyContinuum,
-#         grid: Tuple[u.Quantity[u.mas], u.Quantity[u.mas]],
-#         radius: u.mas,
-#         wavelength: u.um,
-#         opacity: Parameter,
-#         continuum_opacity: Parameter) -> None:
-#     """Tests the asymmetric gradient's optical depth calculation."""
-#     asym_continuum_grey_body.params["kappa_cont"] = continuum_opacity
-#     asym_continuum_grey_body.params["cont_weight"].value = 0.5
-#     optical_depth = asym_continuum_grey_body._calculate_optical_depth(
-#         radius, *grid, wavelength)
-#     assert optical_depth.unit == u.one
-
-
-# def test_asym_grey_body_temperature_profile(
-#         asym_grey_body: AsymmetricSDGreyBody, radius: u.mas) -> None:
-#     """Tests the temperature gradient's temperature profile."""
-#     temp_profile = asym_grey_body._calculate_temperature_profile(radius)
-#     assert temp_profile.shape == radius.shape
-#     assert temp_profile.unit == u.K
 
 
 @pytest.mark.parametrize("dim", DIMENSION)
@@ -263,29 +295,19 @@ def test_calculate_const_temperature(
     stellar_radius_angular =\
         utils.distance_to_angular(stellar_radius.to(u.m), distance_star)
 
-    # c_st = time.perf_counter()
-    # c_temp = _spectral.constant_temperature(
-    #     radius.value,
-    #     stellar_radius_angular.value,
-    #     stellar_temperature.value)
-    # c_et = time.perf_counter()-c_st
+    cython_temp, cython_et = utils.take_time_average(
+            _spectral_cy.const_temperature,
+            *(radius.value, stellar_radius_angular.value, stellar_temperature.value))
 
-    cython_st = time.perf_counter()
-    cython_temp = _spectral_cy.const_temperature(
-        radius.value,
-        stellar_radius_angular.value,
-        stellar_temperature.value)
-    cython_et = time.perf_counter()-cython_st
-
-    python_st = time.perf_counter()
-    python_temp = calculate_temperature_profile(
-        radius, distance_star, stellar_radius,
-        stellar_temperature, inner_temperature, inner_radius, q, True)
-    python_et = time.perf_counter()-python_st
+    python_temp, python_et = utils.take_time_average(
+            calculate_temperature_profile, 
+            *(radius, distance_star, stellar_radius,
+             stellar_temperature, inner_temperature, inner_radius, q, True))
 
     data = {"Dimension [px]": [dim],
             "Python Time [s]": [python_et],
-            "Cython Time [s]": [cython_et]}
+            "Cython Time [s]": [cython_et],
+            "Factor": [python_et/cython_et]}
 
     if CALCULATION_FILE.exists():
         df = pd.read_excel(CALCULATION_FILE, sheet_name=CONST_TEMPERATURE)
@@ -297,7 +319,6 @@ def test_calculate_const_temperature(
                         mode="a", if_sheet_exists="replace") as writer:
         df.to_excel(writer, sheet_name=CONST_TEMPERATURE, index=False)
 
-    # assert np.allclose(c_temp.reshape(dim, dim), python_temp.value)
     assert np.allclose(cython_temp, python_temp.value)
 
 
@@ -311,28 +332,19 @@ def test_calculate_temperature_power_law(
     xx, yy = numerical_component._calculate_internal_grid()
     radius = np.hypot(xx, yy)
 
-    # c_st = time.perf_counter()
-    # c_temp = _spectral.temperature_power_law(
-    #     radius.value,
-    #     inner_radius.value,
-    #     inner_temperature.value,
-    #     q)
-    # c_et = time.perf_counter()-c_st
+    cython_temp, cython_et = utils.take_time_average(
+            _spectral_cy.temperature_power_law,
+            *(radius.value, inner_temperature.value, inner_radius.value, q))
 
-    cython_st = time.perf_counter()
-    cython_temp = _spectral_cy.temperature_power_law(
-        radius.value, inner_temperature.value, inner_radius.value, q)
-    cython_et = time.perf_counter()-cython_st
-
-    python_st = time.perf_counter()
-    python_temp = calculate_temperature_profile(
-        radius, distance_star, stellar_radius,
-        stellar_temperature, inner_temperature, inner_radius, q, False)
-    python_et = time.perf_counter()-python_st
+    python_temp, python_et = utils.take_time_average(
+            calculate_temperature_profile,
+            *(radius, distance_star, stellar_radius,
+             stellar_temperature, inner_temperature, inner_radius, q, False))
 
     data = {"Dimension [px]": [dim],
             "Python Time [s]": [python_et],
-            "Cython Time [s]": [cython_et]}
+            "Cython Time [s]": [cython_et],
+            "Factor": [python_et/cython_et]}
 
     if CALCULATION_FILE.exists():
         df = pd.read_excel(CALCULATION_FILE, sheet_name=TEMPERATURE_POWER)
@@ -344,7 +356,6 @@ def test_calculate_temperature_power_law(
                         mode="a", if_sheet_exists="replace") as writer:
         df.to_excel(writer, sheet_name=TEMPERATURE_POWER, index=False)
 
-    # assert np.array_equal(c_temp.reshape(dim, dim), python_temp.value)
     assert np.array_equal(cython_temp, python_temp.value)
 
 
@@ -355,23 +366,17 @@ def test_calculate_azimuthal_modulation(dim: int) -> None:
     xx, yy = numerical_component._calculate_internal_grid()
     a, phi = 0.5*u.one, 35*u.deg
 
-    # c_st = time.perf_counter()
-    # c_mod = _spectral.azimuthal_modulation(
-    #     xx.value, yy.value, a.value, phi.to(u.rad).value)
-    # c_et = time.perf_counter()-c_st
+    cython_mod, cython_et = utils.take_time_average(
+            _spectral_cy.azimuthal_modulation,
+            *(xx.value, yy.value, a.value, phi.to(u.rad).value))
 
-    cython_st = time.perf_counter()
-    cython_mod = _spectral_cy.azimuthal_modulation(
-        xx.value, yy.value, a.value, phi.to(u.rad).value)
-    cython_et = time.perf_counter()-cython_st
-
-    python_st = time.perf_counter()
-    python_mod = calculate_azimuthal_modulation(xx, yy, a, phi)
-    python_et = time.perf_counter()-python_st
+    python_mod, python_et = utils.take_time_average(
+            calculate_azimuthal_modulation, *(xx, yy, a, phi))
 
     data = {"Dimension [px]": [dim],
             "Python Time [s]": [python_et],
-            "Cython Time [s]": [cython_et]}
+            "Cython Time [s]": [cython_et],
+            "Factor": [python_et/cython_et]}
 
     if CALCULATION_FILE.exists():
         df = pd.read_excel(CALCULATION_FILE, sheet_name=AZIMUTHAL_MODULATION)
@@ -383,7 +388,6 @@ def test_calculate_azimuthal_modulation(dim: int) -> None:
                         mode="a", if_sheet_exists="replace") as writer:
         df.to_excel(writer, sheet_name=AZIMUTHAL_MODULATION, index=False)
 
-    # assert np.allclose(c_mod.reshape(dim, dim), python_mod.value)
     assert np.array_equal(cython_mod, python_mod.value)
 
 
@@ -396,24 +400,18 @@ def test_calculate_surface_density(
     xx, yy = numerical_component._calculate_internal_grid()
     radius = np.hypot(xx, yy)
 
-    # c_st = time.perf_counter()
-    # c_surface = _spectral.surface_density_profile(
-    #     radius.value, inner_radius.value, inner_sigma.value, p)
-    # c_et = time.perf_counter()-c_st
+    cython_surface, cython_et = utils.take_time_average(
+            _spectral_cy.surface_density_profile,
+            *(radius.value, inner_radius.value, inner_sigma.value, p))
 
-    cython_st = time.perf_counter()
-    cython_surface = _spectral_cy.surface_density_profile(
-        radius.value, inner_radius.value, inner_sigma.value, p)
-    cython_et = time.perf_counter()-cython_st
-
-    python_st = time.perf_counter()
-    python_surface = calculate_surface_density_profile(
-        radius, inner_radius, inner_sigma, p)
-    python_et = time.perf_counter()-python_st
+    python_surface, python_et = utils.take_time_average(
+            calculate_surface_density_profile,
+            *(radius, inner_radius, inner_sigma, p))
 
     data = {"Dimension [px]": [dim],
             "Python Time [s]": [python_et],
-            "Cython Time [s]": [cython_et]}
+            "Cython Time [s]": [cython_et],
+            "Factor": [python_et/cython_et]}
 
     if CALCULATION_FILE.exists():
         df = pd.read_excel(CALCULATION_FILE, sheet_name=SURFACE_DENSITY)
@@ -425,7 +423,6 @@ def test_calculate_surface_density(
                         mode="a", if_sheet_exists="replace") as writer:
         df.to_excel(writer, sheet_name=SURFACE_DENSITY, index=False)
 
-    # assert np.allclose(c_surface.reshape(dim, dim), python_surface.value)
     assert np.allclose(cython_surface, python_surface.value)
 
 
@@ -438,30 +435,22 @@ def test_calculate_optical_thickness(
     numerical_component = NumericalComponent(dim=dim, pixel_size=0.1)
     xx, yy = numerical_component._calculate_internal_grid()
     radius = np.hypot(xx, yy)
-    # c_surface = _spectral.surface_density_profile(
-    #     radius.value, inner_radius.value, inner_sigma.value, p)
     cython_surface = _spectral_cy.surface_density_profile(
         radius.value, inner_radius.value, inner_sigma.value, p)
     python_surface = calculate_surface_density_profile(
         radius, inner_radius, inner_sigma, p)
 
-    # c_st = time.perf_counter()
-    # c_optical_thickness = _spectral.optical_thickness(
-    #     c_surface, opacity(wavelength).value)
-    # c_et = time.perf_counter()-c_st
+    cython_optical_thickness, cython_et = utils.take_time_average(
+            _spectral_cy.optical_thickness,
+            *(cython_surface, opacity(wavelength).value))
 
-    cython_st = time.perf_counter()
-    cython_optical_thickness = _spectral_cy.optical_thickness(
-        cython_surface, opacity(wavelength).value)
-    cython_et = time.perf_counter()-cython_st
-
-    python_st = time.perf_counter()
-    python_optical_thickness = 1-np.exp(-python_surface*opacity(wavelength))
-    python_et = time.perf_counter()-python_st
+    python_optical_thickness, python_et = utils.take_time_average(
+            calculate_optical_thickness, *(python_surface, opacity(wavelength)))
 
     data = {"Dimension [px]": [dim],
             "Python Time [s]": [python_et],
-            "Cython Time [s]": [cython_et]}
+            "Cython Time [s]": [cython_et],
+            "Factor": [python_et/cython_et]}
 
     if CALCULATION_FILE.exists():
         df = pd.read_excel(CALCULATION_FILE, sheet_name=OPTICAL_THICKNESS)
@@ -473,8 +462,6 @@ def test_calculate_optical_thickness(
                         mode="a", if_sheet_exists="replace") as writer:
         df.to_excel(writer, sheet_name=OPTICAL_THICKNESS, index=False)
 
-    # assert np.allclose(c_optical_thickness.reshape(dim, dim),
-    #                    python_optical_thickness.value)
     assert np.allclose(cython_optical_thickness,
                        python_optical_thickness.value)
 
@@ -492,10 +479,6 @@ def test_calculate_intensity(
     stellar_radius_angular =\
         utils.distance_to_angular(stellar_radius.to(u.m), distance_star)
 
-    # c_temp = _spectral.constant_temperature(
-    #     radius.value,
-    #     stellar_radius_angular.value,
-    #     stellar_temperature.value)
     cython_temp = _spectral_cy.const_temperature(
         radius.value,
         stellar_radius_angular.value,
@@ -504,25 +487,17 @@ def test_calculate_intensity(
         radius, distance_star, stellar_radius,
         stellar_temperature, inner_temperature, inner_radius, q, True)
 
-    # c_st = time.perf_counter()
-    # c_intensity = _spectral.intensity(
-    #     c_temp, wavelength.to(u.cm).value,
-    #     pixel_size.to(u.rad).value)
-    # c_et = time.perf_counter()-c_st
+    cython_intensity, cython_et = utils.take_time_average(
+            _spectral_cy.intensity,
+            *(cython_temp, wavelength.to(u.cm).value, pixel_size.to(u.rad).value))
 
-    cython_st = time.perf_counter()
-    cython_intensity = _spectral_cy.intensity(
-        cython_temp, wavelength.to(u.cm).value,
-        pixel_size.to(u.rad).value)
-    cython_et = time.perf_counter()-cython_st
-
-    python_st = time.perf_counter()
-    python_intensity = calculate_intensity(python_temp, wavelength, pixel_size)
-    python_et = time.perf_counter()-python_st
+    python_intensity, python_et = utils.take_time_average(
+            calculate_intensity, *(python_temp, wavelength, pixel_size))
 
     data = {"Dimension [px]": [dim],
             "Python Time [s]": [python_et],
-            "Cython Time [s]": [cython_et]}
+            "Cython Time [s]": [cython_et],
+            "Factor": [python_et/cython_et]}
 
     if CALCULATION_FILE.exists():
         df = pd.read_excel(CALCULATION_FILE, sheet_name=INTENSITY)
@@ -534,5 +509,4 @@ def test_calculate_intensity(
                         mode="a", if_sheet_exists="replace") as writer:
         df.to_excel(writer, sheet_name=INTENSITY, index=False)
 
-    # assert np.allclose(c_intensity.reshape(dim, dim), python_intensity.value)
     assert np.allclose(cython_intensity, python_intensity.value)
