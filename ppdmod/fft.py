@@ -3,12 +3,13 @@ from typing import Optional, Dict
 import astropy.units as u
 import numpy as np
 import scipy
+import jax
 from scipy.interpolate import interpn
 
 from .options import OPTIONS
 
 # TODO: Maybe think of better interpolation settings?
-MODULES = {"numpy": np, "scipy": scipy}
+MODULES = {"numpy": np, "scipy": scipy, "jax": jax.numpy}
 INTERP_SETTINGS = {"method": "linear",
                    "fill_value": None, "bounds_error": True}
 

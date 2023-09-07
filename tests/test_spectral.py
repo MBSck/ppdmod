@@ -184,6 +184,73 @@ def calculate_surface_density_profile(
     return inner_sigma*(radius/inner_radius)**(-p)
 
 
+# def test_asymmetric_temperature_gradient_init(
+#         asym_continuum_grey_body: AsymmetricSDGreyBodyContinuum) -> None:
+#     """Tests the asymmetric temperature gradient's initialization."""
+#     assert "kappa_cont" in asym_continuum_grey_body.params
+#     assert "cont_weight" in asym_continuum_grey_body.params
+
+
+# def test_temperature_gradient_surface_density_profile(
+#         temp_gradient: TemperatureGradient,
+#         grid: Tuple[u.Quantity[u.mas], u.Quantity[u.mas]],
+#         radius: u.mas) -> None:
+#     """Tests the temperature gradient's surface density profile calculation."""
+#     surface_density = temp_gradient._calculate_surface_density_profile(radius, *grid)
+#     assert surface_density.unit == u.g/u.cm**2
+
+
+# def test_asym_temperature_gradient_azimuthal_modulation(
+#         asym_temp_gradient: AsymmetricSDTemperatureGradient,
+#         grid: Tuple[u.Quantity[u.mas], u.Quantity[u.mas]]) -> None:
+#     """Tests the temperature gradient's azimuthal modulation."""
+#     asym_temp_gradient.params["a"].value = 0.5
+#     asym_temp_gradient.params["phi"].value = 33
+#     assert asym_temp_gradient._calculate_azimuthal_modulation(*grid).unit == u.one
+
+
+# def test_temperature_gradient_optical_depth(
+#         temp_gradient: TemperatureGradient,
+#         grid: Tuple[u.Quantity[u.mas], u.Quantity[u.mas]],
+#         radius: u.mas,
+#         wavelength: u.um, opacity: Parameter) -> None:
+#     """Tests the temperature gradient's optical depth calculation."""
+#     temp_gradient.params["kappa_abs"] = opacity
+#     optical_depth = temp_gradient._calculate_optical_depth(
+#         radius, *grid, wavelength)
+#     assert optical_depth.unit == u.one
+
+
+# def test_temperature_gradient_temperature_profile(
+#         temp_gradient: TemperatureGradient, radius: u.mas) -> None:
+#     """Tests the temperature gradient's temperature profile"""
+#     temp_profile = temp_gradient._calculate_temperature_profile(radius)
+#     assert temp_profile.unit == u.K
+
+
+# def test_asym_grey_body_optical_depth(
+#         asym_continuum_grey_body: AsymmetricSDGreyBodyContinuum,
+#         grid: Tuple[u.Quantity[u.mas], u.Quantity[u.mas]],
+#         radius: u.mas,
+#         wavelength: u.um,
+#         opacity: Parameter,
+#         continuum_opacity: Parameter) -> None:
+#     """Tests the asymmetric gradient's optical depth calculation."""
+#     asym_continuum_grey_body.params["kappa_cont"] = continuum_opacity
+#     asym_continuum_grey_body.params["cont_weight"].value = 0.5
+#     optical_depth = asym_continuum_grey_body._calculate_optical_depth(
+#         radius, *grid, wavelength)
+#     assert optical_depth.unit == u.one
+
+
+# def test_asym_grey_body_temperature_profile(
+#         asym_grey_body: AsymmetricSDGreyBody, radius: u.mas) -> None:
+#     """Tests the temperature gradient's temperature profile."""
+#     temp_profile = asym_grey_body._calculate_temperature_profile(radius)
+#     assert temp_profile.shape == radius.shape
+#     assert temp_profile.unit == u.K
+
+
 @pytest.mark.parametrize("dim", DIMENSION)
 def test_calculate_const_temperature(
         dim: int, stellar_radius: u.Rsun,
