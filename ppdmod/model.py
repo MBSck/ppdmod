@@ -5,8 +5,6 @@ import numpy as np
 
 from .component import Component
 from .parameter import Parameter
-from .options import OPTIONS
-from .utils import get_new_dimension
 
 
 class Model:

@@ -255,6 +255,7 @@ def lnprob(theta: np.ndarray) -> float:
 
     components = assemble_components(parameters, shared_params)
     # HACK: This is to include innermost radius for rn.
+
     innermost_radius = components[1].params["rin"]
     for component in components:
         component.params["rin0"] = innermost_radius
@@ -331,7 +332,7 @@ def run_mcmc(nwalkers: int,
     theta = init_randomly(nwalkers)
     ndim = theta.shape[1]
     print(f"Executing MCMC with {ncores} cores.")
-    print(f"{' ':-^50}")
+    print(f"{'':-^50}")
     with Pool(processes=ncores) as pool:
         sampler = emcee.EnsembleSampler(
             nwalkers, ndim, lnprob, pool=pool)

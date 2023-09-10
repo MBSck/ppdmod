@@ -16,7 +16,7 @@ from ppdmod.data import ReadoutFits
 from ppdmod.options import OPTIONS
 from ppdmod.utils import opacity_to_matisse_opacity,\
     linearly_combine_opacities, get_new_dimension,\
-    make_workbook, get_next_power_of_two
+    make_workbook, get_next_power_of_two, uniform_disk
 
 
 FLUX_DIR = Path("fluxes")
@@ -258,6 +258,7 @@ def test_numerical_component_calculate_complex_visibility(
 def test_calculate_image(wavelength: u.um) -> None:
     """Tests the image calculation for the normal and the matryoshka method."""
     rin, pixel_size, dim = 0.5*u.mas, 0.1*u.mas, 1024
+    ud = uniform_disk(pixel_size, dim, diameter=4*u.mas)
     asym_grey_body = AsymmetricSDGreyBodyContinuum(
         dist=145, eff_temp=7800, eff_radius=1.8,
         dim=dim, rin=rin, a=0.3, phi=33,

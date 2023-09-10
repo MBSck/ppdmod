@@ -66,11 +66,6 @@ class Component:
         yy : astropy.units.mas
             The y-coordinate grid.
         """
-        dim = self.params["dim"]() if dim is None else dim
-        pixel_size = self.params["pixel_size"]()\
-            if pixel_size is None else pixel_size
-        dim = u.Quantity(value=dim, unit=u.one, dtype=int)
-        pixel_size = u.Quantity(value=pixel_size, unit=u.mas)
         return grid(dim, pixel_size.value,
                     self.params["elong"]().value,
                     self.params["pa"]().to(u.rad).value, self.elliptic)
@@ -229,6 +224,12 @@ class NumericalComponent(Component):
         -------
         image : astropy.units.Quantity
         """
+        dim = self.params["dim"]() if dim is None else dim
+        pixel_size = self.params["pixel_size"]()\
+            if pixel_size is None else pixel_size
+        dim = u.Quantity(value=dim, unit=u.one, dtype=int)
+        pixel_size = u.Quantity(value=pixel_size, unit=u.mas)
+
         if OPTIONS["model.matryoshka"]:
             image = None
             highest_binning_factor = OPTIONS["model.matryoshka.binning_factors"][0]

@@ -49,7 +49,6 @@ class Star(AnalyticalComponent):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._image, self._visibility = None, None
         self._stellar_angular_radius = None
 
         self.params["dist"] = Parameter(**STANDARD_PARAMETERS["dist"])
@@ -67,12 +66,11 @@ class Star(AnalyticalComponent):
         stellar_radius_angular : astropy.units.mas
             The parallax of the stellar radius.
         """
-        if self._stellar_angular_radius is None:
-            self._stellar_angular_radius = distance_to_angular(
-                self.params["eff_radius"](), self.params["dist"]())
+        self._stellar_angular_radius = distance_to_angular(
+            self.params["eff_radius"](), self.params["dist"]())
         return self._stellar_angular_radius
 
-    def caclculate_stellar_flux(self, wavelength: u.um) -> u.Jy:
+    def calculate_stellar_flux(self, wavelength: u.um) -> u.Jy:
         """Calculates the flux of the star."""
         plancks_law = models.BlackBody(temperature=self.params["eff_temp"]())
         spectral_radiance = plancks_law(wavelength.to(u.m)).to(
@@ -94,24 +92,20 @@ class Star(AnalyticalComponent):
         -------
         image : astropy.units.Quantity, optional
         """
-        if self._image is None:
-            self._image = np.zeros(xx.shape)
-            val = np.abs(xx)+np.abs(yy)
-            index = np.unravel_index(np.argmin(val), np.shape(val))
-            self._image[index] = 1
-        return self._image*self.caclculate_stellar_flux(wavelength)
+        image = np.zeros(xx.shape)
+        val = np.abs(xx)+np.abs(yy)
+        index = np.unravel_index(np.argmin(val), np.shape(val))
+        image[index] = 1
+        return image*self.calculate_stellar_flux(wavelength)
 
     def _visibility_function(self,
                              wavelength: Optional[u.Quantity[u.um]] = None
                              ) -> np.ndarray:
         """The component's _visibility_function."""
-        if self._visibility is None:
-            dim = get_new_dimension(self.params["dim"](),
-                                    OPTIONS["fourier.binning"],
-                                    OPTIONS["fourier.padding"])
-            self._visibility = np.ones((dim, dim))
-
-        return self._visibility*self.caclculate_stellar_flux(wavelength)
+        dim = get_new_dimension(self.params["dim"](),
+                                OPTIONS["fourier.binning"],
+                                OPTIONS["fourier.padding"])
+        return np.ones((dim, dim))*self.calculate_stellar_flux(wavelength).value
 
 
 class TemperatureGradient(NumericalComponent):
@@ -165,7 +159,6 @@ class TemperatureGradient(NumericalComponent):
     def __init__(self, **kwargs):
         """The class's constructor."""
         super().__init__(**kwargs)
-        self.radius = None
         self._stellar_angular_radius = None
 
         self.params["dist"] = Parameter(**STANDARD_PARAMETERS["dist"])
@@ -212,9 +205,8 @@ class TemperatureGradient(NumericalComponent):
         stellar_radius_angular : astropy.units.mas
             The parallax of the stellar radius.
         """
-        if self._stellar_angular_radius is None:
-            self._stellar_angular_radius = distance_to_angular(
-                self.params["eff_radius"](), self.params["dist"]())
+        self._stellar_angular_radius = distance_to_angular(
+            self.params["eff_radius"](), self.params["dist"]())
         return self._stellar_angular_radius
 
     def _get_opacity(self, wavelength: u.um) -> u.cm**2/u.g:
@@ -276,8 +268,9 @@ class TemperatureGradient(NumericalComponent):
                 surface_density *= 1+azimuthal_modulation(
                     xx, yy, self.params["a"]().value,
                     self.params["phi"]().to(u.rad).value)
-
-            thickness = optical_thickness(surface_density, self._get_opacity(wavelength).value)
+            if not self.optically_thick:
+                thickness = optical_thickness(
+                        surface_density, self._get_opacity(wavelength).value)
 
         if self.asymmetric_image:
             brightness *= 1+azimuthal_modulation(
