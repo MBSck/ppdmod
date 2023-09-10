@@ -59,7 +59,8 @@ if __name__ == "__main__":
                            description="Continuum dust mass absorption coefficient")
 
     fov, pixel_size = 220, 0.1
-    dim = utils.get_next_power_of_two(fov / pixel_size)
+    required_dim = utils.get_next_power_of_two(fov / pixel_size)
+    dim = 256
 
     OPTIONS["model.constant_params"] = {
         "dim": dim, "dist": 150, "eff_temp": 7500,
@@ -114,14 +115,17 @@ if __name__ == "__main__":
         ["SymmetricSDGreyBodyContinuum", inner_ring],
         ["AsymmetricSDGreyBodyContinuum", outer_ring],
     ]
-    OPTIONS["fourier.binning"] = 3
-    OPTIONS["fourier.padding"] = 3
-    print("Binned Dimension",
-          dim*2**-OPTIONS["fourier.binning"],
-          "Resolution",
-          pixel_size*2**OPTIONS["fourier.binning"])
-    print("Binned and padded Dimension",
-          dim*2**-OPTIONS["fourier.binning"]*2**OPTIONS["fourier.padding"])
+    # OPTIONS["fourier.binning"] = 3
+    # OPTIONS["fourier.padding"] = 3
+    # print("Binned Dimension",
+    #       dim*2**-OPTIONS["fourier.binning"],
+    #       "Resolution",
+    #       pixel_size*2**OPTIONS["fourier.binning"])
+    # print("Binned and padded Dimension",
+    #       dim*2**-OPTIONS["fourier.binning"]*2**OPTIONS["fourier.padding"])
+
+    OPTIONS["model.matryoshka"] = True
+    OPTIONS["model.matryoshka.binning_factors"] = [2, 1, 2]
 
     labels = inner_ring_labels + outer_ring_labels + shared_params_labels
 

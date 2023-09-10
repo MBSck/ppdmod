@@ -85,6 +85,7 @@ class Model:
         -------
         image : astropy.unity.Jy
         """
+        # TODO: Make this so that all images can be rebinned here.
         image = np.zeros((dim, dim))*u.Jy
         for component in self.components:
             image += component.calculate_image(dim, pixel_size, wavelength)

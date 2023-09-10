@@ -227,14 +227,8 @@ class TemperatureGradient(NumericalComponent):
             opacity = self.params["kappa_abs"](wavelength)
         return opacity
 
-    def _get_radius(self, xx: u.mas, yy: u.mas) -> u.mas:
-        """Calculates the radius."""
-        if self.radius is None:
-            self.radius = np.hypot(xx, yy)
-        return self.radius
-
-    def _image_function(self, xx: u.mas, yy: u.mas,
-                        wavelength: u.um) -> u.Jy:
+    def _image_function(
+            self, xx: u.mas, yy: u.mas, wavelength: u.um) -> u.Jy:
         """Calculates a 2D-image from a dust-surface density- and
         temperature profile.
 
@@ -251,7 +245,7 @@ class TemperatureGradient(NumericalComponent):
         -------
         image : astropy.units.Jy
         """
-        radius, thickness = self._get_radius(xx, yy), 1
+        radius, thickness = np.hypot(xx, yy), 1
         if not np.isinf(self.params["rout"]()):
             radial_profile = np.logical_and(radius > self.params["rin"]().value,
                                             radius < self.params["rout"]().value)

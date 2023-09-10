@@ -7,7 +7,7 @@ from ._spectral_cy import grid
 from .fft import compute_real2Dfourier_transform
 from .parameter import STANDARD_PARAMETERS, Parameter
 from .options import OPTIONS
-from .utils import rebin_image, get_new_dimension
+from .utils import rebin_image, upbin_image, get_new_dimension
 
 
 class Component:
@@ -35,11 +35,8 @@ class Component:
         self.params["dim"] = Parameter(**STANDARD_PARAMETERS["dim"])
         self.params["pixel_size"] = Parameter(
             **STANDARD_PARAMETERS["pixel_size"])
-
-        if any(key in kwargs for key in ["elong", "pa"]) or self.elliptic:
-            self.params["pa"] = Parameter(**STANDARD_PARAMETERS["pa"])
-            self.params["elong"] = Parameter(**STANDARD_PARAMETERS["elong"])
-            self.elliptic = True
+        self.params["pa"] = Parameter(**STANDARD_PARAMETERS["pa"])
+        self.params["elong"] = Parameter(**STANDARD_PARAMETERS["elong"])
         self._eval(**kwargs)
 
     def _eval(self, **kwargs):
@@ -234,24 +231,31 @@ class NumericalComponent(Component):
         """
         if OPTIONS["model.matryoshka"]:
             image = None
+            highest_binning_factor = OPTIONS["model.matryoshka.binning_factors"][0]
+            dim_new = get_new_dimension(dim, highest_binning_factor)
             for binning_factor in OPTIONS["model.matryoshka.binning_factors"]:
                 binning_factor = binning_factor if binning_factor is not None else 0
-                x_arr, y_arr = self._calculate_internal_grid(dim, pixel_size*2**-binning_factor)
-                image_part = rebin_image(self._image_function(x_arr, y_arr, wavelength), binning_factor) 
                 if image is None:
-                    image = image_part
+                    x_arr, y_arr = self._calculate_internal_grid(
+                            dim_new, pixel_size*2**binning_factor)
+                    image_part = self._image_function(x_arr, y_arr, wavelength)
+                    image = upbin_image(image_part, binning_factor)
                 else:
-                    dim = get_new_dimension(dim, binning_factor)
+                    x_arr, y_arr = self._calculate_internal_grid(dim_new, pixel_size*2**-binning_factor)
+                    image_part = self._image_function(x_arr, y_arr, wavelength)
+                    image_part = rebin_image(image_part, binning_factor)
+                    # if binning_factor == OPTIONS["model.matryoshka.binning_factors"][-1]:
+                        # breakpoint()
                     start = (image.shape[0]-image_part.shape[0])//2
-                    end = start + image.shape[0]
+                    end = start + image_part.shape[0]
                     image[start:end, start:end] = image_part
+            # import matplotlib.pyplot as plt
+            # plt.imshow(image.value)
+            # plt.show()
+            # breakpoint()
         else:
             x_arr, y_arr = self._calculate_internal_grid(dim, pixel_size)
-            from line_profiler import LineProfiler
-            lp = LineProfiler()
-            lp_wrapper = lp(self._image_function)
-            image = lp_wrapper(x_arr, y_arr, wavelength)
-            lp.print_stats()
+            image = self._image_function(x_arr, y_arr, wavelength)
         return image
 
     def calculate_complex_visibility(

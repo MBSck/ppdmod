@@ -12,7 +12,7 @@ OPTIONS["data.closure_phase_error"] = []
 # NOTE: Model. The output can either be 'surface_brightness' or ' jansky_px'
 OPTIONS["model.output"] = "jansky_px"
 OPTIONS["model.matryoshka"] = False
-OPTIONS["model.matryoshka.binning_factors"] = [None, 1, 2]
+OPTIONS["model.matryoshka.binning_factors"] = [2, 1, 2]
 OPTIONS["model.components_and_params"] = {}
 OPTIONS["model.constant_params"] = {}
 OPTIONS["model.shared_params"] = {}

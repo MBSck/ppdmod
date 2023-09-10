@@ -254,8 +254,6 @@ def test_upbin_image(binning_factor: int, expected: int) -> None:
     plt.savefig(binning_dir /
                 f"ud_px{px}_dim{dim}_dia{dia}_upbin{binning_factor}.pdf",
                 format="pdf")
-    if binning_factor == 6:
-        plt.show()
     plt.close()
 
     assert ud_image.shape == (dim, dim)

@@ -19,6 +19,10 @@ from ppdmod.utils import opacity_to_matisse_opacity,\
     make_workbook, get_next_power_of_two
 
 
+FLUX_DIR = Path("fluxes")
+if not FLUX_DIR.exists():
+    FLUX_DIR.mdkir()
+
 FLUX_FILE = Path("flux.xlsx")
 FLUX_SHEET = "Fluxes for 13 um"
 
@@ -196,7 +200,8 @@ def test_star_visibility_function(star: Star,
                                         star.params["dim"]())
 
 
-def test_temperature_gradient_init(temp_gradient: TemperatureGradient) -> None:
+def test_temperature_gradient_init(
+        temp_gradient: TemperatureGradient) -> None:
     """Tests the asymmetric's initialization."""
     assert "pa" in temp_gradient.params
     assert "elong" in temp_gradient.params
@@ -208,10 +213,10 @@ def test_temperature_gradient_init(temp_gradient: TemperatureGradient) -> None:
     assert "p" in temp_gradient.params
     assert "inner_sigma" in temp_gradient.params
     assert "kappa_abs" in temp_gradient.params
-    assert "kappa_cont" in asym_continuum_grey_body.params
-    assert "cont_weight" in asym_continuum_grey_body.params
-    assert "a" in asym_temp_gradient.params
-    assert "phi" in asym_temp_gradient.params
+    assert "a" in temp_gradient.params
+    assert "phi" in temp_gradient.params
+    assert "kappa_cont" in temp_gradient.params
+    assert "cont_weight" in temp_gradient.params
 
 
 def test_temperature_gradient_image_function(
@@ -250,6 +255,32 @@ def test_numerical_component_calculate_complex_visibility(
     assert complex_visibility.shape == (binned_dim, binned_dim)
 
 
+def test_calculate_image(wavelength: u.um) -> None:
+    """Tests the image calculation for the normal and the matryoshka method."""
+    rin, pixel_size, dim = 0.5*u.mas, 0.1*u.mas, 1024
+    asym_grey_body = AsymmetricSDGreyBodyContinuum(
+        dist=145, eff_temp=7800, eff_radius=1.8,
+        dim=dim, rin=rin, a=0.3, phi=33,
+        pixel_size=pixel_size.value, pa=45,
+        elong=1.6, inner_sigma=1e-3, kappa_abs=1000,
+        kappa_cont=1500, cont_weight=0.5, p=0.5)
+    asym_grey_body.optically_thick = False
+
+    OPTIONS["model.matryoshka"] = True
+    OPTIONS["model.matryoshka.binning_factors"] = [2, 0, 1]
+
+    image = asym_grey_body.calculate_image(
+            dim, pixel_size, wavelength=wavelength)
+
+    plt.imshow(image.value)
+    plt.title("Temperature Gradient")
+    plt.xlabel("dim [px]")
+    plt.savefig(FLUX_DIR /
+                f"matryoshka_method.pdf", format="pdf")
+    plt.close()
+    OPTIONS["model.matryoshka"] = False
+
+
 # NOTE: Fov 420 is 8192 and 820 is 16xxx
 # (not much change for the lower resolutions).
 @pytest.mark.parametrize(
@@ -258,7 +289,6 @@ def test_numerical_component_calculate_complex_visibility(
                              for pixel_size in range(1, 3)*u.mas/10
                              for fov in [20, 40, 60, 120, 220]])
 def test_flux_resolution(
-        star_parameters: Dict[str, Parameter],
         rin: u.mas, pixel_size: u.mas,
         fov: int, wavelength: u.um) -> None:
     """Tests the resolution of the flux for different pixel sizes
@@ -268,10 +298,12 @@ def test_flux_resolution(
         dist=145, eff_temp=7800, eff_radius=1.8,
         dim=dim, rin=rin, a=0.3, phi=33,
         pixel_size=pixel_size.value, pa=45,
-        elong=1.6, inner_sigma=2000, kappa_abs=1000,
-        kappa_cont=3000, cont_weight=0.5, p=0.5)
-    asym_grey_body.optically_thick = True
-    image = asym_grey_body.calculate_image(wavelength=wavelength)
+        elong=1.6, inner_sigma=1e-3, kappa_abs=1000,
+        kappa_cont=1500, cont_weight=0.5, p=0.5)
+    asym_grey_body.optically_thick = False
+
+    image = asym_grey_body.calculate_image(
+            dim, pixel_size, wavelength=wavelength)
     flux = np.nansum(image)
 
     data = {"FOV [mas]": [fov],
@@ -290,14 +322,10 @@ def test_flux_resolution(
                         mode="a", if_sheet_exists="replace") as writer:
         df.to_excel(writer, sheet_name=FLUX_SHEET, index=False)
 
-    plot_path = Path("fluxes")
-    if not plot_path.exists():
-        plot_path.mkdir()
-
     plt.imshow(image.value)
     plt.title("Temperature Gradient")
     plt.xlabel("dim [px]")
-    plt.savefig(plot_path /
+    plt.savefig(FLUX_DIR /
                 f"temperature_gradient_dim{dim}_rin{rin.value}_px{pixel_size.value}.pdf",
                 format="pdf")
     plt.close()
@@ -336,3 +364,40 @@ def test_assemble_components() -> None:
     assert all([components[1].params[name].min,
                 components[1].params[name].max] == limit
                for name, limit in zip(param_names, limits))
+
+
+def test_assemble_components() -> None:
+    """Tests the model's assemble_model method."""
+    param_names = ["rin", "p", "a", "phi",
+                   "cont_weight", "pa", "elong"]
+    values = [1.5, 0.5, 0.3, 33, 0.2, 45, 1.6]
+    limits = [[0, 20], [0, 1], [0, 1],
+              [0, 360], [0, 1], [0, 360], [1, 50]]
+    params = {name: Parameter(**STANDARD_PARAMETERS[name])
+              for name in param_names}
+    for value, limit, param in zip(values, limits, params.values()):
+        param.set(*limit)
+        param.value = value
+    shared_params = {"p": params["p"]}
+    del params["p"]
+
+    components_and_params = [["Star", params],
+                             ["AsymmetricSDGreyBodyContinuum", params]]
+    components = assemble_components(components_and_params, shared_params)
+    assert isinstance(components[0], Star)
+    assert isinstance(components[1], AsymmetricSDGreyBodyContinuum)
+    assert all(param not in components[0].params
+               for param in param_names if param not in ["pa", "elong"])
+    assert all(param in components[1].params for param in param_names)
+    assert all(components[1].params[name].value == value
+               for name, value in zip(["pa", "elong"], values[-2:]))
+    assert all(components[1].params[name].value == value
+               for name, value in zip(param_names, values))
+    assert all([components[0].params[name].min,
+                components[0].params[name].max] == limit
+               for name, limit in zip(["pa", "elong"], limits[-2:]))
+    assert all([components[1].params[name].min,
+                components[1].params[name].max] == limit
+               for name, limit in zip(param_names, limits))
+
+
