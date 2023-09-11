@@ -297,11 +297,11 @@ def test_calculate_const_temperature(
 
     cython_temp, cython_et = utils.take_time_average(
             _spectral_cy.const_temperature,
-            *(radius.value, stellar_radius_angular.value, stellar_temperature.value))
+            *(radius, stellar_radius_angular.value, stellar_temperature.value))
 
     python_temp, python_et = utils.take_time_average(
             calculate_temperature_profile, 
-            *(radius, distance_star, stellar_radius,
+            *(radius*u.mas, distance_star, stellar_radius,
              stellar_temperature, inner_temperature, inner_radius, q, True))
 
     data = {"Dimension [px]": [dim],
@@ -334,11 +334,11 @@ def test_calculate_temperature_power_law(
 
     cython_temp, cython_et = utils.take_time_average(
             _spectral_cy.temperature_power_law,
-            *(radius.value, inner_temperature.value, inner_radius.value, q))
+            *(radius, inner_temperature.value, inner_radius.value, q))
 
     python_temp, python_et = utils.take_time_average(
             calculate_temperature_profile,
-            *(radius, distance_star, stellar_radius,
+            *(radius*u.mas, distance_star, stellar_radius,
              stellar_temperature, inner_temperature, inner_radius, q, False))
 
     data = {"Dimension [px]": [dim],
@@ -368,10 +368,10 @@ def test_calculate_azimuthal_modulation(dim: int) -> None:
 
     cython_mod, cython_et = utils.take_time_average(
             _spectral_cy.azimuthal_modulation,
-            *(xx.value, yy.value, a.value, phi.to(u.rad).value))
+            *(xx, yy, a.value, phi.to(u.rad).value))
 
     python_mod, python_et = utils.take_time_average(
-            calculate_azimuthal_modulation, *(xx, yy, a, phi))
+            calculate_azimuthal_modulation, *(xx*u.mas, yy*u.mas, a, phi))
 
     data = {"Dimension [px]": [dim],
             "Python Time [s]": [python_et],
@@ -402,11 +402,11 @@ def test_calculate_surface_density(
 
     cython_surface, cython_et = utils.take_time_average(
             _spectral_cy.surface_density_profile,
-            *(radius.value, inner_radius.value, inner_sigma.value, p))
+            *(radius, inner_radius.value, inner_sigma.value, p))
 
     python_surface, python_et = utils.take_time_average(
             calculate_surface_density_profile,
-            *(radius, inner_radius, inner_sigma, p))
+            *(radius*u.mas, inner_radius, inner_sigma, p))
 
     data = {"Dimension [px]": [dim],
             "Python Time [s]": [python_et],
@@ -436,9 +436,9 @@ def test_calculate_optical_thickness(
     xx, yy = numerical_component._calculate_internal_grid()
     radius = np.hypot(xx, yy)
     cython_surface = _spectral_cy.surface_density_profile(
-        radius.value, inner_radius.value, inner_sigma.value, p)
+        radius, inner_radius.value, inner_sigma.value, p)
     python_surface = calculate_surface_density_profile(
-        radius, inner_radius, inner_sigma, p)
+        radius*u.mas, inner_radius, inner_sigma, p)
 
     cython_optical_thickness, cython_et = utils.take_time_average(
             _spectral_cy.optical_thickness,
@@ -480,11 +480,10 @@ def test_calculate_intensity(
         utils.distance_to_angular(stellar_radius.to(u.m), distance_star)
 
     cython_temp = _spectral_cy.const_temperature(
-        radius.value,
-        stellar_radius_angular.value,
+        radius, stellar_radius_angular.value,
         stellar_temperature.value)
     python_temp = calculate_temperature_profile(
-        radius, distance_star, stellar_radius,
+        radius*u.mas, distance_star, stellar_radius,
         stellar_temperature, inner_temperature, inner_radius, q, True)
 
     cython_intensity, cython_et = utils.take_time_average(
