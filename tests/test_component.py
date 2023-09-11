@@ -9,6 +9,11 @@ from ppdmod.component import Component, AnalyticalComponent, NumericalComponent
 from ppdmod.parameter import STANDARD_PARAMETERS, Parameter
 
 
+COMPONENT_DIR = Path("component")
+if not COMPONENT_DIR.exists():
+    COMPONENT_DIR.mkdir()
+
+
 @pytest.fixture
 def component() -> Component:
     """Initializes a component."""
@@ -29,7 +34,7 @@ def numerical_component() -> NumericalComponent:
 
 def test_component(component: Component) -> None:
     """Tests if the initialization of the component works."""
-    assert len(component.params) == 4
+    assert len(component.params) == 6
     assert component.params["x"]() == 0*u.mas
     assert component.params["y"]() == 0*u.mas
     assert component.params["dim"]() == 128
@@ -49,59 +54,56 @@ def test_eval(component: Component) -> None:
 # TODO: Make image of both radius to infinity and rotated with finite radius.
 def test_radius_calculation(component: Component) -> None:
     """Tests if the radius calculated from the grid works."""
-    component_dir = Path("component")
-    if not component_dir.exists():
-        component_dir.mkdir()
-
     grid = component._calculate_internal_grid()
-    plt.imshow(np.hypot(*grid).value)
+    plt.imshow(np.hypot(*grid))
     plt.title("Image space")
     plt.xlabel("dim [px]")
-    plt.savefig(component_dir / "grid_automatic.pdf", format="pdf")
+    plt.savefig(COMPONENT_DIR / "grid_automatic.pdf", format="pdf")
     plt.close()
 
-    dim, pixel_size = 512, 0.1
-    plt.imshow(np.hypot(*grid).value)
+    dim, pixel_size = 512, 0.1*u.mas
+    plt.imshow(np.hypot(*grid))
     plt.title("Image space")
     plt.xlabel("dim [px]")
-    plt.savefig(component_dir / "grid_manual.pdf", format="pdf")
+    plt.savefig(COMPONENT_DIR / "grid_manual.pdf", format="pdf")
     plt.close()
 
     grid = component._calculate_internal_grid(dim, pixel_size)
-    radius = np.hypot(*grid).value
+    radius = np.hypot(*grid)
     radial_profile = np.logical_and(radius > 2, radius < 10)
     plt.imshow(radius*radial_profile)
     plt.title("Image space")
     plt.xlabel("dim [px]")
-    plt.savefig(component_dir / "grid_manual_ring.pdf", format="pdf")
+    plt.savefig(COMPONENT_DIR / "grid_manual_ring.pdf", format="pdf")
     plt.close()
 
     elliptical_component = Component(pa=33, elong=0.6)
+    elliptical_component.elliptic = True
     assert elliptical_component.elliptic
     assert elliptical_component.params["pa"]() == 33*u.deg
     assert elliptical_component.params["elong"]() == 0.6*u.one
 
     grid = elliptical_component._calculate_internal_grid()
-    plt.imshow(np.hypot(*grid).value)
+    plt.imshow(np.hypot(*grid))
     plt.title("Image space")
     plt.xlabel("dim [px]")
-    plt.savefig(component_dir / "elliptic_grid_automatic.pdf", format="pdf")
+    plt.savefig(COMPONENT_DIR / "elliptic_grid_automatic.pdf", format="pdf")
     plt.close()
 
     grid = elliptical_component._calculate_internal_grid(dim, pixel_size)
-    plt.imshow(np.hypot(*grid).value)
+    plt.imshow(np.hypot(*grid))
     plt.title("Image space")
     plt.xlabel("dim [px]")
-    plt.savefig(component_dir / "elliptic_grid_manual.pdf", format="pdf")
+    plt.savefig(COMPONENT_DIR / "elliptic_grid_manual.pdf", format="pdf")
     plt.close()
 
     grid = elliptical_component._calculate_internal_grid(dim, pixel_size)
-    radius = np.hypot(*grid).value
+    radius = np.hypot(*grid)
     radial_profile = np.logical_and(radius > 2, radius < 10)
     plt.imshow(radius*radial_profile)
     plt.title("Image space")
     plt.xlabel("dim [px]")
-    plt.savefig(component_dir / "elliptic_grid_manual_ring.pdf", format="pdf")
+    plt.savefig(COMPONENT_DIR / "elliptic_grid_manual_ring.pdf", format="pdf")
     plt.close()
 
 

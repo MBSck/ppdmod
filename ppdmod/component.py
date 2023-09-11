@@ -66,9 +66,17 @@ class Component:
         yy : astropy.units.mas
             The y-coordinate grid.
         """
+        dim = self.params["dim"]() if dim is None else dim
+        pixel_size = self.params["pixel_size"]()\
+            if pixel_size is None else pixel_size
+        dim = u.Quantity(value=dim, unit=u.one, dtype=int)
+        pixel_size = u.Quantity(value=pixel_size, unit=u.mas)
+
+        elong, pa = self.params["elong"](), self.params["pa"]()
+        elong = elong.value if elong is not None else elong
+        pa = pa.value if pa is not None else pa
         return grid(dim, pixel_size.value,
-                    self.params["elong"]().value,
-                    self.params["pa"]().to(u.rad).value, self.elliptic)
+                    elong, pa, self.elliptic)
 
     def _translate_fourier_transform(self, ucoord: u.m, vcoord: u.m,
                                      wavelength: u.um) -> u.one:
