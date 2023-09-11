@@ -41,7 +41,6 @@ make_workbook(
         TIME_SHEET: ["Diameter [mas]",
                      "Dimension [px]",
                      "Numpy FFT Time [s]",
-                     "Numpy RFFT Time [s]",
                      "Jax FFT Time [s]"],
     })
 
@@ -495,13 +494,6 @@ def test_numpy_vs_scipy_vs_fftw(diameter: u.mas, dim: float,
     image_bin = binary(dim, pixel_size, flux1, flux2, position1, position2)
 
     OPTIONS["fourier.backend"] = "numpy"
-    OPTIONS["fourier.method"] = "real"
-    numpy_rfft_ud, et_numpy_rfft = utils.take_time_average(
-            compute_real2Dfourier_transform, image_ud)
-    numpy_rfft_bin = compute_real2Dfourier_transform(image_bin)
-    OPTIONS["fourier.method"] = "complex"
-
-    OPTIONS["fourier.backend"] = "numpy"
     numpy_fft_ud, et_numpy_fft = utils.take_time_average(
             compute_real2Dfourier_transform, image_ud)
     numpy_fft_bin = compute_real2Dfourier_transform(image_bin)
@@ -511,10 +503,8 @@ def test_numpy_vs_scipy_vs_fftw(diameter: u.mas, dim: float,
             compute_real2Dfourier_transform, image_ud)
     jax_fft_bin = compute_real2Dfourier_transform(image_bin)
 
-    _, axarr = plt.subplots(6, 2)
-    for index, (name, fft) in enumerate([("Numpy RFFT UD", numpy_rfft_ud),
-                                         ("Numpy RFFT Bin", numpy_rfft_bin),
-                                         ("Numpy FFT UD", numpy_fft_ud),
+    _, axarr = plt.subplots(4, 2)
+    for index, (name, fft) in enumerate([("Numpy FFT UD", numpy_fft_ud),
                                          ("Numpy FFT Bin", numpy_fft_bin),
                                          ("Jax FFT UD", jax_fft_ud),
                                          ("Jax FFT Bin", jax_fft_bin)]):
@@ -533,7 +523,6 @@ def test_numpy_vs_scipy_vs_fftw(diameter: u.mas, dim: float,
     data = {"Diameter [mas]": [diameter.value],
             "Dimension [px]": [dim],
             "Numpy FFT Time [s]": [et_numpy_fft],
-            "Numpy RFFT Time [s]": [et_numpy_rfft],
             "Jax FFT Time [s]": [et_jax_fft]}
 
     if RESOLUTION_FILE.exists():
@@ -557,6 +546,8 @@ def test_numpy_vs_scipy_vs_fftw(diameter: u.mas, dim: float,
         diff_bin = np.abs(ang1_bin-ang2_bin)
         indices_ud = np.where(diff_ud > 1e-4)
         indices_bin = np.where(diff_bin > 1e-4)
+        if not all(index > 200*u.m for index in np.abs(freq_axis[indices_ud[1]])):
+            breakpoint()
         assert all(index > 200*u.m for index in np.abs(freq_axis[indices_ud[0]]))
         assert all(index > 200*u.m for index in np.abs(freq_axis[indices_ud[1]]))
         assert all(index > 200*u.m for index in np.abs(freq_axis[indices_bin[0]]))
