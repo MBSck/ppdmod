@@ -34,8 +34,7 @@ wavelength_axes = list(
 wavelength_axes = np.sort(np.unique(np.concatenate(wavelength_axes)))
 
 weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
-# qval_file_dir = Path("/data/beegfs/astro-storage/groups/matisse/scheuck/data/QVAL")
-qval_file_dir = Path("/Users/scheuck/Data/opacities/QVAL")
+qval_file_dir = Path("/tests/data/qval")
 qval_files = ["Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat",
               "Q_Am_Mgolivine_Jae_DHS_f1.0_rv1.5.dat",
               "Q_Am_Mgpyroxene_Dor_DHS_f1.0_rv1.5.dat",
