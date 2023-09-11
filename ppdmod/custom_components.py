@@ -92,11 +92,11 @@ class Star(AnalyticalComponent):
         -------
         image : astropy.units.Quantity, optional
         """
-        image = np.zeros(xx.shape)
-        val = np.abs(xx)+np.abs(yy)
-        index = np.unravel_index(np.argmin(val), np.shape(val))
-        image[index] = 1
-        return image*self.calculate_stellar_flux(wavelength)
+        image = np.zeros(xx.shape)*u.Jy
+        centre = xx.shape[0]//2
+        star_flux = self.calculate_stellar_flux(wavelength)/4
+        image[centre-1:centre+1, centre-1:centre+1] = star_flux
+        return image
 
     def _visibility_function(self,
                              wavelength: Optional[u.Quantity[u.um]] = None
@@ -277,8 +277,8 @@ class TemperatureGradient(NumericalComponent):
                 xx, yy, self.params["a"]().value,
                 self.params["phi"]().to(u.rad).value)
         image = radial_profile*brightness*thickness
-
         image = np.nan_to_num(image, nan=0)
+
         if OPTIONS["fourier.binning"] is not None:
             image = rebin_image(image, OPTIONS["fourier.binning"])
         if OPTIONS["fourier.padding"] is not None:

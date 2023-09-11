@@ -254,7 +254,7 @@ def test_numerical_component_calculate_complex_visibility(
     assert np.all(complex_visibility != 0)
     assert complex_visibility.shape == (binned_dim, binned_dim)
 
-
+# TODO: Include more tests that also check fo different dimensions and such.
 def test_calculate_image(wavelength: u.um) -> None:
     """Tests the image calculation for the normal and the matryoshka method."""
     rin, pixel_size, dim = 0.5*u.mas, 0.1*u.mas, 1024

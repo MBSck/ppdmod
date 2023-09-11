@@ -254,8 +254,9 @@ def lnprob(theta: np.ndarray) -> float:
         return -np.inf
 
     components = assemble_components(parameters, shared_params)
-    # HACK: This is to include innermost radius for rn.
 
+    # HACK: This is to include innermost radius for rn.
+    # TODO: Set this option in the options.
     innermost_radius = components[1].params["rin"]
     for component in components:
         component.params["rin0"] = innermost_radius

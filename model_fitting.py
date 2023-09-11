@@ -1,6 +1,6 @@
 import os
+from datetime import datetime
 from pathlib import Path
-from pprint import pprint
 
 import astropy.units as u
 import numpy as np
@@ -83,7 +83,7 @@ rin = Parameter(**STANDARD_PARAMETERS["rin"])
 a = Parameter(**STANDARD_PARAMETERS["a"])
 phi = Parameter(**STANDARD_PARAMETERS["phi"])
 
-rin.set(min=7, max=50)
+rin.set(min=2, max=50)
 a.set(min=0., max=1.)
 phi.set(min=0, max=360)
 
@@ -100,7 +100,7 @@ p.set(min=0., max=1.)
 pa.set(min=0, max=360)
 elong.set(min=0, max=1)
 cont_weight.set(min=0., max=1.)
-inner_sigma.set(min=0, max=1e-3)
+inner_sigma.set(min=0, max=1e-2)
 
 OPTIONS["model.shared_params"] = {"p": p, "pa": pa, "elong": elong,
                                   "inner_sigma": inner_sigma,
@@ -128,31 +128,40 @@ OPTIONS["model.matryoshka.binning_factors"] = [4, 0, 1]
 
 labels = inner_ring_labels + outer_ring_labels + shared_params_labels
 
-result_dir = Path("results_model_nsteps2500_nwalkers100")
-if not result_dir.exists():
-    result_dir.mkdir()
-
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 500, 2000, 35
-    theta = mcmc.init_randomly(nwalkers)[10]
-    sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin, ncores=25)
-    theta = mcmc.get_best_fit(sampler, discard=nburnin)
-    np.save(result_dir / "best_fit_params.npy", theta)
+    nburnin, nsteps, nwalkers = 0, 50, 35
+
+    model_result_dir = Path("/Users/scheuck/Data/model_results/")
+    day_dir = model_result_dir / str(datetime.now().date())
+    result_dir = day_dir / f"results_model_nsteps{nburnin+nsteps}_nwalkers{nwalkers}"
+    if not result_dir.exists():
+        result_dir.mkdir(parents=True)
+
+    # sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin, ncores=nwalkers//2)
+    # theta = mcmc.get_best_fit(sampler, discard=nburnin)
+    # np.save(result_dir / "best_fit_params.npy", theta)
+    theta = np.load(result_dir / "best_fit_params.npy")
     new_params = dict(zip(labels, theta))
 
-    plot.plot_chains(sampler, labels, discard=nburnin, savefig=result_dir / "chains.pdf")
-    plot.plot_corner(sampler, labels, discard=nburnin, savefig=result_dir / "corner.pdf")
+    # plot.plot_chains(sampler, labels, discard=nburnin, savefig=result_dir / "chains.pdf")
+    # plot.plot_corner(sampler, labels, discard=nburnin, savefig=result_dir / "corner.pdf")
     # OPTIONS["fourier.binning"] = None
     # OPTIONS["fourier.padding"] = None
     OPTIONS["model.matryoshka"] = False
-
+    wavelength = OPTIONS["fit.wavelengths"][1]
     components_and_params, shared_params = mcmc.set_params_from_theta(theta)
     components = custom_components.assemble_components(
         components_and_params, shared_params)
+
+    # HACK: This is to include innermost radius for rn.
+    innermost_radius = components[1].params["rin"]
+    for component in components:
+        component.params["rin0"] = innermost_radius
+
     m = model.Model(components)
-    plot.plot_model(4096, 0.1, m, OPTIONS["fit.wavelengths"][1],
-                    savefig=result_dir / "model.pdf")
+    plot.plot_model(4096, 0.1, m, wavelength, zoom=None,
+                    savefig=None)
     plot.plot_observed_vs_model(m, 0.1*u.mas, new_params["sh_elong"],
                                 new_params["sh_pa"],
                                 savefig=result_dir / "fit_results.pdf")

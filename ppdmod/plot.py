@@ -77,6 +77,7 @@ def plot_chains(sampler: np.ndarray, labels: List[str],
 # TODO: Make inverse plot function from inverse fft.
 def plot_model(dim: int, pixel_size: u.mas,
                model: Model, wavelength: u.um,
+               zoom: Optional[float] = None,
                savefig: Optional[Path] = None) -> None:
     """Plots the model."""
     pixel_size = pixel_size.value\
@@ -88,6 +89,9 @@ def plot_model(dim: int, pixel_size: u.mas,
     plt.imshow(image, vmax=disk_max,
                extent=(-ax_extent, ax_extent,
                        -ax_extent, ax_extent))
+    if zoom is not None:
+        plt.xlim([-zoom, zoom])
+        plt.ylim([-zoom, zoom])
     plt.title(f"Best fit model at {wavelength:.2f}")
     plt.xlabel(r"$\alpha$ (mas)")
     plt.ylabel(r"$\delta$ (mas)")
