@@ -277,21 +277,24 @@ class NumericalComponent(Component):
                     x_arr, y_arr = self._calculate_internal_grid(
                             new_dim, pixel_size*2**binning_factor)
                     image_part = self._image_function(x_arr, y_arr, wavelength)
-                    image = upbin_image(image_part, binning_factor)
+                    image = upbin_image(image_part, binning_factor)\
+                            * (2**binning_factor*2**binning_factor)
                 else:
-                    x_arr, y_arr = self._calculate_internal_grid(new_dim, pixel_size*2**-binning_factor)
+                    x_arr, y_arr = self._calculate_internal_grid(
+                            new_dim, pixel_size*2**-binning_factor)
                     image_part = self._image_function(x_arr, y_arr, wavelength)
                     image_part = rebin_image(image_part, binning_factor)
                     start = (image.shape[0]-image_part.shape[0])//2
                     end = start + image_part.shape[0]
-                    image[start:end, start:end] = image_part
+                    image[start:end, start:end] =\
+                            image_part/(2**binning_factor*2**binning_factor)
         else:
             x_arr, y_arr = self._calculate_internal_grid(dim, pixel_size)
             image = self._image_function(x_arr, y_arr, wavelength)
-            if OPTIONS["fourier.binning"] is not None:
-                image = rebin_image(image, OPTIONS["fourier.binning"])
-            if OPTIONS["fourier.padding"] is not None:
-                image = pad_image(image, OPTIONS["fourier.padding"])
+        if OPTIONS["fourier.binning"] is not None:
+            image = rebin_image(image, OPTIONS["fourier.binning"])
+        if OPTIONS["fourier.padding"] is not None:
+            image = pad_image(image, OPTIONS["fourier.padding"])
         return image
 
     def calculate_complex_visibility(

@@ -67,14 +67,13 @@ OPTIONS["model.constant_params"] = {
 
 rin = Parameter(**STANDARD_PARAMETERS["rin"])
 rout = Parameter(**STANDARD_PARAMETERS["rout"])
-a = Parameter(**STANDARD_PARAMETERS["a"])
-phi = Parameter(**STANDARD_PARAMETERS["phi"])
 
-rin.set(min=0, max=2)
-rout.set(min=2, max=7)
+rin.value = 3.33
+rout.value = 7.
+
+rin.set(min=3, max=6)
+rout.set(min=6, max=10)
 rout.free = True
-a.set(min=0., max=1.)
-phi.set(min=0, max=360)
 
 inner_ring = {"rin": rin, "rout": rout}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
@@ -83,7 +82,11 @@ rin = Parameter(**STANDARD_PARAMETERS["rin"])
 a = Parameter(**STANDARD_PARAMETERS["a"])
 phi = Parameter(**STANDARD_PARAMETERS["phi"])
 
-rin.set(min=2, max=50)
+rin.value = 13
+a.value = 0.5
+phi.value = 130
+
+rin.set(min=7, max=30)
 a.set(min=0., max=1.)
 phi.set(min=0, max=360)
 
@@ -95,6 +98,12 @@ pa = Parameter(**STANDARD_PARAMETERS["pa"])
 elong = Parameter(**STANDARD_PARAMETERS["elong"])
 cont_weight = Parameter(**STANDARD_PARAMETERS["cont_weight"])
 inner_sigma = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
+
+p.value = 0.5
+pa.value = 145
+elong.value = 0.5
+cont_weight.value = 130
+inner_sigma.value = 1e-3
 
 p.set(min=0., max=1.)
 pa.set(min=0, max=360)
@@ -128,6 +137,14 @@ OPTIONS["model.matryoshka.binning_factors"] = [4, 0, 1]
 
 labels = inner_ring_labels + outer_ring_labels + shared_params_labels
 
+OPTIONS["fouier.binning"] = 3
+
+components = custom_components.assemble_components(
+    OPTIONS["model.components_and_params"], OPTIONS["model.shared_params"])
+m = model.Model(components)
+plot.plot_model(4096, 0.1, m, OPTIONS["fit.wavelengths"][-1], zoom=None)
+breakpoint()
+
 
 if __name__ == "__main__":
     nburnin, nsteps, nwalkers = 0, 50, 35
@@ -138,10 +155,9 @@ if __name__ == "__main__":
     if not result_dir.exists():
         result_dir.mkdir(parents=True)
 
-    # sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin, ncores=nwalkers//2)
-    # theta = mcmc.get_best_fit(sampler, discard=nburnin)
-    # np.save(result_dir / "best_fit_params.npy", theta)
-    theta = np.load(result_dir / "best_fit_params.npy")
+    sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin, ncores=nwalkers//2)
+    theta = mcmc.get_best_fit(sampler, discard=nburnin)
+    np.save(result_dir / "best_fit_params.npy", theta)
     new_params = dict(zip(labels, theta))
 
     # plot.plot_chains(sampler, labels, discard=nburnin, savefig=result_dir / "chains.pdf")
