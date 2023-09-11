@@ -85,9 +85,9 @@ class Model:
         -------
         image : astropy.unity.Jy
         """
-        dim = get_new_dimension(
+        new_dim = get_new_dimension(
                 dim, OPTIONS["fourier.binning"], OPTIONS["fourier.padding"])
-        image = np.zeros((dim, dim))*u.Jy
+        image = np.zeros((new_dim, new_dim))*u.Jy
         for component in self.components:
             image += component.calculate_image(dim, pixel_size, wavelength)
         return image

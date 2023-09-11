@@ -137,7 +137,7 @@ OPTIONS["model.matryoshka.binning_factors"] = [4, 0, 1]
 
 labels = inner_ring_labels + outer_ring_labels + shared_params_labels
 
-OPTIONS["fouier.binning"] = 3
+OPTIONS["fourier.binning"] = 3
 
 components = custom_components.assemble_components(
     OPTIONS["model.components_and_params"], OPTIONS["model.shared_params"])
