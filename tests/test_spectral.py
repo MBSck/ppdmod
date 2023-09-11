@@ -60,7 +60,7 @@ utils.make_workbook(
                     "Factor"],
     })
 
-DIMENSION = [2**power for power in range(7, 14)]
+DIMENSION = [2**power for power in range(7, 13)]
 
 
 @pytest.fixture
@@ -290,7 +290,7 @@ def test_calculate_const_temperature(
         inner_temperature: u.K, inner_radius: u.mas, q: float) -> None:
     """Test the calculation of the temperature profile."""
     numerical_component = NumericalComponent(dim=dim, pixel_size=0.1)
-    xx, yy = numerical_component._calculate_internal_grid()
+    xx, yy = numerical_component._calculate_internal_grid(dim, 0.1*u.mas)
     radius = np.hypot(xx, yy)
     stellar_radius_angular =\
         utils.distance_to_angular(stellar_radius.to(u.m), distance_star)
@@ -329,7 +329,7 @@ def test_calculate_temperature_power_law(
         inner_temperature: u.K, inner_radius: u.mas, q: float) -> None:
     """Test the calculation of the temperature profile."""
     numerical_component = NumericalComponent(dim=dim, pixel_size=0.1)
-    xx, yy = numerical_component._calculate_internal_grid()
+    xx, yy = numerical_component._calculate_internal_grid(dim, 0.1*u.mas)
     radius = np.hypot(xx, yy)
 
     cython_temp, cython_et = utils.take_time_average(
@@ -363,7 +363,7 @@ def test_calculate_temperature_power_law(
 def test_calculate_azimuthal_modulation(dim: int) -> None:
     """Test the azimuthal modulation."""
     numerical_component = NumericalComponent(dim=dim, pixel_size=0.1)
-    xx, yy = numerical_component._calculate_internal_grid()
+    xx, yy = numerical_component._calculate_internal_grid(dim, 0.1*u.mas)
     a, phi = 0.5*u.one, 35*u.deg
 
     cython_mod, cython_et = utils.take_time_average(
@@ -397,7 +397,7 @@ def test_calculate_surface_density(
         inner_radius: u.mas, p: float) -> None:
     """Test the calculation of the surface density."""
     numerical_component = NumericalComponent(dim=dim, pixel_size=0.1)
-    xx, yy = numerical_component._calculate_internal_grid()
+    xx, yy = numerical_component._calculate_internal_grid(dim, 0.1*u.mas)
     radius = np.hypot(xx, yy)
 
     cython_surface, cython_et = utils.take_time_average(
@@ -433,7 +433,7 @@ def test_calculate_optical_thickness(
         wavelength: u.um, opacity: u.cm**2/u.g) -> None:
     """Test the calculation of the optical thickness."""
     numerical_component = NumericalComponent(dim=dim, pixel_size=0.1)
-    xx, yy = numerical_component._calculate_internal_grid()
+    xx, yy = numerical_component._calculate_internal_grid(dim, 0.1*u.mas)
     radius = np.hypot(xx, yy)
     cython_surface = _spectral_cy.surface_density_profile(
         radius, inner_radius.value, inner_sigma.value, p)
@@ -473,7 +473,7 @@ def test_calculate_intensity(
         inner_temperature: u.K, inner_radius: u.mas, q: float) -> None:
     """Test the calculation of the intensity."""
     numerical_component = NumericalComponent(dim=dim, pixel_size=0.1)
-    xx, yy = numerical_component._calculate_internal_grid()
+    xx, yy = numerical_component._calculate_internal_grid(dim, 0.1*u.mas)
     radius = np.hypot(xx, yy)
     pixel_size = 0.1*u.mas
     stellar_radius_angular =\

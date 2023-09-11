@@ -59,27 +59,20 @@ def test_eval(component: Component) -> None:
 # TODO: Make image of both radius to infinity and rotated with finite radius.
 def test_radius_calculation(component: Component) -> None:
     """Tests if the radius calculated from the grid works."""
-    grid = component._calculate_internal_grid()
-    plt.imshow(np.hypot(*grid))
-    plt.title("Image space")
-    plt.xlabel("dim [px]")
-    plt.savefig(COMPONENT_DIR / "grid_automatic.pdf", format="pdf")
-    plt.close()
-
     dim, pixel_size = 512, 0.1*u.mas
+    grid = component._calculate_internal_grid(dim, pixel_size)
     plt.imshow(np.hypot(*grid))
     plt.title("Image space")
     plt.xlabel("dim [px]")
-    plt.savefig(COMPONENT_DIR / "grid_manual.pdf", format="pdf")
+    plt.savefig(COMPONENT_DIR / "grid.pdf", format="pdf")
     plt.close()
 
-    grid = component._calculate_internal_grid(dim, pixel_size)
     radius = np.hypot(*grid)
     radial_profile = np.logical_and(radius > 2, radius < 10)
     plt.imshow(radius*radial_profile)
     plt.title("Image space")
     plt.xlabel("dim [px]")
-    plt.savefig(COMPONENT_DIR / "grid_manual_ring.pdf", format="pdf")
+    plt.savefig(COMPONENT_DIR / "grid_ring.pdf", format="pdf")
     plt.close()
 
     elliptical_component = Component(pa=33, elong=0.6)
@@ -88,27 +81,19 @@ def test_radius_calculation(component: Component) -> None:
     assert elliptical_component.params["pa"]() == 33*u.deg
     assert elliptical_component.params["elong"]() == 0.6*u.one
 
-    grid = elliptical_component._calculate_internal_grid()
-    plt.imshow(np.hypot(*grid))
-    plt.title("Image space")
-    plt.xlabel("dim [px]")
-    plt.savefig(COMPONENT_DIR / "elliptic_grid_automatic.pdf", format="pdf")
-    plt.close()
-
     grid = elliptical_component._calculate_internal_grid(dim, pixel_size)
     plt.imshow(np.hypot(*grid))
     plt.title("Image space")
     plt.xlabel("dim [px]")
-    plt.savefig(COMPONENT_DIR / "elliptic_grid_manual.pdf", format="pdf")
+    plt.savefig(COMPONENT_DIR / "elliptic_grid.pdf", format="pdf")
     plt.close()
 
-    grid = elliptical_component._calculate_internal_grid(dim, pixel_size)
     radius = np.hypot(*grid)
     radial_profile = np.logical_and(radius > 2, radius < 10)
     plt.imshow(radius*radial_profile)
     plt.title("Image space")
     plt.xlabel("dim [px]")
-    plt.savefig(COMPONENT_DIR / "elliptic_grid_manual_ring.pdf", format="pdf")
+    plt.savefig(COMPONENT_DIR / "elliptic_grid_ring.pdf", format="pdf")
     plt.close()
 
 
@@ -135,25 +120,25 @@ def test_analytic_component_init(analytic_component: AnalyticalComponent) -> Non
 
     assert "pa" in analytic_component.params
     assert "elong" in analytic_component.params
-    assert analytic_component.calculate_image(512).size > 0
+    assert analytic_component.calculate_image(512, 0.1*u.mas).size > 0
 
 
 def test_analytic_component_calculate_image_function(
         analytic_component: AnalyticalComponent) -> None:
     """Tests if the visibility function returns None."""
-    assert analytic_component._image_function(None, None) is None
+    assert analytic_component._image_function(None, None, None) is None
 
 
 def test_analytic_component_calculate_visibility_function(
         analytic_component: AnalyticalComponent) -> None:
     """Tests if the visibility function returns None."""
-    assert analytic_component._visibility_function() is None
+    assert analytic_component._visibility_function(None, None, None) is None
 
 
 def test_analytical_component_calculate_image(
         analytic_component: AnalyticalComponent) -> None:
     """Tests the analytical component's image calculation."""
-    assert analytic_component.calculate_image(512, 0.1) is None
+    assert analytic_component.calculate_image(512, 0.1*u.mas) is None
 
 
 def test_analytical_component_calculate_complex_visibility(
@@ -185,4 +170,4 @@ def test_numerical_component_calculate_complex_visibility(
     # NOTE: Raises attribute error here as image is not calculated
     # and None has no value attribute.
     with pytest.raises(AttributeError) as e_info:
-        numerical_component.calculate_complex_visibility(8*u.um)
+        numerical_component.calculate_complex_visibility(wavelength=8*u.um)

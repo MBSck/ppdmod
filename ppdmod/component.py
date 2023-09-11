@@ -1,4 +1,5 @@
 from typing import Optional, Tuple
+from warnings import warn
 
 import astropy.units as u
 import numpy as np
@@ -60,8 +61,6 @@ class Component:
             self.params["elong"].free = False
         self._elliptic = value
 
-
-
     def _eval(self, **kwargs):
         """Sets the parameters (values) from the keyword arguments."""
         for key, value in kwargs.items():
@@ -72,8 +71,7 @@ class Component:
                     self.params[key].value = value
 
     def _calculate_internal_grid(
-            self, dim: Optional[float] = None,
-            pixel_size: Optional[float] = None
+            self, dim: int, pixel_size: u.mas
             ) -> Tuple[u.Quantity[u.mas], u.Quantity[u.mas]]:
         """Calculates the model grid.
 
@@ -89,17 +87,10 @@ class Component:
         yy : astropy.units.mas
             The y-coordinate grid.
         """
-        dim = self.params["dim"]() if dim is None else dim
-        pixel_size = self.params["pixel_size"]()\
-            if pixel_size is None else pixel_size
-        dim = u.Quantity(value=dim, unit=u.one, dtype=int)
-        pixel_size = u.Quantity(value=pixel_size, unit=u.mas)
-
         elong, pa = self.params["elong"](), self.params["pa"]()
         elong = elong.value if elong is not None else elong
         pa = pa.value if pa is not None else pa
-        return grid(dim, pixel_size.value,
-                    elong, pa, self.elliptic)
+        return grid(dim, pixel_size.value, elong, pa, self.elliptic)
 
     def _translate_fourier_transform(self, ucoord: u.m, vcoord: u.m,
                                      wavelength: u.um) -> u.one:
@@ -144,7 +135,7 @@ class AnalyticalComponent(Component):
         """
         return
 
-    def _visibility_function(self,
+    def _visibility_function(self, dim: int, pixel_size: u.mas,
                              wavelength: Optional[u.Quantity[u.um]] = None
                              ) -> np.ndarray:
         """Calculates the complex visibility of the the component's image.
@@ -176,12 +167,20 @@ class AnalyticalComponent(Component):
         -------
         image : astropy.units.Quantity
         """
+        dim = self.params["dim"]() if dim is None else dim
+        pixel_size = self.params["pixel_size"]()\
+            if pixel_size is None else pixel_size
+        dim = u.Quantity(value=dim, unit=u.one, dtype=int)
+        pixel_size = u.Quantity(value=pixel_size, unit=u.mas)
+        dim = get_new_dimension(
+                dim, OPTIONS["fourier.binning"], OPTIONS["fourier.padding"])
         x_arr, y_arr = self._calculate_internal_grid(dim, pixel_size)
         return self._image_function(x_arr, y_arr, wavelength)
 
-    def calculate_complex_visibility(self,
-                                     wavelength: Optional[u.Quantity[u.um]] = None
-                                     ) -> np.ndarray:
+    def calculate_complex_visibility(
+            self, dim: Optional[float] = None,
+            pixel_size: Optional[float] = None,
+            wavelength: Optional[u.Quantity[u.um]] = None) -> np.ndarray:
         """Calculates the complex visibility of the the component's image.
 
         Parameters
@@ -192,7 +191,14 @@ class AnalyticalComponent(Component):
         -------
         complex_visibility_function : numpy.ndarray
         """
-        return self._visibility_function(wavelength)
+        dim = self.params["dim"]() if dim is None else dim
+        pixel_size = self.params["pixel_size"]()\
+            if pixel_size is None else pixel_size
+        dim = u.Quantity(value=dim, unit=u.one, dtype=int)
+        pixel_size = u.Quantity(value=pixel_size, unit=u.mas)
+        dim = get_new_dimension(
+                dim, OPTIONS["fourier.binning"], OPTIONS["fourier.padding"])
+        return self._visibility_function(dim, pixel_size, wavelength)
 
 
 class NumericalComponent(Component):
@@ -263,35 +269,35 @@ class NumericalComponent(Component):
 
         if OPTIONS["model.matryoshka"]:
             image = None
-            highest_binning_factor = OPTIONS["model.matryoshka.binning_factors"][0]
-            dim_new = get_new_dimension(dim, highest_binning_factor)
+            new_dim = get_new_dimension(
+                    dim, OPTIONS["model.matryoshka.binning_factors"][0])
             for binning_factor in OPTIONS["model.matryoshka.binning_factors"]:
                 binning_factor = binning_factor if binning_factor is not None else 0
                 if image is None:
                     x_arr, y_arr = self._calculate_internal_grid(
-                            dim_new, pixel_size*2**binning_factor)
+                            new_dim, pixel_size*2**binning_factor)
                     image_part = self._image_function(x_arr, y_arr, wavelength)
                     image = upbin_image(image_part, binning_factor)
                 else:
-                    x_arr, y_arr = self._calculate_internal_grid(dim_new, pixel_size*2**-binning_factor)
+                    x_arr, y_arr = self._calculate_internal_grid(new_dim, pixel_size*2**-binning_factor)
                     image_part = self._image_function(x_arr, y_arr, wavelength)
                     image_part = rebin_image(image_part, binning_factor)
-                    # if binning_factor == OPTIONS["model.matryoshka.binning_factors"][-1]:
-                        # breakpoint()
                     start = (image.shape[0]-image_part.shape[0])//2
                     end = start + image_part.shape[0]
                     image[start:end, start:end] = image_part
-            # import matplotlib.pyplot as plt
-            # plt.imshow(image.value)
-            # plt.show()
-            # breakpoint()
         else:
             x_arr, y_arr = self._calculate_internal_grid(dim, pixel_size)
             image = self._image_function(x_arr, y_arr, wavelength)
+            if OPTIONS["fourier.binning"] is not None:
+                image = rebin_image(image, OPTIONS["fourier.binning"])
+            if OPTIONS["fourier.padding"] is not None:
+                image = pad_image(image, OPTIONS["fourier.padding"])
         return image
 
     def calculate_complex_visibility(
-            self, wavelength: Optional[u.Quantity[u.um]] = None) -> np.ndarray:
+            self, dim: Optional[float] = None,
+            pixel_size: Optional[float] = None,
+            wavelength: Optional[u.Quantity[u.um]] = None) -> np.ndarray:
         """Calculates the complex visibility of the the component's image.
 
         Parameters
@@ -302,5 +308,10 @@ class NumericalComponent(Component):
         -------
         complex_visibility_function : numpy.ndarray
         """
-        image = self.calculate_image(wavelength=wavelength)
+        dim = self.params["dim"]() if dim is None else dim
+        pixel_size = self.params["pixel_size"]()\
+            if pixel_size is None else pixel_size
+        dim = u.Quantity(value=dim, unit=u.one, dtype=int)
+        pixel_size = u.Quantity(value=pixel_size, unit=u.mas)
+        image = self.calculate_image(dim, pixel_size, wavelength)
         return compute_real2Dfourier_transform(image.value)

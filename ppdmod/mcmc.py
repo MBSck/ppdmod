@@ -265,7 +265,7 @@ def lnprob(theta: np.ndarray) -> float:
     fourier_transforms = {}
     for wavelength in OPTIONS["fit.wavelengths"]:
         fourier_transforms[str(wavelength.value)] =\
-            model.calculate_complex_visibility(wavelength)
+            model.calculate_complex_visibility(wavelength=wavelength)
 
     total_fluxes, total_fluxes_err =\
         OPTIONS["data.total_flux"], OPTIONS["data.total_flux_error"]

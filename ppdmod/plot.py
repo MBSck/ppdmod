@@ -84,7 +84,7 @@ def plot_model(dim: int, pixel_size: u.mas,
         if isinstance(pixel_size, u.Quantity) else pixel_size
     image = model.calculate_image(
         dim, pixel_size, wavelength).value
-    disk_max = np.sort(image.flatten())[::-1][1]
+    disk_max = np.sort(np.unique(image.flatten()))[::-1][1]
     ax_extent = (dim*pixel_size)//2
     plt.imshow(image, vmax=disk_max,
                extent=(-ax_extent, ax_extent,

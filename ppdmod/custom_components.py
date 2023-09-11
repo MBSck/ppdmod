@@ -11,8 +11,7 @@ from .options import OPTIONS
 from ._spectral_cy import const_temperature,\
     temperature_power_law, azimuthal_modulation,\
     optical_thickness, surface_density_profile, intensity
-from .utils import distance_to_angular,\
-    get_new_dimension, rebin_image, pad_image
+from .utils import distance_to_angular, rebin_image, pad_image
 
 
 class Star(AnalyticalComponent):
@@ -98,13 +97,10 @@ class Star(AnalyticalComponent):
         image[centre-1:centre+1, centre-1:centre+1] = star_flux
         return image
 
-    def _visibility_function(self,
+    def _visibility_function(self, dim: int, pixel_size: u.mas,
                              wavelength: Optional[u.Quantity[u.um]] = None
                              ) -> np.ndarray:
         """The component's _visibility_function."""
-        dim = get_new_dimension(self.params["dim"](),
-                                OPTIONS["fourier.binning"],
-                                OPTIONS["fourier.padding"])
         return np.ones((dim, dim))*self.calculate_stellar_flux(wavelength).value
 
 
@@ -190,9 +186,8 @@ class TemperatureGradient(NumericalComponent):
             self.params["a"].free = False
             self.params["phi"].free = False
 
-        if self.continuum_contribution:
+        if not self.continuum_contribution:
             self.params["cont_weight"].free = False
-            self.params["kappa_cont"].free = False
         self._eval(**kwargs)
 
     @property
@@ -244,7 +239,7 @@ class TemperatureGradient(NumericalComponent):
         else:
             radial_profile = radius > self.params["rin"]().value
         innermost_radius = self.params["rin0"]()\
-            if self.params["rin0"]() is not None else self.params["rin"]()
+            if self.params["rin0"]() != 0 else self.params["rin"]()
 
         if self.const_temperature:
             temperature = const_temperature(
@@ -278,11 +273,6 @@ class TemperatureGradient(NumericalComponent):
                 self.params["phi"]().to(u.rad).value)
         image = radial_profile*brightness*thickness
         image = np.nan_to_num(image, nan=0)
-
-        if OPTIONS["fourier.binning"] is not None:
-            image = rebin_image(image, OPTIONS["fourier.binning"])
-        if OPTIONS["fourier.padding"] is not None:
-            image = pad_image(image, OPTIONS["fourier.padding"])
         return image*u.Jy
 
 

@@ -5,6 +5,8 @@ import numpy as np
 
 from .component import Component
 from .parameter import Parameter
+from .options import OPTIONS
+from .utils import get_new_dimension
 
 
 class Model:
@@ -83,7 +85,8 @@ class Model:
         -------
         image : astropy.unity.Jy
         """
-        # TODO: Make this so that all images can be rebinned here.
+        dim = get_new_dimension(
+                dim, OPTIONS["fourier.binning"], OPTIONS["fourier.padding"])
         image = np.zeros((dim, dim))*u.Jy
         for component in self.components:
             image += component.calculate_image(dim, pixel_size, wavelength)
@@ -105,5 +108,5 @@ class Model:
         """
         res = complex(0, 0)
         for component in self.components:
-            res += component.calculate_complex_visibility(wavelength)
+            res += component.calculate_complex_visibility(wavelength=wavelength)
         return res

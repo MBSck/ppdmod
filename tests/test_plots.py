@@ -166,7 +166,7 @@ def test_plot_chains(sampler: np.ndarray,
 def test_plot_model(model: Model, dim: int,
                     pixel_size: u.mas, wavelength: u.um) -> None:
     """Tests the plot model function."""
-    plot_model(dim, pixel_size, model, wavelength, PLOT_DIR / "model.pdf")
+    plot_model(dim, pixel_size, model, wavelength, savefig=PLOT_DIR / "model.pdf")
 
 
 def test_plot_observed_vs_model(fits_files: List[Path], model: Model, pixel_size: u.mas,
