@@ -25,7 +25,7 @@ class Component:
     name = "Generic component"
     shortname = "GenComp"
     description = "This is the class from which all components are derived."
-    elliptic = False
+    _elliptic = False
 
     def __init__(self, **kwargs):
         """The class's constructor."""
@@ -37,7 +37,30 @@ class Component:
             **STANDARD_PARAMETERS["pixel_size"])
         self.params["pa"] = Parameter(**STANDARD_PARAMETERS["pa"])
         self.params["elong"] = Parameter(**STANDARD_PARAMETERS["elong"])
+
+        if not self.elliptic:
+            self.params["pa"].free = False
+            self.params["elong"].free = False
         self._eval(**kwargs)
+
+    @property
+    def elliptic(self) -> bool:
+        """Gets if the component is elliptic."""
+        return self._elliptic
+
+    @elliptic.setter
+    def elliptic(self, value: bool) -> None:
+        """Sets the position angle and the parameters to free or false
+        if elliptic is set."""
+        if value:
+            self.params["pa"].free = True
+            self.params["elong"].free = True
+        else:
+            self.params["pa"].free = False
+            self.params["elong"].free = False
+        self._elliptic = value
+
+
 
     def _eval(self, **kwargs):
         """Sets the parameters (values) from the keyword arguments."""

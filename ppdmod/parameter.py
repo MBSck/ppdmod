@@ -28,6 +28,8 @@ STANDARD_PARAMETERS = {
     "fov": {"name": "fov", "value": 0,
             "description": "The interferometric field of view",
             "unit": u.mas, "free": False},
+    "rin0": {"name": "rin0", "value": 0, "unit": u.mas,
+            "description": "Innermost radius of the disk", "free": False},
     "rin": {"name": "rin", "value": 0, "unit": u.mas,
             "description": "Inner radius of the disk", "free": True},
     "rout": {"name": "rout", "value": np.inf, "unit": u.mas,

@@ -165,7 +165,7 @@ class TemperatureGradient(NumericalComponent):
         self.params["eff_temp"] = Parameter(**STANDARD_PARAMETERS["eff_temp"])
         self.params["eff_radius"] = Parameter(**STANDARD_PARAMETERS["eff_radius"])
 
-        self.params["rin0"] = None
+        self.params["rin0"] = Parameter(**STANDARD_PARAMETERS["rin0"])
 
         self.params["rin"] = Parameter(**STANDARD_PARAMETERS["rin"])
         self.params["rout"] = Parameter(**STANDARD_PARAMETERS["rout"])
@@ -244,7 +244,7 @@ class TemperatureGradient(NumericalComponent):
         else:
             radial_profile = radius > self.params["rin"]().value
         innermost_radius = self.params["rin0"]()\
-            if self.params["rin0"] is not None else self.params["rin"]()
+            if self.params["rin0"]() is not None else self.params["rin"]()
 
         if self.const_temperature:
             temperature = const_temperature(

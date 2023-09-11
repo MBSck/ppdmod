@@ -34,6 +34,11 @@ def numerical_component() -> NumericalComponent:
 
 def test_component(component: Component) -> None:
     """Tests if the initialization of the component works."""
+    assert not component.params["pa"].free and\
+            not component.params["elong"].free
+    component.elliptic = True
+    assert component.params["pa"].free and\
+            component.params["elong"].free
     assert len(component.params) == 6
     assert component.params["x"]() == 0*u.mas
     assert component.params["y"]() == 0*u.mas

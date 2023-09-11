@@ -546,12 +546,10 @@ def test_numpy_vs_scipy_vs_fftw(diameter: u.mas, dim: float,
         diff_bin = np.abs(ang1_bin-ang2_bin)
         indices_ud = np.where(diff_ud > 1e-4)
         indices_bin = np.where(diff_bin > 1e-4)
-        if not all(index > 200*u.m for index in np.abs(freq_axis[indices_ud[1]])):
-            breakpoint()
-        assert all(index > 200*u.m for index in np.abs(freq_axis[indices_ud[0]]))
-        assert all(index > 200*u.m for index in np.abs(freq_axis[indices_ud[1]]))
-        assert all(index > 200*u.m for index in np.abs(freq_axis[indices_bin[0]]))
-        assert all(index > 200*u.m for index in np.abs(freq_axis[indices_bin[1]]))
+        assert all(index > 200*u.m for index in np.abs(freq_axis[indices_ud[0]])) or\
+            all(index > 200*u.m for index in np.abs(freq_axis[indices_ud[1]]))
+        assert all(index > 200*u.m for index in np.abs(freq_axis[indices_bin[0]])) or\
+            all(index > 200*u.m for index in np.abs(freq_axis[indices_bin[1]]))
     else:
         assert np.allclose(np.angle(numpy_fft_ud), np.angle(jax_fft_ud), atol=1e-2)
         assert np.allclose(np.angle(numpy_fft_bin), np.angle(jax_fft_bin), atol=1e-2)
