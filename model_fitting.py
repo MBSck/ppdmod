@@ -4,6 +4,7 @@ from pathlib import Path
 
 import astropy.units as u
 import numpy as np
+from astropy.io import fits
 
 from ppdmod import custom_components
 from ppdmod import data
@@ -34,7 +35,7 @@ wavelength_axes = list(
 wavelength_axes = np.sort(np.unique(np.concatenate(wavelength_axes)))
 
 weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
-qval_file_dir = Path("/tests/data/qval")
+qval_file_dir = Path("tests/data/qval")
 qval_files = ["Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat",
               "Q_Am_Mgolivine_Jae_DHS_f1.0_rv1.5.dat",
               "Q_Am_Mgpyroxene_Dor_DHS_f1.0_rv1.5.dat",
@@ -132,17 +133,21 @@ OPTIONS["model.components_and_params"] = [
 #       dim*2**-OPTIONS["fourier.binning"]*2**OPTIONS["fourier.padding"])
 
 OPTIONS["model.matryoshka"] = True
-OPTIONS["model.matryoshka.binning_factors"] = [4, 0, 1]
+OPTIONS["model.matryoshka.binning_factors"] = [2, 0, 1]
 
 labels = inner_ring_labels + outer_ring_labels + shared_params_labels
-
-OPTIONS["fourier.binning"] = 3
 
 components = custom_components.assemble_components(
     OPTIONS["model.components_and_params"], OPTIONS["model.shared_params"])
 m = model.Model(components)
+image = m.calculate_image(4096, 0.1, OPTIONS["fit.wavelengths"][-1])
+fits_filename = 'test_model.fits'
+hdu = fits.PrimaryHDU(image.value)
+hdu.writeto(fits_filename, overwrite=True)
 plot.plot_model(4096, 0.1, m, OPTIONS["fit.wavelengths"][-1], zoom=None)
 breakpoint()
+
+OPTIONS["fourier.binning"] = 3
 
 
 if __name__ == "__main__":

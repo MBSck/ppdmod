@@ -1,6 +1,7 @@
 __pycache__/
 ppdmod.egg-info/
 fft/
+tests/data/qval
 fluxes/
 build/
 component/
@@ -23,3 +24,4 @@ line_profiler/
 *.html
 *.exe
 cython_src/*.c
+*.fits
