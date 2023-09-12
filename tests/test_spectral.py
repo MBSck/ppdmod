@@ -169,7 +169,7 @@ def grid(dim: int, pixel_size: float, pa: float,
     dim = u.Quantity(value=dim, unit=u.one, dtype=int)
     pixel_size = u.Quantity(value=pixel_size, unit=u.mas)
     pa = u.Quantity(value=pa, unit=u.deg)
-    v = np.linspace(-0.5, 0.5, dim, endpoint=False, dtype=np.float64)\
+    v = np.linspace(-0.5, 0.5, dim, endpoint=False, dtype=np.float32)\
         * pixel_size.to(u.mas)*dim
     x_arr, y_arr = np.meshgrid(v, v)
     if elliptic:

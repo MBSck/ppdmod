@@ -5,15 +5,15 @@ cimport cython
 from libc.math cimport sin, cos, atan2, sqrt, exp, pow
 
 cnp.import_array()
-DTYPE = np.float64
-ctypedef cnp.float64_t DTYPE_t
+DTYPE = np.float32
+ctypedef cnp.float32_t DTYPE_t
 
 
-cdef double c = 2.99792458e+10   # cm/s
-cdef double c2 = 8.98755179e+20  # cm²/s²
-cdef double h = 6.62607015e-27   # erg s
-cdef double kb = 1.380649e-16    # erg/K
-cdef double bb_to_jy = 1.0e+23   # Jy
+cdef float c = 2.99792458e+10   # cm/s
+cdef float c2 = 8.98755179e+20  # cm²/s²
+cdef float h = 6.62607015e-27   # erg s
+cdef float kb = 1.380649e-16    # erg/K
+cdef float bb_to_jy = 1.0e+23   # Jy
 
 
 @cython.boundscheck(False)
@@ -21,7 +21,7 @@ cdef double bb_to_jy = 1.0e+23   # Jy
 @cython.cdivision(True)
 @cython.initializedcheck(False)
 def grid(int dim, float pixel_size,
-         float elong, double pa, int elliptic):
+         float elong, float pa, int elliptic):
     """Calculates the model grid.
 
     Parameters
@@ -41,12 +41,12 @@ def grid(int dim, float pixel_size,
     y_arr = np.empty((dim, dim), dtype=DTYPE)
     radius = np.empty((dim, dim), dtype=DTYPE)
 
-    cdef double[::1] linspace_view = linspace
-    cdef double[:, ::1] x_arr_view = x_arr
-    cdef double[:, ::1] y_arr_view = y_arr
-    cdef double[:, ::1] radius_view = radius
+    cdef float[::1] linspace_view = linspace
+    cdef float[:, ::1] x_arr_view = x_arr
+    cdef float[:, ::1] y_arr_view = y_arr
+    cdef float[:, ::1] radius_view = radius
 
-    cdef double step =  1.0/dim
+    cdef float step =  1.0/dim
     cdef float factor = dim*pixel_size
 
     cdef Py_ssize_t x
@@ -54,15 +54,15 @@ def grid(int dim, float pixel_size,
         linspace_view[x] = (-0.5 + x * step) * factor;
 
     cdef Py_ssize_t y
-    cdef double linspace_val
+    cdef float linspace_val
     for x in range(dim):
         for y in range(dim):
             linspace_val = linspace_view[y]
             x_arr_view[x, y] = linspace_val
             y_arr_view[y, x] = linspace_val
 
-    cdef double xx_val, yy_val
-    cdef double temp_x, temp_y
+    cdef float xx_val, yy_val
+    cdef float temp_x, temp_y
     for x in range(dim):
         for y in range(dim):
             xx_val, yy_val = x_arr_view[x, y], y_arr_view[x, y]
@@ -80,15 +80,15 @@ def grid(int dim, float pixel_size,
 @cython.cdivision(True)
 @cython.cpow(True)
 @cython.initializedcheck(False)
-def radius(double[:, ::1] xx, double[:, ::1] yy):
+def radius(float[:, ::1] xx, float[:, ::1] yy):
     """Calculates the model radius."""
     cdef Py_ssize_t x_max = xx.shape[0]
     cdef Py_ssize_t y_max = yy.shape[1]
 
     radius = np.empty((x_max, y_max), dtype=DTYPE)
-    cdef double[:, ::1] radius_view = radius
+    cdef float[:, ::1] radius_view = radius
 
-    cdef double xx_val, yy_val
+    cdef float xx_val, yy_val
     cdef Py_ssize_t x, y
     for x in range(x_max):
         for y in range(y_max):
@@ -102,7 +102,7 @@ def radius(double[:, ::1] xx, double[:, ::1] yy):
 @cython.cdivision(True)
 @cython.initializedcheck(False)
 def const_temperature(
-        double[:, ::1] radius, double stellar_radius, double stellar_temperature):
+        float[:, ::1] radius, float stellar_radius, float stellar_temperature):
     """Calculates the temperature profile.
 
     Can be specified to be either as a r^q power law or an a
@@ -143,10 +143,10 @@ def const_temperature(
     cdef Py_ssize_t y_max = radius.shape[1]
 
     temperature = np.empty((x_max, y_max), dtype=DTYPE)
-    cdef double[:, ::1] temperature_view = temperature
+    cdef float[:, ::1] temperature_view = temperature
 
     cdef Py_ssize_t x, y
-    cdef double radius_val, temp_val
+    cdef float radius_val, temp_val
     for x in range(x_max):
         for y in range(y_max):
             radius_val = radius[x, y]
@@ -161,8 +161,8 @@ def const_temperature(
 @cython.cpow(True)
 @cython.initializedcheck(False)
 def temperature_power_law(
-        double[:, ::1] radius, double inner_temp,
-        double inner_radius, double q):
+        float[:, ::1] radius, float inner_temp,
+        float inner_radius, float q):
     """Calculates the temperature profile.
 
     Can be specified to be either as a r^q power law or an a
@@ -209,10 +209,10 @@ def temperature_power_law(
     cdef Py_ssize_t y_max = radius.shape[1]
 
     temperature = np.empty((x_max, y_max), dtype=DTYPE)
-    cdef double[:, ::1] temperature_view = temperature
+    cdef float[:, ::1] temperature_view = temperature
 
     cdef Py_ssize_t x, y
-    cdef double radius_val, temp_val
+    cdef float radius_val, temp_val
     for x in range(x_max):
         for y in range(y_max):
             radius_val = radius[x, y]
@@ -227,8 +227,8 @@ def temperature_power_law(
 @cython.cpow(True)
 @cython.initializedcheck(False)
 def surface_density_profile(
-        double[:, ::1] radius, double inner_radius,
-        double inner_sigma, double p):
+        float[:, ::1] radius, float inner_radius,
+        float inner_sigma, float p):
     """Calculates the surface density profile.
 
     This can be azimuthally varied if so specified.
@@ -249,10 +249,10 @@ def surface_density_profile(
     cdef Py_ssize_t y_max = radius.shape[1]
 
     sigma_profile = np.empty((x_max, y_max), dtype=DTYPE)
-    cdef double[:, ::1] sigma_profile_view = sigma_profile
+    cdef float[:, ::1] sigma_profile_view = sigma_profile
 
     cdef Py_ssize_t x, y
-    cdef double radius_val, temp_val
+    cdef float radius_val, temp_val
     for x in range(x_max):
         for y in range(y_max):
             radius_val = radius[x, y]
@@ -266,7 +266,7 @@ def surface_density_profile(
 @cython.cdivision(True)
 @cython.initializedcheck(False)
 def azimuthal_modulation(
-        double[:, ::1] xx, double[:, ::1] yy, double a, double phi):
+        float[:, ::1] xx, float[:, ::1] yy, float a, float phi):
     r"""Calculates the azimuthal modulation.
 
     Parameters
@@ -294,10 +294,10 @@ def azimuthal_modulation(
     cdef Py_ssize_t y_max = xx.shape[1]
 
     modulation = np.empty((x_max, y_max), dtype=DTYPE)
-    cdef double[:, ::1] modulation_view = modulation
+    cdef float[:, ::1] modulation_view = modulation
 
     cdef Py_ssize_t x, y
-    cdef double xx_val, yy_val, temp_val
+    cdef float xx_val, yy_val, temp_val
     for x in range(x_max):
         for y in range(y_max):
             xx_val = xx[x, y]
@@ -312,17 +312,17 @@ def azimuthal_modulation(
 @cython.wraparound(False)
 @cython.initializedcheck(False)
 def optical_thickness(
-        double[:, ::1] surface_density_profile, double opacity):
+        float[:, ::1] surface_density_profile, float opacity):
     """Calculates the optical depth from the surface density and
     opacity profiles."""
     cdef Py_ssize_t x_max = surface_density_profile.shape[0]
     cdef Py_ssize_t y_max = surface_density_profile.shape[1]
 
     optical_thickness = np.empty((x_max, y_max), dtype=DTYPE)
-    cdef double[:, ::1] optical_thickness_view = optical_thickness
+    cdef float[:, ::1] optical_thickness_view = optical_thickness
 
     cdef Py_ssize_t x, y
-    cdef double surface_density_val, temp_val
+    cdef float surface_density_val, temp_val
     for x in range(x_max):
         for y in range(y_max):
             surface_density_val = surface_density_profile[x, y]
@@ -338,7 +338,7 @@ def optical_thickness(
 @cython.cpow(True)
 @cython.initializedcheck(False)
 def intensity(
-        double[:, ::1] temperature_profile, double wavelength, double pixel_size):
+        float[:, ::1] temperature_profile, float wavelength, float pixel_size):
     """Calculates the blackbody_profile via Planck's law and the
     emissivity_factor for a given wavelength, temperature- and
     dust surface density profile.
@@ -357,15 +357,15 @@ def intensity(
     intensity : astropy.units.Jy
         Intensity per pixel [Jy/px]
     """
-    cdef double nu = c/wavelength    # Hz
+    cdef float nu = c/wavelength    # Hz
     cdef Py_ssize_t x_max = temperature_profile.shape[0]
     cdef Py_ssize_t y_max = temperature_profile.shape[1]
 
     intensity = np.empty((x_max, y_max), dtype=DTYPE)
-    cdef double[:, ::1] intensity_view = intensity
+    cdef float[:, ::1] intensity_view = intensity
 
     cdef Py_ssize_t x, y
-    cdef double temperature_val, temp_val
+    cdef float temperature_val, temp_val
     for x in range(x_max):
         for y in range(y_max):
             temperature_val = temperature_profile[x, y]

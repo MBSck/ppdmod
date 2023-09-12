@@ -151,7 +151,7 @@ OPTIONS["fourier.binning"] = 3
 
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 0, 50, 35
+    nburnin, nsteps, nwalkers_burnin, nwalkers = 100, 2500, 200, 35
 
     model_result_dir = Path("/Users/scheuck/Data/model_results/")
     day_dir = model_result_dir / str(datetime.now().date())
@@ -159,7 +159,7 @@ if __name__ == "__main__":
     if not result_dir.exists():
         result_dir.mkdir(parents=True)
 
-    sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin, ncores=nwalkers//2)
+    sampler = mcmc.run_mcmc(nwalkers, nwalkers_burnin, nsteps, nburnin)
     theta = mcmc.get_best_fit(sampler, discard=nburnin)
     np.save(result_dir / "best_fit_params.npy", theta)
     new_params = dict(zip(labels, theta))
