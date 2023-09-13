@@ -77,22 +77,14 @@ OPTIONS["model.matryoshka.binning_factors"] = [2, 0, 1]
 
 labels = inner_ring_labels + shared_params_labels
 
-components = custom_components.assemble_components(
-        OPTIONS["model.components_and_params"], OPTIONS["model.shared_params"])
-m = model.Model(components)
-image = m.calculate_image(4096, 0.1, OPTIONS["fit.wavelengths"][-1])
-fits_filename = 'test_model.fits'
-hdu = fits.PrimaryHDU(image.value)
-hdu.writeto(fits_filename, overwrite=True)
-plot.plot_model(4096, 0.1, m, OPTIONS["fit.wavelengths"][-1], zoom=None)
 
 OPTIONS["fourier.binning"] = 3
 
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 500, 10000, 200, 35
+    nburnin, nsteps, nwalkers = 500, 2000, 35
 
-    model_result_dir = Path("/Users/scheuck/Data/model_results/")
+    model_result_dir = Path("../model_results/")
     day_dir = model_result_dir / str(datetime.now().date())
     result_dir = day_dir / f"results_model_nsteps{nburnin+nsteps}_nwalkers{nwalkers}"
     if not result_dir.exists():
