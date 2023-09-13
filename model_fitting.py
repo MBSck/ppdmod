@@ -15,6 +15,7 @@ from ppdmod import utils
 from ppdmod.parameter import STANDARD_PARAMETERS, Parameter
 from ppdmod.options import OPTIONS
 
+# TODO: Make function that saves model parameters to load.
 
 # NOTE: Turns off numpys automated parellelization.
 os.environ["OMP_NUM_THREADS"] = "1"
@@ -164,8 +165,8 @@ if __name__ == "__main__":
     np.save(result_dir / "best_fit_params.npy", theta)
     new_params = dict(zip(labels, theta))
 
-    # plot.plot_chains(sampler, labels, discard=nburnin, savefig=result_dir / "chains.pdf")
-    # plot.plot_corner(sampler, labels, discard=nburnin, savefig=result_dir / "corner.pdf")
+    plot.plot_chains(sampler, labels, discard=nburnin, savefig=result_dir / "chains.pdf")
+    plot.plot_corner(sampler, labels, discard=nburnin, savefig=result_dir / "corner.pdf")
     # OPTIONS["fourier.binning"] = None
     # OPTIONS["fourier.padding"] = None
     OPTIONS["model.matryoshka"] = False

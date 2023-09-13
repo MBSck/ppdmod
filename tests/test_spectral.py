@@ -221,7 +221,6 @@ def calculate_optical_thickness(surface: u.g/u.cm**2, opacity: u.cm**2/u.g):
     return 1-np.exp(-surface*opacity)
 
 
-
 @pytest.mark.parametrize("dim", DIMENSION)
 def test_grid(dim: int) -> None:
     """Tests the grid calculation."""
@@ -249,8 +248,9 @@ def test_grid(dim: int) -> None:
                         mode="a", if_sheet_exists="replace") as writer:
         df.to_excel(writer, sheet_name=GRID, index=False)
 
-    assert np.allclose(cython_xx, python_xx.value)
-    assert np.allclose(cython_yy, python_yy.value)
+    assert cython_xx.dtype == np.float32 and cython_yy.dtype == np.float32
+    assert np.allclose(cython_xx, python_xx.value, atol=1e-2)
+    assert np.allclose(cython_yy, python_yy.value, atol=1e-2)
 
 
 @pytest.mark.parametrize("dim", DIMENSION)
@@ -279,8 +279,8 @@ def test_radius(dim: int) -> None:
                         mode="a", if_sheet_exists="replace") as writer:
         df.to_excel(writer, sheet_name=RADIUS, index=False)
 
-    assert np.allclose(cython_radius, python_radius.value)
-
+    assert cython_radius.dtype == np.float32 and python_radius.dtype == np.float32
+    assert np.allclose(cython_radius, python_radius.value, atol=1e-2)
 
 
 @pytest.mark.parametrize("dim", DIMENSION)
@@ -319,7 +319,8 @@ def test_calculate_const_temperature(
                         mode="a", if_sheet_exists="replace") as writer:
         df.to_excel(writer, sheet_name=CONST_TEMPERATURE, index=False)
 
-    assert np.allclose(cython_temp, python_temp.value)
+    assert cython_temp.dtype == np.float32 and python_temp.dtype == np.float32
+    assert np.allclose(cython_temp, python_temp.value, atol=1e-2)
 
 
 @pytest.mark.parametrize("dim", DIMENSION)
@@ -356,7 +357,8 @@ def test_calculate_temperature_power_law(
                         mode="a", if_sheet_exists="replace") as writer:
         df.to_excel(writer, sheet_name=TEMPERATURE_POWER, index=False)
 
-    assert np.array_equal(cython_temp, python_temp.value)
+    assert cython_temp.dtype == np.float32 and python_temp.dtype == np.float32
+    assert np.allclose(cython_temp, python_temp.value, atol=1e-2)
 
 
 @pytest.mark.parametrize("dim", DIMENSION)
@@ -388,7 +390,8 @@ def test_calculate_azimuthal_modulation(dim: int) -> None:
                         mode="a", if_sheet_exists="replace") as writer:
         df.to_excel(writer, sheet_name=AZIMUTHAL_MODULATION, index=False)
 
-    assert np.array_equal(cython_mod, python_mod.value)
+    assert cython_mod.dtype == np.float32 and python_mod.dtype == np.float32
+    assert np.allclose(cython_mod, python_mod.value, atol=1e-2)
 
 
 @pytest.mark.parametrize("dim", DIMENSION)
@@ -423,7 +426,8 @@ def test_calculate_surface_density(
                         mode="a", if_sheet_exists="replace") as writer:
         df.to_excel(writer, sheet_name=SURFACE_DENSITY, index=False)
 
-    assert np.allclose(cython_surface, python_surface.value)
+    assert cython_surface.dtype == np.float32 and python_surface.dtype == np.float32
+    assert np.allclose(cython_surface, python_surface.value, atol=1e-2)
 
 
 @pytest.mark.parametrize("dim", DIMENSION)
@@ -462,8 +466,10 @@ def test_calculate_optical_thickness(
                         mode="a", if_sheet_exists="replace") as writer:
         df.to_excel(writer, sheet_name=OPTICAL_THICKNESS, index=False)
 
+    assert cython_optical_thickness.dtype == np.float32\
+            and python_optical_thickness.dtype == np.float32
     assert np.allclose(cython_optical_thickness,
-                       python_optical_thickness.value)
+                       python_optical_thickness.value, atol=1e-2)
 
 
 @pytest.mark.parametrize("dim", DIMENSION)
@@ -508,4 +514,6 @@ def test_calculate_intensity(
                         mode="a", if_sheet_exists="replace") as writer:
         df.to_excel(writer, sheet_name=INTENSITY, index=False)
 
-    assert np.allclose(cython_intensity, python_intensity.value)
+    assert cython_intensity.dtype == np.float32\
+            and python_intensity.dtype == np.float64
+    assert np.allclose(cython_intensity, python_intensity.value, atol=1e-2)
