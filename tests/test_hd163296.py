@@ -77,8 +77,8 @@ OPTIONS["model.matryoshka.binning_factors"] = [2, 0, 1]
 
 labels = inner_ring_labels + shared_params_labels
 
-
 OPTIONS["fourier.binning"] = 3
+OPTIONS["fit.data"] = ["vis", "t3phi"]
 
 
 if __name__ == "__main__":
