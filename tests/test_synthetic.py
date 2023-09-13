@@ -18,9 +18,8 @@ from ppdmod.options import OPTIONS
 # NOTE: Turns off numpys automated parellelization.
 os.environ["OMP_NUM_THREADS"] = "1"
 data.set_fit_wavelengths([3.2103345, 3.520375, 3.7025948]*u.um)
-path = Path("tests/data/fits/hd163296/")
-fits_files = ["HD_163296_2019-03-23T08_41_19_L_TARGET_FINALCAL_INT.fits",
-              "HD_163296_2019-05-06T08_19_51_L_TARGET_FINALCAL_INT.fits"]
+path = Path("tests/data/fits/synthetic")
+fits_files = ["synthetic.fits"]
 fits_files = list(map(lambda x: path / x, fits_files))
 data.set_data(fits_files)
 
