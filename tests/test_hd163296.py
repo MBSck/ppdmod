@@ -28,14 +28,13 @@ data.set_data(fits_files)
 wavelength_axes = list(
         map(lambda x: data.ReadoutFits(x).wavelength, fits_files))
 wavelength_axes = np.sort(np.unique(np.concatenate(wavelength_axes)))
-breakpoint()
 
 fov, pixel_size = 220, 0.1
 dim = utils.get_next_power_of_two(fov / pixel_size)
 
 OPTIONS["model.constant_params"] = {
-        "dim": dim, "dist": 101, "eff_temp": 7500,
-        "pixel_size": pixel_size, "eff_radius": 1.8, "inner_temp": 1500}
+        "dim": dim, "dist": 101, "eff_temp": 9250,
+        "pixel_size": pixel_size, "eff_radius": 1.6, "inner_temp": 1500}
 
 rin = Parameter(**STANDARD_PARAMETERS["rin"])
 a = Parameter(**STANDARD_PARAMETERS["a"])
@@ -45,29 +44,32 @@ rin.value = 3.33
 a.value = 0.5
 phi.value = 130
 
-rin.set(min=3, max=6)
+rin.set(min=0, max=4)
 a.set(min=0., max=1.)
 phi.set(min=0, max=360)
 
 inner_ring = {"rin": rin, "a": a, "phi": phi}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
+q = Parameter(**STANDARD_PARAMETERS["q"])
 pa = Parameter(**STANDARD_PARAMETERS["pa"])
 elong = Parameter(**STANDARD_PARAMETERS["elong"])
 
+q.value = 0.5
 pa.value = 145
 elong.value = 0.5
 
+q.set(min=0, max=1.)
 pa.set(min=0, max=360)
 elong.set(min=0, max=1)
 
-OPTIONS["model.shared_params"] = {"pa": pa, "elong": elong}
+OPTIONS["model.shared_params"] = {"q": q, "pa": pa, "elong": elong}
 shared_params_labels = [f"sh_{label}"
                         for label in OPTIONS["model.shared_params"]]
 
 OPTIONS["model.components_and_params"] = [
         ["Star", {}],
-        ["AsymmetricSDGreyBodyContinuum", inner_ring],
+        ["AsymmetricImageOpticallyThickGradient", inner_ring],
 ]
 
 OPTIONS["model.matryoshka"] = True
@@ -88,7 +90,7 @@ OPTIONS["fourier.binning"] = 3
 
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers_burnin, nwalkers = 100, 2500, 200, 35
+    nburnin, nsteps, nwalkers = 500, 10000, 200, 35
 
     model_result_dir = Path("/Users/scheuck/Data/model_results/")
     day_dir = model_result_dir / str(datetime.now().date())
@@ -96,7 +98,7 @@ if __name__ == "__main__":
     if not result_dir.exists():
         result_dir.mkdir(parents=True)
 
-    sampler = mcmc.run_mcmc(nwalkers, nwalkers_burnin, nsteps, nburnin)
+    sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin, nwalkers//2)
     theta = mcmc.get_best_fit(sampler, discard=nburnin)
     np.save(result_dir / "best_fit_params.npy", theta)
     new_params = dict(zip(labels, theta))
@@ -112,7 +114,7 @@ if __name__ == "__main__":
 
     m = model.Model(components)
     plot.plot_model(4096, 0.1, m, wavelength, zoom=None,
-                    savefig=None)
+                    savefig=result_dir / "model.pdf")
     plot.plot_observed_vs_model(m, 0.1*u.mas, new_params["sh_elong"],
                                 new_params["sh_pa"],
                                 savefig=result_dir / "fit_results.pdf")

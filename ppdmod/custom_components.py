@@ -247,8 +247,8 @@ class TemperatureGradient(NumericalComponent):
                 self.params["eff_temp"]().value)
         else:
             temperature = temperature_power_law(
-                radius, innermost_radius.value,
-                self.params["inner_temp"]().value, self.params["q"]().value)
+                radius, self.params["inner_temp"]().value,
+                innermost_radius.value, self.params["q"]().value)
 
         brightness = intensity(
             temperature, wavelength.to(u.cm).value,
@@ -274,6 +274,53 @@ class TemperatureGradient(NumericalComponent):
         image = radial_profile*brightness*thickness
         image = np.nan_to_num(image, nan=0)
         return image*u.Jy
+
+
+class AsymmetricImageOpticallyThickGradient(TemperatureGradient):
+    """A ring defined by a radial temperature profile in r^q
+    that is multiplied by an azimuthal modulation.
+    and an asymmetric radial dust surface density profile in r^p.
+
+    Parameters
+    ----------
+    rin : float
+        Inner radius of the disk [mas].
+    rout : float
+        Outer radius of the disk [mas].
+    inner_temp : float
+        Inner radius temperature [K].
+    inner_sigma : float
+        Inner surface density [g/cm^2].
+    a : float
+        Azimuthal modulation amplitude.
+    phi : float
+        Azimuthal modulation angle [deg].
+    q : float
+        Power-law exponent for the temperature profile.
+    p : float
+        Power-law exponent for the dust surface density profile.
+    kappa_abs : float
+        Dust mass absorption coefficient [cm^2/g].
+    dist : float
+        Distance of the star [pc].
+    pa : float
+        Positional angle [deg].
+    elong : float
+        Elongation of the disk [dimensionless].
+    dim : float
+        Dimension of the image [px].
+
+    Attributes
+    ----------
+    params : dict with keys of str and values of Parameter
+        Dictionary of parameters.
+    """
+    name = "Asymmetric Temperature Gradient"
+    shortname = "AsymTempGrad"
+    elliptic = True
+    asymmetric_image = True
+    optically_thick = True
+    const_temperature = False
 
 
 class AsymmetricSDTemperatureGradient(TemperatureGradient):
