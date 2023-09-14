@@ -74,7 +74,7 @@ class Star(AnalyticalComponent):
         plancks_law = models.BlackBody(temperature=self.params["eff_temp"]())
         spectral_radiance = plancks_law(wavelength.to(u.m)).to(
             u.erg/(u.cm**2*u.Hz*u.s*u.rad**2))
-        return (spectral_radiance*self.stellar_radius_angular**2).to(u.Jy)
+        return np.pi*(spectral_radiance*self.stellar_radius_angular**2).to(u.Jy)
 
     def _image_function(self, xx: u.mas, yy: u.mas,
                         wavelength: Optional[u.Quantity[u.m]] = None,
