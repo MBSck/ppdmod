@@ -156,7 +156,10 @@ if __name__ == "__main__":
 
     model_result_dir = Path("/Users/scheuck/Data/model_results/")
     day_dir = model_result_dir / str(datetime.now().date())
-    result_dir = day_dir / f"results_model_nsteps{nburnin+nsteps}_nwalkers{nwalkers}"
+    time = datetime.now()
+    file_name = f"results_model_nsteps{nburnin+nsteps}_nwalkers{nwalkers}"\
+            f"_{time.hour}:{time.minute}:{time.second}"
+    result_dir = day_dir / file_name
     if not result_dir.exists():
         result_dir.mkdir(parents=True)
 

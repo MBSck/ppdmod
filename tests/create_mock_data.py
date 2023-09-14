@@ -10,7 +10,7 @@ from ppdmod.options import OPTIONS
 from ppdmod.utils import get_next_power_of_two
 
 
-path = Path("tests/data/fits/hd163296/")
+path = Path("data/fits/hd163296/")
 fits_file = ["HD_163296_2019-03-23T08_41_19_L_TARGET_FINALCAL_INT.fits"]
 fits_file = list(map(lambda x: path / x, fits_file))[0]
 
@@ -58,7 +58,7 @@ OPTIONS["model.matryoshka.binning_factors"] = [2, 0, 1]
 
 components = assemble_components(
     OPTIONS["model.components_and_params"], OPTIONS["model.shared_params"])
-synthetic_path = Path("tests/data/fits/synthetic")
+synthetic_path = Path("data/fits/synthetic")
 if not synthetic_path.exists():
     synthetic_path.mkdir()
 

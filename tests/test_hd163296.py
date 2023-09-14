@@ -17,6 +17,7 @@ from ppdmod.options import OPTIONS
 
 # NOTE: Turns off numpys automated parellelization.
 os.environ["OMP_NUM_THREADS"] = "1"
+
 data.set_fit_wavelengths([3.2103345, 3.520375, 3.7025948]*u.um)
 path = Path("tests/data/fits/hd163296/")
 fits_files = ["HD_163296_2019-03-23T08_41_19_L_TARGET_FINALCAL_INT.fits",
@@ -84,9 +85,12 @@ OPTIONS["fit.data"] = ["vis", "t3phi"]
 if __name__ == "__main__":
     nburnin, nsteps, nwalkers = 500, 2000, 35
 
-    model_result_dir = Path("../model_results/")
+    model_result_dir = Path("../model_results/hd163296")
     day_dir = model_result_dir / str(datetime.now().date())
-    result_dir = day_dir / f"results_model_nsteps{nburnin+nsteps}_nwalkers{nwalkers}"
+    time = datetime.now()
+    file_name = f"results_model_nsteps{nburnin+nsteps}_nwalkers{nwalkers}"\
+            f"_{time.hour}:{time.minute}:{time.second}"
+    result_dir = day_dir / file_name
     if not result_dir.exists():
         result_dir.mkdir(parents=True)
 

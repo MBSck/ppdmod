@@ -24,7 +24,7 @@ def create_synthetic(model: Model, fits_file: Path,
                         fourier_transform, readout.ucoord, readout.vcoord,
                         readout.u123coord, readout.v123coord, pixel_size, wavelength)
         total_flux_err, correlated_flux_err, closure_phase_err =\
-                map(lambda x: x*np.random.uniform(0, 0.4, x.shape),
+                map(lambda x: np.abs(x*np.random.uniform(0, 0.4, x.shape)),
                     (total_flux, correlated_flux, closure_phase))
         total_fluxes.append(total_flux)
         total_fluxes_err.append(total_flux_err)
