@@ -519,6 +519,12 @@ def calculate_effective_baselines(
     """
     if not isinstance(ucoord, u.Quantity):
         ucoord, vcoord = map(lambda x: x*u.m, [ucoord, vcoord])
+    axis_ratio = axis_ratio*u.one\
+            if not isinstance(axis_ratio, u.Quantity) else axis_ratio
+    pos_angle = pos_angle*u.deg\
+            if not isinstance(pos_angle, u.Quantity) else pos_angle
+        
+    pos_angle = pos_angle.to(u.rad)
     projected_baselines = np.sqrt(ucoord**2+vcoord**2)
     projected_baselines = np.sqrt(ucoord**2+vcoord**2)
     projected_baseline_angle = np.arctan2(ucoord, vcoord)

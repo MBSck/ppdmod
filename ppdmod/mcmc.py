@@ -143,7 +143,7 @@ def calculate_observables(fourier_transform: np.ndarray,
             fourier_transform, fourier_transform.shape[0],
             pixel_size, cphase_ucoord, cphase_vcoord, wavelength)
         cphase = np.angle(
-            np.product(interpolated_cphase, axis=1), deg=True)
+            np.prod(interpolated_cphase, axis=1), deg=True)
     return total_flux, corr_flux, cphase
 
 

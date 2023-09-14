@@ -415,11 +415,11 @@ def test_cphases_interpolation(diameter: u.mas, dim: float,
     interpolated_ud = interpolate_coordinates(
         rfft_ud, dim, pixel_size, u123coord, v123coord, wavelength)
     interpolated_ud =\
-        np.real(np.product(interpolated_ud/rfft_ud.max(), axis=1))
+        np.real(np.prod(interpolated_ud/rfft_ud.max(), axis=1))
 
     interpolated_bin = interpolate_coordinates(
         rfft_bin, dim, pixel_size, u123coord, v123coord, wavelength)
-    interpolated_bin = np.angle(np.product(interpolated_bin, axis=1))
+    interpolated_bin = np.angle(np.prod(interpolated_bin, axis=1))
 
     cphase_ud, cphase_bin = [], []
     for ucoord, vcoord in zip(u123coord, v123coord):
@@ -431,8 +431,8 @@ def test_cphases_interpolation(diameter: u.mas, dim: float,
         cphase_ud.append(tmp_cphase_ud)
         cphase_bin.append(tmp_cphase_bin)
 
-    cphase_ud = np.product(cphase_ud, axis=0)
-    cphase_bin = np.angle(np.product(cphase_bin, axis=0))
+    cphase_ud = np.prod(cphase_ud, axis=0)
+    cphase_bin = np.angle(np.prod(cphase_bin, axis=0))
 
     # NOTE: Resolution is too low at 1024 to successfully fit a binary...
     if dim == 1024:
@@ -449,7 +449,7 @@ def test_cphases_interpolation(diameter: u.mas, dim: float,
             f"data/uv_coords/{config}_uv123coords.npy")
         interpolated_bin = interpolate_coordinates(
             rfft_bin, dim, pixel_size, u123coord, v123coord, wavelength)
-        interpolated_bin = np.angle(np.product(interpolated_bin, axis=1))
+        interpolated_bin = np.angle(np.prod(interpolated_bin, axis=1))
 
         cphase_ud, cphase_bin = [], []
         for ucoord, vcoord in zip(u123coord, v123coord):
@@ -462,8 +462,8 @@ def test_cphases_interpolation(diameter: u.mas, dim: float,
             cphase_ud.append(tmp_cphase_ud)
             cphase_bin.append(tmp_cphase_bin)
 
-        cphase_ud = np.product(cphase_ud, axis=0)
-        cphase_bin = np.angle(np.product(cphase_bin, axis=0))
+        cphase_ud = np.prod(cphase_ud, axis=0)
+        cphase_bin = np.angle(np.prod(cphase_bin, axis=0))
 
         # NOTE: Resolution is too low at 1024 to successfully fit a binary...
         if dim == 1024:

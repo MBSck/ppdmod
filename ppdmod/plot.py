@@ -129,8 +129,8 @@ def plot_observed_vs_model(
         The save path. The default is None.
     """
     wavelengths = OPTIONS["fit.wavelengths"]
-    norm = mcolors.Normalize(vmin=wavelengths.min().value,
-                             vmax=wavelengths.max().value)
+    norm = mcolors.Normalize(
+            vmin=wavelengths[0].value, vmax=wavelengths[-1].value)
     colormap = mcm.get_cmap("turbo")
 
     if matplot_axes is not None:
