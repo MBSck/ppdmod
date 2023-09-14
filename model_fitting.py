@@ -69,11 +69,11 @@ OPTIONS["model.constant_params"] = {
 rin = Parameter(**STANDARD_PARAMETERS["rin"])
 rout = Parameter(**STANDARD_PARAMETERS["rout"])
 
-rin.value = 3.33
+rin.value = 1.
 rout.value = 7.
 
-rin.set(min=3, max=6)
-rout.set(min=6, max=10)
+rin.set(min=0.5, max=3)
+rout.set(min=1., max=4)
 rout.free = True
 
 inner_ring = {"rin": rin, "rout": rout}
@@ -87,7 +87,7 @@ rin.value = 13
 a.value = 0.5
 phi.value = 130
 
-rin.set(min=7, max=30)
+rin.set(min=4, max=30)
 a.set(min=0., max=1.)
 phi.set(min=0, max=360)
 
