@@ -138,23 +138,9 @@ OPTIONS["model.matryoshka.binning_factors"] = [2, 0, 1]
 
 labels = inner_ring_labels + outer_ring_labels + shared_params_labels
 
-components = custom_components.assemble_components(
-    OPTIONS["model.components_and_params"], OPTIONS["model.shared_params"])
-m = model.Model(components)
-image = m.calculate_image(4096, 0.1, OPTIONS["fit.wavelengths"][-1])
-fits_filename = 'test_model.fits'
-hdu = fits.PrimaryHDU(image.value)
-hdu.writeto(fits_filename, overwrite=True)
-plot.plot_model(4096, 0.1, m, OPTIONS["fit.wavelengths"][-1], zoom=None)
-breakpoint()
-
-OPTIONS["fourier.binning"] = 3
-
-
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers_burnin, nwalkers = 100, 2500, 200, 35
-
-    model_result_dir = Path("/Users/scheuck/Data/model_results/")
+    nburnin, nsteps, nwalkers = 0, 50, 35
+    model_result_dir = Path("../model_results/")
     day_dir = model_result_dir / str(datetime.now().date())
     time = datetime.now()
     file_name = f"results_model_nsteps{nburnin+nsteps}_nwalkers{nwalkers}"\
@@ -163,15 +149,27 @@ if __name__ == "__main__":
     if not result_dir.exists():
         result_dir.mkdir(parents=True)
 
-    sampler = mcmc.run_mcmc(nwalkers, nwalkers_burnin, nsteps, nburnin)
+    components = custom_components.assemble_components(
+        OPTIONS["model.components_and_params"], OPTIONS["model.shared_params"])
+    m = model.Model(components)
+    image = m.calculate_image(4096, 0.1, OPTIONS["fit.wavelengths"][-1])
+    fits_filename = 'pre_fit_model.fits'
+    hdu = fits.PrimaryHDU(image.value)
+    hdu.writeto(result_dir / fits_filename, overwrite=True)
+    plot.plot_model(4096, 0.1, m, OPTIONS["fit.wavelengths"][-1],
+                    zoom=50, savefig=result_dir / "pre_fit_model.pdf")
+
+    OPTIONS["fourier.binning"] = 3
+
+    sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin, nwalkers//2)
     theta = mcmc.get_best_fit(sampler, discard=nburnin)
     np.save(result_dir / "best_fit_params.npy", theta)
     new_params = dict(zip(labels, theta))
 
     plot.plot_chains(sampler, labels, discard=nburnin, savefig=result_dir / "chains.pdf")
     plot.plot_corner(sampler, labels, discard=nburnin, savefig=result_dir / "corner.pdf")
-    # OPTIONS["fourier.binning"] = None
-    # OPTIONS["fourier.padding"] = None
+
+    OPTIONS["fourier.binning"] = None
     OPTIONS["model.matryoshka"] = False
     wavelength = OPTIONS["fit.wavelengths"][1]
     components_and_params, shared_params = mcmc.set_params_from_theta(theta)
@@ -184,8 +182,12 @@ if __name__ == "__main__":
         component.params["rin0"] = innermost_radius
 
     m = model.Model(components)
-    plot.plot_model(4096, 0.1, m, wavelength, zoom=None,
-                    savefig=None)
+    image = m.calculate_image(4096, 0.1, OPTIONS["fit.wavelengths"][-1])
+    fits_filename = 'model.fits'
+    hdu = fits.PrimaryHDU(image.value)
+    hdu.writeto(result_dir / fits_filename, overwrite=True)
+    plot.plot_model(4096, 0.1, m, wavelength, zoom=50,
+                    savefig=result_dir / "model.pdf")
     plot.plot_observed_vs_model(m, 0.1*u.mas, new_params["sh_elong"],
                                 new_params["sh_pa"],
                                 savefig=result_dir / "fit_results.pdf")

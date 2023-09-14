@@ -19,7 +19,7 @@ from ppdmod.options import OPTIONS
 os.environ["OMP_NUM_THREADS"] = "1"
 
 data.set_fit_wavelengths([3.2103345, 3.520375, 3.7025948]*u.um)
-path = Path("tests/data/fits/hd163296/")
+path = Path("data/fits/hd163296/")
 fits_files = ["HD_163296_2019-03-23T08_41_19_L_TARGET_FINALCAL_INT.fits",
               "HD_163296_2019-05-06T08_19_51_L_TARGET_FINALCAL_INT.fits"]
 fits_files = list(map(lambda x: path / x, fits_files))
@@ -76,7 +76,6 @@ OPTIONS["model.matryoshka"] = True
 OPTIONS["model.matryoshka.binning_factors"] = [2, 0, 1]
 
 labels = inner_ring_labels + shared_params_labels
-
 
 OPTIONS["fourier.binning"] = 3
 OPTIONS["fit.data"] = ["vis", "t3phi"]
