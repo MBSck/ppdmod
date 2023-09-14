@@ -465,19 +465,31 @@ def test_calculate_effective_baselines(fits_file: Path,
     """Tests the calculation of the effective baselines."""
     axis_ratio, pos_angle = 1, 33*u.deg
     readout = ReadoutFits(fits_file)
-    effective_baselines_mlambda = utils.calculate_effective_baselines(
-        readout.ucoord, readout.vcoord, axis_ratio, pos_angle, wavelength)
-    effective_baselines_meter = utils.calculate_effective_baselines(
+
+    baseline_dir = Path("baselines")
+    if not baseline_dir.exists():
+        baseline_dir.mkdir()
+
+    index = np.where(wavelength == readout.wavelength)
+
+    effective_baselines = utils.calculate_effective_baselines(
         readout.ucoord, readout.vcoord, axis_ratio, pos_angle)
 
-    assert effective_baselines_meter.unit == u.m
-    assert effective_baselines_meter.size == 6
-    assert effective_baselines_mlambda.unit == u.one
+    plt.scatter(effective_baselines/wavelength.value,
+                readout.vis[:, index].squeeze())
+    plt.savefig(baseline_dir / "baseline_vs_vis.pdf", format="pdf")
+    plt.close()
 
-    effective_baselines_mlambda_cp = utils.calculate_effective_baselines(
-        readout.u123coord, readout.v123coord, axis_ratio, pos_angle, wavelength)
-    effective_baselines_meter_cp = utils.calculate_effective_baselines(
-        readout.u123coord, readout.v123coord, axis_ratio, pos_angle)
-    assert effective_baselines_meter_cp.unit == u.m
-    assert effective_baselines_meter_cp.shape == (3, 4)
-    assert effective_baselines_mlambda_cp.unit == u.one
+    assert effective_baselines.unit == u.m
+    assert effective_baselines.size == 6
+
+    effective_baselines_cp = utils.calculate_effective_baselines(
+        readout.u123coord, readout.v123coord, axis_ratio, pos_angle).max(axis=0)
+
+    plt.scatter(effective_baselines_cp/wavelength.value,
+                readout.t3phi[:, index].squeeze())
+    plt.savefig(baseline_dir / "baseline_vs_t3phi.pdf", format="pdf")
+    plt.close()
+
+    assert effective_baselines_cp.unit == u.m
+    assert effective_baselines_cp.shape == (4,)

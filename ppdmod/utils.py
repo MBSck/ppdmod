@@ -494,8 +494,7 @@ def distance_to_angular(diameter: u.mas, distance: u.pc) -> u.m:
 
 def calculate_effective_baselines(
         ucoord: u.m, vcoord: u.m, axis_ratio: u.one,
-        pos_angle: u.deg, wavelength: Optional[u.Quantity[u.um]] = None
-        ) -> Union[u.Quantity[u.m], u.Quantity[u.one]]:
+        pos_angle: u.deg) -> Union[u.Quantity[u.m], u.Quantity[u.one]]:
     """Calculates the effective baselines from the projected baselines
     in mega lambda.
 
@@ -520,19 +519,13 @@ def calculate_effective_baselines(
     """
     if not isinstance(ucoord, u.Quantity):
         ucoord, vcoord = map(lambda x: x*u.m, [ucoord, vcoord])
-    pos_angle = (pos_angle*u.deg).to(u.rad)\
-        if not isinstance(pos_angle, u.Quantity) else pos_angle.to(u.rad)
-    projected_baselines = np.hypot(ucoord, vcoord)
-    projected_baselines_angle = np.arctan2(vcoord, ucoord)
-    atd = np.arctan2(
-        (np.cos(projected_baselines_angle-pos_angle)),
-        np.sin(projected_baselines_angle-pos_angle))
-    ucoord_eff = projected_baselines\
-        * (np.cos(atd)*np.cos(pos_angle)
-           - axis_ratio*np.sin(atd)*np.sin(pos_angle))
-    vcoord_eff = projected_baselines\
-        * (np.cos(atd)*np.sin(pos_angle)
-           + axis_ratio*np.sin(atd)*np.cos(pos_angle))
-    if wavelength is not None:
-        return np.hypot(ucoord_eff, vcoord_eff).value/wavelength.value*u.one
-    return np.hypot(ucoord_eff, vcoord_eff)
+    projected_baselines = np.sqrt(ucoord**2+vcoord**2)
+    projected_baselines = np.sqrt(ucoord**2+vcoord**2)
+    projected_baseline_angle = np.arctan2(ucoord, vcoord)
+    angle_to_deproject = np.arctan2(np.sin(projected_baseline_angle-pos_angle),
+                                    (np.cos(projected_baseline_angle-pos_angle)))
+    ucoords_eff = projected_baselines*(np.cos(angle_to_deproject)*np.cos(pos_angle)\
+            - axis_ratio*np.sin(angle_to_deproject)*np.sin(pos_angle))
+    vcoords_eff = projected_baselines*(np.cos(angle_to_deproject)*np.sin(pos_angle)\
+            + axis_ratio*np.sin(angle_to_deproject)*np.cos(pos_angle))
+    return np.sqrt(ucoords_eff**2+vcoords_eff**2)
