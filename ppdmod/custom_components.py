@@ -50,7 +50,7 @@ class Star(AnalyticalComponent):
         super().__init__(**kwargs)
         self._stellar_angular_radius = None
 
-        self.params["f"] = Parameter(**STANDARD_PARAMETERS["flux"])
+        self.params["f"] = Parameter(**STANDARD_PARAMETERS["f"])
         self.params["dist"] = Parameter(**STANDARD_PARAMETERS["dist"])
         self.params["eff_temp"] = Parameter(**STANDARD_PARAMETERS["eff_temp"])
         self.params["eff_radius"] = Parameter(**STANDARD_PARAMETERS["eff_radius"])
