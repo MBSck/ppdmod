@@ -94,8 +94,8 @@ class Star(AnalyticalComponent):
         """
         image = np.zeros(xx.shape)*u.Jy
         centre = xx.shape[0]//2
-        if self.params["flux"].value is not None:
-            star_flux = self.params["flux"](wavelength)/4
+        if self.params["f"].value is not None:
+            star_flux = self.params["f"](wavelength)/4
         else:
             star_flux = self.calculate_stellar_flux(wavelength)/4
         image[centre-1:centre+1, centre-1:centre+1] = star_flux
@@ -105,8 +105,8 @@ class Star(AnalyticalComponent):
                              wavelength: Optional[u.Quantity[u.um]] = None
                              ) -> np.ndarray:
         """The component's _visibility_function."""
-        if self.params["flux"].value is not None:
-            star_flux = self.params["flux"](wavelength)
+        if self.params["f"].value is not None:
+            star_flux = self.params["f"](wavelength)
         else:
             star_flux = self.calculate_stellar_flux(wavelength)
         return np.ones((dim, dim))*star_flux.value

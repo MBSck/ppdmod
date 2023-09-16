@@ -37,8 +37,10 @@ wavelength_axes = np.sort(np.unique(np.concatenate(wavelength_axes)))
 
 flux_file = Path("tests/data/flux/HD142666_stellar_model.txt.gz")
 wavelength, flux = np.loadtxt(flux_file, comments="#", unpack=True)[:2]
-star_flux = utils.opacity_to_matisse_opacity(
+matisse_flux = utils.opacity_to_matisse_opacity(
     wavelength_axes, wavelength_grid=wavelength*u.um, opacity=flux*u.Jy).value*u.Jy
+star_flux = Parameter(**STANDARD_PARAMETERS["f"])
+star_flux.value, star_flux.wavelength = matisse_flux, wavelength_axes
 
 weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
 qval_file_dir = Path("tests/data/qval")
@@ -54,14 +56,10 @@ opacity = utils.linearly_combine_opacities(
 continuum_opacity = utils.opacity_to_matisse_opacity(
     wavelength_axes, qval_file=qval_file_dir / "Q_amorph_c_rv0.1.dat")
 
-kappa_abs = Parameter(name="kappa_abs", value=opacity,
-                      wavelength=wavelength_axes,
-                      unit=u.cm**2/u.g, free=False,
-                      description="Dust mass absorption coefficient")
-kappa_cont = Parameter(name="kappa_cont", value=continuum_opacity,
-                       wavelength=wavelength_axes,
-                       unit=u.cm**2/u.g, free=False,
-                       description="Continuum dust mass absorption coefficient")
+kappa_abs = Parameter(**STANDARD_PARAMETERS["kappa_abs"])
+kappa_abs.value, kappa_abs.wavelength = opacity, wavelength_axes
+kappa_cont = Parameter(**STANDARD_PARAMETERS["kappa_cont"])
+kappa_cont.value, kappa_cont.wavelength = continuum_opacity, wavelength_axes
 
 fov, pixel_size = 220, 0.1
 dim = utils.get_next_power_of_two(fov / pixel_size)
