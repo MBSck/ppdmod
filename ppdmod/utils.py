@@ -370,6 +370,7 @@ def transform_opacity(
 
 def opacity_to_matisse_opacity(wavelength_solution: u.um,
                                opacity: Optional[u.Quantity[u.cm**2/u.g]] = None,
+                               wavelength_grid: Optional[u.Quantity[u.um]] = None,
                                opacity_file: Optional[Path] = None,
                                qval_file: Optional[Path] = None,
                                resolution: Optional[str] = "low",

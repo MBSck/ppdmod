@@ -29,11 +29,16 @@ fits_files = [
     "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_HAWAII-2RG_FINAL_TARGET_INT.fits",
     "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits"]
 fits_files = list(map(lambda x: path / x, fits_files))
-data.set_data(fits_files)
+data.set_data(fits_files, rotate_phases=True)
 
 wavelength_axes = list(
     map(lambda x: data.ReadoutFits(x).wavelength, fits_files))
 wavelength_axes = np.sort(np.unique(np.concatenate(wavelength_axes)))
+
+flux_file = Path("tests/data/flux/HD142666_stellar_model.txt.gz")
+wavelength, flux = np.loadtxt(flux_file, comments="#", unpack=True)[:2]
+star_flux = utils.opacity_to_matisse_opacity(
+    wavelength_axes, wavelength_grid=wavelength*u.um, opacity=flux*u.Jy).value*u.Jy
 
 weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
 qval_file_dir = Path("tests/data/qval")
@@ -63,8 +68,9 @@ dim = utils.get_next_power_of_two(fov / pixel_size)
 
 OPTIONS["model.constant_params"] = {
     "dim": dim, "dist": 150, "eff_temp": 7500,
-    "pixel_size": pixel_size, "eff_radius": 1.8,
-    "inner_temp": 1500, "kappa_abs": kappa_abs, "kappa_cont": kappa_cont}
+    "f": star_flux, "pixel_size": pixel_size,
+    "eff_radius": 1.8, "inner_temp": 1500,
+    "kappa_abs": kappa_abs, "kappa_cont": kappa_cont}
 
 rin = Parameter(**STANDARD_PARAMETERS["rin"])
 rout = Parameter(**STANDARD_PARAMETERS["rout"])

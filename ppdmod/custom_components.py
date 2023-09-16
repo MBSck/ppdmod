@@ -50,6 +50,7 @@ class Star(AnalyticalComponent):
         super().__init__(**kwargs)
         self._stellar_angular_radius = None
 
+        self.params["f"] = Parameter(**STANDARD_PARAMETERS["flux"])
         self.params["dist"] = Parameter(**STANDARD_PARAMETERS["dist"])
         self.params["eff_temp"] = Parameter(**STANDARD_PARAMETERS["eff_temp"])
         self.params["eff_radius"] = Parameter(**STANDARD_PARAMETERS["eff_radius"])
@@ -93,7 +94,10 @@ class Star(AnalyticalComponent):
         """
         image = np.zeros(xx.shape)*u.Jy
         centre = xx.shape[0]//2
-        star_flux = self.calculate_stellar_flux(wavelength)/4
+        if self.params["flux"].value is not None:
+            star_flux = self.params["flux"](wavelength)/4
+        else:
+            star_flux = self.calculate_stellar_flux(wavelength)/4
         image[centre-1:centre+1, centre-1:centre+1] = star_flux
         return image
 
@@ -101,7 +105,11 @@ class Star(AnalyticalComponent):
                              wavelength: Optional[u.Quantity[u.um]] = None
                              ) -> np.ndarray:
         """The component's _visibility_function."""
-        return np.ones((dim, dim))*self.calculate_stellar_flux(wavelength).value
+        if self.params["flux"].value is not None:
+            star_flux = self.params["flux"](wavelength)
+        else:
+            star_flux = self.calculate_stellar_flux(wavelength)
+        return np.ones((dim, dim))*star_flux.value
 
 
 class TemperatureGradient(NumericalComponent):
