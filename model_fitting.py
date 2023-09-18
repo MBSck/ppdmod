@@ -143,7 +143,7 @@ OPTIONS["model.matryoshka.binning_factors"] = [2, 0, 1]
 labels = inner_ring_labels + outer_ring_labels + shared_params_labels
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 0, 50, 35
+    nburnin, nsteps, nwalkers = 500, 2500, 35
     model_result_dir = Path("../model_results/")
     day_dir = model_result_dir / str(datetime.now().date())
     time = datetime.now()

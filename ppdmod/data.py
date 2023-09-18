@@ -33,11 +33,11 @@ class ReadoutFits:
                 self.flux_err = None
             self.vis = hdul["oi_vis"].data["visamp"]
             self.vis_err = hdul["oi_vis"].data["visamperr"]
-            cphases = hdul["oi_t3"].data["t3phi"] 
-            cphases_err = hdul["oi_t3"].data["t3phierr"]
             if self.rotate_phases:
-                cphases, cphases_err = -cphases, -cphases_err
-            self.t3phi, self.t3phi_err = cphases, cphases_err
+                self.t3phi = -hdul["oi_t3"].data["t3phi"]
+            else:
+                self.t3phi = hdul["oi_t3"].data["t3phi"]
+            self.t3phi_err = hdul["oi_t3"].data["t3phierr"]
             self.u1coord = hdul["oi_t3"].data["u1coord"]
             self.u2coord = hdul["oi_t3"].data["u2coord"]
             self.u3coord = -(self.u1coord+self.u2coord)

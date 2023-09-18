@@ -3,6 +3,7 @@ from pathlib import Path
 
 import astropy.units as u
 import corner
+import matplotlib
 import matplotlib.colors as mcolors
 import matplotlib.cm as cm
 import matplotlib.lines as mlines
@@ -15,6 +16,7 @@ from .model import Model
 from .options import OPTIONS
 from .utils import calculate_effective_baselines
 
+matplotlib.use('Agg')
 
 def plot_corner(sampler: np.ndarray, labels: List[str],
                 discard: Optional[int] = 0,
