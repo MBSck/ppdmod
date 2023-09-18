@@ -12,11 +12,9 @@ from .options import OPTIONS
 class ReadoutFits:
     """All functionality to work with (.fits)-files"""
 
-    def __init__(self, fits_file: Path,
-                 rotate_phases: Optional[bool] = False) -> None:
+    def __init__(self, fits_file: Path) -> None:
         """The class's constructor."""
         self.fits_file = Path(fits_file)
-        self.rotate_phases = rotate_phases
         self.read_file()
 
     def read_file(self):
@@ -33,10 +31,7 @@ class ReadoutFits:
                 self.flux_err = None
             self.vis = hdul["oi_vis"].data["visamp"]
             self.vis_err = hdul["oi_vis"].data["visamperr"]
-            if self.rotate_phases:
-                self.t3phi = -hdul["oi_t3"].data["t3phi"]
-            else:
-                self.t3phi = hdul["oi_t3"].data["t3phi"]
+            self.t3phi = hdul["oi_t3"].data["t3phi"]
             self.t3phi_err = hdul["oi_t3"].data["t3phierr"]
             self.u1coord = hdul["oi_t3"].data["u1coord"]
             self.u2coord = hdul["oi_t3"].data["u2coord"]
@@ -77,8 +72,7 @@ def set_fit_wavelengths(
 
 
 def set_data(fits_files: Optional[List[Path]] = None,
-             wavelengths: Optional[u.Quantity[u.um]] = None,
-             rotate_phases: Optional[bool] = False) -> None:
+             wavelengths: Optional[u.Quantity[u.um]] = None) -> None:
     """Sets the data as a global variable from the input files.
 
     If called without parameters or recalled, it will clear the data.
@@ -102,7 +96,7 @@ def set_data(fits_files: Optional[List[Path]] = None,
         return
 
     readouts = OPTIONS["data.readouts"] =\
-        [ReadoutFits(file, rotate_phases) for file in fits_files]
+        [ReadoutFits(file) for file in fits_files]
 
     if wavelengths is None:
         wavelengths = OPTIONS["fit.wavelengths"]
