@@ -29,7 +29,7 @@ fits_files = [
     "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_HAWAII-2RG_FINAL_TARGET_INT.fits",
     "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits"]
 fits_files = list(map(lambda x: path / x, fits_files))
-data.set_data(fits_files, rotate_phases=True)
+data.set_data(fits_files)
 
 wavelength_axes = list(
     map(lambda x: data.ReadoutFits(x).wavelength, fits_files))
@@ -128,15 +128,6 @@ OPTIONS["model.components_and_params"] = [
     ["AsymmetricSDGreyBodyContinuum", outer_ring],
 ]
 
-# OPTIONS["fourier.binning"] = 3
-# OPTIONS["fourier.padding"] = 3
-# print("Binned Dimension",
-#       dim*2**-OPTIONS["fourier.binning"],
-#       "Resolution",
-#       pixel_size*2**OPTIONS["fourier.binning"])
-# print("Binned and padded Dimension",
-#       dim*2**-OPTIONS["fourier.binning"]*2**OPTIONS["fourier.padding"])
-
 OPTIONS["model.matryoshka"] = True
 OPTIONS["model.matryoshka.binning_factors"] = [2, 0, 1]
 
@@ -157,9 +148,8 @@ if __name__ == "__main__":
         OPTIONS["model.components_and_params"], OPTIONS["model.shared_params"])
     m = model.Model(components)
     image = m.calculate_image(4096, 0.1, OPTIONS["fit.wavelengths"][-1])
-    fits_filename = 'pre_fit_model.fits'
-    hdu = fits.PrimaryHDU(image.value)
-    hdu.writeto(result_dir / fits_filename, overwrite=True)
+    plot.save_model_fits(4096, 0.1, m, OPTIONS["fit.wavelengths"][-1],
+                         savefits=result_dir / "pre-model.fits")
     plot.plot_model(4096, 0.1, m, OPTIONS["fit.wavelengths"][-1],
                     zoom=50, savefig=result_dir / "pre_fit_model.pdf")
 
@@ -178,7 +168,7 @@ if __name__ == "__main__":
     wavelength = OPTIONS["fit.wavelengths"][1]
     components_and_params, shared_params = mcmc.set_params_from_theta(theta)
     components = custom_components.assemble_components(
-        components_and_params, shared_params)
+            components_and_params, shared_params)
 
     # HACK: This is to include innermost radius for rn.
     innermost_radius = components[1].params["rin"]
@@ -186,12 +176,11 @@ if __name__ == "__main__":
         component.params["rin0"] = innermost_radius
 
     m = model.Model(components)
-    image = m.calculate_image(4096, 0.1, OPTIONS["fit.wavelengths"][-1])
-    fits_filename = 'model.fits'
-    hdu = fits.PrimaryHDU(image.value)
-    hdu.writeto(result_dir / fits_filename, overwrite=True)
+    plot.save_model_fits(4096, 0.1, m, OPTIONS["fit.wavelengths"][-1],
+                         savefits=result_dir / "pre-model.fits")
     plot.plot_model(4096, 0.1, m, wavelength, zoom=50,
                     savefig=result_dir / "model.pdf")
+
     plot.plot_observed_vs_model(m, 0.1*u.mas, new_params["sh_elong"],
                                 new_params["sh_pa"],
                                 savefig=result_dir / "fit_results.pdf")

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional, List
 from pathlib import Path
 
@@ -9,6 +10,7 @@ import matplotlib.cm as cm
 import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
 import numpy as np
+from astropy.io import fits
 from matplotlib import colormaps as mcm
 
 from .mcmc import calculate_observables
@@ -74,6 +76,49 @@ def plot_chains(sampler: np.ndarray, labels: List[str],
     else:
         plt.show()
     plt.close()
+
+
+def save_model_fits(dim: int, pixel_size: u.mas,
+                    model: Model, wavelength: u.um,
+                    savefits: Path, dtype: Optional[np.dtype] = np.float16) -> None:
+    """Saves a (.fits)-file of the model with all the information on the parameter space."""
+    pixel_size = pixel_size if isinstance(pixel_size, u.Quantity) else pixel_size*u.mas
+    wavelength = wavelength if isinstance(wavelength, u.Quantity) else wavelength*u.m
+
+    dtype_mapping = {
+        np.int8: 8, np.uint8: 8,
+        np.int16: 16, np.uint16: 16, np.float16: -16,
+        np.int32: 32, np.uint32: 32, np.float32: -32,
+        np.int64: 64, np.uint64: 64, np.float64: -64
+    }
+
+    image = model.calculate_image(dim, pixel_size, wavelength).value.astype(dtype)
+    header = fits.Header()
+    header["SIMPLE"] = True, "SIMPLE"
+    header["BITPIX"] = dtype_mapping[dtype], "BITPIX"
+    header["NAXIS"] = 2, "NAXIS"
+    header["NAXIS1"] = dim, "NAXIS1"
+    header["NAXIS2"] = dim, "NAXIS2"
+    header["WAVELENGTH"] = wavelength, "Wavelength"
+    header["DATAMAX"] = np.max(image), "Maximum value"
+    header["DATAMIN"] = np.min(image), "Minimum value"
+    header["CRPIX1"] = dim//2, "Pixel coordinate of x reference point"
+    header["CRPIX2"] = dim//2, "Pixel coordinate of y reference point"
+    header["CDELT1"] = pixel_size.value, "Pixel size in x direction"
+    header["CDELT2"] = pixel_size.value, "Pixel size in y direction"
+    header["CUNIT1"] = "mas", "Right Ascension unit"
+    header["CUNIT2"] = "mas", "Declination unit"
+    header["CTYPE1"] = "RA---TAN", "Right Ascension - Tangential projection"
+    header["CTYPE2"] = "DEC---TAN", "Declination - Tangential projection"
+    header["BTYPE"] = "Intensity", 
+    header["BUNIT"] = "Jy/pixel", "Brightness (pixel) unit"
+    header["OBJECT"] = "HD 142666", "Name of the object"
+    header["DATE"] = f"{datetime.now()}", "Creation date"
+    header["COMMENT"] = "Best fit model image to data."
+    header["EXTEND"] = True, "EXTEND"
+
+    hdu = fits.PrimaryHDU(image, header=header)
+    hdu.writeto(savefits, overwrite=True)
 
 
 # TODO: Make inverse plot function from inverse fft.
