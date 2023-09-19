@@ -64,10 +64,11 @@ kappa_cont.value, kappa_cont.wavelength = continuum_opacity, wavelength_axes
 fov, pixel_size = 220, 0.1
 dim = utils.get_next_power_of_two(fov / pixel_size)
 
+distance = 148.3
 OPTIONS["model.constant_params"] = {
-    "dim": dim, "dist": 150, "eff_temp": 7500,
+    "dim": dim, "dist": 148.3, "eff_temp": 7500,
     "f": star_flux, "pixel_size": pixel_size,
-    "eff_radius": 1.8, "inner_temp": 1500,
+    "eff_radius": 1.75, "inner_temp": 1500,
     "kappa_abs": kappa_abs, "kappa_cont": kappa_cont}
 
 rin = Parameter(**STANDARD_PARAMETERS["rin"])
@@ -147,11 +148,12 @@ if __name__ == "__main__":
     components = custom_components.assemble_components(
         OPTIONS["model.components_and_params"], OPTIONS["model.shared_params"])
     m = model.Model(components)
-    image = m.calculate_image(4096, 0.1, OPTIONS["fit.wavelengths"][-1])
-    plot.save_model_fits(4096, 0.1, m, OPTIONS["fit.wavelengths"][-1],
-                         savefits=result_dir / "pre-model.fits")
-    plot.plot_model(4096, 0.1, m, OPTIONS["fit.wavelengths"][-1],
-                    zoom=50, savefig=result_dir / "pre_fit_model.pdf")
+    wavelength = OPTIONS["fit.wavelengths"][-1]
+    plot.save_model_fits(
+            dim, pixel_size, distance,
+            pa.value, elong.value,
+            m, wavelength, savefits=result_dir / "pre-model.fits")
+    breakpoint()
 
     OPTIONS["fourier.binning"] = 3
 
@@ -165,7 +167,6 @@ if __name__ == "__main__":
 
     OPTIONS["fourier.binning"] = None
     OPTIONS["model.matryoshka"] = False
-    wavelength = OPTIONS["fit.wavelengths"][1]
     components_and_params, shared_params = mcmc.set_params_from_theta(theta)
     components = custom_components.assemble_components(
             components_and_params, shared_params)
@@ -176,11 +177,11 @@ if __name__ == "__main__":
         component.params["rin0"] = innermost_radius
 
     m = model.Model(components)
-    plot.save_model_fits(4096, 0.1, m, OPTIONS["fit.wavelengths"][-1],
-                         savefits=result_dir / "pre-model.fits")
-    plot.plot_model(4096, 0.1, m, wavelength, zoom=50,
-                    savefig=result_dir / "model.pdf")
-
-    plot.plot_observed_vs_model(m, 0.1*u.mas, new_params["sh_elong"],
-                                new_params["sh_pa"],
-                                savefig=result_dir / "fit_results.pdf")
+    plot.save_model_fits(
+            dim, pixel_size, distance,
+            new_params["sh_pa"], new_params["sh_elong"],
+            m, wavelength,
+            savefits=result_dir / "model.fits")
+    plot.plot_observed_vs_model(
+            m, pixel_size*u.mas, new_params["sh_elong"],
+            new_params["sh_pa"], savefig=result_dir / "fit_results.pdf")

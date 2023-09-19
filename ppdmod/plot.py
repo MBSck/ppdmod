@@ -11,6 +11,7 @@ import matplotlib.lines as mlines
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
+from astropy.wcs import WCS
 from matplotlib import colormaps as mcm
 
 from .mcmc import calculate_observables
@@ -78,48 +79,52 @@ def plot_chains(sampler: np.ndarray, labels: List[str],
     plt.close()
 
 
-def save_model_fits(dim: int, pixel_size: u.mas,
+# TODO: Add components to this as well as the parameters in a sub HDULIST.
+# As images cubes or sth else?.
+def save_model_fits(dim: int, pixel_size: u.mas, distance: u.pc,
+                    pos_angle: float, elongation: float,
                     model: Model, wavelength: u.um,
-                    savefits: Path, dtype: Optional[np.dtype] = np.float16) -> None:
+                    savefits: Path, dtype: Optional[np.dtype] = np.float32) -> None:
     """Saves a (.fits)-file of the model with all the information on the parameter space."""
     pixel_size = pixel_size if isinstance(pixel_size, u.Quantity) else pixel_size*u.mas
     wavelength = wavelength if isinstance(wavelength, u.Quantity) else wavelength*u.m
+    distance = distance if isinstance(distance, u.Quantity) else distance*u.pc
+    pos_angle = pos_angle if isinstance(pos_angle, u.Quantity) else pos_angle*u.deg
+    pos_angle_rad = (pos_angle-180*u.deg).to(u.rad).value
 
-    dtype_mapping = {
-        np.int8: 8, np.uint8: 8,
-        np.int16: 16, np.uint16: 16, np.float16: -16,
-        np.int32: 32, np.uint32: 32, np.float32: -32,
-        np.int64: 64, np.uint64: 64, np.float64: -64
-    }
-
+    pixel_size_au = pixel_size.to(u.arcsec).value*distance.to(u.pc)
     image = model.calculate_image(dim, pixel_size, wavelength).value.astype(dtype)
-    header = fits.Header()
-    header["SIMPLE"] = True, "SIMPLE"
-    header["BITPIX"] = dtype_mapping[dtype], "BITPIX"
-    header["NAXIS"] = 2, "NAXIS"
-    header["NAXIS1"] = dim, "NAXIS1"
-    header["NAXIS2"] = dim, "NAXIS2"
-    header["WAVELENGTH"] = wavelength, "Wavelength"
-    header["DATAMAX"] = np.max(image), "Maximum value"
-    header["DATAMIN"] = np.min(image), "Minimum value"
-    header["CRPIX1"] = dim//2, "Pixel coordinate of x reference point"
-    header["CRPIX2"] = dim//2, "Pixel coordinate of y reference point"
-    header["CDELT1"] = pixel_size.value, "Pixel size in x direction"
-    header["CDELT2"] = pixel_size.value, "Pixel size in y direction"
-    header["CUNIT1"] = "mas", "Right Ascension unit"
-    header["CUNIT2"] = "mas", "Declination unit"
-    header["CTYPE1"] = "RA---TAN", "Right Ascension - Tangential projection"
-    header["CTYPE2"] = "DEC---TAN", "Declination - Tangential projection"
-    header["BTYPE"] = "Intensity", 
-    header["BUNIT"] = "Jy/pixel", "Brightness (pixel) unit"
-    header["OBJECT"] = "HD 142666", "Name of the object"
+
+    wcs = WCS(naxis=2)
+    wcs.wcs.crpix = np.array(image.shape) // 2
+    wcs.wcs.cdelt = np.array([pixel_size.value, pixel_size.value])
+    wcs.wcs.crval = (0.0, 0.0)
+    wcs.wcs.ctype = ("RA---AIR", "DEC--AIR")
+    wcs.wcs.cunit = ("mas", "mas")
+    wcs.wcs.pc = np.array([[-1, 0], [0, 1]])
+    header = wcs.to_header()
+
+    header["BUNIT"] = "Jy", "Unit of original pixel value"
+    header["BTYPE"] = "Brightness", "Type of original pixel value"
+
+    header["COMMENT"] = "Best fit model image"
+
+    header["DATAMAX"] = np.max(image), "Quarter star flux (Jy)"
     header["DATE"] = f"{datetime.now()}", "Creation date"
-    header["COMMENT"] = "Best fit model image to data."
+    header["DISTANCE"] = distance.value, "Distance to object (pc)"
+
     header["EXTEND"] = True, "EXTEND"
+
+    header["LAMBDA"] = np.around(wavelength.value, 2), "Wavelength (microns)"
+    header["PA"] = pos_angle.value, "Position angle (deg)"
+    header["ELONGRAD"] = np.around(elongation, 2), "Elongation (rad)"
+    header["ELONGDEG"] = np.around(elongation*u.rad.to(u.deg), 2), "Elongation (deg)"
+    header["OBJECT"] = "HD 142666", "Name of the object"
+    # header["LTM1_1"] = np.around(pixel_size_au.value, 5), "Pixel size for x-coordinate (au)"
+    # header["LTM2_2"] = np.around(pixel_size_au.value, 5), "Pixel size for y-coordinate (au)"
 
     hdu = fits.PrimaryHDU(image, header=header)
     hdu.writeto(savefits, overwrite=True)
-
 
 # TODO: Make inverse plot function from inverse fft.
 def plot_model(dim: int, pixel_size: u.mas,
