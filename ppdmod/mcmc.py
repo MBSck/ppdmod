@@ -231,11 +231,12 @@ def lnprior(components_and_params: List[List[Dict]],
     return 0
 
 
-def lnprob(theta: np.ndarray) -> float:
+def lnprob_analytical(theta: np.ndarray) -> float:
     """Takes theta vector and the x, y and the yerr of the theta.
     Returns a number corresponding to how good of a fit the model is to your
     data for a given set of parameters, weighted by the data points.
 
+    This is the analytical 1D implementation.
 
     Parameters
     ----------
@@ -256,7 +257,67 @@ def lnprob(theta: np.ndarray) -> float:
     components = assemble_components(parameters, shared_params)
 
     # HACK: This is to include innermost radius for rn.
-    # TODO: Set this option in the options.
+    innermost_radius = components[1].params["rin"]
+    for component in components:
+        component.params["rin0"] = innermost_radius
+    model = Model(components)
+
+    total_fluxes, total_fluxes_err =\
+        OPTIONS["data.total_flux"], OPTIONS["data.total_flux_error"]
+    corr_fluxes, corr_fluxes_err =\
+        OPTIONS["data.correlated_flux"], OPTIONS["data.correlated_flux_error"]
+    cphases, cphases_err =\
+        OPTIONS["data.closure_phase"], OPTIONS["data.closure_phase_error"]
+
+    total_chi_sq = 0
+    for index, (total_flux, total_flux_err, corr_flux,
+                corr_flux_err, cphase, cphase_err)\
+            in enumerate(
+                zip(total_fluxes, total_fluxes_err, corr_fluxes,
+                    corr_fluxes_err, cphases, cphases_err)):
+        readout = OPTIONS["data.readouts"][index]
+        for wavelength in OPTIONS["fit.wavelengths"]:
+            wavelength_str = str(wavelength.value)
+            if wavelength_str not in corr_flux:
+                continue
+            # TODO: Implement here the model calculation.
+
+            total_chi_sq += calculate_observables_chi_sq(
+                total_flux[wavelength_str],
+                total_flux_err[wavelength_str], total_flux_model,
+                corr_flux[wavelength_str],
+                corr_flux_err[wavelength_str], corr_flux_model,
+                cphase[wavelength_str], cphase_err[wavelength_str],
+                cphase_model)
+    return total_chi_sq
+
+
+def lnprob_numerical(theta: np.ndarray) -> float:
+    """Takes theta vector and the x, y and the yerr of the theta.
+    Returns a number corresponding to how good of a fit the model is to your
+    data for a given set of parameters, weighted by the data points.
+
+    This is the numerical 2D implementation.
+
+    Parameters
+    ----------
+    theta: np.ndarray
+        The parameters that ought to be fitted.
+
+    Returns
+    -------
+    float
+        The log of the probability.
+    """
+    parameters, shared_params = set_params_from_theta(theta)
+
+    lnp = lnprior(parameters, shared_params)
+    if np.isinf(lnp):
+        return -np.inf
+
+    components = assemble_components(parameters, shared_params)
+
+    # HACK: This is to include innermost radius for rn.
     innermost_radius = components[1].params["rin"]
     for component in components:
         component.params["rin0"] = innermost_radius
@@ -307,7 +368,8 @@ def lnprob(theta: np.ndarray) -> float:
 def run_mcmc(nwalkers: int,
              nsteps: Optional[int] = 100,
              nsteps_burnin: Optional[int] = 0,
-             ncores: Optional[int] = 6) -> np.ndarray:
+             ncores: Optional[int] = 6,
+             method: Optional[str] = "numerical") -> np.ndarray:
     """Runs the emcee Hastings Metropolitan sampler.
 
     The EnsambleSampler recieves the parameters and the args are passed to
@@ -332,6 +394,8 @@ def run_mcmc(nwalkers: int,
     """
     theta = init_randomly(nwalkers)
     ndim = theta.shape[1]
+    lnprob = lnprob_numerical if method == "numerical"\
+            else lnprob_analytical
     print(f"Executing MCMC with {ncores} cores.")
     print(f"{'':-^50}")
     with Pool(processes=ncores) as pool:
