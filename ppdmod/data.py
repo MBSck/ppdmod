@@ -39,8 +39,8 @@ class ReadoutFits:
             self.v1coord = hdul["oi_t3"].data["v1coord"]
             self.v2coord = hdul["oi_t3"].data["v2coord"]
             self.v3coord = -(self.v1coord+self.v2coord)
-            self.u123coord = [self.u1coord, self.u2coord, self.u3coord]
-            self.v123coord = [self.v1coord, self.v2coord, self.v3coord]
+            self.u123coord = np.array([self.u1coord, self.u2coord, self.u3coord])
+            self.v123coord = np.array([self.v1coord, self.v2coord, self.v3coord])
         return self
 
     def get_data_for_wavelengths(

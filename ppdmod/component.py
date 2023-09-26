@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 import astropy.units as u
 import numpy as np
 from astropy.modeling.models import BlackBody
-from scipy.special import j0, jvn
+from scipy.special import j0, jv
 
 from ._spectral_cy import grid
 from .fft import compute_real2Dfourier_transform
@@ -337,65 +337,71 @@ class HankelComponent(Component):
         if not self.optically_thick:
             surface_density_profile = self.params["inner_sigma"]()\
                     * (radius/innermost_radius)**(-self.params["p"]())
-
-            # if self.asymmetric_surface_density:
-            #     surface_density *= 1+azimuthal_modulation(
-            #         xx, yy, self.params["a"]().value,
-            #         self.params["phi"]().to(u.rad).value)
             thickness_profile = (1-np.exp(-surface_density_profile\
                     * self._get_opacity(wavelength)))
 
         return brightness_profile*thickness_profile
 
-    def get_total_flux(self, brightness_profile: u.erg/(u.rad**2*u.s*u.Hz),
-                       radius: u.mas) -> u.Jy:
-        """Calculates the total flux from the hankel transformation."""
-        radius = radius.to(u.rad)
-        return 2.*np.pi*np.trapz(radius*brightness_profile, radius).to(u.Jy)\
-                * self.params["pa"]().to(u.rad).value
-
-    def hankel_transform(self, brightness_profile: u.erg/(u.rad**2*u.s*u.Hz), radius: u.mas,
-                         ucoord: u.m, vcoord: u.m, wavelength: u.um) -> np.ndarray:
-        """Calculates the hankel transformation for a modulated ring."""
+    def hankel_transform(self, brightness_profile: u.erg/(u.rad**2*u.s*u.Hz),
+                         radius: u.mas, ucoord: u.m,
+                         vcoord: u.m, wavelength: u.um ) -> np.ndarray:
+        """Executes the hankel transform."""
         # pad = 1 if OPTIONS['FTPaddingFactor'] is None else OPTIONS['FTPaddingFactor']
         # fov = radius[-1]-radius[0]
         # dsfreq0 = 1/(fov*pad).value
         # sfreq0 = np.linspace(0, pad*nr-1, pad*nr)*dsfreq0
         radius = radius.to(u.rad)
-        baselines = (np.hypot(ucoord, vcoord)/wavelength.to(u.m))*u.rad
-        baseline_angles = np.arctan2(vcoord, ucoord)
+        baseline_groups = ((np.hypot(ucoord, vcoord)/wavelength.to(u.m)).value)*u.rad
+        baseline_angle_groups = np.arctan2(vcoord, ucoord)*u.rad
+        if len(baseline_groups.shape) == 1:
+            baseline_groups = baseline_groups[np.newaxis, :]
+            baseline_angle_groups = baseline_angle_groups[np.newaxis, :]
 
-        visibilities = []
-        for baseline, baseline_angle in zip(baselines, baseline_angle):
-            visibility = self.params["pa"]().to(u.rad).value*2*np.pi*np.trapz(
-                    radius*brightness_profile*j0(2.*np.pi*radius.value*baseline.value), radius)
-            modulations = []
-            for order in OPTIONS["model.modulation.order"]:
-                modulation = (-1j)**order*self.params["a"]()*np.cos(baseline_angle-self.params["phi"]().to(u.rad))\
-                        * np.trapz(radius*brightness_profile*jv(order, 2.*np.pi*radius.value*baseline.value), radius)
-                modulations.append(modulation)
-            modulations = np.sum(modulations).to(u.Jy)
-            visibilities.append(visibility.to(u.Jy)+modulations)
-        return visibilities
+        visibilities, modulations = [], [[] for _ in range(1, OPTIONS["model.modulation.order"]+1)]
+        for baselines, baseline_angles in zip(baseline_groups, baseline_angle_groups):
+            for baseline, baseline_angle in zip(baselines, baseline_angles):
+                visibility = self.params["elong"]()*2*np.pi*np.trapz(
+                        radius*brightness_profile*j0(2.*np.pi*radius.value*baseline.value), radius)
+                visibilities.append(visibility.to(u.Jy))
 
-    def calculate_complex_visibility(
-            self, ucoord: u.m, vcoord: u.m,
-            wavelength: Optional[u.Quantity[u.um]] = None) -> np.ndarray:
-        """Calculates the complex visibility of the the component's image.
+                for order in range(1, OPTIONS["model.modulation.order"]+1):
+                    modulation = (-1j)**order*self.params["a"]()*np.cos(baseline_angle-self.params["phi"]().to(u.rad))\
+                            * np.trapz(radius*brightness_profile*jv(order, 2.*np.pi*radius.value*baseline.value), radius)
+                    modulations[order-1].append(modulation.to(u.Jy))
+        return u.Quantity(visibilities, unit=u.Jy, dtype=np.complex64),\
+                u.Quantity(modulations, unit=u.Jy, dtype=np.complex64)
 
-        Parameters
-        ----------
-        ucoord : astropy.units.m
-        vcoord : astropy.units.m
-        wavelength : astropy.units.um, optional
+    def calculate_total_flux(self, brightness_profile: u.erg/(u.rad**2*u.s*u.Hz),
+                             radius: u.mas) -> u.Jy:
+        """Calculates the total flux from the hankel transformation."""
+        radius = radius.to(u.rad)
+        return 2.*np.pi*np.trapz(radius*brightness_profile, radius).to(u.Jy)\
+                * self.params["elong"]().value
 
-        Returns
-        -------
-        complex_visibility_function : numpy.ndarray
-        """
-        radius = self._calculate_internal_grid(self.params["dim"]())
-        brightness_profile = self._brightness_profile_function(wavelength)
-        return self.hankel_transform(brightness_profile, radius, ucoord, vcoord, wavelength)
+    def calculate_visibilities(self, brightness_profile: u.erg/(u.rad**2*u.s*u.Hz),
+                               radius: u.mas, ucoord: u.m,
+                               vcoord: u.m, wavelength: u.um ) -> np.ndarray:
+        """Calculates the visibilities via hankel transformation."""
+        vis, vis_mod = self.hankel_transform(
+            brightness_profile, radius, ucoord, vcoord, wavelength)
+        if vis_mod.size != 0:
+            for mod in vis_mod:
+                vis += mod
+        return vis
+
+    def calculate_closure_phases(self, brightness_profile: u.erg/(u.rad**2*u.s*u.Hz),
+                                 radius: u.mas, ucoord: u.m,
+                                 vcoord: u.m, wavelength: u.um ) -> np.ndarray:
+        """Calculates the closure phases via hankel transformation."""
+        vis, vis_mod = self.hankel_transform(
+                brightness_profile, radius, ucoord, vcoord, wavelength)
+        vis = vis.reshape(ucoord.shape)
+        vis = np.vstack((vis[:2], vis[-1].conj()))
+        if vis_mod.size != 0:
+            for mod in vis_mod:
+                mod = mod.reshape(ucoord.shape)
+                vis += np.vstack((mod[:2], mod[-1].conj()))
+        return np.angle(np.prod(vis.value, axis=0), deg=True)
 
 
 class NumericalComponent(Component):
