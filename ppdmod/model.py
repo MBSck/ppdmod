@@ -93,7 +93,7 @@ class Model:
         return image
 
     def calculate_complex_visibility(
-            self, wavelength: Optional[u.Quantity[u.m]] = None) -> np.ndarray:
+            self, wavelength: Optional[u.Quantity[u.m]] = None, **kwargs) -> np.ndarray:
         """Compute and return the complex coherent flux for an array of u,v
         (and optionally wavelength and time) coordinates.
 
@@ -108,5 +108,6 @@ class Model:
         """
         res = complex(0, 0)
         for component in self.components:
-            res += component.calculate_complex_visibility(wavelength=wavelength)
+            res += component.calculate_complex_visibility(
+                    wavelength=wavelength, **kwargs)
         return res

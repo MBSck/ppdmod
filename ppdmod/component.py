@@ -1,14 +1,16 @@
 from typing import Optional, Tuple
-from warnings import warn
 
 import astropy.units as u
 import numpy as np
+from astropy.modeling.models import BlackBody
+from scipy.special import j0, jvn
 
 from ._spectral_cy import grid
 from .fft import compute_real2Dfourier_transform
 from .parameter import STANDARD_PARAMETERS, Parameter
 from .options import OPTIONS
-from .utils import rebin_image, upbin_image, get_new_dimension
+from .utils import rebin_image, upbin_image, get_new_dimension,\
+        distance_to_angular
 
 
 class Component:
@@ -199,6 +201,201 @@ class AnalyticalComponent(Component):
         dim = get_new_dimension(
                 dim, OPTIONS["fourier.binning"], OPTIONS["fourier.padding"])
         return self._visibility_function(dim, pixel_size, wavelength)
+
+
+class HankelComponent(Component):
+    """The base class for the component.
+
+    Parameters
+    ----------
+    xx : float
+        The x-coordinate of the component.
+    yy : float
+        The x-coordinate of the component.
+    dim : float
+        The dimension [px].
+    """
+    name = "Hankel Component"
+    shortname = "HankComp"
+    description = "This defines the analytical hankel transformation."
+    elliptic = True
+    asymmetric = False
+    optically_thick = False
+    const_temperature = False
+    continuum_contribution = False
+
+    def __init__(self, **kwargs):
+        """The class's constructor."""
+        super().__init__(**kwargs)
+        self._stellar_angular_radius = None
+
+        self.params["dist"] = Parameter(**STANDARD_PARAMETERS["dist"])
+        self.params["eff_temp"] = Parameter(**STANDARD_PARAMETERS["eff_temp"])
+        self.params["eff_radius"] = Parameter(**STANDARD_PARAMETERS["eff_radius"])
+
+        self.params["rin0"] = Parameter(**STANDARD_PARAMETERS["rin0"])
+
+        self.params["rin"] = Parameter(**STANDARD_PARAMETERS["rin"])
+        self.params["rout"] = Parameter(**STANDARD_PARAMETERS["rout"])
+
+        self.params["a"] = Parameter(**STANDARD_PARAMETERS["a"])
+        self.params["phi"] = Parameter(**STANDARD_PARAMETERS["phi"])
+
+        self.params["q"] = Parameter(**STANDARD_PARAMETERS["q"])
+        self.params["inner_temp"] = Parameter(**STANDARD_PARAMETERS["inner_temp"])
+
+        self.params["p"] = Parameter(**STANDARD_PARAMETERS["p"])
+        self.params["inner_sigma"] = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
+        self.params["kappa_abs"] = Parameter(**STANDARD_PARAMETERS["kappa_abs"])
+        self.params["cont_weight"] = Parameter(**STANDARD_PARAMETERS["cont_weight"])
+        self.params["kappa_cont"] = Parameter(**STANDARD_PARAMETERS["kappa_cont"])
+
+        if self.const_temperature:
+            self.params["q"].free = False
+            self.params["inner_temp"].free = False
+
+        if not self.asymmetric:
+            self.params["a"].free = False
+            self.params["phi"].free = False
+
+        if not self.continuum_contribution:
+            self.params["cont_weight"].free = False
+        self._eval(**kwargs)
+
+    @property
+    def stellar_radius_angular(self) -> u.mas:
+        r"""Calculates the parallax from the stellar radius and the distance to
+        the object.
+
+        Returns
+        -------
+        stellar_radius_angular : astropy.units.mas
+            The parallax of the stellar radius.
+        """
+        self._stellar_angular_radius = distance_to_angular(
+            self.params["eff_radius"](), self.params["dist"]())
+        return self._stellar_angular_radius
+
+    def _calculate_internal_grid(self, dim: int) -> u.mas:
+        """Calculates the model grid.
+
+        Parameters
+        ----------
+        dim : float
+
+        Returns
+        -------
+        radial_grid : astropy.units.mas
+            A one dimensional linear or logarithmic grid.
+        """
+        rin, rout = self.params["rin"](), self.params["rout"]()
+        if OPTIONS["model.gridtype"] == "linear":
+            return np.linspace(rin.value, rout.value, dim)*self.params["rin"].unit
+        return np.logspace(np.log10(rin.value),
+                           np.log10(rout.value), dim)*self.params["rin"].unit
+
+    def _get_opacity(self, wavelength: u.um) -> u.cm**2/u.g:
+        """Set the opacity from wavelength."""
+        if self.continuum_contribution:
+            opacity = self.params["kappa_abs"](wavelength) +\
+                      self.params["cont_weight"]() *\
+                      self.params["kappa_cont"](wavelength)
+        else:
+            opacity = self.params["kappa_abs"](wavelength)
+        return opacity
+
+    def _brightness_profile_function(self, wavelength: u.um) -> u.Jy:
+        """Calculates a 1D-brightness profile from a dust-surface density- and
+        temperature profile.
+
+        Parameters
+        ----------
+        wl : astropy.units.um
+            Wavelengths.
+
+        Returns
+        -------
+        brightness_profile : astropy.units.Jy
+        """
+        radius = self._calculate_internal_grid(self.params["dim"]())
+        thickness_profile = 1
+
+        # TODO: Think of a way how to implement the innermost radius
+        # and at the same time keep the grid as it is.
+        innermost_radius = self.params["rin0"]()\
+            if self.params["rin0"]() != 0 else self.params["rin"]()
+
+        if self.const_temperature:
+            temp_profile = np.sqrt(self.stellar_radius_angular/(2.0*radius))\
+                    * self.params["eff_temp"]()
+        else:
+            temp_profile = self.params["inner_temp"]()\
+                    * (radius/innermost_radius)**(-self.params["q"]())
+
+        brightness_profile = BlackBody(temp_profile)(wavelength)
+
+        if not self.optically_thick:
+            surface_density_profile = self.params["inner_sigma"]()\
+                    * (radius/innermost_radius)**(-self.params["p"]())
+
+            # if self.asymmetric_surface_density:
+            #     surface_density *= 1+azimuthal_modulation(
+            #         xx, yy, self.params["a"]().value,
+            #         self.params["phi"]().to(u.rad).value)
+            thickness_profile = (1-np.exp(-surface_density_profile\
+                    * self._get_opacity(wavelength)))
+
+        return brightness_profile*thickness_profile
+
+    def get_total_flux(self, brightness_profile: u.erg/(u.rad**2*u.s*u.Hz),
+                       radius: u.mas) -> u.Jy:
+        """Calculates the total flux from the hankel transformation."""
+        radius = radius.to(u.rad)
+        return 2.*np.pi*np.trapz(radius*brightness_profile, radius).to(u.Jy)\
+                * self.params["pa"]().to(u.rad).value
+
+    def hankel_transform(self, brightness_profile: u.erg/(u.rad**2*u.s*u.Hz), radius: u.mas,
+                         ucoord: u.m, vcoord: u.m, wavelength: u.um) -> np.ndarray:
+        """Calculates the hankel transformation for a modulated ring."""
+        # pad = 1 if OPTIONS['FTPaddingFactor'] is None else OPTIONS['FTPaddingFactor']
+        # fov = radius[-1]-radius[0]
+        # dsfreq0 = 1/(fov*pad).value
+        # sfreq0 = np.linspace(0, pad*nr-1, pad*nr)*dsfreq0
+        radius = radius.to(u.rad)
+        baselines = (np.hypot(ucoord, vcoord)/wavelength.to(u.m))*u.rad
+        baseline_angles = np.arctan2(vcoord, ucoord)
+
+        visibilities = []
+        for baseline, baseline_angle in zip(baselines, baseline_angle):
+            visibility = self.params["pa"]().to(u.rad).value*2*np.pi*np.trapz(
+                    radius*brightness_profile*j0(2.*np.pi*radius.value*baseline.value), radius)
+            modulations = []
+            for order in OPTIONS["model.modulation.order"]:
+                modulation = (-1j)**order*self.params["a"]()*np.cos(baseline_angle-self.params["phi"]().to(u.rad))\
+                        * np.trapz(radius*brightness_profile*jv(order, 2.*np.pi*radius.value*baseline.value), radius)
+                modulations.append(modulation)
+            modulations = np.sum(modulations).to(u.Jy)
+            visibilities.append(visibility.to(u.Jy)+modulations)
+        return visibilities
+
+    def calculate_complex_visibility(
+            self, ucoord: u.m, vcoord: u.m,
+            wavelength: Optional[u.Quantity[u.um]] = None) -> np.ndarray:
+        """Calculates the complex visibility of the the component's image.
+
+        Parameters
+        ----------
+        ucoord : astropy.units.m
+        vcoord : astropy.units.m
+        wavelength : astropy.units.um, optional
+
+        Returns
+        -------
+        complex_visibility_function : numpy.ndarray
+        """
+        radius = self._calculate_internal_grid(self.params["dim"]())
+        brightness_profile = self._brightness_profile_function(wavelength)
+        return self.hankel_transform(brightness_profile, radius, ucoord, vcoord, wavelength)
 
 
 class NumericalComponent(Component):

@@ -4,14 +4,30 @@ import astropy.units as u
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
+from astropy.modeling.models import BlackBody
 
-from ppdmod.component import Component, AnalyticalComponent, NumericalComponent
+from ppdmod.component import Component, AnalyticalComponent,\
+        NumericalComponent, HankelComponent
+from ppdmod.data import ReadoutFits
 from ppdmod.parameter import STANDARD_PARAMETERS, Parameter
+from ppdmod.options import OPTIONS
 
 
 COMPONENT_DIR = Path("component")
 if not COMPONENT_DIR.exists():
     COMPONENT_DIR.mkdir()
+
+@pytest.fixture
+def readout() -> Path:
+    """A MATISSE (.fits)-file."""
+    file = "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits"
+    return ReadoutFits(Path("data/fits") / file)
+
+
+@pytest.fixture
+def wavelength() -> u.um:
+    """A wavelength grid."""
+    return (8.28835527e-06*u.m).to(u.um)
 
 
 @pytest.fixture
@@ -30,6 +46,12 @@ def analytic_component() -> AnalyticalComponent:
 def numerical_component() -> NumericalComponent:
     """Initializes a numerical component."""
     return NumericalComponent()
+
+
+@pytest.fixture
+def hankel_component() -> HankelComponent:
+    """Initializes a numerical component."""
+    return HankelComponent()
 
 
 def test_component(component: Component) -> None:
@@ -171,3 +193,43 @@ def test_numerical_component_calculate_complex_visibility(
     # and None has no value attribute.
     with pytest.raises(AttributeError) as e_info:
         numerical_component.calculate_complex_visibility(wavelength=8*u.um)
+
+
+def test_hankel_component_calculate_grid(hankel_component: HankelComponent) -> None:
+    """Tests the hankel component's grid calculation."""
+    rin = Parameter(**STANDARD_PARAMETERS["rin"])
+    rout = Parameter(**STANDARD_PARAMETERS["rin"])
+    rin.value, rout.value = 0.5, 3
+    hankel_component.params["rin"] = rin 
+    hankel_component.params["rout"] = rout 
+    radius = hankel_component._calculate_internal_grid(512)
+
+    OPTIONS["model.gridtype"] = "logarithmic"
+    radius_log = hankel_component._calculate_internal_grid(512)
+    assert radius.unit == u.mas
+    assert radius.shape == (512, )
+    assert radius[0].value == rin.value\
+            and radius[-1].value == rout.value
+    assert radius_log.unit == u.mas
+    assert radius_log.shape == (512, )
+    assert radius_log[0].value == rin.value\
+            and radius_log[-1].value == rout.value
+    assert not np.array_equal(radius, radius_log)
+
+
+def test_hankel_component_hankel_transformation(
+        hankel_component: HankelComponent,
+        readout: ReadoutFits, wavelength: u.um) -> None:
+    """Tests the hankel component's hankel transformation."""
+    rin = Parameter(**STANDARD_PARAMETERS["rin"])
+    rout = Parameter(**STANDARD_PARAMETERS["rin"])
+    rin.value, rout.value = 0.5, 3
+    hankel_component.params["rin"] = rin 
+    hankel_component.params["rout"] = rout 
+    radius = hankel_component._calculate_internal_grid(512)
+    temp_profile = 1500*u.K*(radius/(rin.value*u.mas))**(-0.5)
+    brightness_profile = BlackBody(temp_profile)(wavelength)
+    
+    hankel_trafo = hankel_component.hankel_transform(
+            brightness_profile.to(u.erg/(u.Hz*u.cm**2*u.s*u.rad**2)), radius,
+            readout.ucoord, readout.vcoord, wavelength,)
