@@ -10,7 +10,7 @@ from .fft import compute_real2Dfourier_transform
 from .parameter import STANDARD_PARAMETERS, Parameter
 from .options import OPTIONS
 from .utils import rebin_image, upbin_image, get_new_dimension,\
-        distance_to_angular
+        distance_to_angular, calculate_effective_baselines
 
 
 class Component:
@@ -351,8 +351,10 @@ class HankelComponent(Component):
         # dsfreq0 = 1/(fov*pad).value
         # sfreq0 = np.linspace(0, pad*nr-1, pad*nr)*dsfreq0
         radius = radius.to(u.rad)
-        baseline_groups = ((np.hypot(ucoord, vcoord)/wavelength.to(u.m)).value)*u.rad
-        baseline_angle_groups = np.arctan2(vcoord, ucoord)*u.rad
+        baseline_groups, baseline_angle_groups = calculate_effective_baselines(
+                ucoord, vcoord, self.params["elong"](), self.params["pa"]())
+        baseline_groups /= wavelength.to(u.m).value*u.rad
+
         if len(baseline_groups.shape) == 1:
             baseline_groups = baseline_groups[np.newaxis, :]
             baseline_angle_groups = baseline_angle_groups[np.newaxis, :]

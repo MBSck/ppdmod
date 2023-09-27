@@ -222,10 +222,10 @@ def plot_observed_vs_model(
         readout = OPTIONS["data.readouts"][file_index]
         effective_baselines = calculate_effective_baselines(
             readout.ucoord, readout.vcoord,
-            axis_ratio, pos_angle)
+            axis_ratio, pos_angle)[0]
         longest_baselines = calculate_effective_baselines(
             readout.u123coord, readout.v123coord,
-            axis_ratio, pos_angle).max(axis=0)
+            axis_ratio, pos_angle)[0].max(axis=0)
 
         for wavelength in wavelengths:
             wl_str = str(wavelength.value)

@@ -54,11 +54,14 @@ def hankel_component() -> HankelComponent:
     hankel_component = HankelComponent()
     rin = Parameter(**STANDARD_PARAMETERS["rin"])
     rout = Parameter(**STANDARD_PARAMETERS["rin"])
+    pa = Parameter(**STANDARD_PARAMETERS["pa"])
     elong = Parameter(**STANDARD_PARAMETERS["elong"])
     a = Parameter(**STANDARD_PARAMETERS["a"])
-    rin.value, rout.value, elong.value, a.value =  0.5, 3, 0.5, 0.5
+    rin.value, rout.value = 0.5, 3
+    pa.value, elong.value, a.value =  33, 0.5, 0.5
     hankel_component.params["rin"] = rin 
     hankel_component.params["rout"] = rout 
+    hankel_component.params["pa"] = pa 
     hankel_component.params["elong"] = elong 
     hankel_component.params["a"] = a 
     return hankel_component
@@ -266,7 +269,7 @@ def test_hankel_component_hankel_transform(
     OPTIONS["model.modulation.order"] = 0
 
 
-@pytest.mark.parametrize("order", [1, 2, 2])
+@pytest.mark.parametrize("order", [0, 1, 2, 3])
 def test_hankel_component_visibilities(
         hankel_component: HankelComponent, order: int,
         readout: ReadoutFits, wavelength: u.um) -> None:
@@ -283,7 +286,7 @@ def test_hankel_component_visibilities(
     OPTIONS["model.modulation.order"] = 0
 
 
-@pytest.mark.parametrize("order", [2, 2, 2])
+@pytest.mark.parametrize("order", [0, 1, 2, 3])
 def test_hankel_component_closure_phases(
         hankel_component: HankelComponent, order: int,
         readout: ReadoutFits, wavelength: u.um) -> None:
