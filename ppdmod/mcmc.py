@@ -279,14 +279,28 @@ def lnprob_analytical(theta: np.ndarray) -> float:
             wavelength_str = str(wavelength.value)
             if wavelength_str not in corr_flux:
                 continue
-            # TODO: Implement here the model calculation.
-            total_flux_model, corr_flux_model, cphase_model = None, None, None
-            stellar_flux = component[0].calculate_stellar_flux(wavelength)
-            for component in components[1:]:
-                if total_flux is None:
-                    corr_flux_model = component.calculate_visibility(
 
-                            )
+            total_flux_model, corr_flux_model, cphase_model = None, None, None
+            stellar_flux = components[0].calculate_stellar_flux(wavelength)
+            for component in components[1:]:
+                if total_flux_model is None:
+                    total_flux_model = component.calculate_total_flux(
+                            wavelength, star_flux=stellar_flux)
+                    corr_flux_model = component.calculate_visibility(
+                            readout.ucoord, readout.vcoord, wavelength,
+                            star_flux=stellar_flux)
+                    cphase_model = component.calculate_closure_phase(
+                            readout.u123coord, readout.v123coord, wavelength,
+                            star_flux=stellar_flux)
+                else:
+                    total_flux_model += component.calculate_total_flux(
+                            wavelength, star_flux=stellar_flux)
+                    corr_flux_model += component.calculate_visibility(
+                            readout.ucoord, readout.vcoord, wavelength,
+                            star_flux=stellar_flux)
+                    cphase_model += component.calculate_closure_phase(
+                            readout.u123coord, readout.v123coord, wavelength,
+                            star_flux=stellar_flux)
 
             total_chi_sq += calculate_observables_chi_sq(
                 total_flux[wavelength_str],
@@ -375,7 +389,8 @@ def run_mcmc(nwalkers: int,
              nsteps: Optional[int] = 100,
              nsteps_burnin: Optional[int] = 0,
              ncores: Optional[int] = 6,
-             method: Optional[str] = "numerical") -> np.ndarray:
+             method: Optional[str] = "numerical",
+             debug: Optional[bool] = False) -> np.ndarray:
     """Runs the emcee Hastings Metropolitan sampler.
 
     The EnsambleSampler recieves the parameters and the args are passed to
@@ -404,15 +419,25 @@ def run_mcmc(nwalkers: int,
             else lnprob_analytical
     print(f"Executing MCMC with {ncores} cores.")
     print(f"{'':-^50}")
-    with Pool(processes=ncores) as pool:
+    if debug:
         sampler = emcee.EnsembleSampler(
-            nwalkers, ndim, lnprob, pool=pool)
+            nwalkers, ndim, lnprob, pool=None)
         if nsteps_burnin > 0:
             print("Running burn-in...")
             sampler.run_mcmc(theta, nsteps_burnin, progress=True)
             print("Running production...")
         sampler.reset()
         sampler.run_mcmc(theta, nsteps, progress=True)
+    else:
+        with Pool(processes=ncores) as pool:
+            sampler = emcee.EnsembleSampler(
+                nwalkers, ndim, lnprob, pool=pool)
+            if nsteps_burnin > 0:
+                print("Running burn-in...")
+                sampler.run_mcmc( theta, nsteps_burnin, progress=True)
+                print("Running production...")
+            sampler.reset()
+            sampler.run_mcmc(theta, nsteps, progress=True)
     return sampler
 
 

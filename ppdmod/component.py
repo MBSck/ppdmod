@@ -369,10 +369,14 @@ class HankelComponent(Component):
                         radius*brightness_profile*j0(2.*np.pi*radius.value*baseline.value), radius)
                 visibilities.append(visibility.to(u.Jy))
 
-                for order in range(1, OPTIONS["model.modulation.order"]+1):
-                    modulation = (-1j)**order*self.params["a"]()*np.cos(baseline_angle-self.params["phi"]().to(u.rad))\
-                            * np.trapz(radius*brightness_profile*jv(order, 2.*np.pi*radius.value*baseline.value), radius)
-                    modulations[order-1].append(modulation.to(u.Jy))
+                # TODO: Think of a way to implement more parameters.
+                if self.asymmetric:
+                    for order in range(1, OPTIONS["model.modulation.order"]+1):
+                        modulation = (-1j)**order*self.params["a"]()\
+                                * np.cos(baseline_angle-self.params["phi"]().to(u.rad))\
+                                * np.trapz(radius*brightness_profile\
+                                * jv(order, 2.*np.pi*radius.value*baseline.value), radius)
+                        modulations[order-1].append(modulation.to(u.Jy))
         return (u.Quantity(visibilities, unit=u.Jy, dtype=np.complex64)+star_flux)/total_flux,\
                 u.Quantity(modulations, unit=u.Jy, dtype=np.complex64)/total_flux
 
@@ -382,23 +386,22 @@ class HankelComponent(Component):
         star_flux = 0*u.Jy if star_flux is None else star_flux
         radius = self._calculate_internal_grid(self.params["dim"]())
         brightness_profile = self._brightness_profile_function(radius, wavelength)
-        return 2.*np.pi*np.trapz(radius*brightness_profile, radius).to(u.Jy)\
-                * self.params["elong"]().value + star_flux
+        return (2.*np.pi*np.trapz(radius*brightness_profile, radius).to(u.Jy)\
+                * self.params["elong"]().value + star_flux).value
 
-    def calculate_visibilities(self, ucoord: u.m, vcoord: u.m,
-                               wavelength: u.um, **kwargs) -> np.ndarray:
+    def calculate_visibility(self, ucoord: u.m, vcoord: u.m,
+                             wavelength: u.um, **kwargs) -> np.ndarray:
         """Calculates the visibilities via hankel transformation."""
         radius = self._calculate_internal_grid(self.params["dim"]())
         vis, vis_mod = self.hankel_transform(
                 self._brightness_profile_function(radius, wavelength),
                 radius, ucoord, vcoord, wavelength, **kwargs)
         if vis_mod.size != 0:
-            for mod in vis_mod:
-                vis += mod
+            return vis+vis_mod.sum(0)
         return vis
 
-    def calculate_closure_phases(self, ucoord: u.m, vcoord: u.m,
-                                 wavelength: u.um, **kwargs) -> np.ndarray:
+    def calculate_closure_phase(self, ucoord: u.m, vcoord: u.m,
+                                wavelength: u.um, **kwargs) -> np.ndarray:
         """Calculates the closure phases via hankel transformation."""
         radius = self._calculate_internal_grid(self.params["dim"]())
         vis, vis_mod = self.hankel_transform(

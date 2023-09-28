@@ -250,7 +250,7 @@ def test_hankel_component_visibilities(
         readout: ReadoutFits, wavelength: u.um) -> None:
     """Tests the hankel component's hankel transformation."""
     OPTIONS["model.modulation.order"] = order
-    visibilities = hankel_component.calculate_visibilities(
+    visibilities = hankel_component.calculate_visibility(
             readout.ucoord, readout.vcoord, wavelength)
     assert visibilities.shape == (6, )
     OPTIONS["model.modulation.order"] = 0
@@ -262,7 +262,7 @@ def test_hankel_component_closure_phases(
         readout: ReadoutFits, wavelength: u.um) -> None:
     """Tests the hankel component's hankel transformation."""
     OPTIONS["model.modulation.order"] = order
-    closure_phases = hankel_component.calculate_closure_phases(
+    closure_phases = hankel_component.calculate_closure_phase(
             readout.u123coord, readout.v123coord, wavelength)
     assert closure_phases.shape == (4, )
     OPTIONS["model.modulation.order"] = 0

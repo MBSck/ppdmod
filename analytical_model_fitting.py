@@ -8,7 +8,6 @@ import numpy as np
 from ppdmod import custom_components
 from ppdmod import data
 from ppdmod import mcmc
-from ppdmod import model
 from ppdmod import plot
 from ppdmod import utils
 from ppdmod.parameter import STANDARD_PARAMETERS, Parameter
@@ -20,7 +19,7 @@ from ppdmod.options import OPTIONS
 os.environ["OMP_NUM_THREADS"] = "1"
 
 # TODO: Check wavelength axis for opacity interpolation.
-data.set_fit_wavelengths([3.520375, 10.001093]*u.um)
+data.set_fit_wavelengths([3.5, 10]*u.um)
 path = Path("tests/data/fits/")
 fits_files = [
     "hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_HAWAII-2RG_FINAL_TARGET_INT.fits",
@@ -60,14 +59,14 @@ kappa_abs.value, kappa_abs.wavelength = opacity, wavelength_axes
 kappa_cont = Parameter(**STANDARD_PARAMETERS["kappa_cont"])
 kappa_cont.value, kappa_cont.wavelength = continuum_opacity, wavelength_axes
 
-fov, pixel_size = 220, 0.1
-dim = utils.get_next_power_of_two(fov / pixel_size)
+# fov, pixel_size = 220, 0.1
+# dim = utils.get_next_power_of_two(fov / pixel_size)
+dim = 512
 
 distance = 148.3
 OPTIONS["model.constant_params"] = {
     "dim": dim, "dist": 148.3, "eff_temp": 7500,
-    "f": star_flux, "pixel_size": pixel_size,
-    "eff_radius": 1.75, "inner_temp": 1500,
+    "f": star_flux, "eff_radius": 1.75, "inner_temp": 1500,
     "kappa_abs": kappa_abs, "kappa_cont": kappa_cont}
 
 rin = Parameter(**STANDARD_PARAMETERS["rin"])
@@ -88,14 +87,17 @@ a = Parameter(**STANDARD_PARAMETERS["a"])
 phi = Parameter(**STANDARD_PARAMETERS["phi"])
 
 rin.value = 13
+rout.value = 300
 a.value = 0.5
 phi.value = 130
 
+# NOTE: Set outer radius to be constant and calculate flux once?
 rin.set(min=4, max=30)
+rout.set(min=30, max=300)
 a.set(min=0., max=1.)
 phi.set(min=0, max=360)
 
-outer_ring = {"rin": rin, "a": a, "phi": phi}
+outer_ring = {"rin": rin, "rout": rout, "a": a, "phi": phi}
 outer_ring_labels = [f"or_{label}" for label in outer_ring]
 
 p = Parameter(**STANDARD_PARAMETERS["p"])
@@ -124,17 +126,20 @@ shared_params_labels = [f"sh_{label}"
 
 OPTIONS["model.components_and_params"] = [
     ["Star", {}],
-    ["SymmetricSDGreyBodyContinuum", inner_ring],
-    ["AsymmetricSDGreyBodyContinuum", outer_ring],
+    ["AnalyticalGreyBody", inner_ring],
+    ["AnalyticalAsymmetricGreyBody", outer_ring],
 ]
-
-OPTIONS["model.matryoshka"] = True
-OPTIONS["model.matryoshka.binning_factors"] = [2, 0, 1]
 
 labels = inner_ring_labels + outer_ring_labels + shared_params_labels
 
+OPTIONS["model.modulation.order"] = 1
+OPTIONS["model.gridtype"] = "logarithmic"
+
+
 if __name__ == "__main__":
     nburnin, nsteps, nwalkers = 500, 2500, 35
+    # ncores = nwalkers // 2
+    ncores = 6
     model_result_dir = Path("../model_results/")
     day_dir = model_result_dir / str(datetime.now().date())
     time = datetime.now()
@@ -144,42 +149,8 @@ if __name__ == "__main__":
     if not result_dir.exists():
         result_dir.mkdir(parents=True)
 
-    components = custom_components.assemble_components(
-        OPTIONS["model.components_and_params"], OPTIONS["model.shared_params"])
-    m = model.Model(components)
-    wavelength = OPTIONS["fit.wavelengths"][-1]
-    plot.save_model_fits(
-            dim, pixel_size, distance,
-            pa.value, elong.value,
-            m, wavelength, savefits=result_dir / "pre-model.fits")
-
-    OPTIONS["fourier.binning"] = 3
-
-    sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin, nwalkers//2)
+    sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin,
+                            ncores=ncores, method="analytical")
     theta = mcmc.get_best_fit(sampler, discard=nburnin)
     np.save(result_dir / "best_fit_params.npy", theta)
     new_params = dict(zip(labels, theta))
-
-    plot.plot_chains(sampler, labels, discard=nburnin, savefig=result_dir / "chains.pdf")
-    plot.plot_corner(sampler, labels, discard=nburnin, savefig=result_dir / "corner.pdf")
-
-    OPTIONS["fourier.binning"] = None
-    OPTIONS["model.matryoshka"] = False
-    components_and_params, shared_params = mcmc.set_params_from_theta(theta)
-    components = custom_components.assemble_components(
-            components_and_params, shared_params)
-
-    # HACK: This is to include innermost radius for rn.
-    innermost_radius = components[1].params["rin"]
-    for component in components:
-        component.params["rin0"] = innermost_radius
-
-    m = model.Model(components)
-    plot.save_model_fits(
-            dim, pixel_size, distance,
-            new_params["sh_pa"], new_params["sh_elong"],
-            m, wavelength,
-            savefits=result_dir / "model.fits")
-    plot.plot_observed_vs_model(
-            m, pixel_size*u.mas, new_params["sh_elong"],
-            new_params["sh_pa"], savefig=result_dir / "fit_results.pdf")

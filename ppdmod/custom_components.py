@@ -5,7 +5,8 @@ import astropy.units as u
 import numpy as np
 from astropy.modeling import models
 
-from .component import Component, AnalyticalComponent, NumericalComponent
+from .component import Component, AnalyticalComponent,\
+        NumericalComponent, HankelComponent
 from .parameter import STANDARD_PARAMETERS, Parameter
 from .options import OPTIONS
 from ._spectral_cy import const_temperature,\
@@ -506,7 +507,26 @@ class AsymmetricSDGreyBodyContinuum(AsymmetricSDTemperatureGradient):
     """
     name = "Asymmetric Continuum Grey Body"
     shortname = "AsymContinuumGreyBody"
-    asymmetric_surface_density = True
+    asymmetric = True
+    const_temperature = True
+    continuum_contribution = True
+
+
+class AnalyticalGreyBody(HankelComponent):
+    """An analytical implementation of an asymmetric temperature
+    gradient."""
+    name = "Asymmetric Continuum Grey Body"
+    shortname = "AsymContinuumGreyBody"
+    const_temperature = True
+    continuum_contribution = True
+
+
+class AnalyticalAsymmetricGreyBody(HankelComponent):
+    """An analytical implementation of an asymmetric temperature
+    gradient."""
+    name = "Asymmetric Continuum Grey Body"
+    shortname = "AsymContinuumGreyBody"
+    asymmetric = True
     const_temperature = True
     continuum_contribution = True
 
