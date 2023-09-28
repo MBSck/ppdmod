@@ -354,7 +354,6 @@ def plot_observed_vs_model_analytically(
     cphases, cphases_err =\
         OPTIONS["data.closure_phase"], OPTIONS["data.closure_phase_error"]
 
-    fourier_transforms = {}
     for file_index, (total_flux, total_flux_err, corr_flux,
                      corr_flux_err, cphase, cphase_err)\
             in enumerate(

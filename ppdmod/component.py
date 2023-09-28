@@ -365,7 +365,7 @@ class HankelComponent(Component):
         visibilities, modulations = [], [[] for _ in range(1, OPTIONS["model.modulation.order"]+1)]
         for baselines, baseline_angles in zip(baseline_groups, baseline_angle_groups):
             for baseline, baseline_angle in zip(baselines, baseline_angles):
-                visibility = self.params["elong"]()*2*np.pi*np.trapz(
+                visibility = 2*np.pi*np.trapz(
                         radius*brightness_profile*j0(2.*np.pi*radius.value*baseline.value), radius)
                 visibilities.append(visibility.to(u.Jy))
 
@@ -387,7 +387,7 @@ class HankelComponent(Component):
         radius = self._calculate_internal_grid(self.params["dim"]())
         brightness_profile = self._brightness_profile_function(radius, wavelength)
         return (2.*np.pi*np.trapz(radius*brightness_profile, radius).to(u.Jy)\
-                * self.params["elong"]().value + star_flux).value
+                + star_flux).value
 
     def calculate_visibility(self, ucoord: u.m, vcoord: u.m,
                              wavelength: u.um, **kwargs) -> np.ndarray:
