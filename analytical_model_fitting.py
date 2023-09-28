@@ -64,11 +64,13 @@ kappa_cont.value, kappa_cont.wavelength = continuum_opacity, wavelength_axes
 # fov, pixel_size = 220, 0.1
 # dim = utils.get_next_power_of_two(fov / pixel_size)
 dim = 512
+fov, pixel_size = 220, 0.1
 
 distance = 148.3
 OPTIONS["model.constant_params"] = {
     "dim": dim, "dist": 148.3, "eff_temp": 7500,
-    "f": star_flux, "eff_radius": 1.75, "inner_temp": 1500,
+    "pixel_size": pixel_size, "f": star_flux,
+    "eff_radius": 1.75, "inner_temp": 1500,
     "kappa_abs": kappa_abs, "kappa_cont": kappa_cont}
 
 rin = Parameter(**STANDARD_PARAMETERS["rin"])
@@ -98,6 +100,7 @@ rin.set(min=4, max=30)
 rout.set(min=30, max=300)
 a.set(min=0., max=1.)
 phi.set(min=0, max=360)
+rout.free = True
 
 outer_ring = {"rin": rin, "rout": rout, "a": a, "phi": phi}
 outer_ring_labels = [f"or_{label}" for label in outer_ring]
@@ -139,7 +142,7 @@ OPTIONS["model.gridtype"] = "logarithmic"
 
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 500, 2500, 35
+    nburnin, nsteps, nwalkers = 5, 50, 35
     # ncores = nwalkers // 2
     ncores = 6
     model_result_dir = Path("../model_results/")
@@ -152,7 +155,24 @@ if __name__ == "__main__":
         result_dir.mkdir(parents=True)
 
     sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin,
-                            ncores=ncores, method="analytical", debug=True)
+                            ncores=ncores, method="analytical", debug=False)
     theta = mcmc.get_best_fit(sampler, discard=nburnin)
+
+    plot.plot_chains(sampler, labels, discard=nburnin, savefig=result_dir / "chains.pdf")
+    plot.plot_corner(sampler, labels, discard=nburnin, savefig=result_dir / "corner.pdf")
     np.save(result_dir / "best_fit_params.npy", theta)
+    new_params = dict(zip(labels, theta))
+
+    components_and_params, shared_params = mcmc.set_params_from_theta(theta)
+    components = custom_components.assemble_components(
+            components_and_params, shared_params)
+
+    # HACK: This is to include innermost radius for rn.
+    innermost_radius = components[1].params["rin"]
+    for component in components:
+        component.params["rin0"] = innermost_radius
+
+    plot.plot_observed_vs_model_analytically(
+            components, new_params["sh_elong"],
+            new_params["sh_pa"], savefig=result_dir / "fit_results.pdf")
     new_params = dict(zip(labels, theta))

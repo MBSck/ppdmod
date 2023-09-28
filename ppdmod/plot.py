@@ -299,3 +299,161 @@ def plot_observed_vs_model(
     else:
         plt.show()
     plt.close()
+
+
+def plot_observed_vs_model_analytically(
+        components: List, axis_ratio: u.one,
+        pos_angle: u.deg, matplot_axes: Optional[List] = None,
+        data_to_plot: Optional[List[str]] = OPTIONS["fit.data"],
+        savefig: Optional[Path] = None) -> None:
+    """Plots the deviation of a model from real data of an object for
+    total flux, visibilities and closure phases.
+
+    Parameters
+    ----------
+    model : Model
+        The model.
+    pixel_size : astropy.units.mas
+        The pixel size.
+    axis_ratio : astropy.units.one
+        The axis ratio.
+    pos_angle : astropy.units.deg
+        The position angle.
+    matplot_axes : list of matplotlib.axes.Axes, optional
+        The matplotlib axes. The default is None.
+    data_to_plot : list of str, optional
+        The data to plot. The default is OPTIONS["fit.data"].
+    savefig : pathlib.Path, optional
+        The save path. The default is None.
+    """
+    wavelengths = OPTIONS["fit.wavelengths"]
+    norm = mcolors.Normalize(
+            vmin=wavelengths[0].value, vmax=wavelengths[-1].value)
+    colormap = mcm.get_cmap("turbo")
+
+    if matplot_axes is not None:
+        ax, bx = matplot_axes
+    else:
+        data_types, nplots = [], 0
+        if "vis" in data_to_plot:
+            nplots += 1
+            data_types.append("vis")
+
+        if "t3phi" in data_to_plot:
+            nplots += 1
+            data_types.append("t3phi")
+
+    figsize = (12, 5) if nplots == 2 else None
+    _, axarr = plt.subplots(1, nplots, figsize=figsize)
+    axarr = dict(zip(data_types, axarr.flatten()))
+
+    total_fluxes, total_fluxes_err =\
+        OPTIONS["data.total_flux"], OPTIONS["data.total_flux_error"]
+    corr_fluxes, corr_fluxes_err =\
+        OPTIONS["data.correlated_flux"], OPTIONS["data.correlated_flux_error"]
+    cphases, cphases_err =\
+        OPTIONS["data.closure_phase"], OPTIONS["data.closure_phase_error"]
+
+    fourier_transforms = {}
+    for file_index, (total_flux, total_flux_err, corr_flux,
+                     corr_flux_err, cphase, cphase_err)\
+            in enumerate(
+                zip(total_fluxes, total_fluxes_err, corr_fluxes,
+                    corr_fluxes_err, cphases, cphases_err)):
+
+        readout = OPTIONS["data.readouts"][file_index]
+        effective_baselines = calculate_effective_baselines(
+            readout.ucoord, readout.vcoord,
+            axis_ratio, pos_angle)[0]
+        longest_baselines = calculate_effective_baselines(
+            readout.u123coord, readout.v123coord,
+            axis_ratio, pos_angle)[0].max(axis=0)
+
+        for wavelength in wavelengths:
+            wl_str = str(wavelength.value)
+            if wl_str not in corr_flux:
+                continue
+
+            total_flux_model, corr_flux_model, cphase_model = None, None, None
+            stellar_flux = components[0].calculate_stellar_flux(wavelength)
+            for component in components[1:]:
+                if total_flux_model is None:
+                    total_flux_model = component.calculate_total_flux(
+                            wavelength, star_flux=stellar_flux)
+                    corr_flux_model = component.calculate_visibility(
+                            readout.ucoord, readout.vcoord, wavelength,
+                            star_flux=stellar_flux)
+                    cphase_model = component.calculate_closure_phase(
+                            readout.u123coord, readout.v123coord, wavelength,
+                            star_flux=stellar_flux)
+                else:
+                    total_flux_model += component.calculate_total_flux(
+                            wavelength, star_flux=stellar_flux)
+                    corr_flux_model += component.calculate_visibility(
+                            readout.ucoord, readout.vcoord, wavelength,
+                            star_flux=stellar_flux)
+                    cphase_model += component.calculate_closure_phase(
+                            readout.u123coord, readout.v123coord, wavelength,
+                            star_flux=stellar_flux)
+
+            effective_baselines /= wavelength.value
+            longest_baselines /= wavelength.value
+            color = colormap(norm(wavelength.value))
+
+            if "vis" in axarr:
+                ax = axarr["vis"]
+                if "flux" in data_to_plot:
+                    ax.errorbar(
+                        np.array([0]), total_flux[wl_str],
+                        total_flux_err[wl_str], color=color,
+                        fmt="o", alpha=0.6)
+                    ax.scatter(
+                        np.array([0]), total_flux_model,
+                        marker="X", color=color)
+                if "vis" in data_to_plot:
+                    ax.errorbar(
+                        effective_baselines.value, corr_flux[wl_str],
+                        corr_flux_err[wl_str], color=color, fmt="o", alpha=0.6)
+                    ax.scatter(
+                        effective_baselines.value, corr_flux_model,
+                        color=color, marker="X")
+            if "t3phi" in axarr:
+                bx = axarr["t3phi"]
+                bx.errorbar(
+                    longest_baselines.value, cphase[wl_str],
+                    cphase_err[wl_str],
+                    color=color, fmt="o", alpha=0.6)
+                bx.scatter(
+                    longest_baselines.value, cphase_model,
+                    color=color, marker="X")
+
+    sm = cm.ScalarMappable(cmap=colormap, norm=norm)
+    sm.set_array([])
+    cbar = plt.colorbar(sm, ax=axarr[data_types[-1]],
+                        label="Wavelength (micron)")
+    cbar.set_ticks(wavelengths.value)
+    cbar.set_ticklabels([f"{wavelength:.0f}" for wavelength in wavelengths.value])
+
+    dot_label = mlines.Line2D([], [], color="k", marker="o",
+                              linestyle="None", label="Data", alpha=0.6)
+    x_label = mlines.Line2D([], [], color="k", marker="X",
+                            linestyle="None", label="Model")
+    if "vis" in axarr:
+        ax = axarr["vis"]
+        ax.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}/\lambda$ (M$\lambda$)")
+        ax.set_ylabel("Correlated fluxes (Jy)")
+        # ax.set_ylim(y_lim_flux)
+        ax.legend(handles=[dot_label, x_label])
+
+    if "t3phi" in axarr:
+        bx = axarr["t3phi"]
+        bx.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}/\lambda$ (M$\lambda$)")
+        bx.set_ylabel(r"Closure Phases ($^\circ$)")
+        # bx.set_ylim(y_lim_cphase)
+        bx.legend(handles=[dot_label, x_label])
+
+    if savefig:
+        plt.savefig(savefig, format="pdf")
+    else:
+        plt.show()
+    plt.close()
