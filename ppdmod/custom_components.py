@@ -11,7 +11,7 @@ from .options import OPTIONS
 from ._spectral_cy import const_temperature,\
     temperature_power_law, azimuthal_modulation,\
     optical_thickness, surface_density_profile, intensity
-from .utils import distance_to_angular, rebin_image, pad_image
+from .utils import distance_to_angular
 
 
 class Star(AnalyticalComponent):

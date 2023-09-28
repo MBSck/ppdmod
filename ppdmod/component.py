@@ -304,7 +304,7 @@ class HankelComponent(Component):
             opacity = self.params["kappa_abs"](wavelength)
         return opacity
 
-    def _brightness_profile_function(self, wavelength: u.um) -> u.Jy:
+    def _brightness_profile_function(self, radius: u.mas, wavelength: u.um) -> u.Jy:
         """Calculates a 1D-brightness profile from a dust-surface density- and
         temperature profile.
 
@@ -317,7 +317,6 @@ class HankelComponent(Component):
         -------
         brightness_profile : astropy.units.Jy
         """
-        radius = self._calculate_internal_grid(self.params["dim"]())
         thickness_profile = 1
 
         # TODO: Think of a way how to implement the innermost radius
@@ -326,13 +325,13 @@ class HankelComponent(Component):
             if self.params["rin0"]() != 0 else self.params["rin"]()
 
         if self.const_temperature:
-            temp_profile = np.sqrt(self.stellar_radius_angular/(2.0*radius))\
+            temperature_profile = np.sqrt(self.stellar_radius_angular/(2.0*radius))\
                     * self.params["eff_temp"]()
         else:
-            temp_profile = self.params["inner_temp"]()\
+            temperature_profile = self.params["inner_temp"]()\
                     * (radius/innermost_radius)**(-self.params["q"]())
 
-        brightness_profile = BlackBody(temp_profile)(wavelength)
+        brightness_profile = BlackBody(temperature_profile)(wavelength)
 
         if not self.optically_thick:
             surface_density_profile = self.params["inner_sigma"]()\
@@ -344,12 +343,16 @@ class HankelComponent(Component):
 
     def hankel_transform(self, brightness_profile: u.erg/(u.rad**2*u.s*u.Hz),
                          radius: u.mas, ucoord: u.m,
-                         vcoord: u.m, wavelength: u.um ) -> np.ndarray:
+                         vcoord: u.m, wavelength: u.um,
+                         star_flux: Optional[u.Quantity[u.Jy]] = None,
+                         total_flux: Optional[u.Quantity[u.Jy]] = None) -> np.ndarray:
         """Executes the hankel transform."""
         # pad = 1 if OPTIONS['FTPaddingFactor'] is None else OPTIONS['FTPaddingFactor']
         # fov = radius[-1]-radius[0]
         # dsfreq0 = 1/(fov*pad).value
         # sfreq0 = np.linspace(0, pad*nr-1, pad*nr)*dsfreq0
+        star_flux = 0*u.Jy if star_flux is None else star_flux
+        total_flux = 1*u.Jy if total_flux is None else total_flux
         radius = radius.to(u.rad)
         baseline_groups, baseline_angle_groups = calculate_effective_baselines(
                 ucoord, vcoord, self.params["elong"](), self.params["pa"]())
@@ -370,33 +373,37 @@ class HankelComponent(Component):
                     modulation = (-1j)**order*self.params["a"]()*np.cos(baseline_angle-self.params["phi"]().to(u.rad))\
                             * np.trapz(radius*brightness_profile*jv(order, 2.*np.pi*radius.value*baseline.value), radius)
                     modulations[order-1].append(modulation.to(u.Jy))
-        return u.Quantity(visibilities, unit=u.Jy, dtype=np.complex64),\
-                u.Quantity(modulations, unit=u.Jy, dtype=np.complex64)
+        return (u.Quantity(visibilities, unit=u.Jy, dtype=np.complex64)+star_flux)/total_flux,\
+                u.Quantity(modulations, unit=u.Jy, dtype=np.complex64)/total_flux
 
-    def calculate_total_flux(self, brightness_profile: u.erg/(u.rad**2*u.s*u.Hz),
-                             radius: u.mas) -> u.Jy:
+    def calculate_total_flux(self, wavelength: u.um,
+                             star_flux: Optional[u.Quantity[u.Jy]] = None) -> u.Jy:
         """Calculates the total flux from the hankel transformation."""
-        radius = radius.to(u.rad)
+        star_flux = 0*u.Jy if star_flux is None else star_flux
+        radius = self._calculate_internal_grid(self.params["dim"]())
+        brightness_profile = self._brightness_profile_function(radius, wavelength)
         return 2.*np.pi*np.trapz(radius*brightness_profile, radius).to(u.Jy)\
-                * self.params["elong"]().value
+                * self.params["elong"]().value + star_flux
 
-    def calculate_visibilities(self, brightness_profile: u.erg/(u.rad**2*u.s*u.Hz),
-                               radius: u.mas, ucoord: u.m,
-                               vcoord: u.m, wavelength: u.um ) -> np.ndarray:
+    def calculate_visibilities(self, ucoord: u.m, vcoord: u.m,
+                               wavelength: u.um, **kwargs) -> np.ndarray:
         """Calculates the visibilities via hankel transformation."""
+        radius = self._calculate_internal_grid(self.params["dim"]())
         vis, vis_mod = self.hankel_transform(
-            brightness_profile, radius, ucoord, vcoord, wavelength)
+                self._brightness_profile_function(radius, wavelength),
+                radius, ucoord, vcoord, wavelength, **kwargs)
         if vis_mod.size != 0:
             for mod in vis_mod:
                 vis += mod
         return vis
 
-    def calculate_closure_phases(self, brightness_profile: u.erg/(u.rad**2*u.s*u.Hz),
-                                 radius: u.mas, ucoord: u.m,
-                                 vcoord: u.m, wavelength: u.um ) -> np.ndarray:
+    def calculate_closure_phases(self, ucoord: u.m, vcoord: u.m,
+                                 wavelength: u.um, **kwargs) -> np.ndarray:
         """Calculates the closure phases via hankel transformation."""
+        radius = self._calculate_internal_grid(self.params["dim"]())
         vis, vis_mod = self.hankel_transform(
-                brightness_profile, radius, ucoord, vcoord, wavelength)
+                self._brightness_profile_function(radius, wavelength),
+                radius, ucoord, vcoord, wavelength, **kwargs)
         vis = vis.reshape(ucoord.shape)
         vis = np.vstack((vis[:2], vis[-1].conj()))
         if vis_mod.size != 0:

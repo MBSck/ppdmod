@@ -51,19 +51,11 @@ def numerical_component() -> NumericalComponent:
 @pytest.fixture
 def hankel_component() -> HankelComponent:
     """Initializes a numerical component."""
-    hankel_component = HankelComponent()
-    rin = Parameter(**STANDARD_PARAMETERS["rin"])
-    rout = Parameter(**STANDARD_PARAMETERS["rin"])
-    pa = Parameter(**STANDARD_PARAMETERS["pa"])
-    elong = Parameter(**STANDARD_PARAMETERS["elong"])
-    a = Parameter(**STANDARD_PARAMETERS["a"])
-    rin.value, rout.value = 0.5, 3
-    pa.value, elong.value, a.value =  33, 0.5, 0.5
-    hankel_component.params["rin"] = rin 
-    hankel_component.params["rout"] = rout 
-    hankel_component.params["pa"] = pa 
-    hankel_component.params["elong"] = elong 
-    hankel_component.params["a"] = a 
+    hankel_component = HankelComponent(
+            rin=0.5, rout=3, pa=33,
+            elong=0.5, dim=512, a=0.5,
+            inner_temp=1500, q=0.5)
+    hankel_component.optically_thick = True
     return hankel_component
 
 
@@ -208,43 +200,26 @@ def test_numerical_component_calculate_complex_visibility(
         numerical_component.calculate_complex_visibility(wavelength=8*u.um)
 
 
-def test_hankel_component_calculate_grid(hankel_component: HankelComponent) -> None:
+@pytest.mark.parametrize("grid_type", ["linear", "logarithmic"])
+def test_hankel_component_calculate_grid(
+        hankel_component: HankelComponent, grid_type: str) -> None:
     """Tests the hankel component's grid calculation."""
-    rin = Parameter(**STANDARD_PARAMETERS["rin"])
-    rout = Parameter(**STANDARD_PARAMETERS["rin"])
-    rin.value, rout.value = 0.5, 3
-    hankel_component.params["rin"] = rin 
-    hankel_component.params["rout"] = rout 
+    OPTIONS["model.gridtype"] = grid_type
     radius = hankel_component._calculate_internal_grid(512)
-
-    OPTIONS["model.gridtype"] = "logarithmic"
-    radius_log = hankel_component._calculate_internal_grid(512)
     assert radius.unit == u.mas
     assert radius.shape == (512, )
-    assert radius[0].value == rin.value\
-            and radius[-1].value == rout.value
-    assert radius_log.unit == u.mas
-    assert radius_log.shape == (512, )
-    assert radius_log[0].value == rin.value\
-            and radius_log[-1].value == rout.value
-    assert not np.array_equal(radius, radius_log)
+    assert radius[0].value == hankel_component.params["rin"].value\
+            and radius[-1].value == hankel_component.params["rout"].value
+
+
+def test_hankel_component_brightness_function():
+    ...
 
 
 def test_hankel_component_total_flux(
         hankel_component: HankelComponent, wavelength: u.um) -> None:
     """Tests the calculation of the total flux."""
-    rin = Parameter(**STANDARD_PARAMETERS["rin"])
-    rout = Parameter(**STANDARD_PARAMETERS["rin"])
-    elong = Parameter(**STANDARD_PARAMETERS["elong"])
-    rin.value, rout.value, elong.value = 0.5, 3, 0.5
-    hankel_component.params["rin"] = rin 
-    hankel_component.params["rout"] = rout 
-    hankel_component.params["elong"] = elong 
-    radius = hankel_component._calculate_internal_grid(512)
-    temp_profile = 1500*u.K*(radius/(rin.value*u.mas))**(-0.5)
-    brightness_profile = BlackBody(temp_profile)(wavelength)
-    total_flux = hankel_component.calculate_total_flux(
-            brightness_profile.to(u.erg/(u.Hz*u.cm**2*u.s*u.rad**2)), radius)
+    total_flux = hankel_component.calculate_total_flux(wavelength)
     assert total_flux.unit == u.Jy
 
 
@@ -260,7 +235,7 @@ def test_hankel_component_hankel_transform(
     OPTIONS["model.modulation.order"] = order
     visibilities, modulations = hankel_component.hankel_transform(
             brightness_profile.to(u.erg/(u.Hz*u.cm**2*u.s*u.rad**2)),
-            radius, readout.ucoord, readout.vcoord, wavelength,)
+            radius, readout.ucoord, readout.vcoord, wavelength)
     assert visibilities.shape == (6, )
     if order == 0:
         assert modulations.shape == (0, )
@@ -274,14 +249,9 @@ def test_hankel_component_visibilities(
         hankel_component: HankelComponent, order: int,
         readout: ReadoutFits, wavelength: u.um) -> None:
     """Tests the hankel component's hankel transformation."""
-    radius = hankel_component._calculate_internal_grid(512)
-    temp_profile = 1500*u.K*(radius/(hankel_component.params["rin"]()))**(-0.5)
-    brightness_profile = BlackBody(temp_profile)(wavelength)
-    
     OPTIONS["model.modulation.order"] = order
     visibilities = hankel_component.calculate_visibilities(
-            brightness_profile.to(u.erg/(u.Hz*u.cm**2*u.s*u.rad**2)),
-            radius, readout.ucoord, readout.vcoord, wavelength,)
+            readout.ucoord, readout.vcoord, wavelength)
     assert visibilities.shape == (6, )
     OPTIONS["model.modulation.order"] = 0
 
@@ -291,13 +261,8 @@ def test_hankel_component_closure_phases(
         hankel_component: HankelComponent, order: int,
         readout: ReadoutFits, wavelength: u.um) -> None:
     """Tests the hankel component's hankel transformation."""
-    radius = hankel_component._calculate_internal_grid(512)
-    temp_profile = 1500*u.K*(radius/(hankel_component.params["rin"]()))**(-0.5)
-    brightness_profile = BlackBody(temp_profile)(wavelength)
-    
     OPTIONS["model.modulation.order"] = order
     closure_phases = hankel_component.calculate_closure_phases(
-            brightness_profile.to(u.erg/(u.Hz*u.cm**2*u.s*u.rad**2)),
-            radius, readout.u123coord, readout.v123coord, wavelength,)
+            readout.u123coord, readout.v123coord, wavelength)
     assert closure_phases.shape == (4, )
     OPTIONS["model.modulation.order"] = 0

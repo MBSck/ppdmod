@@ -260,7 +260,6 @@ def lnprob_analytical(theta: np.ndarray) -> float:
     innermost_radius = components[1].params["rin"]
     for component in components:
         component.params["rin0"] = innermost_radius
-    model = Model(components)
 
     total_fluxes, total_fluxes_err =\
         OPTIONS["data.total_flux"], OPTIONS["data.total_flux_error"]
@@ -281,6 +280,13 @@ def lnprob_analytical(theta: np.ndarray) -> float:
             if wavelength_str not in corr_flux:
                 continue
             # TODO: Implement here the model calculation.
+            total_flux_model, corr_flux_model, cphase_model = None, None, None
+            stellar_flux = component[0].calculate_stellar_flux(wavelength)
+            for component in components[1:]:
+                if total_flux is None:
+                    corr_flux_model = component.calculate_visibility(
+
+                            )
 
             total_chi_sq += calculate_observables_chi_sq(
                 total_flux[wavelength_str],
