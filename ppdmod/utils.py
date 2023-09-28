@@ -67,16 +67,22 @@ def make_workbook(file: Path, sheets: Dict[str, List[str]]) -> None:
 
 def get_closest_indices(
         values, array: np.ndarray,
+        window: Optional[float] = None,
         atol: Optional[float] = 1e-2) -> float:
     """Gets the closest indices of values occurring in a numpy array."""
     array = array.value if isinstance(array, u.Quantity) else array
     values = values.value if isinstance(values, u.Quantity) else values
+    window = window.value if isinstance(window, u.Quantity) else window
     if not isinstance(values, (list, tuple, np.ndarray)):
         values = [values]
 
     indices = {}
     for value in values:
-        index = np.where(array == value)[0]
+        if window is not None:
+            index = np.where(np.logical_and((value-window) < array,
+                                            (value+window) > array))[0]
+        else:
+            index = np.where(array == value)[0]
         if index.size == 0:
             index = np.where(np.abs(array - value) <= atol)[0]
         indices[str(value)] = index.astype(int).squeeze()

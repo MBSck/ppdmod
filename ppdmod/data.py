@@ -46,11 +46,18 @@ class ReadoutFits:
     def get_data_for_wavelengths(
             self, *wavelengths, key: str) -> Dict[str, np.ndarray]:
         """Gets the data for the given wavelengths."""
-        indices = get_closest_indices(*wavelengths, array=self.wavelength)
+        indices = get_closest_indices(
+                *wavelengths, array=self.wavelength,
+                window=OPTIONS["data.binning.window"])
         data = {}
         for wavelength, index in indices.items():
             if wavelength not in data:
-                data[wavelength] = getattr(self, key)[:, index].flatten()
+                tmp_data = getattr(self, key)[:, index]
+                if tmp_data.shape[0] == 1:
+                    tmp_data = tmp_data.mean()
+                else:
+                    tmp_data = tmp_data.mean(1)
+                data[wavelength] = tmp_data
         return {key: value for key, value in data.items() if value.size != 0}
 
 

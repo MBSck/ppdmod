@@ -6,6 +6,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from .utils import get_closest_indices
+from .options import OPTIONS
 
 
 # NOTE: A list of standard parameters to be used when defining new components.
@@ -105,9 +106,9 @@ class Parameter:
         else:
             # Hack: Multiplying by microns makes it work.
             indices = list(get_closest_indices(
-                wavelength, array=self.wavelength*u.um).values())
-            value = self.value[indices]
-            value = value[0] if len(value) == 1 else value
+                wavelength, array=self.wavelength*u.um,
+                window=OPTIONS["data.binning.window"]).values())
+            value = self.value[indices[0]].mean()
         return u.Quantity(value, unit=self.unit, dtype=self.dtype)
 
     def __str__(self):

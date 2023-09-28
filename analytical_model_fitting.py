@@ -18,6 +18,8 @@ from ppdmod.options import OPTIONS
 # NOTE: Turns off numpys automated parellelization.
 os.environ["OMP_NUM_THREADS"] = "1"
 
+OPTIONS["data.binning.window"] = 0.1*u.um
+
 # TODO: Check wavelength axis for opacity interpolation.
 data.set_fit_wavelengths([3.5, 10]*u.um)
 path = Path("tests/data/fits/")
@@ -150,7 +152,7 @@ if __name__ == "__main__":
         result_dir.mkdir(parents=True)
 
     sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin,
-                            ncores=ncores, method="analytical")
+                            ncores=ncores, method="analytical", debug=True)
     theta = mcmc.get_best_fit(sampler, discard=nburnin)
     np.save(result_dir / "best_fit_params.npy", theta)
     new_params = dict(zip(labels, theta))

@@ -8,6 +8,7 @@ OPTIONS["data.correlated_flux"] = []
 OPTIONS["data.correlated_flux_error"] = []
 OPTIONS["data.closure_phase"] = []
 OPTIONS["data.closure_phase_error"] = []
+OPTIONS["data.binning.window"] = None
 
 # NOTE: Model. The output can either be 'surface_brightness' or ' jansky_px'
 OPTIONS["model.output"] = "jansky_px"
