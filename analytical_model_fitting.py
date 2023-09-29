@@ -92,18 +92,16 @@ a = Parameter(**STANDARD_PARAMETERS["a"])
 phi = Parameter(**STANDARD_PARAMETERS["phi"])
 
 rin.value = 13
-rout.value = 300
 a.value = 0.5
 phi.value = 130
 
 # NOTE: Set outer radius to be constant and calculate flux once?
 rin.set(min=4, max=30)
-rout.set(min=30, max=300)
 a.set(min=0., max=1.)
 phi.set(min=0, max=360)
 rout.free = True
 
-outer_ring = {"rin": rin, "rout": rout, "a": a, "phi": phi}
+outer_ring = {"rin": rin, "a": a, "phi": phi}
 outer_ring_labels = [f"or_{label}" for label in outer_ring]
 
 p = Parameter(**STANDARD_PARAMETERS["p"])
@@ -143,9 +141,9 @@ OPTIONS["model.gridtype"] = "logarithmic"
 
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 50, 100, 35
-    # ncores = nwalkers // 2
-    ncores = 6
+    nburnin, nsteps, nwalkers = 1000, 10000, 100
+    ncores = nwalkers // 2
+    # ncores = 6
     model_result_dir = Path("../model_results/")
     day_dir = model_result_dir / str(datetime.now().date())
     time = datetime.now()

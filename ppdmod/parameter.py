@@ -36,7 +36,7 @@ STANDARD_PARAMETERS = {
             "description": "Innermost radius of the disk", "free": False},
     "rin": {"name": "rin", "value": 0, "unit": u.mas,
             "description": "Inner radius of the disk", "free": True},
-    "rout": {"name": "rout", "value": np.inf, "unit": u.mas,
+    "rout": {"name": "rout", "value": 300, "unit": u.mas,
              "description": "Inner radius of the disk", "free": False},
     "a": {"name": "a", "value": 0, "unit": u.one,
           "description": "Azimuthal modulation amplitude", "free": True},
