@@ -87,6 +87,7 @@ inner_ring = {"rin": rin, "rout": rout}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
 rin = Parameter(**STANDARD_PARAMETERS["rin"])
+rout = Parameter(**STANDARD_PARAMETERS["rout"])
 a = Parameter(**STANDARD_PARAMETERS["a"])
 phi = Parameter(**STANDARD_PARAMETERS["phi"])
 
@@ -142,7 +143,7 @@ OPTIONS["model.gridtype"] = "logarithmic"
 
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 5, 50, 35
+    nburnin, nsteps, nwalkers = 50, 100, 35
     # ncores = nwalkers // 2
     ncores = 6
     model_result_dir = Path("../model_results/")

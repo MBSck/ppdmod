@@ -373,7 +373,7 @@ class HankelComponent(Component):
                 if self.asymmetric:
                     for order in range(1, OPTIONS["model.modulation.order"]+1):
                         modulation = (-1j)**order*self.params["a"]()\
-                                * np.cos(baseline_angle-self.params["phi"]().to(u.rad))\
+                                * np.cos(order*(baseline_angle-self.params["phi"]().to(u.rad)))\
                                 * np.trapz(radius*brightness_profile\
                                 * jv(order, 2.*np.pi*radius.value*baseline.value), radius)
                         modulations[order-1].append(modulation.to(u.Jy))
