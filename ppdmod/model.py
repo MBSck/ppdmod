@@ -87,9 +87,9 @@ class Model:
         """
         new_dim = get_new_dimension(
                 dim, OPTIONS["fourier.binning"], OPTIONS["fourier.padding"])
-        image = np.zeros((new_dim, new_dim))*u.Jy
+        image = np.zeros((new_dim, new_dim))
         for component in self.components:
-            image += component.calculate_image(dim, pixel_size, wavelength)
+            image += component.calculate_image(dim, pixel_size, wavelength).value
         return image
 
     def calculate_complex_visibility(

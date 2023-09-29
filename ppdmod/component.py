@@ -304,6 +304,39 @@ class HankelComponent(Component):
             opacity = self.params["kappa_abs"](wavelength)
         return opacity
 
+    def _azimuthal_modulation(self, xx: u.mas, yy: u.mas) -> u.one:
+        """Calculates the azimuthal modulation."""
+        if not self.asymmetric:
+            return 1
+        return (1+self.params["a"]()\
+                * np.cos(np.arctan2(yy, xx)-self.params["phi"]()))
+
+    def _temperature_profile_function(
+            self, radius: u.mas, innermost_radius: u.mas) -> u.K:
+        """Calculates a 1D-temperature profile."""
+        if self.const_temperature:
+            temperature_profile = np.sqrt(self.stellar_radius_angular/(2.0*radius))\
+                    * self.params["eff_temp"]()
+        else:
+            temperature_profile = self.params["inner_temp"]()\
+                    * (radius/innermost_radius)**(-self.params["q"]())
+        return temperature_profile
+
+    def _surface_density_profile_function(
+            self, radius: u.mas, innermost_radius: u.mas) -> u.one:
+        """Calculates a 1D-surface density profile."""
+        return self.params["inner_sigma"]()\
+                * (radius/innermost_radius)**(-self.params["p"]())
+
+    def _thickness_profile_function(
+            self, radius: u.mas, innermost_radius: u.mas, wavelength: u.um) -> u.one:
+        """Calculates a 1D-thickness profile."""
+        if self.optically_thick:
+            return 1
+        surface_density_profile = self._surface_density_profile_function(
+            radius, innermost_radius)
+        return (1-np.exp(-surface_density_profile*self._get_opacity(wavelength)))
+
     def _brightness_profile_function(self, radius: u.mas, wavelength: u.um) -> u.Jy:
         """Calculates a 1D-brightness profile from a dust-surface density- and
         temperature profile.
@@ -317,29 +350,36 @@ class HankelComponent(Component):
         -------
         brightness_profile : astropy.units.Jy
         """
-        thickness_profile = 1
-
-        # TODO: Think of a way how to implement the innermost radius
-        # and at the same time keep the grid as it is.
         innermost_radius = self.params["rin0"]()\
             if self.params["rin0"]() != 0 else self.params["rin"]()
 
-        if self.const_temperature:
-            temperature_profile = np.sqrt(self.stellar_radius_angular/(2.0*radius))\
-                    * self.params["eff_temp"]()
-        else:
-            temperature_profile = self.params["inner_temp"]()\
-                    * (radius/innermost_radius)**(-self.params["q"]())
-
+        # TODO: Think of a way how to implement the innermost radius
+        # and at the same time keep the grid as it is.
+        temperature_profile = self._temperature_profile_function(
+                radius, innermost_radius)
         brightness_profile = BlackBody(temperature_profile)(wavelength)
-
-        if not self.optically_thick:
-            surface_density_profile = self.params["inner_sigma"]()\
-                    * (radius/innermost_radius)**(-self.params["p"]())
-            thickness_profile = (1-np.exp(-surface_density_profile\
-                    * self._get_opacity(wavelength)))
-
+        thickness_profile = self._thickness_profile_function(
+                radius, innermost_radius, wavelength)
         return brightness_profile*thickness_profile
+
+    def calculate_image(self, dim: int, pixel_size: u.mas, wavelength: u.um) -> u.Jy:
+        """Calculates the image."""
+        pixel_size = pixel_size if isinstance(pixel_size, u.Quantity) else pixel_size*u.mas
+        xx = np.linspace(-0.5, 0.5, dim)*dim*pixel_size
+        xx, yy = np.meshgrid(xx, xx)
+        if self.elliptic:
+            pa, elong = self.params["pa"](), self.params["elong"]()
+            xx = xx*np.cos(pa)-yy*np.sin(pa)
+            yy = (xx*np.sin(pa)+yy*np.cos(pa))/elong
+        azimuthal_modulation = self._azimuthal_modulation(xx, yy)
+        radius = np.hypot(xx, yy)
+        
+        radial_profile = np.logical_and(radius >= self.params["rin"](),
+                                        radius <= self.params["rout"]())
+        brightness_profile = self._brightness_profile_function(
+                radius, wavelength).to(u.erg/(u.cm**2*u.rad**2*u.s*u.Hz))\
+                        * pixel_size.to(u.rad)**2
+        return brightness_profile.to(u.Jy)*radial_profile*azimuthal_modulation
 
     def hankel_transform(self, brightness_profile: u.erg/(u.rad**2*u.s*u.Hz),
                          radius: u.mas, ucoord: u.m,

@@ -36,9 +36,9 @@ wavelength_axes = list(
 wavelength_axes = np.sort(np.unique(np.concatenate(wavelength_axes)))
 
 flux_file = Path("tests/data/flux/HD142666_stellar_model.txt.gz")
-wavelength, flux = np.loadtxt(flux_file, comments="#", unpack=True)[:2]
+wavelengths, flux = np.loadtxt(flux_file, comments="#", unpack=True)[:2]
 matisse_flux = utils.opacity_to_matisse_opacity(
-    wavelength_axes, wavelength_grid=wavelength*u.um, opacity=flux*u.Jy).value*u.Jy
+    wavelength_axes, wavelength_grid=wavelengths*u.um, opacity=flux*u.Jy).value*u.Jy
 star_flux = Parameter(**STANDARD_PARAMETERS["f"])
 star_flux.value, star_flux.wavelength = matisse_flux, wavelength_axes
 
@@ -141,20 +141,20 @@ OPTIONS["model.gridtype"] = "logarithmic"
 
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 1000, 10000, 100
-    ncores = nwalkers // 2
-    # ncores = 6
+    nburnin, nsteps, nwalkers = 1, 2, 20
+    # ncores = nwalkers // 2
+    ncores = 6
     model_result_dir = Path("../model_results/")
     day_dir = model_result_dir / str(datetime.now().date())
     time = datetime.now()
-    file_name = f"results_model_nsteps{nburnin+nsteps}_nwalkers{nwalkers}"\
+    file_name = f"results_model_nsteps{nsteps}_nwalkers{nwalkers}"\
             f"_{time.hour}:{time.minute}:{time.second}"
     result_dir = day_dir / file_name
     if not result_dir.exists():
         result_dir.mkdir(parents=True)
 
     sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin,
-                            ncores=ncores, method="analytical", debug=False)
+                            ncores=ncores, method="analytical", debug=True)
     theta = mcmc.get_best_fit(sampler, discard=nburnin)
 
     plot.plot_chains(sampler, labels, discard=nburnin, savefig=result_dir / "chains.pdf")
@@ -165,13 +165,23 @@ if __name__ == "__main__":
     components_and_params, shared_params = mcmc.set_params_from_theta(theta)
     components = custom_components.assemble_components(
             components_and_params, shared_params)
+    component_labels = ["Star", "Inner Ring", "Outer Ring"]
 
     # HACK: This is to include innermost radius for rn.
     innermost_radius = components[1].params["rin"]
     for component in components:
         component.params["rin0"] = innermost_radius
 
-    plot.plot_observed_vs_model_analytically(
-            components, new_params["sh_elong"],
-            new_params["sh_pa"], savefig=result_dir / "fit_results.pdf")
+    plot.save_fits(
+            4096, pixel_size, distance,
+            new_params["sh_pa"], new_params["sh_elong"],
+            10*u.um, components, component_labels,
+            opacities=[kappa_abs, kappa_cont],
+            savefits=result_dir / "model.fits",
+            options=OPTIONS, object_name="HD 142666")
+
+    plot.plot_fit(
+            new_params["sh_elong"], new_params["sh_pa"],
+            plot_title=f"Analytical model - {time} - nw={nwalkers}, ns={nsteps}",
+            components=components, savefig=result_dir / "fit_results.pdf")
     new_params = dict(zip(labels, theta))
