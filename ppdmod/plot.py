@@ -181,11 +181,11 @@ def save_fits(dim: int, pixel_size: u.mas,
         tables.append(fits.BinTableHDU(Table(data=data), name="Opacities"))
 
     wcs = WCS(naxis=3)
-    wcs.wcs.crpix = np.array(images.shape) // 2
+    wcs.wcs.crpix = (np.array(images.shape[:2]) // 2, len(wavelengths))
     wcs.wcs.cdelt = np.array([pixel_size.value, pixel_size.value, 1])
     wcs.wcs.crval = (0.0, 0.0, 0.0)
-    wcs.wcs.ctype = ("RA---AIR", "DEC--AIR", "ALT")
-    wcs.wcs.cunit = ("mas", "mas", "deg")
+    wcs.wcs.ctype = ("RA---AIR", "DEC--AIR", "WAVELENGTHS")
+    wcs.wcs.cunit = ("mas", "mas", "um")
     wcs.wcs.pc = np.array([[-1, 0, 0], [0, -1, 0], [0, 0, 1]])
     header = wcs.to_header()
 
