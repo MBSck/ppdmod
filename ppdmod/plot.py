@@ -103,7 +103,8 @@ def plot_chains(sampler: np.ndarray, labels: List[str],
 # TODO: Add components to this as well as the parameters in a sub HDULIST.
 def save_fits(dim: int, pixel_size: u.mas,
               distance: u.pc, pos_angle: float,
-              elongation: float, wavelength: u.um,
+              elongation: float,
+              wavelengths: List[u.Quantity[u.um]],
               components: List[Component],
               component_labels: List[str],
               opacities: List[np.ndarray] = None,
@@ -113,67 +114,81 @@ def save_fits(dim: int, pixel_size: u.mas,
               object_name: Optional[str] = None) -> None:
     """Saves a (.fits)-file of the model with all the information on the parameter space."""
     pixel_size = pixel_size if isinstance(pixel_size, u.Quantity) else pixel_size*u.mas
-    wavelength = wavelength if isinstance(wavelength, u.Quantity) else wavelength*u.m
+    wavelengths = wavelengths if isinstance(wavelengths, u.Quantity) else wavelengths*u.um
     distance = distance if isinstance(distance, u.Quantity) else distance*u.pc
     pos_angle = pos_angle if isinstance(pos_angle, u.Quantity) else pos_angle*u.deg
     # pos_angle_rad = (pos_angle-180*u.deg).to(u.rad).value
     # pixel_size_au = pixel_size.to(u.arcsec).value*distance.to(u.pc)
 
     # TODO: Make this for the numerical case as well.
+    model, images = Model(components), []
+    for wavelength in wavelengths:
+        images.append(model.calculate_image(dim, pixel_size, wavelength).astype(dtype))
+    images = np.array(images)
+
     tables = []
-    model = Model(components)
-    image = model.calculate_image(dim, pixel_size, wavelength).astype(dtype)
-
-    for index, component in enumerate(components[1:], start=1):
-        innermost_radius = component.params["rin0"]()\
-                if component.params["rin0"]() != 0 else component.params["rin"]()
-        radius = component._calculate_internal_grid(dim).astype(dtype)
-        # opacity = component._get_opacity(wavelength)
-        temperature_profile = component._temperature_profile_function(
-                radius, innermost_radius)
-        surface_density_profile = component._surface_density_profile_function(
-                radius, innermost_radius)
-        thickness_profile = component._thickness_profile_function(
-                radius, innermost_radius, wavelength)
-        brightness_profile = component._brightness_profile_function(
-                radius, wavelength)
-        data = [radius, temperature_profile,
-                surface_density_profile, thickness_profile,
-                brightness_profile]
-        names = ["radius", "temperature", "surface_density",
-                 "thickness", "brightness"]
-
+    for index, component in enumerate(components):
         table_header = fits.Header()
-        for parameter in component.params.values():
-            table_header[parameter.shortname.upper()] =\
-                    (parameter(wavelength).value, parameter.description)
 
+        table_header["COMP"] = component.name
         if options is not None:
             if "model.gridtype" in options:
                 table_header["GRIDTYPE"] = options["model.gridtype"]
 
-        table = fits.BinTableHDU(Table(data=data, names=names),
-                                 name=component_labels[index], header=table_header)
+        data = {"wavelength": wavelengths}
+        if component.name != "Star":
+            innermost_radius = component.params["rin0"]()\
+                    if component.params["rin0"]() != 0 else component.params["rin"]()
+            radius = component._calculate_internal_grid(dim).astype(dtype)
+
+            data["radius"] = [radius]*len(wavelengths)
+            data["temperature"] = [component._temperature_profile_function(
+                radius, innermost_radius)]*len(wavelengths)
+            data["surface_density"] = [component._surface_density_profile_function(
+                radius, innermost_radius)]*len(wavelengths)
+
+            for wavelength in wavelengths:
+                if not "thickness" in data:
+                    data["thickness"] = []
+                if not "brightness" in data:
+                    data["brightness"] = []
+                data["thickness"].append(component._thickness_profile_function(
+                        radius, innermost_radius, wavelength))
+                data["brightness"].append(component._brightness_profile_function(
+                        radius, wavelength))
+
+        for wavelength in wavelengths:
+            for parameter in component.params.values():
+                if parameter.wavelength is None:
+                    name = parameter.shortname.upper()
+                    if name not in table_header:
+                        table_header[name] =\
+                                (parameter().value, parameter.description)
+                else:
+                    if parameter.name not in data:
+                        data[parameter.name] = [parameter(wavelength).value]
+                    else:
+                        data[parameter.name].append(parameter(wavelength).value)
+
+        table = fits.BinTableHDU(
+                Table(data=data), name=component_labels[index], header=table_header)
         tables.append(table)
 
     if opacities is not None:
-        data = {}
+        data = {"wavelength": opacities[0].wavelength}
         for opacity in opacities:
             data[opacity.shortname] = opacity()
-            data["wavelength"] = opacity.wavelength
-        tables.append(fits.BinTableHDU(Table(data=data),
-                                       name="Opacities"))
+        tables.append(fits.BinTableHDU(Table(data=data), name="Opacities"))
 
-    wcs = WCS(naxis=2)
-    wcs.wcs.crpix = np.array(image.shape) // 2
-    wcs.wcs.cdelt = np.array([pixel_size.value, pixel_size.value])
-    wcs.wcs.crval = (0.0, 0.0)
-    wcs.wcs.ctype = ("RA---AIR", "DEC--AIR")
-    wcs.wcs.cunit = ("mas", "mas")
-    wcs.wcs.pc = np.array([[-1, 0], [0, -1]])
+    wcs = WCS(naxis=3)
+    wcs.wcs.crpix = np.array(images.shape) // 2
+    wcs.wcs.cdelt = np.array([pixel_size.value, pixel_size.value, 1])
+    wcs.wcs.crval = (0.0, 0.0, 0.0)
+    wcs.wcs.ctype = ("RA---AIR", "DEC--AIR", "ALT")
+    wcs.wcs.cunit = ("mas", "mas", "deg")
+    wcs.wcs.pc = np.array([[-1, 0, 0], [0, -1, 0], [0, 0, 1]])
     header = wcs.to_header()
 
-    header["DATAMAX"] = (np.max(image), "Quarter star flux (Jy)")
     header["DATE"] = (f"{datetime.now()}", "Creation date")
     header["DISTANCE"] = (distance.value, "Distance to object (pc)")
     header["LAMBDA"] = (np.around(wavelength.value, 2), "Wavelength (microns)")
@@ -188,7 +203,7 @@ def save_fits(dim: int, pixel_size: u.mas,
         if "model.gridtype" in options:
             header["GRIDTYPE"] = options["model.gridtype"]
 
-    hdu = fits.HDUList([fits.PrimaryHDU(image, header=header), *tables])
+    hdu = fits.HDUList([fits.PrimaryHDU(images, header=header), *tables])
     hdu.writeto(savefits, overwrite=True)
 
 

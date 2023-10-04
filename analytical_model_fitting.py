@@ -175,7 +175,7 @@ if __name__ == "__main__":
     plot.save_fits(
             4096, pixel_size, distance,
             new_params["sh_pa"], new_params["sh_elong"],
-            10*u.um, components, component_labels,
+            OPTIONS["fit.wavelengths"], components, component_labels,
             opacities=[kappa_abs, kappa_cont],
             savefits=result_dir / "model.fits",
             options=OPTIONS, object_name="HD 142666")
