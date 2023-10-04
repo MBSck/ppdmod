@@ -133,7 +133,7 @@ def save_fits(dim: int, pixel_size: u.mas,
         table_header["COMP"] = component.name
         if options is not None:
             if "model.gridtype" in options:
-                table_header["GRIDTYPE"] = options["model.gridtype"]
+                table_header["GRIDTYPE"] = (options["model.gridtype"], "The type of the grid")
 
         data = {"wavelength": wavelengths}
         if component.name != "Star":
@@ -201,7 +201,10 @@ def save_fits(dim: int, pixel_size: u.mas,
 
     if options is not None:
         if "model.gridtype" in options:
-            header["GRIDTYPE"] = options["model.gridtype"]
+            header["GRIDTYPE"] = (options["model.gridtype"], "The type of the grid")
+        if "model.flux.factor" in options:
+            header["FLXFACT"] = (options["model.gridtype"],
+                                 "The factor with which the flux is multiplied")
 
     hdu = fits.HDUList([fits.PrimaryHDU(images, header=header), *tables])
     hdu.writeto(savefits, overwrite=True)

@@ -360,7 +360,7 @@ class HankelComponent(Component):
         brightness_profile = BlackBody(temperature_profile)(wavelength)
         thickness_profile = self._thickness_profile_function(
                 radius, innermost_radius, wavelength)
-        return brightness_profile*thickness_profile
+        return brightness_profile*thickness_profile*OPTIONS["model.flux.factor"]
 
     def calculate_image(self, dim: int, pixel_size: u.mas, wavelength: u.um) -> u.Jy:
         """Calculates the image."""
