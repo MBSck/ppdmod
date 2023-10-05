@@ -105,11 +105,13 @@ outer_ring = {"rin": rin, "a": a, "phi": phi}
 outer_ring_labels = [f"or_{label}" for label in outer_ring]
 
 p = Parameter(**STANDARD_PARAMETERS["p"])
+q = Parameter(**STANDARD_PARAMETERS["q"])
 pa = Parameter(**STANDARD_PARAMETERS["pa"])
 elong = Parameter(**STANDARD_PARAMETERS["elong"])
 cont_weight = Parameter(**STANDARD_PARAMETERS["cont_weight"])
 inner_sigma = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
 
+q.value = 0.5
 p.value = 0.5
 pa.value = 145
 elong.value = 0.5
@@ -122,7 +124,8 @@ elong.set(min=0, max=1)
 cont_weight.set(min=0., max=1.)
 inner_sigma.set(min=0, max=1e-2)
 
-OPTIONS["model.shared_params"] = {"p": p, "pa": pa, "elong": elong,
+OPTIONS["model.shared_params"] = {"q": q, "p": p,
+                                  "pa": pa, "elong": elong,
                                   "inner_sigma": inner_sigma,
                                   "cont_weight": cont_weight}
 shared_params_labels = [f"sh_{label}"
@@ -130,8 +133,8 @@ shared_params_labels = [f"sh_{label}"
 
 OPTIONS["model.components_and_params"] = [
     ["Star", {}],
-    ["AnalyticalGreyBody", inner_ring],
-    ["AnalyticalAsymmetricGreyBody", outer_ring],
+    ["AnalyticalTempGradient", inner_ring],
+    ["AnalyticalAsymmetricTempGradient", outer_ring],
 ]
 
 labels = inner_ring_labels + outer_ring_labels + shared_params_labels
@@ -142,9 +145,9 @@ OPTIONS["model.flux.factor"] = 1.3
 
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 1, 2, 20
-    # ncores = nwalkers // 2
-    ncores = 6
+    nburnin, nsteps, nwalkers = 200, 500, 100
+    ncores = nwalkers // 2
+    # ncores = 6
     model_result_dir = Path("../model_results/")
     day_dir = model_result_dir / str(datetime.now().date())
     time = datetime.now()
