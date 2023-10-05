@@ -142,9 +142,9 @@ OPTIONS["model.flux.factor"] = 1.3
 
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 500, 2500, 100
-    ncores = nwalkers // 2
-    # ncores = 6
+    nburnin, nsteps, nwalkers = 1, 2, 20
+    # ncores = nwalkers // 2
+    ncores = 6
     model_result_dir = Path("../model_results/")
     day_dir = model_result_dir / str(datetime.now().date())
     time = datetime.now()
@@ -175,9 +175,8 @@ if __name__ == "__main__":
 
     plot.save_fits(
             4096, pixel_size, distance,
-            new_params["sh_pa"], new_params["sh_elong"],
-            OPTIONS["fit.wavelengths"], components, component_labels,
-            opacities=[kappa_abs, kappa_cont],
+            OPTIONS["fit.wavelengths"], components,
+            component_labels, opacities=[kappa_abs, kappa_cont],
             savefits=result_dir / "model.fits",
             options=OPTIONS, object_name="HD 142666")
 

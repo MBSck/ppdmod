@@ -1,3 +1,5 @@
+from numpy import float32, complex64
+
 OPTIONS = {}
 
 # NOTE: Data.
@@ -13,6 +15,8 @@ OPTIONS["data.total_flux_error"] = []
 # NOTE: Model. The output can either be 'surface_brightness' or ' jansky_px'
 OPTIONS["model.components_and_params"] = {}
 OPTIONS["model.constant_params"] = {}
+OPTIONS["model.dtype.complex"] = complex64
+OPTIONS["model.dtype.real"] = float32
 OPTIONS["model.flux.factor"] = 1
 OPTIONS["model.gridtype"] = "linear"
 OPTIONS["model.matryoshka"] = False

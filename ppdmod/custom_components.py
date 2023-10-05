@@ -531,6 +531,25 @@ class AnalyticalAsymmetricGreyBody(HankelComponent):
     continuum_contribution = True
 
 
+class AnalyticalTempGradient(HankelComponent):
+    """An analytical implementation of an asymmetric temperature
+    gradient."""
+    name = "Asymmetric Continuum Grey Body"
+    shortname = "AsymContinuumGreyBody"
+    const_temperature = False
+    continuum_contribution = True
+
+
+class AnalyticalAsymmetricTempGradient(HankelComponent):
+    """An analytical implementation of an asymmetric temperature
+    gradient."""
+    name = "Asymmetric Continuum Grey Body"
+    shortname = "AsymContinuumGreyBody"
+    asymmetric = True
+    const_temperature = False
+    continuum_contribution = True
+
+
 # TODO: Check that this is working properly.
 def assemble_components(
         parameters: Dict[str, Dict],

@@ -27,9 +27,8 @@ HEADER_DICT = {
         "BUNIT": ("Jy", "Unit of original pixel value"),
         "BTYPE": ("Brightness", "Type of original pixel value"),
         "EXTEND": (True, "EXTEND"),
-        "COMMENT": "Best fit model image",
+        "COMMENT": "Best fit model image per wavelength",
         }
-
 
 
 def plot_corner(sampler: np.ndarray, labels: List[str],
@@ -101,29 +100,23 @@ def plot_chains(sampler: np.ndarray, labels: List[str],
 
 
 # TODO: Add components to this as well as the parameters in a sub HDULIST.
-def save_fits(dim: int, pixel_size: u.mas,
-              distance: u.pc, pos_angle: float,
-              elongation: float,
+def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
               wavelengths: List[u.Quantity[u.um]],
               components: List[Component],
               component_labels: List[str],
               opacities: List[np.ndarray] = None,
               savefits: Optional[Path] = None,
-              dtype: Optional[np.dtype] = np.float32,
               options: Optional[Dict[str, Any]] = None,
               object_name: Optional[str] = None) -> None:
     """Saves a (.fits)-file of the model with all the information on the parameter space."""
     pixel_size = pixel_size if isinstance(pixel_size, u.Quantity) else pixel_size*u.mas
     wavelengths = wavelengths if isinstance(wavelengths, u.Quantity) else wavelengths*u.um
     distance = distance if isinstance(distance, u.Quantity) else distance*u.pc
-    pos_angle = pos_angle if isinstance(pos_angle, u.Quantity) else pos_angle*u.deg
-    # pos_angle_rad = (pos_angle-180*u.deg).to(u.rad).value
-    # pixel_size_au = pixel_size.to(u.arcsec).value*distance.to(u.pc)
 
     # TODO: Make this for the numerical case as well.
     model, images = Model(components), []
     for wavelength in wavelengths:
-        images.append(model.calculate_image(dim, pixel_size, wavelength).astype(dtype))
+        images.append(model.calculate_image(dim, pixel_size, wavelength))
     images = np.array(images)
 
     tables = []
@@ -139,7 +132,7 @@ def save_fits(dim: int, pixel_size: u.mas,
         if component.name != "Star":
             innermost_radius = component.params["rin0"]()\
                     if component.params["rin0"]() != 0 else component.params["rin"]()
-            radius = component._calculate_internal_grid(dim).astype(dtype)
+            radius = component._calculate_internal_grid(dim)
 
             data["radius"] = [radius]*len(wavelengths)
             data["temperature"] = [component._temperature_profile_function(
@@ -162,8 +155,8 @@ def save_fits(dim: int, pixel_size: u.mas,
                 if parameter.wavelength is None:
                     name = parameter.shortname.upper()
                     if name not in table_header:
-                        table_header[name] =\
-                                (parameter().value, parameter.description)
+                        description = f"[{parameter.unit}] {parameter.description}"
+                        table_header[name] = (parameter().value, description)
                 else:
                     if parameter.name not in data:
                         data[parameter.name] = [parameter(wavelength).value]
@@ -171,14 +164,16 @@ def save_fits(dim: int, pixel_size: u.mas,
                         data[parameter.name].append(parameter(wavelength).value)
 
         table = fits.BinTableHDU(
-                Table(data=data), name=component_labels[index], header=table_header)
+                Table(data=data),
+                name="_".join(component_labels[index].split(" ")).upper(),
+                header=table_header)
         tables.append(table)
 
     if opacities is not None:
         data = {"wavelength": opacities[0].wavelength}
         for opacity in opacities:
             data[opacity.shortname] = opacity()
-        tables.append(fits.BinTableHDU(Table(data=data), name="Opacities"))
+        tables.append(fits.BinTableHDU(Table(data=data), name="OPACITIES"))
 
     wcs = WCS(naxis=3)
     wcs.wcs.crpix = (*np.array(images.shape[:2]) // 2, len(wavelengths))
@@ -189,12 +184,8 @@ def save_fits(dim: int, pixel_size: u.mas,
     wcs.wcs.pc = np.array([[-1, 0, 0], [0, -1, 0], [0, 0, 1]])
     header = wcs.to_header()
 
-    header["DATE"] = (f"{datetime.now()}", "Creation date")
-    header["DISTANCE"] = (distance.value, "Distance to object (pc)")
-    header["PA"] = (pos_angle.value, "Position angle (deg)")
-    header["ELONGRAD"] = (np.around(elongation, 2), "Elongation (rad)")
-    header["ELONGDEG"] = (np.around(elongation*u.rad.to(u.deg), 2), "Elongation (deg)")
     header["OBJECT"] = (object_name, "Name of the object")
+    header["DATE"] = (f"{datetime.now()}", "Creation date")
     # header["LTM1_1"] = np.around(pixel_size_au.value, 5), "Pixel size for x-coordinate (au)"
     # header["LTM2_2"] = np.around(pixel_size_au.value, 5), "Pixel size for y-coordinate (au)"
 
@@ -202,7 +193,7 @@ def save_fits(dim: int, pixel_size: u.mas,
         if "model.gridtype" in options:
             header["GRIDTYPE"] = (options["model.gridtype"], "The type of the grid")
         if "model.flux.factor" in options:
-            header["FLXFACT"] = (options["model.gridtype"],
+            header["FLXFACT"] = (options["model.flux.factor"],
                                  "The factor with which the flux is multiplied")
 
     hdu = fits.HDUList([fits.PrimaryHDU(images, header=header), *tables])
