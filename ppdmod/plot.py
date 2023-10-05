@@ -181,9 +181,9 @@ def save_fits(dim: int, pixel_size: u.mas,
         tables.append(fits.BinTableHDU(Table(data=data), name="Opacities"))
 
     wcs = WCS(naxis=3)
-    wcs.wcs.crpix = (np.array(images.shape[:2]) // 2, len(wavelengths))
-    wcs.wcs.cdelt = np.array([pixel_size.value, pixel_size.value, 1])
-    wcs.wcs.crval = (0.0, 0.0, 0.0)
+    wcs.wcs.crpix = (*np.array(images.shape[:2]) // 2, len(wavelengths))
+    wcs.wcs.cdelt = ([pixel_size.value, pixel_size.value, -1.0])
+    wcs.wcs.crval = (0.0, 0.0, 1.0)
     wcs.wcs.ctype = ("RA---AIR", "DEC--AIR", "WAVELENGTHS")
     wcs.wcs.cunit = ("mas", "mas", "um")
     wcs.wcs.pc = np.array([[-1, 0, 0], [0, -1, 0], [0, 0, 1]])
@@ -191,7 +191,6 @@ def save_fits(dim: int, pixel_size: u.mas,
 
     header["DATE"] = (f"{datetime.now()}", "Creation date")
     header["DISTANCE"] = (distance.value, "Distance to object (pc)")
-    header["LAMBDA"] = (np.around(wavelength.value, 2), "Wavelength (microns)")
     header["PA"] = (pos_angle.value, "Position angle (deg)")
     header["ELONGRAD"] = (np.around(elongation, 2), "Elongation (rad)")
     header["ELONGDEG"] = (np.around(elongation*u.rad.to(u.deg), 2), "Elongation (deg)")
@@ -295,8 +294,8 @@ def plot_datapoints(
             axis_ratio, pos_angle)[0].max(axis=0)
 
         for wavelength in wavelengths:
-            wl_str = str(wavelength.value)
             total_flux_model, corr_flux_model, cphase_model = None, None, None
+            wl_str = str(wavelength.value)
             if wl_str not in corr_flux:
                 continue
             if model is not None:
@@ -329,8 +328,8 @@ def plot_datapoints(
                                 readout.u123coord, readout.v123coord, wavelength,
                                 star_flux=stellar_flux)
 
-            effective_baselines /= wavelength.value
-            longest_baselines /= wavelength.value
+            effective_baselines_mlambda = effective_baselines/wavelength.value
+            longest_baselines_mlambda = longest_baselines/wavelength.value
             color = colormap(norm(wavelength.value))
 
             if "vis" in axarr:
@@ -345,22 +344,21 @@ def plot_datapoints(
                         marker="X", color=color)
                 if "vis" in data_to_plot:
                     ax.errorbar(
-                        effective_baselines.value, corr_flux[wl_str],
+                        effective_baselines_mlambda.value, corr_flux[wl_str],
                         corr_flux_err[wl_str], color=color, fmt="o", alpha=0.6)
                     ax.scatter(
-                        effective_baselines.value, corr_flux_model,
+                        effective_baselines_mlambda.value, corr_flux_model,
                         color=color, marker="X")
             if "t3phi" in axarr:
                 bx = axarr["t3phi"]
                 bx.errorbar(
-                    longest_baselines.value, cphase[wl_str],
+                    longest_baselines_mlambda.value, cphase[wl_str],
                     cphase_err[wl_str],
                     color=color, fmt="o", alpha=0.6)
                 bx.scatter(
-                    longest_baselines.value, cphase_model,
+                    longest_baselines_mlambda.value, cphase_model,
                     color=color, marker="X")
                 bx.axhline(y=0, color="gray", linestyle='--')
-
 
 
 def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
@@ -368,7 +366,7 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
              model: Optional[Model] = None,
              pixel_size: Optional[u.Quantity[u.mas]] = None,
              data_to_plot: Optional[List[str]] = OPTIONS["fit.data"],
-             colormap: Optional[str] = "turbo",
+             colormap: Optional[str] = "tab20",
              plot_title: Optional[str] = None,
              savefig: Optional[Path] = None):
     """Plots the deviation of a model from real data of an object for
@@ -417,7 +415,7 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
     cbar = plt.colorbar(sm, ax=axarr[data_types[-1]],
                         label="Wavelength (micron)")
     cbar.set_ticks(wavelengths.value)
-    cbar.set_ticklabels([f"{wavelength:.0f}" for wavelength in wavelengths.value])
+    cbar.set_ticklabels([f"{wavelength:.1f}" for wavelength in wavelengths.value])
 
     dot_label = mlines.Line2D([], [], color="k", marker="o",
                               linestyle="None", label="Data", alpha=0.6)

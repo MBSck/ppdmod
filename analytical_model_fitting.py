@@ -21,7 +21,7 @@ os.environ["OMP_NUM_THREADS"] = "1"
 OPTIONS["data.binning.window"] = 0.1*u.um
 
 # TODO: Check wavelength axis for opacity interpolation.
-data.set_fit_wavelengths([3.5, 10]*u.um)
+data.set_fit_wavelengths([3.5, 8, 9, 10, 11.3, 12.5]*u.um)
 path = Path("tests/data/fits/")
 fits_files = [
     "hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_HAWAII-2RG_FINAL_TARGET_INT.fits",
@@ -138,12 +138,13 @@ labels = inner_ring_labels + outer_ring_labels + shared_params_labels
 
 OPTIONS["model.modulation.order"] = 1
 OPTIONS["model.gridtype"] = "logarithmic"
+OPTIONS["model.flux.factor"] = 1.3
 
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 1, 2, 20
-    # ncores = nwalkers // 2
-    ncores = 6
+    nburnin, nsteps, nwalkers = 500, 2500, 100
+    ncores = nwalkers // 2
+    # ncores = 6
     model_result_dir = Path("../model_results/")
     day_dir = model_result_dir / str(datetime.now().date())
     time = datetime.now()
@@ -154,7 +155,7 @@ if __name__ == "__main__":
         result_dir.mkdir(parents=True)
 
     sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin,
-                            ncores=ncores, method="analytical", debug=True)
+                            ncores=ncores, method="analytical", debug=False)
     theta = mcmc.get_best_fit(sampler, discard=nburnin)
 
     plot.plot_chains(sampler, labels, discard=nburnin, savefig=result_dir / "chains.pdf")
