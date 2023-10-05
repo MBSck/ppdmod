@@ -118,6 +118,7 @@ elong.value = 0.5
 cont_weight.value = 130
 inner_sigma.value = 1e-3
 
+q.set(min=0., max=1.)
 p.set(min=0., max=1.)
 pa.set(min=0, max=360)
 elong.set(min=0, max=1)
