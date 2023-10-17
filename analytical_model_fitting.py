@@ -75,33 +75,36 @@ OPTIONS["model.constant_params"] = {
 
 rin = Parameter(**STANDARD_PARAMETERS["rin"])
 rout = Parameter(**STANDARD_PARAMETERS["rout"])
+inner_sigma = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
 
 rin.value = 1.
 rout.value = 7.
+inner_sigma.set(min=0, max=1e-2)
 
 rin.set(min=0.5, max=3)
 rout.set(min=1., max=4)
 rout.free = True
+inner_sigma.value = 1e-3
 
-inner_ring = {"rin": rin, "rout": rout}
+inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
-rin = Parameter(**STANDARD_PARAMETERS["rin"])
-rout = Parameter(**STANDARD_PARAMETERS["rout"])
 a = Parameter(**STANDARD_PARAMETERS["a"])
 phi = Parameter(**STANDARD_PARAMETERS["phi"])
 
 rin.value = 13
 a.value = 0.5
 phi.value = 130
+inner_sigma.value = 1e-3
 
 # NOTE: Set outer radius to be constant and calculate flux once?
 rin.set(min=4, max=30)
 a.set(min=0., max=1.)
 phi.set(min=0, max=360)
 rout.free = True
+inner_sigma.set(min=0, max=1e-2)
 
-outer_ring = {"rin": rin, "a": a, "phi": phi}
+outer_ring = {"rin": rin, "a": a, "phi": phi, "inner_sigma": inner_sigma}
 outer_ring_labels = [f"or_{label}" for label in outer_ring]
 
 p = Parameter(**STANDARD_PARAMETERS["p"])
@@ -109,25 +112,21 @@ q = Parameter(**STANDARD_PARAMETERS["q"])
 pa = Parameter(**STANDARD_PARAMETERS["pa"])
 elong = Parameter(**STANDARD_PARAMETERS["elong"])
 cont_weight = Parameter(**STANDARD_PARAMETERS["cont_weight"])
-inner_sigma = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
 
 q.value = 0.5
 p.value = 0.5
 pa.value = 145
 elong.value = 0.5
 cont_weight.value = 130
-inner_sigma.value = 1e-3
 
 q.set(min=0., max=1.)
 p.set(min=0., max=1.)
 pa.set(min=0, max=360)
 elong.set(min=0, max=1)
 cont_weight.set(min=0., max=1.)
-inner_sigma.set(min=0, max=1e-2)
 
 OPTIONS["model.shared_params"] = {"q": q, "p": p,
                                   "pa": pa, "elong": elong,
-                                  "inner_sigma": inner_sigma,
                                   "cont_weight": cont_weight}
 shared_params_labels = [f"sh_{label}"
                         for label in OPTIONS["model.shared_params"]]
