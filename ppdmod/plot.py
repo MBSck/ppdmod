@@ -169,6 +169,27 @@ def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
                 header=table_header)
         tables.append(table)
 
+    data = None
+    for table in tables:
+        if table.header["COMP"] == "Star":
+            continue
+        if data is None:
+            data = {col.name: table.data[col.name] for col in table.columns}
+            continue
+        for column in table.columns:
+            if column.name in ["wavelength", "kappa_abs", "kappa_cont"]:
+                continue
+            if column.name == "radius":
+                filler = np.tile(
+                        np.linspace(data[column.name][0][-1], table.data[column.name][0][0], dim),
+                        (table.data[column.name].shape[0], 1))
+            else:
+                filler = np.zeros(data[column.name].shape)
+            data[column.name] = np.hstack((data[column.name],
+                                           filler, table.data[column.name]))
+    table = fits.BinTableHDU(Table(data=data), name="FULL_DISK")
+    tables.append(table)
+
     if opacities is not None:
         data = {"wavelength": opacities[0].wavelength}
         for opacity in opacities:
@@ -200,7 +221,6 @@ def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
     hdu.writeto(savefits, overwrite=True)
 
 
-# TODO: Make inverse plot function from inverse fft.
 def plot_model(dim: int, pixel_size: u.mas,
                model: Model, wavelength: u.um,
                zoom: Optional[float] = None,
