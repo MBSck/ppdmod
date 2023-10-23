@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 import astropy.units as u
@@ -28,8 +29,8 @@ TRIANGLES = [f"T {triangle}" for triangle in np.around(np.hypot(READOUT.u123coor
 utils.make_workbook(
     CALCULATION_FILE,
     {
-        VISIBILITY: ["Dimension (px)", *BASELINES],
-        CLOSURE_PHASE: ["Dimension (px)", *TRIANGLES],
+        VISIBILITY: ["Dimension (px)", *BASELINES, "Computation Time (s)"],
+        CLOSURE_PHASE: ["Dimension (px)", *TRIANGLES, "Computation Time (s)"],
     })
 
 @pytest.fixture
@@ -298,16 +299,24 @@ def test_hankel_resolution(
     hankel_component.asymmetric = True
 
     OPTIONS["model.modulation.order"] = 1
+    
+    start_time_vis = time.perf_counter()
     visibilities = hankel_component.calculate_visibility(
             readout.ucoord, readout.vcoord, wavelength)
+    end_time_vis = time.perf_counter()-start_time_vis
+
+    start_time_cphase = time.perf_counter()
     closure_phases = hankel_component.calculate_closure_phase(
             readout.u123coord, readout.v123coord, wavelength)
+    end_time_cphase = time.perf_counter()-start_time_cphase
 
     vis_data = {"Dimension (px)": [dim],
-                **{baseline: value for baseline, value in zip(BASELINES, visibilities)}}
+                **{baseline: value for baseline, value in zip(BASELINES, visibilities)},
+                   "Computation Time (s)": [end_time_vis]}
 
     cphase_data = {"Dimension (px)": [dim],
-                   **{triangle: value for triangle, value in zip(TRIANGLES, closure_phases)}}
+                   **{triangle: value for triangle, value in zip(TRIANGLES, closure_phases)},
+                   "Computation Time (s)": [end_time_cphase]}
 
     if CALCULATION_FILE.exists():
         df = pd.read_excel(CALCULATION_FILE, sheet_name=VISIBILITY)
