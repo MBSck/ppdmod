@@ -68,7 +68,9 @@ def init_randomly(nwalkers: float) -> np.ndarray:
 
 
 def chi_sq(data: u.quantity, error: u.quantity,
-           model_data: u.quantity, lnf: Optional[float] = None) -> float:
+           model_data: u.quantity,
+           method: Optional[str] = "linear",
+           lnf: Optional[float] = None) -> float:
     """the chi square minimisation.
 
     Parameters
@@ -79,6 +81,8 @@ def chi_sq(data: u.quantity, error: u.quantity,
         The real data's error.
     model_data : numpy.ndarray
         The model data.
+    method : str, optional
+        The method of comparison, either "linear" or "exponential".
     lnf : float, optional
         The error correction term for the real data.
 
@@ -91,7 +95,10 @@ def chi_sq(data: u.quantity, error: u.quantity,
     else:
         inv_sigma_squared = 1./np.sum(
             error**2 + model_data**2*np.exp(2*lnf))
-    return -0.5*np.sum((data-model_data)**2*inv_sigma_squared)
+    if method == "linear":
+        return -0.5*np.sum((data-model_data)**2*inv_sigma_squared + np.log(1/inv_sigma_squared))
+    diff = np.angle(np.exp((data-model_data)*u.deg.to(u.rad)*1j), deg=False)
+    return -0.5*np.sum(diff**2*inv_sigma_squared + np.log(1/inv_sigma_squared))
 
 
 def calculate_observables(fourier_transform: np.ndarray,
@@ -195,7 +202,7 @@ def calculate_observables_chi_sq(
             * OPTIONS["fit.chi2.weight.corr_flux"]
 
     if "t3phi" in OPTIONS["fit.data"]:
-        total_chi_sq += chi_sq(cphase, cphase_err, cphase_model)\
+        total_chi_sq += chi_sq(cphase, cphase_err, cphase_model, method="exponential")\
             * OPTIONS["fit.chi2.weight.cphase"]
     return float(total_chi_sq)
 
