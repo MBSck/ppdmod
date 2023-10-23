@@ -469,7 +469,7 @@ class HankelComponent(Component):
                 mod = mod.reshape(ucoord.shape)
                 vis += np.vstack((mod[:2], mod[-1].conj()))
         return np.angle(np.prod(vis.value, axis=0),
-                        deg=True).astype(OPTIONS["model.dtype.complex"])
+                        deg=True).astype(OPTIONS["model.dtype.real"])
 
 
 class NumericalComponent(Component):
