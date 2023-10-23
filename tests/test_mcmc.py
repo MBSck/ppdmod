@@ -178,6 +178,7 @@ def test_init_randomly(nwalkers: int) -> None:
 
 
 # TODO: Finish test.
+# TODO: Test exponential chi_sq.
 # @pytest.mark.parametrize(
 #     "data, error, data_model, expected",
 #     [(np.full((6,), fill_value=50), np.array([50, 60, 40, 47, 53]), 4.36)])

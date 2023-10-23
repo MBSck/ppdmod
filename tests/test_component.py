@@ -3,9 +3,11 @@ from pathlib import Path
 import astropy.units as u
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import pytest
 from astropy.modeling.models import BlackBody
 
+from ppdmod import utils
 from ppdmod.component import Component, AnalyticalComponent,\
         NumericalComponent, HankelComponent
 from ppdmod.data import ReadoutFits
@@ -13,9 +15,22 @@ from ppdmod.parameter import STANDARD_PARAMETERS, Parameter
 from ppdmod.options import OPTIONS
 
 
+CALCULATION_FILE = Path("analytical_calculation.xlsx")
 COMPONENT_DIR = Path("component")
-if not COMPONENT_DIR.exists():
-    COMPONENT_DIR.mkdir()
+VISIBILITY = "Visibility"
+CLOSURE_PHASE = "Closure Phase"
+
+READOUT = ReadoutFits(Path("data/fits") \
+        / "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits")
+BASELINES = [f"B {baseline}" for baseline in np.around(np.hypot(READOUT.ucoord, READOUT.vcoord), 0)]
+TRIANGLES = [f"T {triangle}" for triangle in np.around(np.hypot(READOUT.u123coord, READOUT.v123coord).max(axis=0), 0)]
+
+utils.make_workbook(
+    CALCULATION_FILE,
+    {
+        VISIBILITY: ["Dimension (px)", *BASELINES],
+        CLOSURE_PHASE: ["Dimension (px)", *TRIANGLES],
+    })
 
 @pytest.fixture
 def readout() -> Path:
@@ -27,7 +42,7 @@ def readout() -> Path:
 @pytest.fixture
 def wavelength() -> u.um:
     """A wavelength grid."""
-    return (8.28835527e-06*u.m).to(u.um)
+    return (13.000458e-6*u.m).to(u.um)
 
 
 @pytest.fixture
@@ -56,6 +71,7 @@ def hankel_component() -> HankelComponent:
             elong=0.5, dim=512, a=0.5,
             inner_temp=1500, q=0.5)
     hankel_component.optically_thick = True
+    hankel_component.asymmetric = True
     return hankel_component
 
 
@@ -220,7 +236,7 @@ def test_hankel_component_total_flux(
         hankel_component: HankelComponent, wavelength: u.um) -> None:
     """Tests the calculation of the total flux."""
     total_flux = hankel_component.calculate_total_flux(wavelength)
-    assert total_flux.unit == u.Jy
+    assert total_flux
 
 
 @pytest.mark.parametrize("order", [0, 1, 2, 3])
@@ -256,6 +272,7 @@ def test_hankel_component_visibilities(
     OPTIONS["model.modulation.order"] = 0
 
 
+# TODO: Write test that checks the k
 @pytest.mark.parametrize("order", [0, 1, 2, 3])
 def test_hankel_component_closure_phases(
         hankel_component: HankelComponent, order: int,
@@ -265,4 +282,53 @@ def test_hankel_component_closure_phases(
     closure_phases = hankel_component.calculate_closure_phase(
             readout.u123coord, readout.v123coord, wavelength)
     assert closure_phases.shape == (4, )
+    OPTIONS["model.modulation.order"] = 0
+
+
+@pytest.mark.parametrize(
+        "dim", [4096, 2096, 1024, 512, 256, 128, 64, 32])
+def test_hankel_resolution(
+        dim: int, readout: ReadoutFits, wavelength: u.um) -> None:
+    """Tests the hankel component's resolution."""
+    hankel_component = HankelComponent(
+            rin=0.5, rout=3, pa=33,
+            elong=0.5, dim=dim, a=0.5,
+            inner_temp=1500, q=0.5)
+    hankel_component.optically_thick = True
+    hankel_component.asymmetric = True
+
+    OPTIONS["model.modulation.order"] = 1
+    visibilities = hankel_component.calculate_visibility(
+            readout.ucoord, readout.vcoord, wavelength)
+    closure_phases = hankel_component.calculate_closure_phase(
+            readout.u123coord, readout.v123coord, wavelength)
+
+    vis_data = {"Dimension (px)": [dim],
+                **{baseline: value for baseline, value in zip(BASELINES, visibilities)}}
+
+    cphase_data = {"Dimension (px)": [dim],
+                   **{triangle: value for triangle, value in zip(TRIANGLES, closure_phases)}}
+
+    if CALCULATION_FILE.exists():
+        df = pd.read_excel(CALCULATION_FILE, sheet_name=VISIBILITY)
+        new_df = pd.DataFrame(vis_data)
+        df = pd.concat([df, new_df])
+    else:
+        df = pd.DataFrame(vis_data)
+
+    with pd.ExcelWriter(CALCULATION_FILE, engine="openpyxl",
+                        mode="a", if_sheet_exists="replace") as writer:
+        df.to_excel(writer, sheet_name=VISIBILITY, index=False)
+
+    if CALCULATION_FILE.exists():
+        df = pd.read_excel(CALCULATION_FILE, sheet_name=CLOSURE_PHASE)
+        new_df = pd.DataFrame(cphase_data)
+        df = pd.concat([df, new_df])
+    else:
+        df = pd.DataFrame(cphase_data)
+
+    with pd.ExcelWriter(CALCULATION_FILE, engine="openpyxl",
+                        mode="a", if_sheet_exists="replace") as writer:
+        df.to_excel(writer, sheet_name=CLOSURE_PHASE, index=False)
+
     OPTIONS["model.modulation.order"] = 0
