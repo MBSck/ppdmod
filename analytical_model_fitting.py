@@ -80,7 +80,7 @@ kappa_cont.value, kappa_cont.wavelength = continuum_opacity, wavelength_axes
 
 # fov, pixel_size = 220, 0.1
 # dim = utils.get_next_power_of_two(fov / pixel_size)
-dim = 128
+dim = 32
 fov, pixel_size = 220, 0.1
 
 distance = 148.3
