@@ -149,7 +149,7 @@ shared_params_labels = [f"sh_{label}"
 
 OPTIONS["model.components_and_params"] = [
     ["Star", {}],
-    ["AnalyticalTempGradient", inner_ring],
+    # ["AnalyticalTempGradient", inner_ring],
     ["AnalyticalAsymmetricTempGradient", outer_ring],
 ]
 
