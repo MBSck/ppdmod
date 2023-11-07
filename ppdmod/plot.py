@@ -436,14 +436,13 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
         ax = axarr["vis"]
         ax.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}/\lambda$ (M$\lambda$)")
         ax.set_ylabel("Correlated fluxes (Jy)")
-        # ax.set_ylim(y_lim_flux)
         ax.legend(handles=[dot_label, x_label])
 
     if "t3phi" in axarr:
         bx = axarr["t3phi"]
         bx.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}/\lambda$ (M$\lambda$)")
         bx.set_ylabel(r"Closure Phases ($^\circ$)")
-        # bx.set_ylim(y_lim_cphase)
+        bx.set_ylim([-200, 200])
         bx.legend(handles=[dot_label, x_label])
 
     if plot_title:
