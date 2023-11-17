@@ -378,7 +378,7 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
              pixel_size: Optional[u.Quantity[u.mas]] = None,
              data_to_plot: Optional[List[str]] = OPTIONS["fit.data"],
              colormap: Optional[str] = "tab20",
-             plot_title: Optional[str] = None,
+             title: Optional[str] = None,
              savefig: Optional[Path] = None):
     """Plots the deviation of a model from real data of an object for
     total flux, visibilities and closure phases.
@@ -445,8 +445,119 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
         bx.set_ylim([-200, 200])
         bx.legend(handles=[dot_label, x_label])
 
-    if plot_title:
-        plt.title(plot_title)
+    if title:
+        plt.title(title)
+
+    if savefig:
+        plt.savefig(savefig, format="pdf")
+    else:
+        plt.show()
+    plt.close()
+
+
+def plot_overview(data_to_plot: Optional[List[str]] = OPTIONS["fit.data"],
+                  colormap: Optional[str] = "tab20",
+                  corr_flux: Optional[bool] = False,
+                  title: Optional[str] = None,
+                  savefig: Optional[Path] = None) -> None:
+    """Plots an overview over the total data for baselines [Mlambda].
+
+    Parameters
+    ----------
+    data_to_plot : list of str, optional
+        The data to plot. The default is OPTIONS["fit.data"].
+    savefig : pathlib.Path, optional
+        The save path. The default is None.
+    """
+    wavelengths = OPTIONS["fit.wavelengths"]
+    norm = mcolors.Normalize(
+            vmin=wavelengths[0].value, vmax=wavelengths[-1].value)
+
+    data_types, nplots = [], 0
+    if "vis" in data_to_plot:
+        nplots += 1
+        data_types.append("vis")
+
+    if "t3phi" in data_to_plot:
+        nplots += 1
+        data_types.append("t3phi")
+
+    figsize = (12, 5) if nplots == 2 else None
+    _, axarr = plt.subplots(1, nplots, figsize=figsize)
+    axarr = dict(zip(data_types, axarr.flatten()))
+
+    colormap = mcm.get_cmap(colormap)
+    total_fluxes, total_fluxes_err =\
+        OPTIONS["data.total_flux"], OPTIONS["data.total_flux_error"]
+    correlated_fluxes, correlated_fluxes_err =\
+        OPTIONS["data.correlated_flux"], OPTIONS["data.correlated_flux_error"]
+    visibilities, visibilities_err =\
+        OPTIONS["data.visibility"], OPTIONS["data.visibility_error"]
+    cphases, cphases_err =\
+        OPTIONS["data.closure_phase"], OPTIONS["data.closure_phase_error"]
+
+    for file_index, (cphase, cphase_err)\
+            in enumerate(zip(cphases, cphases_err)):
+        readout = OPTIONS["data.readouts"][file_index]
+        effective_baselines = np.hypot(readout.ucoord, readout.vcoord)*u.m
+        longest_baselines = np.hypot(readout.u123coord, readout.v123coord).max(axis=0)*u.m
+
+        for wavelength in wavelengths:
+            wl_str = str(wavelength.value)
+            if wl_str not in cphase:
+                continue
+
+            effective_baselines_mlambda = effective_baselines/wavelength.value
+            longest_baselines_mlambda = longest_baselines/wavelength.value
+            color = colormap(norm(wavelength.value))
+
+            # TODO: Add total flux here
+            if "vis" in axarr:
+                ax = axarr["vis"]
+                vis = correlated_fluxes[file_index]\
+                        if corr_flux else visibilities[file_index]
+                vis_err = correlated_fluxes_err[file_index]\
+                        if corr_flux else visibilities_err[file_index]
+                if "vis" in data_to_plot:
+                    ax.errorbar(
+                        effective_baselines_mlambda.value, vis[wl_str],
+                        vis_err[wl_str], color=color, fmt="o", alpha=0.6)
+            if "t3phi" in axarr:
+                bx = axarr["t3phi"]
+                bx.errorbar(
+                    longest_baselines_mlambda.value, cphase[wl_str],
+                    cphase_err[wl_str],
+                    color=color, fmt="o", alpha=0.6)
+                bx.axhline(y=0, color="gray", linestyle='--')
+
+    sm = cm.ScalarMappable(cmap=colormap, norm=norm)
+    sm.set_array([])
+    cbar = plt.colorbar(sm, ax=axarr[data_types[-1]],
+                        label="Wavelength (micron)")
+    cbar.set_ticks(wavelengths.value)
+    cbar.set_ticklabels([f"{wavelength:.1f}" for wavelength in wavelengths.value])
+
+    if "vis" in axarr:
+        ax = axarr["vis"]
+        ax.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}/\lambda$ (M$\lambda$)")
+        ax.set_ylabel("Correlated fluxes (Jy)"
+                      if corr_flux else "Visibilities (a.u.)")
+        if not corr_flux:
+            ax.set_ylim([0, 1])
+
+    if "t3phi" in axarr:
+        bx = axarr["t3phi"]
+        bx.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}/\lambda$ (M$\lambda$)")
+        bx.set_ylabel(r"Closure Phases ($^\circ$)")
+        cphase_list = [list(value.values()) for value in cphases]
+        lower_bound = np.min([np.min(value) for value in cphase_list])
+        lower_bound += lower_bound*0.25
+        upper_bound = np.max([np.max(value) for value in cphase_list])
+        upper_bound += upper_bound*0.25
+        bx.set_ylim([lower_bound, upper_bound])
+
+    if title:
+        plt.title(title)
 
     if savefig:
         plt.savefig(savefig, format="pdf")

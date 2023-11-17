@@ -4,8 +4,11 @@ OPTIONS = {}
 
 # NOTE: Data.
 OPTIONS["data.binning.window"] = None
+OPTIONS["data.gravity.index"] = 20
 OPTIONS["data.correlated_flux"] = []
 OPTIONS["data.correlated_flux_error"] = []
+OPTIONS["data.visibility"] = []
+OPTIONS["data.visibility_error"] = []
 OPTIONS["data.closure_phase"] = []
 OPTIONS["data.closure_phase_error"] = []
 OPTIONS["data.readouts"] = []

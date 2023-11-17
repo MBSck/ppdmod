@@ -20,24 +20,38 @@ class ReadoutFits:
     def read_file(self):
         """Reads the data of the (.fits)-files into vectors."""
         with fits.open(Path(self.fits_file)) as hdul:
-            self.wavelength = (hdul["oi_wavelength"].data["eff_wave"]*u.m).to(u.um)
-            self.ucoord = hdul["oi_vis"].data["ucoord"]
-            self.vcoord = hdul["oi_vis"].data["vcoord"]
+            instrument = hdul[0].header["instrume"].lower()
+            sci_index = OPTIONS["data.gravity.index"]\
+                if instrument == "gravity" else None
+            wl_index = 1 if instrument == "gravity" else None
+            self.wavelength = (hdul["oi_wavelength", sci_index]
+                               .data["eff_wave"]*u.m).to(u.um)[wl_index:]
+            self.ucoord = hdul["oi_vis2", sci_index].data["ucoord"]
+            self.vcoord = hdul["oi_vis2", sci_index].data["vcoord"]
+
             try:
-                self.flux = hdul["oi_flux"].data["fluxdata"]
-                self.flux_err = hdul["oi_flux"].data["fluxerr"]
+                self.flux = hdul["oi_flux", sci_index].data["fluxdata"][wl_index:]
+                self.flux_err = hdul["oi_flux", sci_index].data["fluxerr"][wl_index:]
             except KeyError:
                 self.flux = None
                 self.flux_err = None
-            self.vis = hdul["oi_vis"].data["visamp"]
-            self.vis_err = hdul["oi_vis"].data["visamperr"]
-            self.t3phi = hdul["oi_t3"].data["t3phi"]
-            self.t3phi_err = hdul["oi_t3"].data["t3phierr"]
-            self.u1coord = hdul["oi_t3"].data["u1coord"]
-            self.u2coord = hdul["oi_t3"].data["u2coord"]
+
+            try:
+                self.vis = hdul["oi_vis", sci_index].data["visamp"][:, wl_index:]
+                self.vis_err = hdul["oi_vis", sci_index].data["visamperr"][:, wl_index:]
+            except KeyError:
+                self.vis = None
+                self.vis_err = None
+
+            self.vis2 = hdul["oi_vis2", sci_index].data["vis2data"][:, wl_index:]
+            self.vis2_err = hdul["oi_vis2", sci_index].data["vis2err"][:, wl_index:]
+            self.t3phi = hdul["oi_t3", sci_index].data["t3phi"][:, wl_index:]
+            self.t3phi_err = hdul["oi_t3", sci_index].data["t3phierr"][:, wl_index:]
+            self.u1coord = hdul["oi_t3", sci_index].data["u1coord"]
+            self.u2coord = hdul["oi_t3", sci_index].data["u2coord"]
             self.u3coord = -(self.u1coord+self.u2coord)
-            self.v1coord = hdul["oi_t3"].data["v1coord"]
-            self.v2coord = hdul["oi_t3"].data["v2coord"]
+            self.v1coord = hdul["oi_t3", sci_index].data["v1coord"]
+            self.v2coord = hdul["oi_t3", sci_index].data["v2coord"]
             self.v3coord = -(self.v1coord+self.v2coord)
             self.u123coord = np.array([self.u1coord, self.u2coord, self.u3coord])
             self.v123coord = np.array([self.v1coord, self.v2coord, self.v3coord])
@@ -53,7 +67,7 @@ class ReadoutFits:
         for wavelength, index in indices.items():
             if wavelength not in data:
                 tmp_data = getattr(self, key)[:, index]
-                if tmp_data.shape[0] == 1:
+                if tmp_data.shape[0] == 1 or len(tmp_data.shape) == 1:
                     tmp_data = tmp_data.mean()
                 else:
                     tmp_data = tmp_data.mean(1)
@@ -92,11 +106,13 @@ def set_data(fits_files: Optional[List[Path]] = None,
         The wavelengths to be fitted.
     """
     OPTIONS["data.readouts"] = []
-    OPTIONS["data.total_flux"],\
+    OPTIONS["data.total_flux"], \
         OPTIONS["data.total_flux_error"] = [], []
-    OPTIONS["data.correlated_flux"],\
+    OPTIONS["data.correlated_flux"], \
         OPTIONS["data.correlated_flux_error"] = [], []
-    OPTIONS["data.closure_phase"],\
+    OPTIONS["data.visibility"], \
+        OPTIONS["data.visibility_error"] = [], []
+    OPTIONS["data.closure_phase"], \
         OPTIONS["data.closure_phase_error"] = [], []
 
     if fits_files is None:
@@ -109,15 +125,19 @@ def set_data(fits_files: Optional[List[Path]] = None,
         wavelengths = OPTIONS["fit.wavelengths"]
 
     for readout in readouts:
-        OPTIONS["data.total_flux"].append(
-            readout.get_data_for_wavelengths(wavelengths, key="flux"))
-        OPTIONS["data.total_flux_error"].append(
-            readout.get_data_for_wavelengths(wavelengths, key="flux_err"))
-        OPTIONS["data.correlated_flux"].append(
-            readout.get_data_for_wavelengths(wavelengths, key="vis"))
-        OPTIONS["data.correlated_flux_error"].append(
-            readout.get_data_for_wavelengths(wavelengths, key="vis_err"))
-        OPTIONS["data.closure_phase"].append(
-            readout.get_data_for_wavelengths(wavelengths, key="t3phi"))
-        OPTIONS["data.closure_phase_error"].append(
-            readout.get_data_for_wavelengths(wavelengths, key="t3phi_err"))
+        for data_type in OPTIONS["fit.data"]:
+            key = ""
+            if data_type == "flux":
+                key = "total_flux"
+            elif data_type == "vis":
+                key = "correlated_flux"
+            elif data_type == "vis2":
+                key = "visibility"
+            elif data_type == "t3phi":
+                key = "closure_phase"
+
+            OPTIONS[f"data.{key}"].append(
+                readout.get_data_for_wavelengths(wavelengths, key=data_type))
+            OPTIONS[f"data.{key}_error"].append(
+                readout.get_data_for_wavelengths(wavelengths,
+                                                 key=f"{data_type}_err"))
