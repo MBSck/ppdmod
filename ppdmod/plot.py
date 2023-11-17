@@ -539,7 +539,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = OPTIONS["fit.data"],
 
     if "vis" in axarr:
         ax = axarr["vis"]
-        ax.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}/\lambda$ (M$\lambda$)")
+        ax.set_xlabel(r"$\mathrm{B}/\lambda$ (M$\lambda$)")
         ax.set_ylabel("Correlated fluxes (Jy)"
                       if corr_flux else "Visibilities (a.u.)")
         if not corr_flux:

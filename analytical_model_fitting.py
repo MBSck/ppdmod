@@ -201,6 +201,6 @@ if __name__ == "__main__":
 
     plot.plot_fit(
             new_params["sh_elong"], new_params["sh_pa"],
-            plot_title=f"Analytical model - {time} - nw={nwalkers}, ns={nsteps}",
+            title=f"Analytical model - {time} - nw={nwalkers}, ns={nsteps}",
             components=components, savefig=result_dir / "fit_results.pdf")
     new_params = dict(zip(labels, theta))
