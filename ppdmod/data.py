@@ -126,6 +126,9 @@ def set_data(fits_files: Optional[List[Path]] = None,
 
     for readout in readouts:
         for data_type in OPTIONS["fit.data"]:
+            if OPTIONS["fit.output"] == "vis" and data_type == "vis":
+                data_type = "vis2"
+
             key = ""
             if data_type == "flux":
                 key = "total_flux"
