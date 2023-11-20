@@ -309,6 +309,9 @@ def lnprob_analytical(theta: np.ndarray) -> float:
                             readout.u123coord, readout.v123coord, wavelength,
                             star_flux=stellar_flux)
 
+            if OPTIONS["model.output"] == "vis":
+                corr_flux_model /= total_flux_model
+
             total_chi_sq += calculate_observables_chi_sq(
                 total_flux[wavelength_str],
                 total_flux_err[wavelength_str], total_flux_model,

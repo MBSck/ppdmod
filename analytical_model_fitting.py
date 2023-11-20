@@ -13,31 +13,17 @@ from ppdmod import utils
 from ppdmod.parameter import STANDARD_PARAMETERS, Parameter
 from ppdmod.options import OPTIONS
 
-# TODO: Make function that saves model parameters to load.
 
+# TODO: Make function that saves model parameters to load.
 # NOTE: Turns off numpys automated parellelization.
 os.environ["OMP_NUM_THREADS"] = "1"
 
 OPTIONS["data.binning.window"] = 0.1*u.um
-
-# TODO: Check wavelength axis for opacity interpolation.
-# data.set_fit_wavelengths([3.5, 8, 9, 10, 11.3, 12.5]*u.um)
-# data.set_fit_wavelengths([3.2, 3.45, 3.7]*u.um)
-data.set_fit_wavelengths([8., 9., 10., 11.3, 12.5]*u.um)
-path = Path("tests/data/fits/")
-fits_files = [
-    # "hd_142666_2019-05-14T05_28_03_L_TARGET_FINALCAL_INT.fits",
-    "hd_142666_2019-05-14T05_28_03_AQUARIUS_FINAL_TARGET_INT.fits",
-    # "hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_HAWAII-2RG_FINAL_TARGET_INT.fits",
-    "hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_AQUARIUS_FINAL_TARGET_INT.fits",
-    # "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_HAWAII-2RG_FINAL_TARGET_INT.fits",
-    "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits",
-    # "hd_142666_2023-06-17T02_10_37:2023-06-17T02_42_20_HAWAII-2RG_FINAL_TARGET_INT.fits",
-    # "hd142666_2019-03-24T09_01_46:2019-03-24T09_19_40_HAWAII-2RG_FINAL_TARGET_INT.fits",
-]
-fits_files = list(map(lambda x: path / x, fits_files))
+data.set_fit_wavelengths([1.6, 2.25, 3.5, 8., 9., 10., 11.3, 12.5]*u.um)
+fits_files = list(map(lambda x: path / x, Path("tests/data/fits").glob("*.fits")))
 data.set_data(fits_files)
 
+# TODO: Check if the configuration of these parameters is ok
 wavelength_axes = list(
     map(lambda x: data.ReadoutFits(x).wavelength, fits_files))
 wavelength_axes = np.sort(np.unique(np.concatenate(wavelength_axes)))
@@ -72,13 +58,12 @@ kappa_cont.value, kappa_cont.wavelength = continuum_opacity, wavelength_axes
 
 # fov, pixel_size = 220, 0.1
 # dim = utils.get_next_power_of_two(fov / pixel_size)
-dim = 32
-fov, pixel_size = 220, 0.1
 
+dim = 32
 distance = 148.3
 OPTIONS["model.constant_params"] = {
-    "dim": dim, "dist": 148.3, "eff_temp": 7500,
-    "pixel_size": pixel_size, "f": star_flux,
+    "dim": dim, "dist": 148.3,
+    "eff_temp": 7500, "f": star_flux,
     "eff_radius": 1.75, "inner_temp": 1500,
     "kappa_abs": kappa_abs, "kappa_cont": kappa_cont}
 
@@ -149,7 +134,7 @@ shared_params_labels = [f"sh_{label}"
 
 OPTIONS["model.components_and_params"] = [
     ["Star", {}],
-    # ["AnalyticalTempGradient", inner_ring],
+    ["AnalyticalTempGradient", inner_ring],
     ["AnalyticalAsymmetricTempGradient", outer_ring],
 ]
 
@@ -157,7 +142,9 @@ labels = inner_ring_labels + outer_ring_labels + shared_params_labels
 
 OPTIONS["model.modulation.order"] = 1
 OPTIONS["model.gridtype"] = "logarithmic"
-# OPTIONS["model.flux.factor"] = 1.3
+OPTIONS["model.output"] = "vis"
+
+OPTIONS["fit.data"] = ["vis", "t3phi"]
 
 
 if __name__ == "__main__":
@@ -168,7 +155,7 @@ if __name__ == "__main__":
     day_dir = model_result_dir / str(datetime.now().date())
     time = datetime.now()
     file_name = f"results_model_nsteps{nsteps}_nwalkers{nwalkers}"\
-            f"_{time.hour}:{time.minute}:{time.second}"
+                f"_{time.hour}:{time.minute}:{time.second}"
     result_dir = day_dir / file_name
     if not result_dir.exists():
         result_dir.mkdir(parents=True)

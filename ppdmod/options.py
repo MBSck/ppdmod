@@ -25,7 +25,7 @@ OPTIONS["model.gridtype"] = "linear"
 OPTIONS["model.matryoshka"] = False
 OPTIONS["model.matryoshka.binning_factors"] = [2, 1, 2]
 OPTIONS["model.modulation.order"] = 0
-OPTIONS["model.output"] = "jansky_px"
+OPTIONS["model.output"] = "corr_flux"
 OPTIONS["model.shared_params"] = {}
 
 # NOTE: Fourier transform.

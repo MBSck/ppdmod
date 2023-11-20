@@ -281,8 +281,15 @@ def plot_datapoints(
         OPTIONS["data.total_flux"], OPTIONS["data.total_flux_error"]
     corr_fluxes, corr_fluxes_err =\
         OPTIONS["data.correlated_flux"], OPTIONS["data.correlated_flux_error"]
+    visibilities, visibilities_err =\
+        OPTIONS["data.visibility"], OPTIONS["data.visibility_error"]
     cphases, cphases_err =\
         OPTIONS["data.closure_phase"], OPTIONS["data.closure_phase_error"]
+
+    if OPTIONS["model.output"] == "corr_flux":
+        vis, vis_err = corr_fluxes, corr_fluxes_err
+    else:
+        vis, vis_err = visibilities, visibilities_err
 
     fourier_transforms = {}
     if model is not None:
@@ -290,11 +297,8 @@ def plot_datapoints(
             fourier_transforms[str(wavelength.value)] =\
                 model.calculate_complex_visibility(wavelength)
 
-    for file_index, (total_flux, total_flux_err, corr_flux,
-                     corr_flux_err, cphase, cphase_err)\
-            in enumerate(
-                zip(total_fluxes, total_fluxes_err, corr_fluxes,
-                    corr_fluxes_err, cphases, cphases_err)):
+    for file_index, (cphase, cphase_err)\
+            in enumerate(zip(cphases, cphases_err)):
 
         readout = OPTIONS["data.readouts"][file_index]
         effective_baselines = calculate_effective_baselines(
@@ -307,7 +311,7 @@ def plot_datapoints(
         for wavelength in wavelengths:
             total_flux_model, corr_flux_model, cphase_model = None, None, None
             wl_str = str(wavelength.value)
-            if wl_str not in corr_flux:
+            if wl_str not in cphase:
                 continue
             if model is not None:
                 total_flux_model, corr_flux_model, cphase_model =\
@@ -355,8 +359,8 @@ def plot_datapoints(
                         marker="X", color=color)
                 if "vis" in data_to_plot:
                     ax.errorbar(
-                        effective_baselines_mlambda.value, corr_flux[wl_str],
-                        corr_flux_err[wl_str], color=color, fmt="o", alpha=0.6)
+                        effective_baselines_mlambda.value, vis[file_index][wl_str],
+                        vis_err[file_index][wl_str], color=color, fmt="o", alpha=0.6)
                     ax.scatter(
                         effective_baselines_mlambda.value, corr_flux_model,
                         color=color, marker="X")
@@ -395,6 +399,10 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
         The position angle.
     data_to_plot : list of str, optional
         The data to plot. The default is OPTIONS["fit.data"].
+    colormap : str, optional
+        The colormap. The default is "tab20".
+    title : str, optional
+        The title. The default is None.
     savefig : pathlib.Path, optional
         The save path. The default is None.
     """
@@ -496,6 +504,11 @@ def plot_overview(data_to_plot: Optional[List[str]] = OPTIONS["fit.data"],
     cphases, cphases_err =\
         OPTIONS["data.closure_phase"], OPTIONS["data.closure_phase_error"]
 
+    if corr_flux:
+        vis, vis_err = correlated_fluxes, correlated_fluxes_err
+    else:
+        vis, vis_err = visibilities, visibilities_err
+
     for file_index, (cphase, cphase_err)\
             in enumerate(zip(cphases, cphases_err)):
         readout = OPTIONS["data.readouts"][file_index]
@@ -514,14 +527,10 @@ def plot_overview(data_to_plot: Optional[List[str]] = OPTIONS["fit.data"],
             # TODO: Add total flux here
             if "vis" in axarr:
                 ax = axarr["vis"]
-                vis = correlated_fluxes[file_index]\
-                        if corr_flux else visibilities[file_index]
-                vis_err = correlated_fluxes_err[file_index]\
-                        if corr_flux else visibilities_err[file_index]
                 if "vis" in data_to_plot:
                     ax.errorbar(
-                        effective_baselines_mlambda.value, vis[wl_str],
-                        vis_err[wl_str], color=color, fmt="o", alpha=0.6)
+                        effective_baselines_mlambda.value, vis[file_index][wl_str],
+                        vis_err[file_index][wl_str], color=color, fmt="o", alpha=0.6)
             if "t3phi" in axarr:
                 bx = axarr["t3phi"]
                 bx.errorbar(
@@ -539,7 +548,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = OPTIONS["fit.data"],
 
     if "vis" in axarr:
         ax = axarr["vis"]
-        ax.set_xlabel(r"$\mathrm{B}/\lambda$ (M$\lambda$)")
+        ax.set_xlabel(r"$\mathrm{B}}/\lambda$ (M$\lambda$)")
         ax.set_ylabel("Correlated fluxes (Jy)"
                       if corr_flux else "Visibilities (a.u.)")
         if not corr_flux:
