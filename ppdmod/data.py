@@ -66,12 +66,12 @@ class ReadoutFits:
         data = {}
         for wavelength, index in indices.items():
             if wavelength not in data:
-                tmp_data = getattr(self, key)[:, index]
-                if tmp_data.shape[0] == 1 or len(tmp_data.shape) == 1:
-                    tmp_data = tmp_data.mean()
+                wl_data = getattr(self, key)[:, index]
+                if wl_data.shape[0] == 1 or len(wl_data.shape) == 1:
+                    wl_data = wl_data.mean()
                 else:
-                    tmp_data = tmp_data.mean(1)
-                data[wavelength] = tmp_data
+                    wl_data = wl_data.mean(1)
+                data[wavelength] = wl_data
         return {key: value for key, value in data.items() if value.size != 0}
 
 
@@ -139,5 +139,5 @@ def set_data(fits_files: Optional[List[Path]] = None,
             OPTIONS[f"data.{key}"].append(
                 readout.get_data_for_wavelengths(wavelengths, key=data_type))
             OPTIONS[f"data.{key}_error"].append(
-                readout.get_data_for_wavelengths(wavelengths,
-                                                 key=f"{data_type}_err"))
+                readout.get_data_for_wavelengths(
+                    wavelengths, key=f"{data_type}_err"))
