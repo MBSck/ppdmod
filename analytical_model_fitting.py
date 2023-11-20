@@ -21,7 +21,7 @@ os.environ["OMP_NUM_THREADS"] = "1"
 OPTIONS["fit.data"] = ["vis", "t3phi"]
 OPTIONS["data.binning.window"] = 0.1*u.um
 data.set_fit_wavelengths([1.6, 2.25, 3.5, 8., 9., 10., 11.3, 12.5]*u.um)
-fits_files = list(map(lambda x: path / x, Path("tests/data/fits").glob("*.fits")))
+fits_files = list(Path("tests/data/fits").glob("*.fits"))
 data.set_data(fits_files)
 
 # TODO: Check if the configuration of these parameters is ok
