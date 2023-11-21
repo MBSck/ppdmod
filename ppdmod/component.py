@@ -440,9 +440,9 @@ class HankelComponent(Component):
         star_flux = 0*u.Jy if star_flux is None else star_flux
         radius = self._calculate_internal_grid(self.params["dim"]())
         brightness_profile = self._brightness_profile_function(radius, wavelength)
-        total_flux = (2.*np.pi*np.trapz(radius*brightness_profile, radius).to(u.Jy)\
-                + star_flux).value
-        return total_flux.astype(OPTIONS["model.dtype.real"])
+        total_flux = (2.*np.pi*np.trapz(radius*brightness_profile, radius).to(u.Jy)
+                      + star_flux).value
+        return np.abs(total_flux.astype(OPTIONS["model.dtype.real"]))
 
     def calculate_visibility(self, ucoord: u.m, vcoord: u.m,
                              wavelength: u.um, **kwargs) -> np.ndarray:
@@ -452,8 +452,8 @@ class HankelComponent(Component):
                 self._brightness_profile_function(radius, wavelength),
                 radius, ucoord, vcoord, wavelength, **kwargs)
         if vis_mod.size != 0:
-            return vis+vis_mod.sum(0)
-        return vis.astype(OPTIONS["model.dtype.complex"])
+            vis += vis_mod.sum(0)
+        return np.abs(vis.value).astype(OPTIONS["model.dtype.real"])
 
     def calculate_closure_phase(self, ucoord: u.m, vcoord: u.m,
                                 wavelength: u.um, **kwargs) -> np.ndarray:

@@ -155,12 +155,16 @@ def calculate_observables(fourier_transform: np.ndarray,
 
 
 def calculate_observables_chi_sq(
+        index: int, wl_str: str,
         total_flux: Dict[str, float],
         total_flux_err: Dict[str, float],
         total_flux_model: np.ndarray,
         corr_flux: Dict[str, float],
         corr_flux_err: Dict[str, float],
         corr_flux_model: np.ndarray,
+        visibility: Dict[str, float],
+        visibility_err: Dict[str, float],
+        visibility_model: np.ndarray,
         cphase: Dict[str, float],
         cphase_err: Dict[str, float],
         cphase_model: np.ndarray) -> float:
@@ -194,15 +198,27 @@ def calculate_observables_chi_sq(
     """
     total_chi_sq = 0
     if "flux" in OPTIONS["fit.data"]:
-        total_chi_sq += chi_sq(total_flux, total_flux_err, total_flux_model)\
+        total_chi_sq += chi_sq(total_flux[index][wl_str],
+                               total_flux_err[index][wl_str],
+                               total_flux_model)\
             * OPTIONS["fit.chi2.weight.total_flux"]
 
     if "vis" in OPTIONS["fit.data"]:
-        total_chi_sq += chi_sq(corr_flux, corr_flux_err, corr_flux_model)\
+        total_chi_sq += chi_sq(corr_flux[index][wl_str],
+                               corr_flux_err[index][wl_str],
+                               corr_flux_model)\
             * OPTIONS["fit.chi2.weight.corr_flux"]
 
+    if "vis2" in OPTIONS["fit.data"]:
+        total_chi_sq += chi_sq(visibility[index][wl_str],
+                               visibility_err[index][wl_str],
+                               visibility_model)\
+            * OPTIONS["fit.chi2.weight.visibility"]
+
     if "t3phi" in OPTIONS["fit.data"]:
-        total_chi_sq += chi_sq(cphase, cphase_err, cphase_model, method="exponential")\
+        total_chi_sq += chi_sq(cphase[index][wl_str],
+                               cphase_err[index][wl_str],
+                               cphase_model, method="exponential")\
             * OPTIONS["fit.chi2.weight.cphase"]
     return float(total_chi_sq)
 
@@ -272,19 +288,17 @@ def lnprob_analytical(theta: np.ndarray) -> float:
         OPTIONS["data.total_flux"], OPTIONS["data.total_flux_error"]
     corr_fluxes, corr_fluxes_err =\
         OPTIONS["data.correlated_flux"], OPTIONS["data.correlated_flux_error"]
+    visibilities, visibilities_err =\
+        OPTIONS["data.visibility"], OPTIONS["data.visibility_error"]
     cphases, cphases_err =\
         OPTIONS["data.closure_phase"], OPTIONS["data.closure_phase_error"]
 
     total_chi_sq = 0
-    for index, (total_flux, total_flux_err, corr_flux,
-                corr_flux_err, cphase, cphase_err)\
-            in enumerate(
-                zip(total_fluxes, total_fluxes_err, corr_fluxes,
-                    corr_fluxes_err, cphases, cphases_err)):
+    for index, cphase in enumerate(cphases):
         readout = OPTIONS["data.readouts"][index]
         for wavelength in OPTIONS["fit.wavelengths"]:
             wavelength_str = str(wavelength.value)
-            if wavelength_str not in corr_flux:
+            if wavelength_str not in cphase:
                 continue
 
             total_flux_model, corr_flux_model, cphase_model = None, None, None
@@ -293,32 +307,29 @@ def lnprob_analytical(theta: np.ndarray) -> float:
                 if total_flux_model is None:
                     total_flux_model = component.calculate_total_flux(
                             wavelength, star_flux=stellar_flux)
-                    corr_flux_model = component.calculate_visibility(
+                    visibility_model = component.calculate_visibility(
                             readout.ucoord, readout.vcoord, wavelength,
-                            star_flux=stellar_flux)
+                            star_flux=stellar_flux, total_flux=total_flux_model)
                     cphase_model = component.calculate_closure_phase(
                             readout.u123coord, readout.v123coord, wavelength,
                             star_flux=stellar_flux)
                 else:
                     total_flux_model += component.calculate_total_flux(
                             wavelength, star_flux=stellar_flux)
-                    corr_flux_model += component.calculate_visibility(
+                    visibility_model += component.calculate_visibility(
                             readout.ucoord, readout.vcoord, wavelength,
-                            star_flux=stellar_flux)
+                            star_flux=stellar_flux, total_flux=total_flux_model)
                     cphase_model += component.calculate_closure_phase(
                             readout.u123coord, readout.v123coord, wavelength,
                             star_flux=stellar_flux)
 
-            if OPTIONS["model.output"] == "vis":
-                corr_flux_model /= total_flux_model
-
+            corr_flux_model = visibility_model*total_flux_model
             total_chi_sq += calculate_observables_chi_sq(
-                total_flux[wavelength_str],
-                total_flux_err[wavelength_str], total_flux_model,
-                corr_flux[wavelength_str],
-                corr_flux_err[wavelength_str], corr_flux_model,
-                cphase[wavelength_str], cphase_err[wavelength_str],
-                cphase_model)
+                    index, wavelength_str,
+                    total_fluxes, total_fluxes_err, total_flux_model,
+                    corr_fluxes, corr_fluxes_err, corr_flux_model,
+                    visibilities, visibilities_err, visibility_model,
+                    cphases, cphases_err, cphase_model)
     return total_chi_sq
 
 
@@ -362,6 +373,8 @@ def lnprob_numerical(theta: np.ndarray) -> float:
         OPTIONS["data.total_flux"], OPTIONS["data.total_flux_error"]
     corr_fluxes, corr_fluxes_err =\
         OPTIONS["data.correlated_flux"], OPTIONS["data.correlated_flux_error"]
+    visibilities, visibilities_err =\
+        OPTIONS["data.visibility"], OPTIONS["data.visibility_error"]
     cphases, cphases_err =\
         OPTIONS["data.closure_phase"], OPTIONS["data.closure_phase_error"]
 
@@ -386,12 +399,10 @@ def lnprob_numerical(theta: np.ndarray) -> float:
                     wavelength)
 
             total_chi_sq += calculate_observables_chi_sq(
-                total_flux[wavelength_str],
-                total_flux_err[wavelength_str], total_flux_model,
-                corr_flux[wavelength_str],
-                corr_flux_err[wavelength_str], corr_flux_model,
-                cphase[wavelength_str], cphase_err[wavelength_str],
-                cphase_model)
+                total_flux, total_flux_err, total_flux_model,
+                corr_flux, corr_flux_err, corr_flux_model,
+                visibilities, visibilities_err, visibility_model,
+                cphase, cphase_err, cphase_model)
     return total_chi_sq
 
 

@@ -286,10 +286,6 @@ def plot_datapoints(
     cphases, cphases_err =\
         OPTIONS["data.closure_phase"], OPTIONS["data.closure_phase_error"]
 
-    if OPTIONS["model.output"] == "corr_flux":
-        vis, vis_err = corr_fluxes, corr_fluxes_err
-    else:
-        vis, vis_err = visibilities, visibilities_err
 
     fourier_transforms = {}
     if model is not None:
@@ -347,40 +343,49 @@ def plot_datapoints(
             longest_baselines_mlambda = longest_baselines/wavelength.value
             color = colormap(norm(wavelength.value))
 
-            if "vis" in axarr:
+            if "vis" in data_to_plot:
                 ax = axarr["vis"]
                 if "flux" in data_to_plot:
                     ax.errorbar(
-                        np.array([0]), total_flux[wl_str],
-                        total_flux_err[wl_str], color=color,
+                        np.array([0]), total_fluxes[file_index][wl_str],
+                        total_fluxes[file_index][wl_str], color=color,
                         fmt="o", alpha=0.6)
                     ax.scatter(
                         np.array([0]), total_flux_model,
                         marker="X", color=color)
-                if "vis" in data_to_plot:
-                    ax.errorbar(
-                        effective_baselines_mlambda.value, vis[file_index][wl_str],
-                        vis_err[file_index][wl_str], color=color, fmt="o", alpha=0.6)
-                    ax.scatter(
-                        effective_baselines_mlambda.value, corr_flux_model,
-                        color=color, marker="X")
-            if "t3phi" in axarr:
-                bx = axarr["t3phi"]
+                ax.errorbar(
+                    effective_baselines_mlambda.value, corr_fluxes[file_index][wl_str],
+                    corr_fluxes_err[file_index][wl_str], color=color, fmt="o", alpha=0.6)
+                ax.scatter(
+                    effective_baselines_mlambda.value, corr_flux_model,
+                    color=color, marker="X")
+
+            if "vis2" in data_to_plot:
+                bx = axarr["vis2"]
                 bx.errorbar(
+                    effective_baselines_mlambda.value, visibilities[file_index][wl_str],
+                    visibilities_err[file_index][wl_str], color=color, fmt="o", alpha=0.6)
+                bx.scatter(
+                    effective_baselines_mlambda.value, corr_flux_model/total_flux_model,
+                    color=color, marker="X")
+
+            if "t3phi" in data_to_plot:
+                cx = axarr["t3phi"]
+                cx.errorbar(
                     longest_baselines_mlambda.value, cphase[wl_str],
                     cphase_err[wl_str],
                     color=color, fmt="o", alpha=0.6)
-                bx.scatter(
+                cx.scatter(
                     longest_baselines_mlambda.value, cphase_model,
                     color=color, marker="X")
-                bx.axhline(y=0, color="gray", linestyle='--')
+                cx.axhline(y=0, color="gray", linestyle='--')
 
 
 def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
              components: Optional[List] = None,
              model: Optional[Model] = None,
              pixel_size: Optional[u.Quantity[u.mas]] = None,
-             data_to_plot: Optional[List[str]] = OPTIONS["fit.data"],
+             data_to_plot: Optional[List[str]] = None,
              colormap: Optional[str] = "tab20",
              title: Optional[str] = None,
              savefig: Optional[Path] = None):
@@ -406,6 +411,8 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
     savefig : pathlib.Path, optional
         The save path. The default is None.
     """
+    data_to_plot = OPTIONS["fit.data"]\
+        if data_to_plot is None else data_to_plot
     wavelengths = OPTIONS["fit.wavelengths"]
     norm = mcolors.Normalize(
             vmin=wavelengths[0].value, vmax=wavelengths[-1].value)
@@ -414,6 +421,10 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
     if "vis" in data_to_plot:
         nplots += 1
         data_types.append("vis")
+
+    if "vis2" in data_to_plot:
+        nplots += 1
+        data_types.append("vis2")
 
     if "t3phi" in data_to_plot:
         nplots += 1
@@ -446,12 +457,18 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
         ax.set_ylabel("Correlated fluxes (Jy)")
         ax.legend(handles=[dot_label, x_label])
 
-    if "t3phi" in axarr:
-        bx = axarr["t3phi"]
-        bx.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}/\lambda$ (M$\lambda$)")
-        bx.set_ylabel(r"Closure Phases ($^\circ$)")
-        bx.set_ylim([-200, 200])
+    if "vis2" in axarr:
+        bx = axarr["vis2"]
+        bx.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}/\lambda$ (M$\lambda$)")
+        bx.set_ylabel("Visibilities (a.u.)")
         bx.legend(handles=[dot_label, x_label])
+
+    if "t3phi" in axarr:
+        cx = axarr["t3phi"]
+        cx.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}/\lambda$ (M$\lambda$)")
+        cx.set_ylabel(r"Closure Phases ($^\circ$)")
+        cx.set_ylim([-200, 200])
+        cx.legend(handles=[dot_label, x_label])
 
     if title:
         plt.title(title)
@@ -463,9 +480,8 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
     plt.close()
 
 
-def plot_overview(data_to_plot: Optional[List[str]] = OPTIONS["fit.data"],
+def plot_overview(data_to_plot: Optional[List[str]] = None,
                   colormap: Optional[str] = "tab20",
-                  corr_flux: Optional[bool] = False,
                   title: Optional[str] = None,
                   savefig: Optional[Path] = None) -> None:
     """Plots an overview over the total data for baselines [Mlambda].
@@ -477,6 +493,8 @@ def plot_overview(data_to_plot: Optional[List[str]] = OPTIONS["fit.data"],
     savefig : pathlib.Path, optional
         The save path. The default is None.
     """
+    data_to_plot = OPTIONS["fit.data"]\
+        if data_to_plot is None else data_to_plot
     wavelengths = OPTIONS["fit.wavelengths"]
     norm = mcolors.Normalize(
             vmin=wavelengths[0].value, vmax=wavelengths[-1].value)
@@ -485,6 +503,10 @@ def plot_overview(data_to_plot: Optional[List[str]] = OPTIONS["fit.data"],
     if "vis" in data_to_plot:
         nplots += 1
         data_types.append("vis")
+
+    if "vis2" in data_to_plot:
+        nplots += 1
+        data_types.append("vis2")
 
     if "t3phi" in data_to_plot:
         nplots += 1
@@ -504,11 +526,6 @@ def plot_overview(data_to_plot: Optional[List[str]] = OPTIONS["fit.data"],
     cphases, cphases_err =\
         OPTIONS["data.closure_phase"], OPTIONS["data.closure_phase_error"]
 
-    if corr_flux:
-        vis, vis_err = correlated_fluxes, correlated_fluxes_err
-    else:
-        vis, vis_err = visibilities, visibilities_err
-
     for file_index, (cphase, cphase_err)\
             in enumerate(zip(cphases, cphases_err)):
         readout = OPTIONS["data.readouts"][file_index]
@@ -525,19 +542,25 @@ def plot_overview(data_to_plot: Optional[List[str]] = OPTIONS["fit.data"],
             color = colormap(norm(wavelength.value))
 
             # TODO: Add total flux here
-            if "vis" in axarr:
+            if "vis" in data_to_plot:
                 ax = axarr["vis"]
-                if "vis" in data_to_plot:
-                    ax.errorbar(
-                        effective_baselines_mlambda.value, vis[file_index][wl_str],
-                        vis_err[file_index][wl_str], color=color, fmt="o", alpha=0.6)
-            if "t3phi" in axarr:
-                bx = axarr["t3phi"]
+                ax.errorbar(
+                    effective_baselines_mlambda.value, correlated_fluxes[file_index][wl_str],
+                    correlated_fluxes_err[file_index][wl_str], color=color, fmt="o", alpha=0.6)
+
+            if "vis2" in data_to_plot:
+                bx = axarr["vis2"]
                 bx.errorbar(
+                    effective_baselines_mlambda.value, visibilities[file_index][wl_str],
+                    visibilities_err[file_index][wl_str], color=color, fmt="o", alpha=0.6)
+
+            if "t3phi" in axarr:
+                cx = axarr["t3phi"]
+                cx.errorbar(
                     longest_baselines_mlambda.value, cphase[wl_str],
                     cphase_err[wl_str],
                     color=color, fmt="o", alpha=0.6)
-                bx.axhline(y=0, color="gray", linestyle='--')
+                cx.axhline(y=0, color="gray", linestyle='--')
 
     sm = cm.ScalarMappable(cmap=colormap, norm=norm)
     sm.set_array([])
@@ -546,24 +569,27 @@ def plot_overview(data_to_plot: Optional[List[str]] = OPTIONS["fit.data"],
     cbar.set_ticks(wavelengths.value)
     cbar.set_ticklabels([f"{wavelength:.1f}" for wavelength in wavelengths.value])
 
-    if "vis" in axarr:
+    if "vis" in data_to_plot:
         ax = axarr["vis"]
-        ax.set_xlabel(r"$\mathrm{B}}/\lambda$ (M$\lambda$)")
-        ax.set_ylabel("Correlated fluxes (Jy)"
-                      if corr_flux else "Visibilities (a.u.)")
-        if not corr_flux:
-            ax.set_ylim([0, 1])
+        ax.set_xlabel(r"$\mathrm{B}k/\lambda$ (M$\lambda$)")
+        ax.set_ylabel("Correlated fluxes (Jy)")
 
-    if "t3phi" in axarr:
-        bx = axarr["t3phi"]
-        bx.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}/\lambda$ (M$\lambda$)")
-        bx.set_ylabel(r"Closure Phases ($^\circ$)")
+    if "vis2" in data_to_plot:
+        bx = axarr["vis2"]
+        bx.set_xlabel(r"$\mathrm{B}/\lambda$ (M$\lambda$)")
+        bx.set_ylabel("Visibilities (a.u.)")
+        bx.set_ylim([0, 1])
+
+    if "t3phi" in data_to_plot:
+        cx = axarr["t3phi"]
+        cx.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}/\lambda$ (M$\lambda$)")
+        cx.set_ylabel(r"Closure Phases ($^\circ$)")
         cphase_list = [list(value.values()) for value in cphases]
         lower_bound = np.min([np.min(value) for value in cphase_list])
         lower_bound += lower_bound*0.25
         upper_bound = np.max([np.max(value) for value in cphase_list])
         upper_bound += upper_bound*0.25
-        bx.set_ylim([lower_bound, upper_bound])
+        cx.set_ylim([lower_bound, upper_bound])
 
     if title:
         plt.title(title)

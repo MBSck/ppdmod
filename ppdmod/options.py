@@ -46,5 +46,6 @@ OPTIONS["spectrum.kernel_width"] = 10
 OPTIONS["fit.chi2.weight.corr_flux"] = 1
 OPTIONS["fit.chi2.weight.cphase"] = 1
 OPTIONS["fit.chi2.weight.total_flux"] = 1
+OPTIONS["fit.chi2.weight.visibility"] = 1
 OPTIONS["fit.data"] = ["flux", "vis", "t3phi"]
 OPTIONS["fit.wavelengths"] = None

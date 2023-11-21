@@ -18,7 +18,7 @@ from ppdmod.options import OPTIONS
 # NOTE: Turns off numpys automated parellelization.
 os.environ["OMP_NUM_THREADS"] = "1"
 
-OPTIONS["fit.data"] = ["vis", "t3phi"]
+OPTIONS["fit.data"] = ["vis2", "t3phi"]
 OPTIONS["data.binning.window"] = 0.1*u.um
 data.set_fit_wavelengths([1.6, 2.25, 3.5, 8., 9., 10., 11.3, 12.5]*u.um)
 fits_files = list(Path("tests/data/fits").glob("*.fits"))
@@ -179,7 +179,7 @@ if __name__ == "__main__":
         component.params["rin0"] = innermost_radius
 
     plot.save_fits(
-            4096, pixel_size, distance,
+            4096, 0.1, distance,
             OPTIONS["fit.wavelengths"], components,
             component_labels, opacities=[kappa_abs, kappa_cont],
             savefits=result_dir / "model.fits",
