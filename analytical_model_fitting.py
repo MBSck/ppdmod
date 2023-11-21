@@ -143,7 +143,6 @@ labels = inner_ring_labels + outer_ring_labels + shared_params_labels
 
 OPTIONS["model.modulation.order"] = 1
 OPTIONS["model.gridtype"] = "logarithmic"
-OPTIONS["model.output"] = "vis"
 
 
 if __name__ == "__main__":
