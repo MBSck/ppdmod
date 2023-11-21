@@ -307,28 +307,28 @@ def lnprob_analytical(theta: np.ndarray) -> float:
                 if total_flux_model is None:
                     total_flux_model = component.calculate_total_flux(
                             wavelength, star_flux=stellar_flux)
-                    visibility_model = component.calculate_visibility(
+                    corr_flux_model = component.calculate_visibility(
                             readout.ucoord, readout.vcoord, wavelength,
-                            star_flux=stellar_flux, total_flux=total_flux_model)
+                            star_flux=stellar_flux)
                     cphase_model = component.calculate_closure_phase(
                             readout.u123coord, readout.v123coord, wavelength,
                             star_flux=stellar_flux)
                 else:
                     total_flux_model += component.calculate_total_flux(
                             wavelength, star_flux=stellar_flux)
-                    visibility_model += component.calculate_visibility(
+                    corr_flux_model += component.calculate_visibility(
                             readout.ucoord, readout.vcoord, wavelength,
-                            star_flux=stellar_flux, total_flux=total_flux_model)
+                            star_flux=stellar_flux)
                     cphase_model += component.calculate_closure_phase(
                             readout.u123coord, readout.v123coord, wavelength,
                             star_flux=stellar_flux)
 
-            corr_flux_model = visibility_model*total_flux_model
+            visibilities = corr_flux_model/total_flux_model
             total_chi_sq += calculate_observables_chi_sq(
                     index, wavelength_str,
                     total_fluxes, total_fluxes_err, total_flux_model,
                     corr_fluxes, corr_fluxes_err, corr_flux_model,
-                    visibilities, visibilities_err, visibility_model,
+                    visibilities, visibilities_err, corr_flux_model,
                     cphases, cphases_err, cphase_model)
     return total_chi_sq
 
