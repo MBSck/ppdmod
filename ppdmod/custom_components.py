@@ -73,6 +73,8 @@ class Star(AnalyticalComponent):
 
     def calculate_stellar_flux(self, wavelength: u.um) -> u.Jy:
         """Calculates the flux of the star."""
+        if self.params["f"].value is not None:
+            return self.params["f"](wavelength)
         plancks_law = models.BlackBody(temperature=self.params["eff_temp"]())
         spectral_radiance = plancks_law(wavelength.to(u.m)).to(
             u.erg/(u.cm**2*u.Hz*u.s*u.rad**2))
@@ -95,10 +97,7 @@ class Star(AnalyticalComponent):
         """
         image = np.zeros(xx.shape)*u.Jy
         centre = xx.shape[0]//2
-        if self.params["f"].value is not None:
-            star_flux = self.params["f"](wavelength)/4
-        else:
-            star_flux = self.calculate_stellar_flux(wavelength)/4
+        star_flux = self.calculate_stellar_flux(wavelength)/4
         image[centre-1:centre+1, centre-1:centre+1] = star_flux
         return image
 
@@ -106,10 +105,7 @@ class Star(AnalyticalComponent):
                              wavelength: Optional[u.Quantity[u.um]] = None
                              ) -> np.ndarray:
         """The component's _visibility_function."""
-        if self.params["f"].value is not None:
-            star_flux = self.params["f"](wavelength)
-        else:
-            star_flux = self.calculate_stellar_flux(wavelength)
+        star_flux = self.calculate_stellar_flux(wavelength)
         return np.ones((dim, dim))*star_flux.value
 
 
