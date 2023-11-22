@@ -58,21 +58,23 @@ class ReadoutFits:
         return self
 
     def get_data_for_wavelengths(
-            self, *wavelengths, key: str) -> Dict[str, np.ndarray]:
+            self, wavelength, key: str) -> Optional[np.ndarray]:
         """Gets the data for the given wavelengths."""
-        indices = get_closest_indices(
-                *wavelengths, array=self.wavelength,
-                window=OPTIONS["data.binning.window"])
-        data = {}
-        for wavelength, index in indices.items():
-            if wavelength not in data:
-                wl_data = getattr(self, key)[:, index]
-                if wl_data.shape[0] == 1 or len(wl_data.shape) == 1:
-                    wl_data = wl_data.mean()
-                else:
-                    wl_data = wl_data.mean(1)
-                data[wavelength] = wl_data
-        return {key: value for key, value in data.items() if value.size != 0}
+        indices = list(get_closest_indices(
+            wavelength, array=self.wavelength,
+            window=OPTIONS["data.binning.window"]).values())
+
+        if not indices:
+            return None
+        indices = indices[0]
+
+        wl_data = getattr(self, key)[:, indices]
+        if wl_data.shape[0] == 1 or len(wl_data.shape) == 1:
+            wl_data = wl_data.mean()
+        else:
+            wl_data = wl_data.mean(1)
+        return wl_data if isinstance(wl_data, (list, np.ndarray))\
+            else np.array([wl_data])
 
 
 def set_fit_wavelengths(
@@ -106,21 +108,25 @@ def set_data(fits_files: Optional[List[Path]] = None,
         The wavelengths to be fitted.
     """
     OPTIONS["data.readouts"] = []
-    OPTIONS["data.flux"],  OPTIONS["data.flux_err"] = [], []
-    OPTIONS["data.corr_flux"], OPTIONS["data.corr_flux_err"] = [], []
-    OPTIONS["data.vis"], OPTIONS["data.vis_err"] = [], []
-    OPTIONS["data.cphase"], OPTIONS["data.cphase_err"] = [], []
-    OPTIONS["data.ucoord"], OPTIONS["data.vcoord"] = [], []
-    OPTIONS["data.u123coord"], OPTIONS["data.v123coord"] = [], []
+    wavelengths = OPTIONS["fit.wavelengths"] if wavelengths\
+        is None else wavelengths
+
+    keys = ["flux", "corr_flux", "vis", "cphase"]
+    for key in keys:
+        OPTIONS[f"data.{key}"] = [[] for _ in wavelengths]
+        OPTIONS[f"data.{key}_err"] = [[] for _ in wavelengths]
+        if key in ["corr_flux", "vis"]:
+            OPTIONS[f"data.{key}.ucoord"] = [[] for _ in wavelengths]
+            OPTIONS[f"data.{key}.vcoord"] = [[] for _ in wavelengths]
+        elif key == "t3phi":
+            OPTIONS[f"data.{key}.u123coord"] = [[] for _ in wavelengths]
+            OPTIONS[f"data.{key}.v123coord"] = [[] for _ in wavelengths]
 
     if fits_files is None:
         return
 
     readouts = OPTIONS["data.readouts"] =\
         [ReadoutFits(file) for file in fits_files]
-
-    if wavelengths is None:
-        wavelengths = OPTIONS["fit.wavelengths"]
 
     for readout in readouts:
         for data_type in OPTIONS["fit.data"]:
@@ -132,7 +138,24 @@ def set_data(fits_files: Optional[List[Path]] = None,
             elif data_type == "t3phi":
                 key = "cphase"
 
-            for suffix in ["", "_err"]:
-                OPTIONS[f"data.{key}{suffix}"].append(
-                    readout.get_data_for_wavelengths(
-                        wavelengths, key=f"{data_type}{suffix}"))
+            # TODO: Add uv coords for t3phi and for vis or vis2 but
+            # only for one
+            for index, wavelength in enumerate(wavelengths):
+                values = readout.get_data_for_wavelengths(
+                        wavelength, key=data_type)
+
+                if not np.any(values):
+                    continue
+
+                values_err = readout.get_data_for_wavelengths(
+                        wavelength, key=f"{data_type}_err")
+
+                OPTIONS[f"data.{key}"][index].extend(values)
+                OPTIONS[f"data.{key}_err"][index].extend(values_err)
+
+                if key in ["corr_flux", "vis"]:
+                    OPTIONS[f"data.{key}.ucoord"][index].extend(readout.ucoord)
+                    OPTIONS[f"data.{key}.vcoord"][index].extend(readout.vcoord)
+                elif key == "t3phi":
+                    OPTIONS[f"data.{key}.u123coord"][index].extend(readout.u123coord)
+                    OPTIONS[f"data.{key}.v123coord"][index].extend(readout.v123coord)

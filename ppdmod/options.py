@@ -7,12 +7,18 @@ OPTIONS["data.binning.window"] = None
 OPTIONS["data.gravity.index"] = 20
 OPTIONS["data.corr_flux"] = []
 OPTIONS["data.corr_flux_err"] = []
+OPTIONS["data.corr_flux.ucoord"] = []
+OPTIONS["data.corr_flux.vcoord"] = []
 OPTIONS["data.cphase"] = []
 OPTIONS["data.cphase_err"] = []
+OPTIONS["data.cphase.u123coord"] = []
+OPTIONS["data.cphase.v123coord"] = []
 OPTIONS["data.flux"] = []
 OPTIONS["data.flux_err"] = []
 OPTIONS["data.vis"] = []
 OPTIONS["data.vis_err"] = []
+OPTIONS["data.vis.ucoord"] = []
+OPTIONS["data.vis.vcoord"] = []
 OPTIONS["data.readouts"] = []
 
 # NOTE: Model. The output can either be 'surface_brightness' or ' jansky_px'

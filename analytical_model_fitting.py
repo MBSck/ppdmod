@@ -23,6 +23,7 @@ OPTIONS["data.binning.window"] = 0.1*u.um
 data.set_fit_wavelengths([1.6, 2.25, 3.5, 8., 9., 10., 11.3, 12.5]*u.um)
 fits_files = list(Path("tests/data/fits").glob("*.fits"))
 data.set_data(fits_files)
+breakpoint()
 
 # TODO: Check if the configuration of these parameters is ok
 wavelength_axes = list(
@@ -47,8 +48,8 @@ qval_files = ["Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat",
 qval_paths = list(map(lambda x: qval_file_dir / x, qval_files))
 opacity = utils.linearly_combine_opacities(
     weights, qval_paths, wavelength_axes)
-# background_file = "Q_amorph_c_rv0.1.dat"
-background_file = "Q_iron_0.10um_dhs_0.99.dat"
+background_file = "Q_amorph_c_rv0.1.dat"
+# background_file = "Q_iron_0.10um_dhs_0.99.dat"
 continuum_opacity = utils.opacity_to_matisse_opacity(
     wavelength_axes, qval_file=qval_file_dir / background_file)
 
@@ -159,7 +160,7 @@ if __name__ == "__main__":
         result_dir.mkdir(parents=True)
 
     sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin,
-                            ncores=ncores, method="analytical", debug=False)
+                            ncores=ncores, method="analytical", debug=True)
     theta = mcmc.get_best_fit(sampler, discard=nburnin)
 
     plot.plot_chains(sampler, labels, discard=nburnin, savefig=result_dir / "chains.pdf")
