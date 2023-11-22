@@ -324,6 +324,8 @@ def plot_datapoints(
                     corr_flux_model += tmp_corr_flux
                     cphase_model += tmp_cphase
 
+        vis_model = corr_flux_model if "vis" in data_to_plot\
+            else corr_flux_model/flux_model
         effective_baselines_mlambda = effective_baselines/wavelength.value
         longest_baselines_mlambda = longest_baselines/wavelength.value
         color = colormap(norm(wavelength.value))
@@ -344,7 +346,7 @@ def plot_datapoints(
                 color=color, fmt="o", alpha=0.6)
             ax.scatter(
                 effective_baselines_mlambda.value,
-                corr_flux_model, color=color, marker="X")
+                vis_model, color=color, marker="X")
 
         if "t3phi" in data_to_plot:
             cx = axarr["t3phi"]
