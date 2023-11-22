@@ -118,7 +118,7 @@ def set_data(fits_files: Optional[List[Path]] = None,
         if key in ["corr_flux", "vis"]:
             OPTIONS[f"data.{key}.ucoord"] = [[] for _ in wavelengths]
             OPTIONS[f"data.{key}.vcoord"] = [[] for _ in wavelengths]
-        elif key == "t3phi":
+        elif key == "cphase":
             OPTIONS[f"data.{key}.u123coord"] = [[] for _ in wavelengths]
             OPTIONS[f"data.{key}.v123coord"] = [[] for _ in wavelengths]
 
@@ -156,6 +156,26 @@ def set_data(fits_files: Optional[List[Path]] = None,
                 if key in ["corr_flux", "vis"]:
                     OPTIONS[f"data.{key}.ucoord"][index].extend(readout.ucoord)
                     OPTIONS[f"data.{key}.vcoord"][index].extend(readout.vcoord)
-                elif key == "t3phi":
+                elif key == "cphase":
                     OPTIONS[f"data.{key}.u123coord"][index].extend(readout.u123coord)
                     OPTIONS[f"data.{key}.v123coord"][index].extend(readout.v123coord)
+
+    keys = ["flux", "corr_flux", "vis", "cphase"]
+    for key in keys:
+        if not any(np.any(value) for value in OPTIONS[f"data.{key}"]):
+            continue
+
+        OPTIONS[f"data.{key}"] = [np.array(value) for value
+                                  in OPTIONS[f"data.{key}"]]
+        OPTIONS[f"data.{key}_err"] = [np.array(value) for value
+                                      in OPTIONS[f"data.{key}_err"]]
+        if key in ["corr_flux", "vis"]:
+            OPTIONS[f"data.{key}.ucoord"] = [np.array(value) for value
+                                             in OPTIONS[f"data.{key}.ucoord"]]
+            OPTIONS[f"data.{key}.vcoord"] = [np.array(value) for value
+                                             in OPTIONS[f"data.{key}.vcoord"]]
+        elif key == "t3phi":
+            OPTIONS[f"data.{key}.u123coord"] = [np.array(value) for value
+                                                in OPTIONS[f"data.{key}.u123coord"]]
+            OPTIONS[f"data.{key}.v123coord"] = [np.array(value) for value
+                                                in OPTIONS[f"data.{key}.v123coord"]]
