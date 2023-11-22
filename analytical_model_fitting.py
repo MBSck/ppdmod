@@ -147,8 +147,8 @@ OPTIONS["model.gridtype"] = "logarithmic"
 
 if __name__ == "__main__":
     nburnin, nsteps, nwalkers = 200, 500, 100
-    # ncores = nwalkers // 2
-    ncores = 6
+    ncores = nwalkers // 2
+    # ncores = 6
     model_result_dir = Path("../model_results/")
     day_dir = model_result_dir / str(datetime.now().date())
     time = datetime.now()
@@ -159,7 +159,7 @@ if __name__ == "__main__":
         result_dir.mkdir(parents=True)
 
     sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin,
-                            ncores=ncores, method="analytical", debug=True)
+                            ncores=ncores, method="analytical", debug=False)
     theta = mcmc.get_best_fit(sampler, discard=nburnin)
 
     plot.plot_chains(sampler, labels, discard=nburnin, savefig=result_dir / "chains.pdf")
