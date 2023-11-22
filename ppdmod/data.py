@@ -156,6 +156,7 @@ def set_data(fits_files: Optional[List[Path]] = None,
                 if key in ["corr_flux", "vis"]:
                     OPTIONS[f"data.{key}.ucoord"][index].extend(readout.ucoord)
                     OPTIONS[f"data.{key}.vcoord"][index].extend(readout.vcoord)
+                # TODO: Maybe work with concatenation here? Look deeper into calculation
                 elif key == "cphase":
                     OPTIONS[f"data.{key}.u123coord"][index].extend(readout.u123coord)
                     OPTIONS[f"data.{key}.v123coord"][index].extend(readout.v123coord)
@@ -174,8 +175,8 @@ def set_data(fits_files: Optional[List[Path]] = None,
                                              in OPTIONS[f"data.{key}.ucoord"]]
             OPTIONS[f"data.{key}.vcoord"] = [np.array(value) for value
                                              in OPTIONS[f"data.{key}.vcoord"]]
-        elif key == "t3phi":
-            OPTIONS[f"data.{key}.u123coord"] = [np.array(value) for value
-                                                in OPTIONS[f"data.{key}.u123coord"]]
-            OPTIONS[f"data.{key}.v123coord"] = [np.array(value) for value
-                                                in OPTIONS[f"data.{key}.v123coord"]]
+        elif key == "cphase":
+            OPTIONS[f"data.{key}.u123coord"] = [[np.concatenate((value[i::3])) for i in range(3)]
+                                                for value in OPTIONS[f"data.{key}.u123coord"]]
+            OPTIONS[f"data.{key}.v123coord"] = [[np.concatenate((value[i::3])) for i in range(3)]
+                                                for value in OPTIONS[f"data.{key}.v123coord"]]
