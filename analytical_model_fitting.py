@@ -23,7 +23,6 @@ OPTIONS["data.binning.window"] = 0.1*u.um
 data.set_fit_wavelengths([1.6, 2.25, 3.5, 8., 9., 10., 11.3, 12.5]*u.um)
 fits_files = list(Path("tests/data/fits").glob("*.fits"))
 data.set_data(fits_files)
-breakpoint()
 
 # TODO: Check if the configuration of these parameters is ok
 wavelength_axes = list(

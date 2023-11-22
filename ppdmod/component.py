@@ -384,7 +384,6 @@ class HankelComponent(Component):
             yy = (xx*np.sin(pa)+yy*np.cos(pa))/elong
         azimuthal_modulation = self._azimuthal_modulation(xx, yy)
         radius = np.hypot(xx, yy)
-        
         radial_profile = np.logical_and(radius >= self.params["rin"](),
                                         radius <= self.params["rout"]())
         brightness_profile = self._brightness_profile_function(

@@ -155,38 +155,35 @@ def calculate_observables(fourier_transform: np.ndarray,
 
 
 def calculate_observables_chi_sq(
-        index: int, wl_str: str,
-        total_flux: Dict[str, float],
-        total_flux_err: Dict[str, float],
-        total_flux_model: np.ndarray,
-        corr_flux: Dict[str, float],
-        corr_flux_err: Dict[str, float],
+        flux: np.ndarray,
+        flux_err: np.ndarray,
+        flux_model: np.ndarray,
+        vis: np.ndarray,
+        vis_err: np.ndarray,
         corr_flux_model: np.ndarray,
-        visibility: Dict[str, float],
-        visibility_err: Dict[str, float],
-        visibility_model: np.ndarray,
-        cphase: Dict[str, float],
-        cphase_err: Dict[str, float],
+        cphase: np.ndarray,
+        cphase_err: np.ndarray,
         cphase_model: np.ndarray) -> float:
     """Calculates the model's observables.
 
     Parameters
     ----------
-    total_flux : dict
+    flux : numpy.ndarray
         The total flux.
-    total_flux_err : dict
+    flux_err : numpy.ndarray
         The total flux's error.
-    total_flux_model : numpy.ndarray
+    flux_model : numpy.ndarray
         The model's total flux.
-    corr_flux : dict
-        The correlated flux.
-    corr_flux_err : dict
-        The correlated flux's error.
+    vis : numpy.ndarray
+        Either the correlated fluxes or the visibilities.
+    corr_flux_err : numpy.ndarray
+        Either the error of the correlated fluxes or the
+        error of the visibilities.
     corr_flux_model : numpy.ndarray
         The model's correlated flux.
-    cphase : dict
+    cphase : numpy.ndarray
         The closure phase.
-    cphase_err : dict
+    cphase_err : numpy.ndarray
         The closure phase's error.
     cphase_model : numpy.ndarray
         The model's closure phase.
@@ -198,26 +195,19 @@ def calculate_observables_chi_sq(
     """
     total_chi_sq = 0
     if "flux" in OPTIONS["fit.data"]:
-        total_chi_sq += chi_sq(total_flux[index][wl_str],
-                               total_flux_err[index][wl_str],
-                               total_flux_model)\
+        total_chi_sq += chi_sq(flux, flux_err, flux_model)\
             * OPTIONS["fit.chi2.weight.flux"]
 
-    if "vis" in OPTIONS["fit.data"]:
-        total_chi_sq += chi_sq(corr_flux[index][wl_str],
-                               corr_flux_err[index][wl_str],
-                               corr_flux_model)\
+    if "vis" in OPTIONS["fit.data"] or "vis2" in OPTIONS["fit.data"]:
+        if "vis" in OPTIONS["fit.data"]:
+            vis_model = corr_flux_model
+        else:
+            vis_model = corr_flux_model/flux_model
+        total_chi_sq += chi_sq(vis, vis_err, vis_model)\
             * OPTIONS["fit.chi2.weight.corr_flux"]
 
-    if "vis2" in OPTIONS["fit.data"]:
-        total_chi_sq += chi_sq(visibility[index][wl_str],
-                               visibility_err[index][wl_str],
-                               visibility_model)\
-            * OPTIONS["fit.chi2.weight.vis"]
-
     if "t3phi" in OPTIONS["fit.data"]:
-        total_chi_sq += chi_sq(cphase[index][wl_str],
-                               cphase_err[index][wl_str],
+        total_chi_sq += chi_sq(cphase, cphase_err,
                                cphase_model, method="exponential")\
             * OPTIONS["fit.chi2.weight.cphase"]
     return float(total_chi_sq)
@@ -284,52 +274,51 @@ def lnprob_analytical(theta: np.ndarray) -> float:
     for component in components:
         component.params["rin0"] = innermost_radius
 
-    total_fluxes, total_fluxes_err =\
+    fluxes, fluxes_err =\
         OPTIONS["data.flux"], OPTIONS["data.flux_err"]
-    corr_fluxes, corr_fluxes_err =\
-        OPTIONS["data.corr_flux"], OPTIONS["data.corr_flux_err"]
-    visibilities, visibilities_err =\
-        OPTIONS["data.vis"], OPTIONS["data.vis_err"]
+
+    if "vis" in OPTIONS["fit.data"]:
+        vis, vis_err =\
+            OPTIONS["data.corr_flux"], OPTIONS["data.corr_flux_err"]
+        ucoord, vcoord =\
+            OPTIONS["data.corr_flux.ucoord"], OPTIONS["data.corr_flux.vcoord"]
+    else:
+        vis, vis_err =\
+            OPTIONS["data.vis"], OPTIONS["data.vis_err"]
+        ucoord, vcoord =\
+            OPTIONS["data.vis.ucoord"], OPTIONS["data.vis.vcoord"]
+
     cphases, cphases_err =\
         OPTIONS["data.cphase"], OPTIONS["data.cphase_err"]
+    u123coord = OPTIONS["data.cphase.u123coord"]
+    v123coord = OPTIONS["data.cphase.v123coord"]
 
     total_chi_sq = 0
-    for index, cphase in enumerate(cphases):
-        readout = OPTIONS["data.readouts"][index]
-        for wavelength in OPTIONS["fit.wavelengths"]:
-            wavelength_str = str(wavelength.value)
-            if wavelength_str not in cphase:
-                continue
+    for index, wavelength in enumerate(OPTIONS["fit.wavelengths"]):
+        flux_model, corr_flux_model, cphase_model = None, None, None
+        stellar_flux = components[0].calculate_stellar_flux(wavelength)
+        for component in components[1:]:
+            tmp_flux = component.calculate_total_flux(
+                    wavelength, star_flux=stellar_flux)
+            tmp_corr_flux = component.calculate_visibility(
+                    ucoord[index], vcoord[index], wavelength,
+                    star_flux=stellar_flux)
+            tmp_cphase = component.calculate_closure_phase(
+                    u123coord[index], v123coord[index], wavelength,
+                    star_flux=stellar_flux)
 
-            total_flux_model, corr_flux_model, cphase_model = None, None, None
-            stellar_flux = components[0].calculate_stellar_flux(wavelength)
-            for component in components[1:]:
-                if total_flux_model is None:
-                    total_flux_model = component.calculate_total_flux(
-                            wavelength, star_flux=stellar_flux)
-                    corr_flux_model = component.calculate_visibility(
-                            readout.ucoord, readout.vcoord, wavelength,
-                            star_flux=stellar_flux)
-                    cphase_model = component.calculate_closure_phase(
-                            readout.u123coord, readout.v123coord, wavelength,
-                            star_flux=stellar_flux)
-                else:
-                    total_flux_model += component.calculate_total_flux(
-                            wavelength, star_flux=stellar_flux)
-                    corr_flux_model += component.calculate_visibility(
-                            readout.ucoord, readout.vcoord, wavelength,
-                            star_flux=stellar_flux)
-                    cphase_model += component.calculate_closure_phase(
-                            readout.u123coord, readout.v123coord, wavelength,
-                            star_flux=stellar_flux)
-
-            visibilities = corr_flux_model/total_flux_model
-            total_chi_sq += calculate_observables_chi_sq(
-                    index, wavelength_str,
-                    total_fluxes, total_fluxes_err, total_flux_model,
-                    corr_fluxes, corr_fluxes_err, corr_flux_model,
-                    visibilities, visibilities_err, corr_flux_model,
-                    cphases, cphases_err, cphase_model)
+            if flux_model is None:
+                flux_model = tmp_flux
+                corr_flux_model = tmp_corr_flux
+                cphase_model = tmp_cphase
+            else:
+                flux_model += tmp_flux
+                corr_flux_model += tmp_corr_flux
+                cphase_model += tmp_cphase
+        total_chi_sq += calculate_observables_chi_sq(
+                fluxes[index], fluxes_err[index], flux_model,
+                vis[index], vis_err[index], corr_flux_model,
+                cphases[index], cphases_err[index], cphase_model)
     return total_chi_sq
 
 
