@@ -253,11 +253,9 @@ def plot_datapoints(
         axarr, axis_ratio: u.one,
         pos_angle: u.deg, wavelengths: u.um,
         components: Optional[List] = None,
-        model: Optional[Model] = None,
         data_to_plot: Optional[List[str]] = OPTIONS["fit.data"],
         norm: Optional[np.ndarray] = None,
-        colormap: Optional[str] = None,
-        pixel_size: Optional[u.Quantity[u.mas]] = None) -> None:
+        colormap: Optional[str] = None) -> None:
     """Plots the deviation of a model from real data of an object for
     total flux, visibilities and closure phases.
 
@@ -277,108 +275,87 @@ def plot_datapoints(
         The save path. The default is None.
     """
     colormap = mcm.get_cmap(colormap)
-    total_fluxes, total_fluxes_err =\
+    fluxes, fluxes_err =\
         OPTIONS["data.flux"], OPTIONS["data.flux_err"]
-    corr_fluxes, corr_fluxes_err =\
-        OPTIONS["data.corr_flux"], OPTIONS["data.corr_flux_err"]
-    visibilities, visibilities_err =\
-        OPTIONS["data.vis"], OPTIONS["data.vis_err"]
+
+    if "vis" in OPTIONS["fit.data"]:
+        vis, vis_err =\
+            OPTIONS["data.corr_flux"], OPTIONS["data.corr_flux_err"]
+        ucoord, vcoord =\
+            OPTIONS["data.corr_flux.ucoord"], OPTIONS["data.corr_flux.vcoord"]
+    else:
+        vis, vis_err =\
+            OPTIONS["data.vis"], OPTIONS["data.vis_err"]
+        ucoord, vcoord =\
+            OPTIONS["data.vis.ucoord"], OPTIONS["data.vis.vcoord"]
+
     cphases, cphases_err =\
         OPTIONS["data.cphase"], OPTIONS["data.cphase_err"]
+    u123coord = OPTIONS["data.cphase.u123coord"]
+    v123coord = OPTIONS["data.cphase.v123coord"]
 
-
-    fourier_transforms = {}
-    if model is not None:
-        for wavelength in OPTIONS["fit.wavelengths"]:
-            fourier_transforms[str(wavelength.value)] =\
-                model.calculate_complex_visibility(wavelength)
-
-    for file_index, (cphase, cphase_err)\
-            in enumerate(zip(cphases, cphases_err)):
-
-        readout = OPTIONS["data.readouts"][file_index]
+    for index, wavelength in enumerate(wavelengths):
         effective_baselines = calculate_effective_baselines(
-            readout.ucoord, readout.vcoord,
+            ucoord[index], vcoord[index],
             axis_ratio, pos_angle)[0]
         longest_baselines = calculate_effective_baselines(
-            readout.u123coord, readout.v123coord,
+            u123coord[index], v123coord[index],
             axis_ratio, pos_angle)[0].max(axis=0)
 
-        for wavelength in wavelengths:
-            total_flux_model, corr_flux_model, cphase_model = None, None, None
-            wl_str = str(wavelength.value)
-            if wl_str not in cphase:
-                continue
-            if model is not None:
-                total_flux_model, corr_flux_model, cphase_model =\
-                    calculate_observables(
-                        fourier_transforms[wl_str],
-                        readout.ucoord, readout.vcoord,
-                        readout.u123coord, readout.v123coord,
-                        pixel_size, wavelength)
+        flux_model, corr_flux_model, cphase_model = None, None, None
+        if components is not None:
+            stellar_flux = components[0].calculate_stellar_flux(wavelength)
+            for component in components[1:]:
+                tmp_flux = component.calculate_total_flux(
+                        wavelength, star_flux=stellar_flux)
+                tmp_corr_flux = component.calculate_visibility(
+                        ucoord[index], vcoord[index], wavelength,
+                        star_flux=stellar_flux)
+                tmp_cphase = component.calculate_closure_phase(
+                        u123coord[index], v123coord[index], wavelength,
+                        star_flux=stellar_flux)
 
-            if components is not None:
-                stellar_flux = components[0].calculate_stellar_flux(wavelength)
-                for component in components[1:]:
-                    if total_flux_model is None:
-                        total_flux_model = component.calculate_total_flux(
-                                wavelength, star_flux=stellar_flux)
-                        corr_flux_model = component.calculate_visibility(
-                                readout.ucoord, readout.vcoord, wavelength,
-                                star_flux=stellar_flux)
-                        cphase_model = component.calculate_closure_phase(
-                                readout.u123coord, readout.v123coord, wavelength,
-                                star_flux=stellar_flux)
-                    else:
-                        total_flux_model += component.calculate_total_flux(
-                                wavelength, star_flux=stellar_flux)
-                        corr_flux_model += component.calculate_visibility(
-                                readout.ucoord, readout.vcoord, wavelength,
-                                star_flux=stellar_flux)
-                        cphase_model += component.calculate_closure_phase(
-                                readout.u123coord, readout.v123coord, wavelength,
-                                star_flux=stellar_flux)
+                if flux_model is None:
+                    flux_model = tmp_flux
+                    corr_flux_model = tmp_corr_flux
+                    cphase_model = tmp_cphase
+                else:
+                    flux_model += tmp_flux
+                    corr_flux_model += tmp_corr_flux
+                    cphase_model += tmp_cphase
 
-            effective_baselines_mlambda = effective_baselines/wavelength.value
-            longest_baselines_mlambda = longest_baselines/wavelength.value
-            color = colormap(norm(wavelength.value))
+        effective_baselines_mlambda = effective_baselines/wavelength.value
+        longest_baselines_mlambda = longest_baselines/wavelength.value
+        color = colormap(norm(wavelength.value))
 
-            if "vis" in data_to_plot:
-                ax = axarr["vis"]
-                if "flux" in data_to_plot:
-                    ax.errorbar(
-                        np.array([0]), total_fluxes[file_index][wl_str],
-                        total_fluxes[file_index][wl_str], color=color,
-                        fmt="o", alpha=0.6)
-                    ax.scatter(
-                        np.array([0]), total_flux_model,
-                        marker="X", color=color)
+        if "vis" in data_to_plot or "vis2" in data_to_plot:
+            ax = axarr["vis"]
+            if "flux" in data_to_plot:
                 ax.errorbar(
-                    effective_baselines_mlambda.value, corr_fluxes[file_index][wl_str],
-                    corr_fluxes_err[file_index][wl_str], color=color, fmt="o", alpha=0.6)
+                    np.array([0]), fluxes[index],
+                    fluxes_err[index], color=color,
+                    fmt="o", alpha=0.6)
                 ax.scatter(
-                    effective_baselines_mlambda.value, corr_flux_model,
-                    color=color, marker="X")
+                    np.array([0]), flux_model,
+                    marker="X", color=color)
+            ax.errorbar(
+                effective_baselines_mlambda.value,
+                vis[index], vis_err[index],
+                color=color, fmt="o", alpha=0.6)
+            ax.scatter(
+                effective_baselines_mlambda.value,
+                corr_flux_model, color=color, marker="X")
 
-            if "vis2" in data_to_plot:
-                bx = axarr["vis2"]
-                bx.errorbar(
-                    effective_baselines_mlambda.value, visibilities[file_index][wl_str],
-                    visibilities_err[file_index][wl_str], color=color, fmt="o", alpha=0.6)
-                bx.scatter(
-                    effective_baselines_mlambda.value, corr_flux_model/total_flux_model,
-                    color=color, marker="X")
-
-            if "t3phi" in data_to_plot:
-                cx = axarr["t3phi"]
-                cx.errorbar(
-                    longest_baselines_mlambda.value, cphase[wl_str],
-                    cphase_err[wl_str],
-                    color=color, fmt="o", alpha=0.6)
-                cx.scatter(
-                    longest_baselines_mlambda.value, cphase_model,
-                    color=color, marker="X")
-                cx.axhline(y=0, color="gray", linestyle='--')
+        if "t3phi" in data_to_plot:
+            cx = axarr["t3phi"]
+            cx.errorbar(
+                longest_baselines_mlambda.value,
+                cphases[index], cphases_err[index],
+                color=color, fmt="o", alpha=0.6)
+            cx.scatter(
+                longest_baselines_mlambda.value,
+                cphase_model, color=color, marker="X")
+            cx.axhline(y=0, color="gray", linestyle='--')
 
 
 def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
@@ -418,13 +395,10 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
             vmin=wavelengths[0].value, vmax=wavelengths[-1].value)
 
     data_types, nplots = [], 0
-    if "vis" in data_to_plot:
+    if ("vis" in data_to_plot or "vis2" in data_to_plot)\
+            and "vis" not in data_types:
         nplots += 1
         data_types.append("vis")
-
-    if "vis2" in data_to_plot:
-        nplots += 1
-        data_types.append("vis2")
 
     if "t3phi" in data_to_plot:
         nplots += 1
@@ -451,19 +425,19 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
                               linestyle="None", label="Data", alpha=0.6)
     x_label = mlines.Line2D([], [], color="k", marker="X",
                             linestyle="None", label="Model")
-    if "vis" in axarr:
+    if "vis" in data_types:
         ax = axarr["vis"]
         ax.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}/\lambda$ (M$\lambda$)")
         ax.set_ylabel("Correlated fluxes (Jy)")
         ax.legend(handles=[dot_label, x_label])
 
-    if "vis2" in axarr:
+    if "vis2" in data_types:
         bx = axarr["vis2"]
         bx.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}/\lambda$ (M$\lambda$)")
         bx.set_ylabel("Visibilities (a.u.)")
         bx.legend(handles=[dot_label, x_label])
 
-    if "t3phi" in axarr:
+    if "t3phi" in data_types:
         cx = axarr["t3phi"]
         cx.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}/\lambda$ (M$\lambda$)")
         cx.set_ylabel(r"Closure Phases ($^\circ$)")
@@ -500,13 +474,10 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
             vmin=wavelengths[0].value, vmax=wavelengths[-1].value)
 
     data_types, nplots = [], 0
-    if "vis" in data_to_plot:
+    if ("vis" in data_to_plot or "vis2" in data_to_plot)\
+            and "vis" not in data_types:
         nplots += 1
         data_types.append("vis")
-
-    if "vis2" in data_to_plot:
-        nplots += 1
-        data_types.append("vis2")
 
     if "t3phi" in data_to_plot:
         nplots += 1
@@ -517,57 +488,56 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
     axarr = dict(zip(data_types, axarr.flatten()))
 
     colormap = mcm.get_cmap(colormap)
-    total_fluxes, total_fluxes_err =\
+    fluxes, fluxes_err =\
         OPTIONS["data.flux"], OPTIONS["data.flux_err"]
-    corr_fluxes, corr_fluxes_err =\
-        OPTIONS["data.corr_flux"], OPTIONS["data.corr_flux_err"]
-    visibilities, visibilities_err =\
-        OPTIONS["data.vis"], OPTIONS["data.vis_err"]
+
+    if "vis" in OPTIONS["fit.data"]:
+        vis, vis_err =\
+            OPTIONS["data.corr_flux"], OPTIONS["data.corr_flux_err"]
+        ucoord, vcoord =\
+            OPTIONS["data.corr_flux.ucoord"], OPTIONS["data.corr_flux.vcoord"]
+    else:
+        vis, vis_err =\
+            OPTIONS["data.vis"], OPTIONS["data.vis_err"]
+        ucoord, vcoord =\
+            OPTIONS["data.vis.ucoord"], OPTIONS["data.vis.vcoord"]
+
     cphases, cphases_err =\
         OPTIONS["data.cphase"], OPTIONS["data.cphase_err"]
+    u123coord = OPTIONS["data.cphase.u123coord"]
+    v123coord = OPTIONS["data.cphase.v123coord"]
 
-    for file_index, (cphase, cphase_err)\
-            in enumerate(zip(cphases, cphases_err)):
-        readout = OPTIONS["data.readouts"][file_index]
-        effective_baselines = np.hypot(readout.ucoord, readout.vcoord)*u.m
-        longest_baselines = np.hypot(readout.u123coord, readout.v123coord).max(axis=0)*u.m
+    for index, wavelength in enumerate(wavelengths):
+        effective_baselines = np.hypot(ucoord[index], vcoord[index])*u.m
+        longest_baselines = np.hypot(u123coord[index], v123coord[index]).max(axis=0)*u.m
 
-        for wavelength in wavelengths:
-            wl_str = str(wavelength.value)
-            if wl_str not in cphase:
-                continue
+        effective_baselines_mlambda = effective_baselines/wavelength.value
+        longest_baselines_mlambda = longest_baselines/wavelength.value
+        color = colormap(norm(wavelength.value))
 
-            effective_baselines_mlambda = effective_baselines/wavelength.value
-            longest_baselines_mlambda = longest_baselines/wavelength.value
-            color = colormap(norm(wavelength.value))
+        # TODO: Add total flux here
+        if "vis" in data_to_plot or "vis2" in data_to_plot:
+            ax = axarr["vis"]
+            ax.errorbar(
+                effective_baselines_mlambda.value,
+                vis[index], vis_err[index],
+                color=color, fmt="o", alpha=0.6)
 
-            # TODO: Add total flux here
-            if "vis" in data_to_plot:
-                ax = axarr["vis"]
-                ax.errorbar(
-                    effective_baselines_mlambda.value, corr_fluxes[file_index][wl_str],
-                    corr_fluxes_err[file_index][wl_str], color=color, fmt="o", alpha=0.6)
-
-            if "vis2" in data_to_plot:
-                bx = axarr["vis2"]
-                bx.errorbar(
-                    effective_baselines_mlambda.value, visibilities[file_index][wl_str],
-                    visibilities_err[file_index][wl_str], color=color, fmt="o", alpha=0.6)
-
-            if "t3phi" in axarr:
-                cx = axarr["t3phi"]
-                cx.errorbar(
-                    longest_baselines_mlambda.value, cphase[wl_str],
-                    cphase_err[wl_str],
-                    color=color, fmt="o", alpha=0.6)
-                cx.axhline(y=0, color="gray", linestyle='--')
+        if "t3phi" in axarr:
+            cx = axarr["t3phi"]
+            cx.errorbar(
+                longest_baselines_mlambda.value,
+                cphases[index], cphases_err[index],
+                color=color, fmt="o", alpha=0.6)
+            cx.axhline(y=0, color="gray", linestyle='--')
 
     sm = cm.ScalarMappable(cmap=colormap, norm=norm)
     sm.set_array([])
     cbar = plt.colorbar(sm, ax=axarr[data_types[-1]],
                         label="Wavelength (micron)")
     cbar.set_ticks(wavelengths.value)
-    cbar.set_ticklabels([f"{wavelength:.1f}" for wavelength in wavelengths.value])
+    cbar.set_ticklabels([f"{wavelength:.1f}"
+                         for wavelength in wavelengths.value])
 
     if "vis" in data_to_plot:
         ax = axarr["vis"]
@@ -575,7 +545,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
         ax.set_ylabel("Correlated fluxes (Jy)")
 
     if "vis2" in data_to_plot:
-        bx = axarr["vis2"]
+        bx = axarr["vis"]
         bx.set_xlabel(r"$\mathrm{B}/\lambda$ (M$\lambda$)")
         bx.set_ylabel("Visibilities (a.u.)")
         bx.set_ylim([0, 1])
