@@ -16,7 +16,6 @@ from astropy.wcs import WCS
 from matplotlib import colormaps as mcm
 
 from .component import Component
-from .mcmc import calculate_observables
 from .model import Model
 from .options import OPTIONS
 from .utils import calculate_effective_baselines
@@ -221,34 +220,6 @@ def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
     hdu.writeto(savefits, overwrite=True)
 
 
-def plot_model(dim: int, pixel_size: u.mas,
-               model: Model, wavelength: u.um,
-               zoom: Optional[float] = None,
-               savefig: Optional[Path] = None) -> None:
-    """Plots the model."""
-    pixel_size = pixel_size.value\
-        if isinstance(pixel_size, u.Quantity) else pixel_size
-    image = model.calculate_image(
-        dim, pixel_size, wavelength).value
-    disk_max = np.sort(np.unique(image.flatten()))[::-1][1]
-    ax_extent = (dim*pixel_size)//2
-    plt.imshow(image, vmax=disk_max,
-               extent=(-ax_extent, ax_extent,
-                       -ax_extent, ax_extent))
-    if zoom is not None:
-        plt.xlim([-zoom, zoom])
-        plt.ylim([-zoom, zoom])
-    plt.title(f"Best fit model at {wavelength:.2f}")
-    plt.xlabel(r"$\alpha$ (mas)")
-    plt.ylabel(r"$\delta$ (mas)")
-
-    if savefig:
-        plt.savefig(savefig, format="pdf")
-    else:
-        plt.show()
-    plt.close()
-
-
 def plot_datapoints(
         axarr, axis_ratio: u.one,
         pos_angle: u.deg, wavelengths: u.um,
@@ -265,10 +236,6 @@ def plot_datapoints(
         The axis ratio.
     pos_angle : astropy.units.deg
         The position angle.
-    model : Model
-        The model.
-    pixel_size : astropy.units.mas
-        The pixel size.
     data_to_plot : list of str, optional
         The data to plot. The default is OPTIONS["fit.data"].
     savefig : pathlib.Path, optional
@@ -362,8 +329,6 @@ def plot_datapoints(
 
 def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
              components: Optional[List] = None,
-             model: Optional[Model] = None,
-             pixel_size: Optional[u.Quantity[u.mas]] = None,
              data_to_plot: Optional[List[str]] = None,
              colormap: Optional[str] = "tab20",
              title: Optional[str] = None,
@@ -373,10 +338,6 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
 
     Parameters
     ----------
-    model : Model
-        The model.
-    pixel_size : astropy.units.mas
-        The pixel size.
     axis_ratio : astropy.units.one
         The axis ratio.
     pos_angle : astropy.units.deg
@@ -412,7 +373,6 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
 
     plot_datapoints(axarr, axis_ratio, pos_angle,
                     wavelengths, components=components,
-                    model=model, pixel_size=pixel_size,
                     norm=norm, data_to_plot=data_to_plot,
                     colormap=colormap)
 
