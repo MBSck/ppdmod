@@ -106,14 +106,12 @@ def set_data(fits_files: Optional[List[Path]] = None,
         The wavelengths to be fitted.
     """
     OPTIONS["data.readouts"] = []
-    OPTIONS["data.total_flux"], \
-        OPTIONS["data.total_flux_error"] = [], []
-    OPTIONS["data.correlated_flux"], \
-        OPTIONS["data.correlated_flux_error"] = [], []
-    OPTIONS["data.visibility"], \
-        OPTIONS["data.visibility_error"] = [], []
-    OPTIONS["data.closure_phase"], \
-        OPTIONS["data.closure_phase_error"] = [], []
+    OPTIONS["data.flux"],  OPTIONS["data.flux_err"] = [], []
+    OPTIONS["data.corr_flux"], OPTIONS["data.corr_flux_err"] = [], []
+    OPTIONS["data.vis"], OPTIONS["data.vis_err"] = [], []
+    OPTIONS["data.cphase"], OPTIONS["data.cphase_err"] = [], []
+    OPTIONS["data.ucoord"], OPTIONS["data.vcoord"] = [], []
+    OPTIONS["data.u123coord"], OPTIONS["data.v123coord"] = [], []
 
     if fits_files is None:
         return
@@ -126,18 +124,15 @@ def set_data(fits_files: Optional[List[Path]] = None,
 
     for readout in readouts:
         for data_type in OPTIONS["fit.data"]:
-            key = ""
-            if data_type == "flux":
-                key = "total_flux"
-            elif data_type == "vis":
-                key = "correlated_flux"
+            key = data_type
+            if data_type == "vis":
+                key = "corr_flux"
             elif data_type == "vis2":
-                key = "visibility"
+                key = "vis"
             elif data_type == "t3phi":
-                key = "closure_phase"
+                key = "cphase"
 
-            OPTIONS[f"data.{key}"].append(
-                readout.get_data_for_wavelengths(wavelengths, key=data_type))
-            OPTIONS[f"data.{key}_error"].append(
-                readout.get_data_for_wavelengths(
-                    wavelengths, key=f"{data_type}_err"))
+            for suffix in ["", "_err"]:
+                OPTIONS[f"data.{key}{suffix}"].append(
+                    readout.get_data_for_wavelengths(
+                        wavelengths, key=f"{data_type}{suffix}"))

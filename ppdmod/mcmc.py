@@ -201,7 +201,7 @@ def calculate_observables_chi_sq(
         total_chi_sq += chi_sq(total_flux[index][wl_str],
                                total_flux_err[index][wl_str],
                                total_flux_model)\
-            * OPTIONS["fit.chi2.weight.total_flux"]
+            * OPTIONS["fit.chi2.weight.flux"]
 
     if "vis" in OPTIONS["fit.data"]:
         total_chi_sq += chi_sq(corr_flux[index][wl_str],
@@ -213,7 +213,7 @@ def calculate_observables_chi_sq(
         total_chi_sq += chi_sq(visibility[index][wl_str],
                                visibility_err[index][wl_str],
                                visibility_model)\
-            * OPTIONS["fit.chi2.weight.visibility"]
+            * OPTIONS["fit.chi2.weight.vis"]
 
     if "t3phi" in OPTIONS["fit.data"]:
         total_chi_sq += chi_sq(cphase[index][wl_str],
@@ -285,13 +285,13 @@ def lnprob_analytical(theta: np.ndarray) -> float:
         component.params["rin0"] = innermost_radius
 
     total_fluxes, total_fluxes_err =\
-        OPTIONS["data.total_flux"], OPTIONS["data.total_flux_error"]
+        OPTIONS["data.flux"], OPTIONS["data.flux_err"]
     corr_fluxes, corr_fluxes_err =\
-        OPTIONS["data.correlated_flux"], OPTIONS["data.correlated_flux_error"]
+        OPTIONS["data.corr_flux"], OPTIONS["data.corr_flux_err"]
     visibilities, visibilities_err =\
-        OPTIONS["data.visibility"], OPTIONS["data.visibility_error"]
+        OPTIONS["data.vis"], OPTIONS["data.vis_err"]
     cphases, cphases_err =\
-        OPTIONS["data.closure_phase"], OPTIONS["data.closure_phase_error"]
+        OPTIONS["data.cphase"], OPTIONS["data.cphase_err"]
 
     total_chi_sq = 0
     for index, cphase in enumerate(cphases):
@@ -370,13 +370,13 @@ def lnprob_numerical(theta: np.ndarray) -> float:
             model.calculate_complex_visibility(wavelength=wavelength)
 
     total_fluxes, total_fluxes_err =\
-        OPTIONS["data.total_flux"], OPTIONS["data.total_flux_error"]
+        OPTIONS["data.flux"], OPTIONS["data.flux_err"]
     corr_fluxes, corr_fluxes_err =\
-        OPTIONS["data.correlated_flux"], OPTIONS["data.correlated_flux_error"]
+        OPTIONS["data.corr_flux"], OPTIONS["data.corr_flux_err"]
     visibilities, visibilities_err =\
-        OPTIONS["data.visibility"], OPTIONS["data.visibility_error"]
+        OPTIONS["data.vis"], OPTIONS["data.vis_err"]
     cphases, cphases_err =\
-        OPTIONS["data.closure_phase"], OPTIONS["data.closure_phase_error"]
+        OPTIONS["data.cphase"], OPTIONS["data.cphase_err"]
 
     total_chi_sq = 0
     for index, (total_flux, total_flux_err, corr_flux,

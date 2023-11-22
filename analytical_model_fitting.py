@@ -26,7 +26,7 @@ data.set_data(fits_files)
 
 # TODO: Check if the configuration of these parameters is ok
 wavelength_axes = list(
-    map(lambda x: data.ReadoutFits(x).wavelength, fits_files))
+    map(lambda x: x.wavelength, OPTIONS["data.readouts"]))
 wavelength_axes = np.sort(np.unique(np.concatenate(wavelength_axes)))
 
 flux_file = Path("tests/data/flux/HD142666_stellar_model.txt.gz")
@@ -147,8 +147,8 @@ OPTIONS["model.gridtype"] = "logarithmic"
 
 if __name__ == "__main__":
     nburnin, nsteps, nwalkers = 200, 500, 100
-    ncores = nwalkers // 2
-    # ncores = 6
+    # ncores = nwalkers // 2
+    ncores = 6
     model_result_dir = Path("../model_results/")
     day_dir = model_result_dir / str(datetime.now().date())
     time = datetime.now()

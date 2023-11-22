@@ -278,13 +278,13 @@ def plot_datapoints(
     """
     colormap = mcm.get_cmap(colormap)
     total_fluxes, total_fluxes_err =\
-        OPTIONS["data.total_flux"], OPTIONS["data.total_flux_error"]
+        OPTIONS["data.flux"], OPTIONS["data.flux_err"]
     corr_fluxes, corr_fluxes_err =\
-        OPTIONS["data.correlated_flux"], OPTIONS["data.correlated_flux_error"]
+        OPTIONS["data.corr_flux"], OPTIONS["data.corr_flux_err"]
     visibilities, visibilities_err =\
-        OPTIONS["data.visibility"], OPTIONS["data.visibility_error"]
+        OPTIONS["data.vis"], OPTIONS["data.vis_err"]
     cphases, cphases_err =\
-        OPTIONS["data.closure_phase"], OPTIONS["data.closure_phase_error"]
+        OPTIONS["data.cphase"], OPTIONS["data.cphase_err"]
 
 
     fourier_transforms = {}
@@ -518,13 +518,13 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
 
     colormap = mcm.get_cmap(colormap)
     total_fluxes, total_fluxes_err =\
-        OPTIONS["data.total_flux"], OPTIONS["data.total_flux_error"]
-    correlated_fluxes, correlated_fluxes_err =\
-        OPTIONS["data.correlated_flux"], OPTIONS["data.correlated_flux_error"]
+        OPTIONS["data.flux"], OPTIONS["data.flux_err"]
+    corr_fluxes, corr_fluxes_err =\
+        OPTIONS["data.corr_flux"], OPTIONS["data.corr_flux_err"]
     visibilities, visibilities_err =\
-        OPTIONS["data.visibility"], OPTIONS["data.visibility_error"]
+        OPTIONS["data.vis"], OPTIONS["data.vis_err"]
     cphases, cphases_err =\
-        OPTIONS["data.closure_phase"], OPTIONS["data.closure_phase_error"]
+        OPTIONS["data.cphase"], OPTIONS["data.cphase_err"]
 
     for file_index, (cphase, cphase_err)\
             in enumerate(zip(cphases, cphases_err)):
@@ -545,8 +545,8 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
             if "vis" in data_to_plot:
                 ax = axarr["vis"]
                 ax.errorbar(
-                    effective_baselines_mlambda.value, correlated_fluxes[file_index][wl_str],
-                    correlated_fluxes_err[file_index][wl_str], color=color, fmt="o", alpha=0.6)
+                    effective_baselines_mlambda.value, corr_fluxes[file_index][wl_str],
+                    corr_fluxes_err[file_index][wl_str], color=color, fmt="o", alpha=0.6)
 
             if "vis2" in data_to_plot:
                 bx = axarr["vis2"]

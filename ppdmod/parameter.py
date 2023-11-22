@@ -119,6 +119,7 @@ class Parameter:
                 wavelength, array=self.wavelength*u.um,
                 window=OPTIONS["data.binning.window"]).values())
             value = self.value[indices[0]].mean()
+        breakpoint()
         return u.Quantity(value, unit=self.unit, dtype=self.dtype)
 
     def __str__(self):

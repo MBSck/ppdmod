@@ -5,15 +5,15 @@ OPTIONS = {}
 # NOTE: Data.
 OPTIONS["data.binning.window"] = None
 OPTIONS["data.gravity.index"] = 20
-OPTIONS["data.correlated_flux"] = []
-OPTIONS["data.correlated_flux_error"] = []
-OPTIONS["data.visibility"] = []
-OPTIONS["data.visibility_error"] = []
-OPTIONS["data.closure_phase"] = []
-OPTIONS["data.closure_phase_error"] = []
+OPTIONS["data.corr_flux"] = []
+OPTIONS["data.corr_flux_err"] = []
+OPTIONS["data.cphase"] = []
+OPTIONS["data.cphase_err"] = []
+OPTIONS["data.flux"] = []
+OPTIONS["data.flux_err"] = []
+OPTIONS["data.vis"] = []
+OPTIONS["data.vis_err"] = []
 OPTIONS["data.readouts"] = []
-OPTIONS["data.total_flux"] = []
-OPTIONS["data.total_flux_error"] = []
 
 # NOTE: Model. The output can either be 'surface_brightness' or ' jansky_px'
 OPTIONS["model.components_and_params"] = {}
@@ -45,7 +45,7 @@ OPTIONS["spectrum.kernel_width"] = 10
 # NOTE: Fitting.
 OPTIONS["fit.chi2.weight.corr_flux"] = 1
 OPTIONS["fit.chi2.weight.cphase"] = 1
-OPTIONS["fit.chi2.weight.total_flux"] = 1
-OPTIONS["fit.chi2.weight.visibility"] = 1
+OPTIONS["fit.chi2.weight.flux"] = 1
+OPTIONS["fit.chi2.weight.vis"] = 1
 OPTIONS["fit.data"] = ["flux", "vis", "t3phi"]
 OPTIONS["fit.wavelengths"] = None
