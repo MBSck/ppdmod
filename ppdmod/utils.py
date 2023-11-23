@@ -530,7 +530,7 @@ def calculate_effective_baselines(
             if not isinstance(axis_ratio, u.Quantity) else axis_ratio
     pos_angle = pos_angle*u.deg\
             if not isinstance(pos_angle, u.Quantity) else pos_angle
-        
+
     pos_angle = pos_angle.to(u.rad)
     projected_baselines = np.hypot(ucoord, vcoord)
     projected_baseline_angle = np.arctan2(vcoord, ucoord)
@@ -543,3 +543,10 @@ def calculate_effective_baselines(
     vcoords_eff = projected_baselines * (np.sin(pos_angle) * np.cos(angle_to_deproject)
             + axis_ratio * np.cos(pos_angle) * np.sin(angle_to_deproject))
     return np.hypot(ucoords_eff, vcoords_eff), np.arctan2(vcoords_eff, ucoords_eff)
+
+
+def restrict_phase(phase: np.ndarray):
+    """Restricts the phase to [-180, 180] degrees."""
+    restricted_phase = phase % 360
+    restricted_phase[restricted_phase > 180] -= 360
+    return restricted_phase

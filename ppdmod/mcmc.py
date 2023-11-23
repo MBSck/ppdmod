@@ -1,13 +1,12 @@
 from multiprocessing import Pool
-from typing import Tuple, Optional, List, Dict
+from typing import Optional, List, Dict
 
 import astropy.units as u
 import emcee
 import numpy as np
 
 from .custom_components import assemble_components
-from .fft import interpolate_coordinates
-from .model import Model
+from .component import Component
 from .parameter import Parameter
 from .options import OPTIONS
 
@@ -101,57 +100,32 @@ def chi_sq(data: u.quantity, error: u.quantity,
     return -0.5*np.sum(diff**2*inv_sigma_squared + np.log(1/inv_sigma_squared))
 
 
-def calculate_observables(fourier_transform: np.ndarray,
-                          vis_ucoord: np.ndarray,
-                          vis_vcoord: np.ndarray,
-                          cphase_ucoord: np.ndarray,
-                          cphase_vcoord: np.ndarray,
-                          pixel_size: u.mas,
-                          wavelength: float) -> Tuple:
-    """Calculates the model's observables.
+def calculate_observables(components: List[Component], wavelength: u.um,
+                          ucoord: np.ndarray, vcoord: np.ndarray,
+                          u123coord: np.ndarray, v123coord: np.ndarray):
+    """Calculates the observables from the model."""
+    flux_model, corr_flux_model, cphase_model = None, None, None
+    if components is not None:
+        stellar_flux = components[0].calculate_stellar_flux(wavelength)
+        for component in components[1:]:
+            tmp_flux = component.calculate_total_flux(
+                    wavelength, star_flux=stellar_flux)
+            tmp_corr_flux = component.calculate_visibility(
+                    ucoord, vcoord, wavelength,
+                    star_flux=stellar_flux)
+            tmp_cphase = component.calculate_closure_phase(
+                    u123coord, v123coord, wavelength,
+                    star_flux=stellar_flux)
 
-    Parameters
-    ----------
-    fourier_transform : numpy.ndarray
-        The fourier transform of the model.
-    vis_ucoord : numpy.ndarray
-        The u coordinate of the visibilities.
-    vis_vcoord : numpy.ndarray
-        The v coordinate of the visibilities.
-    cphase_ucoord : numpy.ndarray
-        The u coordinate of the closure phases.
-    cphase_vcoord : numpy.ndarray
-        The v coordinate of the closure phases.
-    wavelength : float
-        The wavelength of the model.
-
-    Returns
-    -------
-    total_flux : float
-        The total flux.
-    corr_flux : float
-        The correlated flux.
-    cphase : float
-        The closure phase.
-    """
-    total_flux, corr_flux, cphase = None, None, None
-    if "flux" in OPTIONS["fit.data"]:
-        centre = fourier_transform.shape[0]//2
-        total_flux = np.abs(fourier_transform[centre, centre])
-
-    if "vis" in OPTIONS["fit.data"]:
-        interpolated_corr_flux = interpolate_coordinates(
-            fourier_transform, fourier_transform.shape[0],
-            pixel_size, vis_ucoord, vis_vcoord, wavelength)
-        corr_flux = np.abs(interpolated_corr_flux)
-
-    if "t3phi" in OPTIONS["fit.data"]:
-        interpolated_cphase = interpolate_coordinates(
-            fourier_transform, fourier_transform.shape[0],
-            pixel_size, cphase_ucoord, cphase_vcoord, wavelength)
-        cphase = np.angle(
-            np.prod(interpolated_cphase, axis=1), deg=True)
-    return total_flux, corr_flux, cphase
+            if flux_model is None:
+                flux_model = tmp_flux
+                corr_flux_model = tmp_corr_flux
+                cphase_model = tmp_cphase
+            else:
+                flux_model += tmp_flux
+                corr_flux_model += tmp_corr_flux
+                cphase_model += tmp_cphase
+    return flux_model, corr_flux_model, cphase_model
 
 
 def calculate_observables_chi_sq(
@@ -295,103 +269,13 @@ def lnprob_analytical(theta: np.ndarray) -> float:
 
     total_chi_sq = 0
     for index, wavelength in enumerate(OPTIONS["fit.wavelengths"]):
-        flux_model, corr_flux_model, cphase_model = None, None, None
-        stellar_flux = components[0].calculate_stellar_flux(wavelength)
-        for component in components[1:]:
-            tmp_flux = component.calculate_total_flux(
-                    wavelength, star_flux=stellar_flux)
-            tmp_corr_flux = component.calculate_visibility(
-                    ucoord[index], vcoord[index], wavelength,
-                    star_flux=stellar_flux)
-            tmp_cphase = component.calculate_closure_phase(
-                    u123coord[index], v123coord[index], wavelength,
-                    star_flux=stellar_flux)
-
-            if flux_model is None:
-                flux_model = tmp_flux
-                corr_flux_model = tmp_corr_flux
-                cphase_model = tmp_cphase
-            else:
-                flux_model += tmp_flux
-                corr_flux_model += tmp_corr_flux
-                cphase_model += tmp_cphase
+        flux_model, corr_flux_model, cphase_model = calculate_observables(
+                components, wavelength, ucoord[index],
+                vcoord[index], u123coord[index], v123coord[index])
         total_chi_sq += calculate_observables_chi_sq(
                 fluxes[index], fluxes_err[index], flux_model,
                 vis[index], vis_err[index], corr_flux_model,
                 cphases[index], cphases_err[index], cphase_model)
-    return total_chi_sq
-
-
-def lnprob_numerical(theta: np.ndarray) -> float:
-    """Takes theta vector and the x, y and the yerr of the theta.
-    Returns a number corresponding to how good of a fit the model is to your
-    data for a given set of parameters, weighted by the data points.
-
-    This is the numerical 2D implementation.
-
-    Parameters
-    ----------
-    theta: np.ndarray
-        The parameters that ought to be fitted.
-
-    Returns
-    -------
-    float
-        The log of the probability.
-    """
-    parameters, shared_params = set_params_from_theta(theta)
-
-    lnp = lnprior(parameters, shared_params)
-    if np.isinf(lnp):
-        return -np.inf
-
-    components = assemble_components(parameters, shared_params)
-
-    # HACK: This is to include innermost radius for rn.
-    innermost_radius = components[1].params["rin"]
-    for component in components:
-        component.params["rin0"] = innermost_radius
-    model = Model(components)
-
-    fourier_transforms = {}
-    for wavelength in OPTIONS["fit.wavelengths"]:
-        fourier_transforms[str(wavelength.value)] =\
-            model.calculate_complex_visibility(wavelength=wavelength)
-
-    total_fluxes, total_fluxes_err =\
-        OPTIONS["data.flux"], OPTIONS["data.flux_err"]
-    corr_fluxes, corr_fluxes_err =\
-        OPTIONS["data.corr_flux"], OPTIONS["data.corr_flux_err"]
-    visibilities, visibilities_err =\
-        OPTIONS["data.vis"], OPTIONS["data.vis_err"]
-    cphases, cphases_err =\
-        OPTIONS["data.cphase"], OPTIONS["data.cphase_err"]
-
-    total_chi_sq = 0
-    for index, (total_flux, total_flux_err, corr_flux,
-                corr_flux_err, cphase, cphase_err)\
-            in enumerate(
-                zip(total_fluxes, total_fluxes_err, corr_fluxes,
-                    corr_fluxes_err, cphases, cphases_err)):
-        readout = OPTIONS["data.readouts"][index]
-        for wavelength in OPTIONS["fit.wavelengths"]:
-            wavelength_str = str(wavelength.value)
-            if wavelength_str not in corr_flux:
-                continue
-            fourier_transform = fourier_transforms[wavelength_str]
-            total_flux_model, corr_flux_model, cphase_model =\
-                calculate_observables(
-                    fourier_transform,
-                    readout.ucoord, readout.vcoord,
-                    readout.u123coord, readout.v123coord,
-                    components[-1].params["pixel_size"](),
-                    wavelength)
-
-            total_chi_sq += calculate_observables_chi_sq(
-                total_flux, total_flux_err, total_flux_model,
-                corr_flux, corr_flux_err, corr_flux_model,
-                visibilities, visibilities_err, visibility_model,
-                cphase, cphase_err, cphase_model)
     return total_chi_sq
 
 

@@ -14,11 +14,13 @@ from astropy.io import fits
 from astropy.table import Table
 from astropy.wcs import WCS
 from matplotlib import colormaps as mcm
+from matplotlib.gridspec import GridSpec
 
 from .component import Component
+from .mcmc import calculate_observables
 from .model import Model
 from .options import OPTIONS
-from .utils import calculate_effective_baselines
+from .utils import calculate_effective_baselines, restrict_phase
 
 matplotlib.use('Agg')
 
@@ -268,28 +270,9 @@ def plot_datapoints(
         longest_baselines = calculate_effective_baselines(
             u123coord[index], v123coord[index],
             axis_ratio, pos_angle)[0].max(axis=0)
-
-        flux_model, corr_flux_model, cphase_model = None, None, None
-        if components is not None:
-            stellar_flux = components[0].calculate_stellar_flux(wavelength)
-            for component in components[1:]:
-                tmp_flux = component.calculate_total_flux(
-                        wavelength, star_flux=stellar_flux)
-                tmp_corr_flux = component.calculate_visibility(
-                        ucoord[index], vcoord[index], wavelength,
-                        star_flux=stellar_flux)
-                tmp_cphase = component.calculate_closure_phase(
-                        u123coord[index], v123coord[index], wavelength,
-                        star_flux=stellar_flux)
-
-                if flux_model is None:
-                    flux_model = tmp_flux
-                    corr_flux_model = tmp_corr_flux
-                    cphase_model = tmp_cphase
-                else:
-                    flux_model += tmp_flux
-                    corr_flux_model += tmp_corr_flux
-                    cphase_model += tmp_cphase
+        flux_model, corr_flux_model, cphase_model = calculate_observables(
+                components, wavelength, ucoord[index],
+                vcoord[index], u123coord[index], v123coord[index])
 
         vis_model = corr_flux_model if "vis" in data_to_plot\
             else corr_flux_model/flux_model
@@ -298,33 +281,49 @@ def plot_datapoints(
         color = colormap(norm(wavelength.value))
 
         if "vis" in data_to_plot or "vis2" in data_to_plot:
-            ax = axarr["vis"]
+            upper_ax_vis, lower_ax_vis = axarr["vis"]
             if "flux" in data_to_plot:
-                ax.errorbar(
+                upper_ax_vis.errorbar(
                     np.array([0]), fluxes[index],
                     fluxes_err[index], color=color,
-                    fmt="o", alpha=0.6)
-                ax.scatter(
+                    markeredgecolor="black", fmt="o", alpha=0.6)
+                upper_ax_vis.scatter(
                     np.array([0]), flux_model,
-                    marker="X", color=color)
-            ax.errorbar(
+                    edgecolor="black", marker="X", color=color)
+                lower_ax_vis.scatter(np.array([0]),
+                                     fluxes[index]-flux_model,
+                                     edgecolor="black",
+                                     color=color, marker="o")
+            upper_ax_vis.errorbar(
                 effective_baselines_mlambda.value,
-                vis[index], vis_err[index],
+                vis[index], vis_err[index], markeredgecolor="black",
                 color=color, fmt="o", alpha=0.6)
-            ax.scatter(
-                effective_baselines_mlambda.value,
-                vis_model, color=color, marker="X")
+            upper_ax_vis.scatter(
+                effective_baselines_mlambda.value, vis_model,
+                edgecolor="black", color=color, marker="X")
+            lower_ax_vis.axhline(y=0, color="gray", linestyle='--')
+            lower_ax_vis.scatter(effective_baselines_mlambda.value,
+                                 vis[index]-vis_model,
+                                 edgecolor="black",
+                                 color=color, marker="o")
+            lower_ax_vis.axhline(y=0, color="gray", linestyle='--')
 
         if "t3phi" in data_to_plot:
-            cx = axarr["t3phi"]
-            cx.errorbar(
+            upper_ax_cphase, lower_ax_cphase = axarr["t3phi"]
+            upper_ax_cphase.errorbar(
                 longest_baselines_mlambda.value,
                 cphases[index], cphases_err[index],
+                markeredgecolor="black",
                 color=color, fmt="o", alpha=0.6)
-            cx.scatter(
-                longest_baselines_mlambda.value,
-                cphase_model, color=color, marker="X")
-            cx.axhline(y=0, color="gray", linestyle='--')
+            upper_ax_cphase.scatter(
+                longest_baselines_mlambda.value, cphase_model,
+                edgecolor="black", color=color, marker="X")
+            upper_ax_cphase.axhline(y=0, color="gray", linestyle='--')
+            lower_ax_cphase.scatter(longest_baselines_mlambda.value,
+                                    restrict_phase(cphases[index]-cphase_model),
+                                    edgecolor="black",
+                                    color=color, marker="o")
+            lower_ax_cphase.axhline(y=0, color="gray", linestyle='--')
 
 
 def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
@@ -368,8 +367,11 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
         data_types.append("t3phi")
 
     figsize = (12, 5) if nplots == 2 else None
-    _, axarr = plt.subplots(1, nplots, figsize=figsize)
-    axarr = dict(zip(data_types, axarr.flatten()))
+    fig = plt.figure(figsize=figsize)
+    gs = GridSpec(nplots, 2, height_ratios=[3, 1])
+    axarr = {key: value for key, value in zip(
+        data_types, [[fig.add_subplot(gs[j, i]) for j in range(2)]
+                     for i in range(nplots)])}
 
     plot_datapoints(axarr, axis_ratio, pos_angle,
                     wavelengths, components=components,
@@ -387,24 +389,36 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
                               linestyle="None", label="Data", alpha=0.6)
     x_label = mlines.Line2D([], [], color="k", marker="X",
                             linestyle="None", label="Model")
-    if "vis" in data_types:
-        ax = axarr["vis"]
-        ax.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}/\lambda$ (M$\lambda$)")
-        ax.set_ylabel("Correlated fluxes (Jy)")
-        ax.legend(handles=[dot_label, x_label])
 
-    if "vis2" in data_types:
-        bx = axarr["vis2"]
-        bx.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}/\lambda$ (M$\lambda$)")
-        bx.set_ylabel("Visibilities (a.u.)")
-        bx.legend(handles=[dot_label, x_label])
+    if "vis" in data_types or "vis2" in data_types:
+        upper_ax_vis, lower_ax_vis = axarr["vis"]
+        lower_ax_vis.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}/\lambda$ (M$\lambda$)")
+
+        if "vis" in data_types:
+            residual_label = "Residuals (Jy)"
+            y_label = "Correlated fluxes (Jy)"
+        else:
+            residual_label = "Residuals (a.u.)"
+            y_label = "Visibilities (a.u.)"
+            upper_ax_vis.set_ylim([0, 1])
+        lower_ax_vis.set_ylabel(residual_label)
+        upper_ax_vis.set_ylabel(y_label)
+        upper_ax_vis.xaxis.set_visible(False)
+        if not len(axarr) > 1:
+            upper_ax_vis.legend(handles=[dot_label, x_label])
 
     if "t3phi" in data_types:
-        cx = axarr["t3phi"]
-        cx.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}/\lambda$ (M$\lambda$)")
-        cx.set_ylabel(r"Closure Phases ($^\circ$)")
-        cx.set_ylim([-200, 200])
-        cx.legend(handles=[dot_label, x_label])
+        upper_ax_cphase, lower_ax_cphase = axarr["t3phi"]
+        upper_ax_cphase.set_ylabel(r"Closure Phases ($^\circ$)")
+        lower_ax_cphase.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}/\lambda$ (M$\lambda$)")
+        lower_ax_cphase.set_ylabel(r"Residuals ($^\circ$)")
+        lower_bound = np.min([np.min(value) for value in OPTIONS["data.cphase"]])
+        lower_bound += lower_bound*0.25
+        upper_bound = np.max([np.max(value) for value in OPTIONS["data.cphase"]])
+        upper_bound += upper_bound*0.25
+        upper_ax_cphase.xaxis.set_visible(False)
+        upper_ax_cphase.set_ylim([lower_bound, upper_bound])
+        upper_ax_cphase.legend(handles=[dot_label, x_label])
 
     if title:
         plt.title(title)
@@ -516,10 +530,9 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
         cx = axarr["t3phi"]
         cx.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}/\lambda$ (M$\lambda$)")
         cx.set_ylabel(r"Closure Phases ($^\circ$)")
-        cphase_list = [list(value.values()) for value in cphases]
-        lower_bound = np.min([np.min(value) for value in cphase_list])
+        lower_bound = np.min([np.min(value) for value in cphases])
         lower_bound += lower_bound*0.25
-        upper_bound = np.max([np.max(value) for value in cphase_list])
+        upper_bound = np.max([np.max(value) for value in cphases])
         upper_bound += upper_bound*0.25
         cx.set_ylim([lower_bound, upper_bound])
 
