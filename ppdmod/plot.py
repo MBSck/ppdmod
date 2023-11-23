@@ -263,6 +263,15 @@ def plot_datapoints(
     u123coord = OPTIONS["data.cphase.u123coord"]
     v123coord = OPTIONS["data.cphase.v123coord"]
 
+    errorbar_params = {"color": "",
+                       "markeredgecolor": "black",
+                       "markeredgewidth": 0.2,
+                       "capsize": 5,
+                       "capthick": 2,
+                       "ecolor": "gray"}
+    scatter_params = {"color": "", "edgecolor": "black",
+                      "linewidths": 0.2}
+
     for index, wavelength in enumerate(wavelengths):
         effective_baselines = calculate_effective_baselines(
             ucoord[index], vcoord[index],
@@ -279,33 +288,31 @@ def plot_datapoints(
         effective_baselines_mlambda = effective_baselines/wavelength.value
         longest_baselines_mlambda = longest_baselines/wavelength.value
         color = colormap(norm(wavelength.value))
+        errorbar_params["color"] = scatter_params["color"] = color
 
         if "vis" in data_to_plot or "vis2" in data_to_plot:
             upper_ax_vis, lower_ax_vis = axarr["vis"]
             if "flux" in data_to_plot:
                 upper_ax_vis.errorbar(
                     np.array([0]), fluxes[index],
-                    fluxes_err[index], color=color,
-                    markeredgecolor="black", fmt="o", alpha=0.6)
+                    fluxes_err[index], fmt="o", **errorbar_params)
                 upper_ax_vis.scatter(
                     np.array([0]), flux_model,
-                    edgecolor="black", marker="X", color=color)
-                lower_ax_vis.scatter(np.array([0]),
-                                     fluxes[index]-flux_model,
-                                     edgecolor="black",
-                                     color=color, marker="o")
+                    marker="X", **scatter_params)
+                lower_ax_vis.scatter(
+                        np.array([0]), fluxes[index]-flux_model,
+                        marker="o", **scatter_params)
             upper_ax_vis.errorbar(
                 effective_baselines_mlambda.value,
-                vis[index], vis_err[index], markeredgecolor="black",
-                color=color, fmt="o", alpha=0.6)
+                vis[index], vis_err[index],
+                fmt="o", **errorbar_params)
             upper_ax_vis.scatter(
                 effective_baselines_mlambda.value, vis_model,
-                edgecolor="black", color=color, marker="X")
+                marker="X", **scatter_params)
             lower_ax_vis.axhline(y=0, color="gray", linestyle='--')
-            lower_ax_vis.scatter(effective_baselines_mlambda.value,
-                                 vis[index]-vis_model,
-                                 edgecolor="black",
-                                 color=color, marker="o")
+            lower_ax_vis.scatter(
+                    effective_baselines_mlambda.value,
+                    vis[index]-vis_model, marker="o", **scatter_params)
             lower_ax_vis.axhline(y=0, color="gray", linestyle='--')
 
         if "t3phi" in data_to_plot:
@@ -313,16 +320,14 @@ def plot_datapoints(
             upper_ax_cphase.errorbar(
                 longest_baselines_mlambda.value,
                 cphases[index], cphases_err[index],
-                markeredgecolor="black",
-                color=color, fmt="o", alpha=0.6)
+                fmt="o", **errorbar_params)
             upper_ax_cphase.scatter(
                 longest_baselines_mlambda.value, cphase_model,
-                edgecolor="black", color=color, marker="X")
+                marker="X", **scatter_params)
             upper_ax_cphase.axhline(y=0, color="gray", linestyle='--')
             lower_ax_cphase.scatter(longest_baselines_mlambda.value,
                                     restrict_phase(cphases[index]-cphase_model),
-                                    edgecolor="black",
-                                    color=color, marker="o")
+                                    marker="o", **scatter_params)
             lower_ax_cphase.axhline(y=0, color="gray", linestyle='--')
 
 
@@ -394,7 +399,7 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
         upper_ax_vis, lower_ax_vis = axarr["vis"]
         lower_ax_vis.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}/\lambda$ (M$\lambda$)")
 
-        if "vis" in data_types:
+        if "vis" in data_to_plot:
             residual_label = "Residuals (Jy)"
             y_label = "Correlated fluxes (Jy)"
         else:
