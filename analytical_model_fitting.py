@@ -146,7 +146,7 @@ OPTIONS["model.gridtype"] = "logarithmic"
 
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 200, 500, 100
+    nburnin, nsteps, nwalkers = 250, 500, 100
     ncores = nwalkers // 2
     # ncores = 6
     model_result_dir = Path("../model_results/")
@@ -186,6 +186,6 @@ if __name__ == "__main__":
 
     plot.plot_fit(
             new_params["sh_elong"], new_params["sh_pa"],
-            title=f"Analytical model - {time} - nw={nwalkers}, ns={nsteps}",
-            components=components, savefig=result_dir / "fit_results.pdf")
+            components=components,
+            savefig=result_dir / "fit_results.pdf")
     new_params = dict(zip(labels, theta))
