@@ -266,11 +266,10 @@ def plot_datapoints(
     errorbar_params = {"color": "",
                        "markeredgecolor": "black",
                        "markeredgewidth": 0.2,
-                       "capsize": 5,
-                       "capthick": 2,
-                       "ecolor": "gray"}
+                       "capsize": 5, "capthick": 2,
+                       "ecolor": "gray", "zorder": 2}
     scatter_params = {"color": "", "edgecolor": "black",
-                      "linewidths": 0.2}
+                      "linewidths": 0.2, "zorder": 3}
 
     for index, wavelength in enumerate(wavelengths):
         effective_baselines = calculate_effective_baselines(
@@ -309,7 +308,6 @@ def plot_datapoints(
             upper_ax_vis.scatter(
                 effective_baselines_mlambda.value, vis_model,
                 marker="X", **scatter_params)
-            lower_ax_vis.axhline(y=0, color="gray", linestyle='--')
             lower_ax_vis.scatter(
                     effective_baselines_mlambda.value,
                     vis[index]-vis_model, marker="o", **scatter_params)
