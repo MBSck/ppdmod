@@ -4,6 +4,7 @@ from typing import Optional, List, Dict
 import astropy.units as u
 import emcee
 import numpy as np
+from scipy.stats import gaussian_kde
 
 from .custom_components import assemble_components
 from .component import Component
@@ -336,8 +337,12 @@ def run_mcmc(nwalkers: int,
 
 
 def get_best_fit(sampler: emcee.EnsembleSampler,
-                 discard: Optional[int] = 0) -> np.ndarray:
+                 discard: Optional[int] = 0,
+                 method: Optional[str] = "gaussian") -> np.ndarray:
     """Gets the best fit from the emcee sampler."""
     samples = sampler.get_chain(flat=True, discard=discard)
+    if method == "gaussian":
+        kde = gaussian_kde(samples.T)
+        probability = kde.pdf(samples.T)
     probability = sampler.get_log_prob(flat=True, discard=discard)
     return samples[np.argmax(probability)]

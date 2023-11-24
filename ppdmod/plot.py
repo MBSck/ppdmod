@@ -110,7 +110,8 @@ def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
               options: Optional[Dict[str, Any]] = None,
               object_name: Optional[str] = None,
               nwalkers: Optional[int] = None,
-              nsteps: Optional[int] = None) -> None:
+              nsteps: Optional[int] = None,
+              ncores: Optional[int] = None) -> None:
     """Saves a (.fits)-file of the model with all the information on the parameter space."""
     pixel_size = pixel_size if isinstance(pixel_size, u.Quantity) else pixel_size*u.mas
     wavelengths = wavelengths if isinstance(wavelengths, u.Quantity) else wavelengths*u.um
@@ -210,6 +211,7 @@ def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
 
     header["NSTEP"] = (nsteps, "Number of steps for the fitting")
     header["NWALK"] = (nwalkers, "Numbers of walkers for the fitting")
+    header["NCORE"] = (ncores, "Numbers of cores for the fitting")
     header["OBJECT"] = (object_name, "Name of the object")
     header["DATE"] = (f"{datetime.now()}", "Creation date")
     # header["LTM1_1"] = np.around(pixel_size_au.value, 5), "Pixel size for x-coordinate (au)"
@@ -388,7 +390,7 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
     sm = cm.ScalarMappable(cmap=colormap, norm=norm)
     sm.set_array([])
     cbar = plt.colorbar(sm, ax=axarr[data_types[-1]],
-                        label="Wavelength (micron)")
+                        label=r"Wavelength ($\mu$m)")
     cbar.set_ticks(wavelengths.value)
     cbar.set_ticklabels([f"{wavelength:.1f}" for wavelength in wavelengths.value])
 
@@ -517,7 +519,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
     sm = cm.ScalarMappable(cmap=colormap, norm=norm)
     sm.set_array([])
     cbar = plt.colorbar(sm, ax=axarr[data_types[-1]],
-                        label="Wavelength (micron)")
+                        label=r"Wavelength ($\mu$m)")
     cbar.set_ticks(wavelengths.value)
     cbar.set_ticklabels([f"{wavelength:.1f}"
                          for wavelength in wavelengths.value])
