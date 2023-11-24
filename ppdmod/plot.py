@@ -108,7 +108,9 @@ def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
               opacities: List[np.ndarray] = None,
               savefits: Optional[Path] = None,
               options: Optional[Dict[str, Any]] = None,
-              object_name: Optional[str] = None) -> None:
+              object_name: Optional[str] = None,
+              nwalkers: Optional[int] = None,
+              nsteps: Optional[int] = None) -> None:
     """Saves a (.fits)-file of the model with all the information on the parameter space."""
     pixel_size = pixel_size if isinstance(pixel_size, u.Quantity) else pixel_size*u.mas
     wavelengths = wavelengths if isinstance(wavelengths, u.Quantity) else wavelengths*u.um
@@ -206,6 +208,8 @@ def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
     wcs.wcs.pc = np.array([[-1, 0, 0], [0, -1, 0], [0, 0, 1]])
     header = wcs.to_header()
 
+    header["NSTEP"] = (nsteps, "Number of steps for the fitting")
+    header["NWALK"] = (nwalkers, "Numbers of walkers for the fitting")
     header["OBJECT"] = (object_name, "Name of the object")
     header["DATE"] = (f"{datetime.now()}", "Creation date")
     # header["LTM1_1"] = np.around(pixel_size_au.value, 5), "Pixel size for x-coordinate (au)"

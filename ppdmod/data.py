@@ -180,3 +180,8 @@ def set_data(fits_files: Optional[List[Path]] = None,
                                                 for value in OPTIONS[f"data.{key}.u123coord"]]
             OPTIONS[f"data.{key}.v123coord"] = [np.array([np.concatenate((value[i::3])) for i in range(3)])
                                                 for value in OPTIONS[f"data.{key}.v123coord"]]
+
+
+def readout_model(model_fits: Path) -> ReadoutFits:
+    """Reads out the model (.fits)-file"""
+    ...
