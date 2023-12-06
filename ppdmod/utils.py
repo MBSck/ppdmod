@@ -326,6 +326,7 @@ def transform_opacity(
         kernel_width: Optional[float] = 10
         ) -> u.cm**2/u.g:
     """Transform a spectrum to the real wavlength grid of MATISSE.
+    Function written by József Varga.
 
     Parameters
     ----------

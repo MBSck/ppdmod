@@ -144,20 +144,18 @@ labels = inner_ring_labels + outer_ring_labels + shared_params_labels
 OPTIONS["model.modulation.order"] = 1
 OPTIONS["model.gridtype"] = "logarithmic"
 
+model_result_dir = Path("../model_results/")
+day_dir = model_result_dir / str(datetime.now().date())
+time = datetime.now()
+file_name = f"results_model_{time.hour}:{time.minute}:{time.second}"
+result_dir = day_dir / file_name
+if not result_dir.exists():
+    result_dir.mkdir(parents=True)
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 250, 500, 100
-    ncores = nwalkers // 2
-    # ncores = 6
-    model_result_dir = Path("../model_results/")
-    day_dir = model_result_dir / str(datetime.now().date())
-    time = datetime.now()
-    file_name = f"results_model_nsteps{nsteps}_nwalkers{nwalkers}"\
-                f"_{time.hour}:{time.minute}:{time.second}"
-    result_dir = day_dir / file_name
-    if not result_dir.exists():
-        result_dir.mkdir(parents=True)
-
+    nburnin, nsteps, nwalkers = 2, 5, 35
+    # ncores = nwalkers // 2
+    ncores = 6
     sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin,
                             ncores=ncores, method="analytical", debug=False)
     theta = mcmc.get_best_fit(sampler, discard=nburnin)
@@ -165,6 +163,8 @@ if __name__ == "__main__":
     plot.plot_chains(sampler, labels, discard=nburnin, savefig=result_dir / "chains.pdf")
     plot.plot_corner(sampler, labels, discard=nburnin, savefig=result_dir / "corner.pdf")
     np.save(result_dir / "best_fit_params.npy", theta)
+    # result_dir = Path("/Users/scheuck/Data/model_results/2023-11-23/results_model_nsteps7500_nwalkers100_11:18:52")
+    # theta = np.load(result_dir / "best_fit_params.npy")
     new_params = dict(zip(labels, theta))
 
     components_and_params, shared_params = mcmc.set_params_from_theta(theta)
@@ -182,10 +182,11 @@ if __name__ == "__main__":
             OPTIONS["fit.wavelengths"], components,
             component_labels, opacities=[kappa_abs, kappa_cont],
             savefits=result_dir / "model.fits",
-            options=OPTIONS, object_name="HD 142666")
+            options=OPTIONS, object_name="HD 142666",
+            nwalkers=nwalkers, nsteps=nburnin+nsteps,
+            ncores=ncores)
 
     plot.plot_fit(
             new_params["sh_elong"], new_params["sh_pa"],
             components=components,
             savefig=result_dir / "fit_results.pdf")
-    new_params = dict(zip(labels, theta))

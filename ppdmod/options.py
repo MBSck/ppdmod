@@ -48,6 +48,15 @@ OPTIONS["spectrum.coefficients"] = {
 }
 OPTIONS["spectrum.kernel_width"] = 10
 
+# NOTE: Plot.
+OPTIONS["plot.errorbar"] = {"color": "",
+                            "markeredgecolor": "black",
+                            "markeredgewidth": 0.2,
+                            "capsize": 5, "capthick": 2,
+                            "ecolor": "gray", "zorder": 2}
+OPTIONS["plot.scatter"] = {"color": "", "edgecolor": "black",
+                           "linewidths": 0.2, "zorder": 3}
+
 # NOTE: Fitting.
 OPTIONS["fit.chi2.weight.corr_flux"] = 1
 OPTIONS["fit.chi2.weight.cphase"] = 1

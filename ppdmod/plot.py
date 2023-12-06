@@ -268,14 +268,8 @@ def plot_datapoints(
         OPTIONS["data.cphase"], OPTIONS["data.cphase_err"]
     u123coord = OPTIONS["data.cphase.u123coord"]
     v123coord = OPTIONS["data.cphase.v123coord"]
-
-    errorbar_params = {"color": "",
-                       "markeredgecolor": "black",
-                       "markeredgewidth": 0.2,
-                       "capsize": 5, "capthick": 2,
-                       "ecolor": "gray", "zorder": 2}
-    scatter_params = {"color": "", "edgecolor": "black",
-                      "linewidths": 0.2, "zorder": 3}
+    errorbar_params = OPTIONS["plot.errorbar"]
+    scatter_params = OPTIONS["plot.scatter"]
 
     for index, wavelength in enumerate(wavelengths):
         effective_baselines = calculate_effective_baselines(
@@ -295,44 +289,47 @@ def plot_datapoints(
         color = colormap(norm(wavelength.value))
         errorbar_params["color"] = scatter_params["color"] = color
 
-        if "vis" in data_to_plot or "vis2" in data_to_plot:
-            upper_ax_vis, lower_ax_vis = axarr["vis"]
-            if "flux" in data_to_plot:
-                upper_ax_vis.errorbar(
-                    np.array([0]), fluxes[index],
-                    fluxes_err[index], fmt="o", **errorbar_params)
-                upper_ax_vis.scatter(
-                    np.array([0]), flux_model,
-                    marker="X", **scatter_params)
-                lower_ax_vis.scatter(
-                        np.array([0]), fluxes[index]-flux_model,
-                        marker="o", **scatter_params)
-            upper_ax_vis.errorbar(
-                effective_baselines_mlambda.value,
-                vis[index], vis_err[index],
-                fmt="o", **errorbar_params)
-            upper_ax_vis.scatter(
-                effective_baselines_mlambda.value, vis_model,
-                marker="X", **scatter_params)
-            lower_ax_vis.scatter(
-                    effective_baselines_mlambda.value,
-                    vis[index]-vis_model, marker="o", **scatter_params)
-            lower_ax_vis.axhline(y=0, color="gray", linestyle='--')
+        for key in data_to_plot:
+            ax_key = "vis" if key in ["vis", "vis2"] else key
+            upper_ax, lower_ax = axarr[ax_key]
 
-        if "t3phi" in data_to_plot:
-            upper_ax_cphase, lower_ax_cphase = axarr["t3phi"]
-            upper_ax_cphase.errorbar(
-                longest_baselines_mlambda.value,
-                cphases[index], cphases_err[index],
-                fmt="o", **errorbar_params)
-            upper_ax_cphase.scatter(
-                longest_baselines_mlambda.value, cphase_model,
-                marker="X", **scatter_params)
-            upper_ax_cphase.axhline(y=0, color="gray", linestyle='--')
-            lower_ax_cphase.scatter(longest_baselines_mlambda.value,
-                                    restrict_phase(cphases[index]-cphase_model),
-                                    marker="o", **scatter_params)
-            lower_ax_cphase.axhline(y=0, color="gray", linestyle='--')
+            if key in ["vis", "vis2"]:
+                if "flux" in data_to_plot:
+                    upper_ax.errorbar(
+                            np.array([0]), fluxes[index],
+                            fluxes_err[index], fmt="o", **errorbar_params)
+                    upper_ax.scatter(
+                            np.array([0]), flux_model,
+                            marker="X", **scatter_params)
+                    lower_ax.scatter(
+                            np.array([0]), fluxes[index]-flux_model,
+                            marker="o", **scatter_params)
+                upper_ax.errorbar(
+                        effective_baselines_mlambda.value,
+                        vis[index], vis_err[index],
+                        fmt="o", **errorbar_params)
+                upper_ax.scatter(
+                        effective_baselines_mlambda.value, vis_model,
+                        marker="X", **scatter_params)
+                lower_ax.scatter(
+                        effective_baselines_mlambda.value,
+                        vis[index]-vis_model, marker="o", **scatter_params)
+                lower_ax.axhline(y=0, color="gray", linestyle='--')
+
+            if key == "t3phi":
+                upper_ax.errorbar(
+                        longest_baselines_mlambda.value,
+                        cphases[index], cphases_err[index],
+                        fmt="o", **errorbar_params)
+                upper_ax.scatter(
+                        longest_baselines_mlambda.value, cphase_model,
+                        marker="X", **scatter_params)
+                upper_ax.axhline(y=0, color="gray", linestyle='--')
+                lower_ax.scatter(longest_baselines_mlambda.value,
+                                 restrict_phase(cphases[index]-cphase_model),
+                                 marker="o", **scatter_params)
+                lower_ax.axhline(y=0, color="gray", linestyle='--')
+    errorbar_params["color"] = ""
 
 
 def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
@@ -366,14 +363,12 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
             vmin=wavelengths[0].value, vmax=wavelengths[-1].value)
 
     data_types, nplots = [], 0
-    if ("vis" in data_to_plot or "vis2" in data_to_plot)\
-            and "vis" not in data_types:
+    for key in data_to_plot:
+        if key in ["vis", "vis2"] and "vis" not in data_types:
+            data_types.append("vis")
+        else:
+            data_types.append(key)
         nplots += 1
-        data_types.append("vis")
-
-    if "t3phi" in data_to_plot:
-        nplots += 1
-        data_types.append("t3phi")
 
     figsize = (12, 5) if nplots == 2 else None
     fig = plt.figure(figsize=figsize)
@@ -399,35 +394,37 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
     x_label = mlines.Line2D([], [], color="k", marker="X",
                             linestyle="None", label="Model")
 
-    if "vis" in data_types or "vis2" in data_types:
-        upper_ax_vis, lower_ax_vis = axarr["vis"]
-        lower_ax_vis.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}/\lambda$ (M$\lambda$)")
+    for key in data_to_plot:
+        ax_key = "vis" if key in ["vis", "vis2"] else key
+        upper_ax, lower_ax = axarr[ax_key]
 
-        if "vis" in data_to_plot:
-            residual_label = "Residuals (Jy)"
-            y_label = "Correlated fluxes (Jy)"
-        else:
-            residual_label = "Residuals (a.u.)"
-            y_label = "Visibilities (a.u.)"
-            upper_ax_vis.set_ylim([0, 1])
-        lower_ax_vis.set_ylabel(residual_label)
-        upper_ax_vis.set_ylabel(y_label)
-        upper_ax_vis.xaxis.set_visible(False)
-        if not len(axarr) > 1:
-            upper_ax_vis.legend(handles=[dot_label, x_label])
+        if key in ["vis", "vis2"]:
+            lower_ax.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}/\lambda$ (M$\lambda$)")
 
-    if "t3phi" in data_types:
-        upper_ax_cphase, lower_ax_cphase = axarr["t3phi"]
-        upper_ax_cphase.set_ylabel(r"Closure Phases ($^\circ$)")
-        lower_ax_cphase.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}/\lambda$ (M$\lambda$)")
-        lower_ax_cphase.set_ylabel(r"Residuals ($^\circ$)")
-        lower_bound = np.min([np.min(value) for value in OPTIONS["data.cphase"]])
-        lower_bound += lower_bound*0.25
-        upper_bound = np.max([np.max(value) for value in OPTIONS["data.cphase"]])
-        upper_bound += upper_bound*0.25
-        upper_ax_cphase.xaxis.set_visible(False)
-        upper_ax_cphase.set_ylim([lower_bound, upper_bound])
-        upper_ax_cphase.legend(handles=[dot_label, x_label])
+            if "vis" in data_to_plot:
+                residual_label = "Residuals (Jy)"
+                y_label = "Correlated fluxes (Jy)"
+            else:
+                residual_label = "Residuals (a.u.)"
+                y_label = "Visibilities (a.u.)"
+                upper_ax.set_ylim([0, 1])
+            lower_ax.set_ylabel(residual_label)
+            upper_ax.set_ylabel(y_label)
+            upper_ax.xaxis.set_visible(False)
+            if not len(axarr) > 1:
+                upper_ax.legend(handles=[dot_label, x_label])
+
+        if key == "t3phi":
+            upper_ax.set_ylabel(r"Closure Phases ($^\circ$)")
+            lower_ax.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}/\lambda$ (M$\lambda$)")
+            lower_ax.set_ylabel(r"Residuals ($^\circ$)")
+            lower_bound = np.min([np.min(value) for value in OPTIONS["data.cphase"]])
+            lower_bound += lower_bound*0.25
+            upper_bound = np.max([np.max(value) for value in OPTIONS["data.cphase"]])
+            upper_bound += upper_bound*0.25
+            upper_ax.xaxis.set_visible(False)
+            upper_ax.set_ylim([lower_bound, upper_bound])
+            upper_ax.legend(handles=[dot_label, x_label])
 
     if title:
         plt.title(title)
@@ -459,14 +456,12 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
             vmin=wavelengths[0].value, vmax=wavelengths[-1].value)
 
     data_types, nplots = [], 0
-    if ("vis" in data_to_plot or "vis2" in data_to_plot)\
-            and "vis" not in data_types:
+    for key in data_to_plot:
+        if key in ["vis", "vis2"] and "vis" not in data_types:
+            data_types.append("vis")
+        else:
+            data_types.append(key)
         nplots += 1
-        data_types.append("vis")
-
-    if "t3phi" in data_to_plot:
-        nplots += 1
-        data_types.append("t3phi")
 
     figsize = (12, 5) if nplots == 2 else None
     _, axarr = plt.subplots(1, nplots, figsize=figsize)
@@ -491,6 +486,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
         OPTIONS["data.cphase"], OPTIONS["data.cphase_err"]
     u123coord = OPTIONS["data.cphase.u123coord"]
     v123coord = OPTIONS["data.cphase.v123coord"]
+    errorbar_params = OPTIONS["plot.errorbar"]
 
     for index, wavelength in enumerate(wavelengths):
         effective_baselines = np.hypot(ucoord[index], vcoord[index])*u.m
@@ -499,22 +495,32 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
         effective_baselines_mlambda = effective_baselines/wavelength.value
         longest_baselines_mlambda = longest_baselines/wavelength.value
         color = colormap(norm(wavelength.value))
+        errorbar_params["color"] = color
 
         # TODO: Add total flux here
-        if "vis" in data_to_plot or "vis2" in data_to_plot:
-            ax = axarr["vis"]
-            ax.errorbar(
-                effective_baselines_mlambda.value,
-                vis[index], vis_err[index],
-                color=color, fmt="o", alpha=0.6)
+        for key in data_to_plot:
+            ax_key = "vis" if key in ["vis", "vis2"] else key
+            ax = axarr[ax_key]
+            if key == "flux":
+                ax.errorbar(
+                    wavelength.value,
+                    fluxes[index], fluxes_err[index],
+                    fmt="o", **errorbar_params)
 
-        if "t3phi" in axarr:
-            cx = axarr["t3phi"]
-            cx.errorbar(
-                longest_baselines_mlambda.value,
-                cphases[index], cphases_err[index],
-                color=color, fmt="o", alpha=0.6)
-            cx.axhline(y=0, color="gray", linestyle='--')
+            if key in ["vis", "vis2"]:
+                ax.errorbar(
+                    effective_baselines_mlambda.value,
+                    vis[index], vis_err[index],
+                    fmt="o", **errorbar_params)
+
+            if key == "t3phi":
+                ax.errorbar(
+                    longest_baselines_mlambda.value,
+                    cphases[index], cphases_err[index],
+                    fmt="o", **errorbar_params)
+                ax.axhline(y=0, color="gray", linestyle='--')
+
+    errorbar_params["color"] = ""
 
     sm = cm.ScalarMappable(cmap=colormap, norm=norm)
     sm.set_array([])
@@ -524,26 +530,30 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
     cbar.set_ticklabels([f"{wavelength:.1f}"
                          for wavelength in wavelengths.value])
 
-    if "vis" in data_to_plot:
-        ax = axarr["vis"]
-        ax.set_xlabel(r"$\mathrm{B}k/\lambda$ (M$\lambda$)")
-        ax.set_ylabel("Correlated fluxes (Jy)")
+    for key in data_to_plot:
+        ax_key = "vis" if key in ["vis", "vis2"] else key
+        ax = axarr[ax_key]
+        if key == "flux":
+            ax.set_xlabel(r"Wavelength ($\mu$m)")
+            ax.set_ylabel("Fluxes (Jy)")
 
-    if "vis2" in data_to_plot:
-        bx = axarr["vis"]
-        bx.set_xlabel(r"$\mathrm{B}/\lambda$ (M$\lambda$)")
-        bx.set_ylabel("Visibilities (a.u.)")
-        bx.set_ylim([0, 1])
+        if key == "vis":
+            ax.set_xlabel(r"$\mathrm{B}k/\lambda$ (M$\lambda$)")
+            ax.set_ylabel("Correlated fluxes (Jy)")
 
-    if "t3phi" in data_to_plot:
-        cx = axarr["t3phi"]
-        cx.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}/\lambda$ (M$\lambda$)")
-        cx.set_ylabel(r"Closure Phases ($^\circ$)")
-        lower_bound = np.min([np.min(value) for value in cphases])
-        lower_bound += lower_bound*0.25
-        upper_bound = np.max([np.max(value) for value in cphases])
-        upper_bound += upper_bound*0.25
-        cx.set_ylim([lower_bound, upper_bound])
+        if key == "vis2":
+            ax.set_xlabel(r"$\mathrm{B}/\lambda$ (M$\lambda$)")
+            ax.set_ylabel("Visibilities (a.u.)")
+            ax.set_ylim([0, 1])
+
+        if key == "t3phi":
+            ax.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}/\lambda$ (M$\lambda$)")
+            ax.set_ylabel(r"Closure Phases ($^\circ$)")
+            lower_bound = np.min([np.min(value) for value in cphases])
+            lower_bound += lower_bound*0.25
+            upper_bound = np.max([np.max(value) for value in cphases])
+            upper_bound += upper_bound*0.25
+            ax.set_ylim([lower_bound, upper_bound])
 
     if title:
         plt.title(title)
