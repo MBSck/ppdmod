@@ -58,14 +58,14 @@ class ReadoutFits:
         return self
 
     def get_data_for_wavelengths(
-            self, wavelength, key: str) -> Optional[np.ndarray]:
+            self, wavelength, key: str) -> np.ndarray:
         """Gets the data for the given wavelengths."""
         indices = list(get_closest_indices(
             wavelength, array=self.wavelength,
             window=OPTIONS["data.binning.window"]).values())
 
         if not indices:
-            return None
+            return np.array([])
         indices = indices[0]
 
         wl_data = getattr(self, key)[:, indices]
@@ -138,13 +138,11 @@ def set_data(fits_files: Optional[List[Path]] = None,
             elif data_type == "t3phi":
                 key = "cphase"
 
-            # TODO: Add uv coords for t3phi and for vis or vis2 but
-            # only for one
             for index, wavelength in enumerate(wavelengths):
                 values = readout.get_data_for_wavelengths(
                         wavelength, key=data_type)
 
-                if not np.any(values):
+                if values.size == 0:
                     continue
 
                 values_err = readout.get_data_for_wavelengths(
@@ -156,7 +154,6 @@ def set_data(fits_files: Optional[List[Path]] = None,
                 if key in ["corr_flux", "vis"]:
                     OPTIONS[f"data.{key}.ucoord"][index].extend(readout.ucoord)
                     OPTIONS[f"data.{key}.vcoord"][index].extend(readout.vcoord)
-                # TODO: Maybe work with concatenation here? Look deeper into calculation
                 elif key == "cphase":
                     OPTIONS[f"data.{key}.u123coord"][index].extend(readout.u123coord)
                     OPTIONS[f"data.{key}.v123coord"][index].extend(readout.v123coord)
@@ -176,10 +173,13 @@ def set_data(fits_files: Optional[List[Path]] = None,
             OPTIONS[f"data.{key}.vcoord"] = [np.array(value) for value
                                              in OPTIONS[f"data.{key}.vcoord"]]
         elif key == "cphase":
-            OPTIONS[f"data.{key}.u123coord"] = [np.array([np.concatenate((value[i::3])) for i in range(3)])
-                                                for value in OPTIONS[f"data.{key}.u123coord"]]
-            OPTIONS[f"data.{key}.v123coord"] = [np.array([np.concatenate((value[i::3])) for i in range(3)])
-                                                for value in OPTIONS[f"data.{key}.v123coord"]]
+            try:
+                OPTIONS[f"data.{key}.u123coord"] = [np.array([np.concatenate((value[i::3])) for i in range(3)])
+                                                    for value in OPTIONS[f"data.{key}.u123coord"]]
+                OPTIONS[f"data.{key}.v123coord"] = [np.array([np.concatenate((value[i::3])) for i in range(3)])
+                                                    for value in OPTIONS[f"data.{key}.v123coord"]]
+            except Exception:
+                breakpoint()
 
 
 def readout_model(model_fits: Path) -> ReadoutFits:
