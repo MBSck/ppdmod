@@ -4,6 +4,7 @@ from pathlib import Path
 import astropy.units as u
 import numpy as np
 from astropy.io import fits
+from scipy.optimize import bracket
 
 from .utils import get_closest_indices
 from .options import OPTIONS
@@ -30,8 +31,8 @@ class ReadoutFits:
             self.vcoord = hdul["oi_vis2", sci_index].data["vcoord"]
 
             try:
-                self.flux = hdul["oi_flux", sci_index].data["fluxdata"][wl_index:]
-                self.flux_err = hdul["oi_flux", sci_index].data["fluxerr"][wl_index:]
+                self.flux = hdul["oi_flux", sci_index].data["fluxdata"]
+                self.flux_err = hdul["oi_flux", sci_index].data["fluxerr"]
             except KeyError:
                 self.flux = None
                 self.flux_err = None
@@ -57,7 +58,7 @@ class ReadoutFits:
             self.v123coord = np.array([self.v1coord, self.v2coord, self.v3coord])
         return self
 
-    def get_data_for_wavelengths(
+    def get_data_for_wavelength(
             self, wavelength, key: str) -> np.ndarray:
         """Gets the data for the given wavelengths."""
         indices = list(get_closest_indices(
@@ -139,13 +140,13 @@ def set_data(fits_files: Optional[List[Path]] = None,
                 key = "cphase"
 
             for index, wavelength in enumerate(wavelengths):
-                values = readout.get_data_for_wavelengths(
+                values = readout.get_data_for_wavelength(
                         wavelength, key=data_type)
 
                 if values.size == 0:
                     continue
 
-                values_err = readout.get_data_for_wavelengths(
+                values_err = readout.get_data_for_wavelength(
                         wavelength, key=f"{data_type}_err")
 
                 OPTIONS[f"data.{key}"][index].extend(values)
@@ -173,13 +174,12 @@ def set_data(fits_files: Optional[List[Path]] = None,
             OPTIONS[f"data.{key}.vcoord"] = [np.array(value) for value
                                              in OPTIONS[f"data.{key}.vcoord"]]
         elif key == "cphase":
-            try:
-                OPTIONS[f"data.{key}.u123coord"] = [np.array([np.concatenate((value[i::3])) for i in range(3)])
-                                                    for value in OPTIONS[f"data.{key}.u123coord"]]
-                OPTIONS[f"data.{key}.v123coord"] = [np.array([np.concatenate((value[i::3])) for i in range(3)])
-                                                    for value in OPTIONS[f"data.{key}.v123coord"]]
-            except Exception:
-                breakpoint()
+            OPTIONS[f"data.{key}.u123coord"] =\
+                    [np.array([np.concatenate((value[i::3])) for i in range(3)])
+                     for value in OPTIONS[f"data.{key}.u123coord"]]
+            OPTIONS[f"data.{key}.v123coord"] =\
+                    [np.array([np.concatenate((value[i::3])) for i in range(3)])
+                     for value in OPTIONS[f"data.{key}.v123coord"]]
 
 
 def readout_model(model_fits: Path) -> ReadoutFits:

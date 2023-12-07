@@ -295,15 +295,17 @@ def plot_datapoints(
 
             if key in ["vis", "vis2"]:
                 if "flux" in data_to_plot:
-                    upper_ax.errorbar(
-                            np.array([0]), fluxes[index],
-                            fluxes_err[index], fmt="o", **errorbar_params)
-                    upper_ax.scatter(
-                            np.array([0]), flux_model,
-                            marker="X", **scatter_params)
-                    lower_ax.scatter(
-                            np.array([0]), fluxes[index]-flux_model,
-                            marker="o", **scatter_params)
+                    for flux, flux_err in zip(
+                            fluxes[index], fluxes_err[index]):
+                        upper_ax.errorbar(
+                                np.array([0]), flux, flux_err,
+                                fmt="o", **errorbar_params)
+                        upper_ax.scatter(
+                                np.array([0]), flux_model,
+                                marker="X", **scatter_params)
+                        lower_ax.scatter(
+                                np.array([0]), flux-flux_model,
+                                marker="o", **scatter_params)
                 upper_ax.errorbar(
                         effective_baselines_mlambda.value,
                         vis[index], vis_err[index],
@@ -329,6 +331,10 @@ def plot_datapoints(
                                  restrict_phase(cphases[index]-cphase_model),
                                  marker="o", **scatter_params)
                 lower_ax.axhline(y=0, color="gray", linestyle='--')
+
+    if "flux" in data_to_plot:
+        axarr["flux"][1].set_xticks(wavelengths.value)
+        axarr["flux"][1].set_xticklabels(wavelengths.value, rotation=45)
     errorbar_params["color"] = ""
 
 
@@ -370,8 +376,8 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
             data_types.append(key)
         nplots += 1
 
-    figsize = (12, 5) if nplots == 2 else None
-    fig = plt.figure(figsize=figsize)
+    figsize = (15, 5) if nplots == 3 else ((12, 5) if nplots == 2 else None)
+    fig = plt.figure(figsize=figsize, tight_layout=True)
     gs = GridSpec(nplots, 2, height_ratios=[3, 1])
     axarr = {key: value for key, value in zip(
         data_types, [[fig.add_subplot(gs[j, i]) for j in range(2)]
@@ -463,8 +469,8 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
             data_types.append(key)
         nplots += 1
 
-    figsize = (12, 5) if nplots == 2 else None
-    _, axarr = plt.subplots(1, nplots, figsize=figsize)
+    figsize = (15, 5) if nplots == 3 else ((12, 5) if nplots == 2 else None)
+    _, axarr = plt.subplots(1, nplots, figsize=figsize, tight_layout=True)
     axarr = dict(zip(data_types, axarr.flatten()))
 
     colormap = mcm.get_cmap(colormap)
@@ -497,15 +503,15 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
         color = colormap(norm(wavelength.value))
         errorbar_params["color"] = color
 
-        # TODO: Add total flux here
         for key in data_to_plot:
             ax_key = "vis" if key in ["vis", "vis2"] else key
             ax = axarr[ax_key]
             if key == "flux":
-                ax.errorbar(
-                    wavelength.value,
-                    fluxes[index], fluxes_err[index],
-                    fmt="o", **errorbar_params)
+                for flux, flux_err in zip(
+                        fluxes[index], fluxes_err[index]):
+                    ax.errorbar(
+                        wavelength.value, flux, flux_err,
+                        fmt="o", **errorbar_params)
 
             if key in ["vis", "vis2"]:
                 ax.errorbar(
@@ -519,6 +525,10 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
                     cphases[index], cphases_err[index],
                     fmt="o", **errorbar_params)
                 ax.axhline(y=0, color="gray", linestyle='--')
+
+    if "flux" in data_to_plot:
+        axarr["flux"].set_xticks(wavelengths.value)
+        axarr["flux"].set_xticklabels(wavelengths.value, rotation=45)
 
     errorbar_params["color"] = ""
 
