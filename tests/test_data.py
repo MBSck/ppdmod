@@ -52,12 +52,12 @@ def test_readout_init(fits_file: str) -> None:
 def test_wavelength_retrieval(readouts: List[ReadoutFits], wavelength: u.um) -> None:
     """Tests the wavelength retrieval of the (.fits)-files."""
     for index, readout in enumerate(readouts):
-        total_flux = readout.get_data_for_wavelengths(wavelength, key="flux")
-        total_flux_err = readout.get_data_for_wavelengths(wavelength, key="flux_err")
-        corr_flux = readout.get_data_for_wavelengths(wavelength, key="vis")
-        corr_flux_err = readout.get_data_for_wavelengths(wavelength, key="vis_err")
-        cphase = readout.get_data_for_wavelengths(wavelength, key="t3phi")
-        cphase_err = readout.get_data_for_wavelengths(wavelength, key="t3phi_err")
+        total_flux = readout.get_data_for_wavelength(wavelength, key="flux")
+        total_flux_err = readout.get_data_for_wavelength(wavelength, key="flux_err")
+        corr_flux = readout.get_data_for_wavelength(wavelength, key="vis")
+        corr_flux_err = readout.get_data_for_wavelength(wavelength, key="vis_err")
+        cphase = readout.get_data_for_wavelength(wavelength, key="t3phi")
+        cphase_err = readout.get_data_for_wavelength(wavelength, key="t3phi_err")
         if index == 0:
             assert not total_flux and not total_flux_err
             assert not corr_flux and not corr_flux_err
