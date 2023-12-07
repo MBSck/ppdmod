@@ -293,19 +293,21 @@ def plot_datapoints(
             ax_key = "vis" if key in ["vis", "vis2"] else key
             upper_ax, lower_ax = axarr[ax_key]
 
+            if key == "flux":
+                for flux, flux_err in zip(
+                        fluxes[index], fluxes_err[index]):
+                    upper_ax.errorbar(
+                            wavelength.value, flux, flux_err,
+                            fmt="o", **errorbar_params)
+                    upper_ax.scatter(
+                            wavelength.value, flux_model,
+                            marker="X", **scatter_params)
+                    lower_ax.scatter(
+                            wavelength.value, flux-flux_model,
+                            marker="o", **scatter_params)
+                lower_ax.axhline(y=0, color="gray", linestyle='--')
+
             if key in ["vis", "vis2"]:
-                if "flux" in data_to_plot:
-                    for flux, flux_err in zip(
-                            fluxes[index], fluxes_err[index]):
-                        upper_ax.errorbar(
-                                np.array([0]), flux, flux_err,
-                                fmt="o", **errorbar_params)
-                        upper_ax.scatter(
-                                np.array([0]), flux_model,
-                                marker="X", **scatter_params)
-                        lower_ax.scatter(
-                                np.array([0]), flux-flux_model,
-                                marker="o", **scatter_params)
                 upper_ax.errorbar(
                         effective_baselines_mlambda.value,
                         vis[index], vis_err[index],
@@ -333,6 +335,7 @@ def plot_datapoints(
                 lower_ax.axhline(y=0, color="gray", linestyle='--')
 
     if "flux" in data_to_plot:
+        axarr["flux"][0].set_xticks(wavelengths.value)
         axarr["flux"][1].set_xticks(wavelengths.value)
         axarr["flux"][1].set_xticklabels(wavelengths.value, rotation=45)
     errorbar_params["color"] = ""
@@ -376,9 +379,9 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
             data_types.append(key)
         nplots += 1
 
-    figsize = (15, 5) if nplots == 3 else ((12, 5) if nplots == 2 else None)
-    fig = plt.figure(figsize=figsize, tight_layout=True)
-    gs = GridSpec(nplots, 2, height_ratios=[3, 1])
+    figsize = (16, 5) if nplots == 3 else ((12, 5) if nplots == 2 else None)
+    fig = plt.figure(figsize=figsize)
+    gs = GridSpec(2, nplots, height_ratios=[3, 1])
     axarr = {key: value for key, value in zip(
         data_types, [[fig.add_subplot(gs[j, i]) for j in range(2)]
                      for i in range(nplots)])}
@@ -393,21 +396,34 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
     cbar = plt.colorbar(sm, ax=axarr[data_types[-1]],
                         label=r"Wavelength ($\mu$m)")
     cbar.set_ticks(wavelengths.value)
-    cbar.set_ticklabels([f"{wavelength:.1f}" for wavelength in wavelengths.value])
+    cbar.set_ticklabels([f"{wavelength:.1f}"
+                         for wavelength in wavelengths.value])
 
     dot_label = mlines.Line2D([], [], color="k", marker="o",
                               linestyle="None", label="Data", alpha=0.6)
     x_label = mlines.Line2D([], [], color="k", marker="X",
                             linestyle="None", label="Model")
+    tick_settings = {"axis": "x", "which": "both",
+                     "bottom": True, "top": False,
+                     "labelbottom": False}
 
     for key in data_to_plot:
         ax_key = "vis" if key in ["vis", "vis2"] else key
         upper_ax, lower_ax = axarr[ax_key]
 
+        if key == "flux":
+            lower_ax.set_xlabel(r"Wavelength ($\mu$m)")
+            lower_ax.set_ylabel("Residuals (Jy)")
+            upper_ax.tick_params(**tick_settings)
+            upper_ax.set_ylabel("Fluxes (Jy)")
+            upper_ax.set_ylim([0, None])
+            if not len(axarr) > 1:
+                upper_ax.legend(handles=[dot_label, x_label])
+
         if key in ["vis", "vis2"]:
             lower_ax.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}/\lambda$ (M$\lambda$)")
 
-            if "vis" in data_to_plot:
+            if key == "vis":
                 residual_label = "Residuals (Jy)"
                 y_label = "Correlated fluxes (Jy)"
             else:
@@ -416,7 +432,7 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
                 upper_ax.set_ylim([0, 1])
             lower_ax.set_ylabel(residual_label)
             upper_ax.set_ylabel(y_label)
-            upper_ax.xaxis.set_visible(False)
+            upper_ax.tick_params(**tick_settings)
             if not len(axarr) > 1:
                 upper_ax.legend(handles=[dot_label, x_label])
 
@@ -428,7 +444,7 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
             lower_bound += lower_bound*0.25
             upper_bound = np.max([np.max(value) for value in OPTIONS["data.cphase"]])
             upper_bound += upper_bound*0.25
-            upper_ax.xaxis.set_visible(False)
+            upper_ax.tick_params(**tick_settings)
             upper_ax.set_ylim([lower_bound, upper_bound])
             upper_ax.legend(handles=[dot_label, x_label])
 
@@ -546,6 +562,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
         if key == "flux":
             ax.set_xlabel(r"Wavelength ($\mu$m)")
             ax.set_ylabel("Fluxes (Jy)")
+            ax.set_ylim([0, 1])
 
         if key == "vis":
             ax.set_xlabel(r"$\mathrm{B}k/\lambda$ (M$\lambda$)")
