@@ -7,7 +7,7 @@ import numpy as np
 
 from ppdmod import custom_components
 from ppdmod import data
-from ppdmod import mcmc
+from ppdmod import fitting
 from ppdmod import model
 from ppdmod import plot
 from ppdmod import utils
@@ -155,8 +155,8 @@ if __name__ == "__main__":
 
     OPTIONS["fourier.binning"] = 3
 
-    sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin, nwalkers//2)
-    theta = mcmc.get_best_fit(sampler, discard=nburnin)
+    sampler = fitting.run_fitting(nwalkers, nsteps, nburnin, nwalkers//2)
+    theta = fitting.get_best_fit(sampler, discard=nburnin)
     np.save(result_dir / "best_fit_params.npy", theta)
     new_params = dict(zip(labels, theta))
 
@@ -165,7 +165,7 @@ if __name__ == "__main__":
 
     OPTIONS["fourier.binning"] = None
     OPTIONS["model.matryoshka"] = False
-    components_and_params, shared_params = mcmc.set_params_from_theta(theta)
+    components_and_params, shared_params = fitting.set_params_from_theta(theta)
     components = custom_components.assemble_components(
             components_and_params, shared_params)
 

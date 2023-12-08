@@ -7,7 +7,7 @@ import numpy as np
 
 from ppdmod import custom_components
 from ppdmod import data
-from ppdmod import mcmc
+from ppdmod import fitting
 from ppdmod import plot
 from ppdmod import utils
 from ppdmod.parameter import STANDARD_PARAMETERS, Parameter
@@ -156,9 +156,9 @@ if __name__ == "__main__":
     nburnin, nsteps, nwalkers = 2, 5, 35
     # ncores = nwalkers // 2
     ncores = 6
-    sampler = mcmc.run_mcmc(nwalkers, nsteps, nburnin,
+    sampler = fitting.run_fitting(nwalkers, nsteps, nburnin,
                             ncores=ncores, method="analytical", debug=False)
-    theta = mcmc.get_best_fit(sampler, discard=nburnin)
+    theta = fitting.get_best_fit(sampler, discard=nburnin)
 
     plot.plot_chains(sampler, labels, discard=nburnin, savefig=result_dir / "chains.pdf")
     plot.plot_corner(sampler, labels, discard=nburnin, savefig=result_dir / "corner.pdf")
@@ -167,7 +167,7 @@ if __name__ == "__main__":
     # theta = np.load(result_dir / "best_fit_params.npy")
     new_params = dict(zip(labels, theta))
 
-    components_and_params, shared_params = mcmc.set_params_from_theta(theta)
+    components_and_params, shared_params = fitting.set_params_from_theta(theta)
     components = custom_components.assemble_components(
             components_and_params, shared_params)
     component_labels = ["Star", "Inner Ring", "Outer Ring"]

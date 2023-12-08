@@ -6,9 +6,9 @@ import numpy as np
 from astropy.io import fits
 from tqdm import tqdm
 
-from ppdmod.data import ReadoutFits
-from ppdmod.model import Model
-from ppdmod.mcmc import calculate_observables
+from .data import ReadoutFits
+from .model import Model
+from .fitting import calculate_observables
 
 
 def create_synthetic(model: Model, fits_file: Path,

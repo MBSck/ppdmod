@@ -1,5 +1,6 @@
 from multiprocessing import Pool
 from typing import Optional, List, Dict
+from pathlib import Path
 
 import astropy.units as u
 import emcee
@@ -219,7 +220,7 @@ def lnprior(components_and_params: List[List[Dict]],
     return 0
 
 
-def lnprob_analytical(theta: np.ndarray) -> float:
+def lnprob(theta: np.ndarray) -> float:
     """Takes theta vector and the x, y and the yerr of the theta.
     Returns a number corresponding to how good of a fit the model is to your
     data for a given set of parameters, weighted by the data points.
@@ -284,13 +285,63 @@ def run_mcmc(nwalkers: int,
              nsteps: Optional[int] = 100,
              nsteps_burnin: Optional[int] = 0,
              ncores: Optional[int] = 6,
-             method: Optional[str] = "numerical",
              debug: Optional[bool] = False) -> np.ndarray:
     """Runs the emcee Hastings Metropolitan sampler.
 
     The EnsambleSampler recieves the parameters and the args are passed to
     the 'log_prob()' method (an addtional parameter 'a' can be used to
     determine the stepsize, defaults to None).
+
+    Parameters
+    ----------
+    nwalkers : int, optional
+    theta : numpy.ndarray
+    nsteps : int, optional
+    discard : int, optional
+    ncores : int, optional
+    save_path: pathlib.Path, optional
+
+    Returns
+    -------
+    sampler : numpy.ndarray
+    """
+    theta = init_randomly(nwalkers)
+    print(f"Executing MCMC with {ncores} cores.")
+    print(f"{'':-^50}")
+    if debug:
+        sampler = emcee.EnsembleSampler(
+            nwalkers, theta.shape[1], lnprob, pool=None)
+        if nsteps_burnin is not None:
+            print("Running burn-in...")
+            sampler.run_mcmc(theta, nsteps_burnin, progress=True)
+            print("Running production...")
+        sampler.reset()
+        sampler.run_mcmc(theta, nsteps, progress=True)
+    else:
+        with Pool(processes=ncores) as pool:
+            sampler = emcee.EnsembleSampler(
+                nwalkers, theta.shape[1], lnprob, pool=pool)
+            if nsteps_burnin is not None:
+                print("Running burn-in...")
+                sampler.run_mcmc(theta, nsteps_burnin, progress=True)
+                print("Running production...")
+            sampler.reset()
+            sampler.run_mcmc(theta, nsteps, progress=True)
+    return sampler
+
+
+def run_dynesty(debug: Optional[bool] = False) -> np.ndarray:
+    """Runs the dynesty sampler."""
+    sampler = None
+    if debug:
+        ...
+    else:
+        ...
+    return sampler
+
+
+def run_fit(**kwargs) -> np.ndarray:
+    """Runs the fit using either standard or nested sampling.
 
     Parameters
     ----------
@@ -303,37 +354,10 @@ def run_mcmc(nwalkers: int,
     Returns
     -------
     sampler : numpy.ndarray
-
-    Notes
-    -----
-    Burn-in should be the same as later discarded.
     """
-    theta = init_randomly(nwalkers)
-    ndim = theta.shape[1]
-    lnprob = lnprob_numerical if method == "numerical"\
-            else lnprob_analytical
-    print(f"Executing MCMC with {ncores} cores.")
-    print(f"{'':-^50}")
-    if debug:
-        sampler = emcee.EnsembleSampler(
-            nwalkers, ndim, lnprob, pool=None)
-        if nsteps_burnin > 0:
-            print("Running burn-in...")
-            sampler.run_mcmc(theta, nsteps_burnin, progress=True)
-            print("Running production...")
-        sampler.reset()
-        sampler.run_mcmc(theta, nsteps, progress=True)
-    else:
-        with Pool(processes=ncores) as pool:
-            sampler = emcee.EnsembleSampler(
-                nwalkers, ndim, lnprob, pool=pool)
-            if nsteps_burnin > 0:
-                print("Running burn-in...")
-                sampler.run_mcmc( theta, nsteps_burnin, progress=True)
-                print("Running production...")
-            sampler.reset()
-            sampler.run_mcmc(theta, nsteps, progress=True)
-    return sampler
+    if OPTIONS["fit.method"] == "emcee":
+        return run_mcmc(**kwargs)
+    return run_dynesty(**kwargs)
 
 
 def get_best_fit(sampler: emcee.EnsembleSampler,

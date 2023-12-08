@@ -1,10 +1,9 @@
-from typing import Optional, Dict, List
+from typing import Optional, List
 from pathlib import Path
 
 import astropy.units as u
 import numpy as np
 from astropy.io import fits
-from scipy.optimize import bracket
 
 from .utils import get_closest_indices
 from .options import OPTIONS

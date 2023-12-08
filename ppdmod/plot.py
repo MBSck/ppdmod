@@ -17,7 +17,7 @@ from matplotlib import colormaps as mcm
 from matplotlib.gridspec import GridSpec
 
 from .component import Component
-from .mcmc import calculate_observables
+from .fitting import calculate_observables
 from .model import Model
 from .options import OPTIONS
 from .utils import calculate_effective_baselines, restrict_phase
