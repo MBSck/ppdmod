@@ -1,5 +1,7 @@
 from numpy import float32, complex64
 
+from .utils import get_colormap
+
 OPTIONS = {}
 
 # NOTE: Data.
@@ -21,7 +23,7 @@ OPTIONS["data.vis.ucoord"] = []
 OPTIONS["data.vis.vcoord"] = []
 OPTIONS["data.readouts"] = []
 
-# NOTE: Model. The output can either be 'surface_brightness' or ' jansky_px'
+# NOTE: Model
 OPTIONS["model.components_and_params"] = {}
 OPTIONS["model.constant_params"] = {}
 OPTIONS["model.dtype.complex"] = complex64
@@ -34,13 +36,13 @@ OPTIONS["model.modulation.order"] = 0
 OPTIONS["model.output"] = "jansky_px"
 OPTIONS["model.shared_params"] = {}
 
-# NOTE: Fourier transform.
+# NOTE: Fourier transform
 OPTIONS["fourier.backend"] = "numpy"
 OPTIONS["fourier.binning"] = None
 OPTIONS["fourier.method"] = "complex"
 OPTIONS["fourier.padding"] = None
 
-# NOTE: Spectrum.
+# NOTE: Spectrum
 OPTIONS["spectrum.binning"] = 7
 OPTIONS["spectrum.coefficients"] = {
     "low": [0.10600484,  0.01502548,  0.00294806, -0.00021434],
@@ -48,7 +50,11 @@ OPTIONS["spectrum.coefficients"] = {
 }
 OPTIONS["spectrum.kernel_width"] = 10
 
-# NOTE: Plot.
+# NOTE: Plot
+OPTIONS["plot.colors.colormap"] = "seaborn-v0_8-colorblind"
+OPTIONS["plot.colors.number"] = 10
+OPTIONS["plot.color"] = get_colormap(OPTIONS["plot.colors.colormap"],
+                                     OPTIONS["plot.colors.number"])
 OPTIONS["plot.errorbar"] = {"color": "",
                             "markeredgecolor": "black",
                             "markeredgewidth": 0.2,
@@ -57,7 +63,7 @@ OPTIONS["plot.errorbar"] = {"color": "",
 OPTIONS["plot.scatter"] = {"color": "", "edgecolor": "black",
                            "linewidths": 0.2, "zorder": 3}
 
-# NOTE: Fitting.
+# NOTE: Fitting
 OPTIONS["fit.chi2.weight.corr_flux"] = 1
 OPTIONS["fit.chi2.weight.cphase"] = 1
 OPTIONS["fit.chi2.weight.flux"] = 1
