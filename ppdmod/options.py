@@ -1,6 +1,32 @@
+from typing import List, Optional
+
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
+from matplotlib import colormaps as mcm
 from numpy import float32, complex64
 
-from .utils import get_colormap
+
+def convert_style_to_colormap(style: str) -> ListedColormap:
+    """Converts a style into a colormap."""
+    plt.style.use(style)
+    colormap = ListedColormap(
+            plt.rcParams["axes.prop_cycle"].by_key()["color"])
+    plt.style.use("default")
+    return colormap
+
+
+def get_colormap(colormap: str) -> ListedColormap:
+    """Gets the colormap as the matplotlib colormaps or styles."""
+    try:
+        return mcm.get_cmap(colormap)
+    except ValueError:
+        return convert_style_to_colormap(colormap)
+
+
+def get_colorlist(colormap: str, ncolors: Optional[int] = 10) -> List[str]:
+    """Gets the colormap as a list from the matplotlib colormaps."""
+    return [get_colormap(colormap)(i) for i in range(ncolors)]
+
 
 OPTIONS = {}
 
@@ -51,10 +77,10 @@ OPTIONS["spectrum.coefficients"] = {
 OPTIONS["spectrum.kernel_width"] = 10
 
 # NOTE: Plot
-OPTIONS["plot.colors.colormap"] = "seaborn-v0_8-colorblind"
-OPTIONS["plot.colors.number"] = 10
-OPTIONS["plot.color"] = get_colormap(OPTIONS["plot.colors.colormap"],
-                                     OPTIONS["plot.colors.number"])
+OPTIONS["plot.color.colormap"] = "seaborn-v0_8-colorblind"
+OPTIONS["plot.color.number"] = 100
+OPTIONS["plot.color"] = get_colorlist(OPTIONS["plot.color.colormap"],
+                                      OPTIONS["plot.color.number"])
 OPTIONS["plot.errorbar"] = {"color": "",
                             "markeredgecolor": "black",
                             "markeredgewidth": 0.2,
