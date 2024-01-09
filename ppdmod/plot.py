@@ -306,8 +306,12 @@ def plot_model(fits_file: Path, data_type: Optional[str] = "image",
                 legend = plt.legend()
                 set_legend_color(legend, OPTIONS["plot.color.background"])
             elif data_type == "depth":
-                plt.plot(radius, hdul["FULL_DISK"].data["opacity"][0])
+                for wavelength, data in zip(
+                        wavelengths, hdul["FULL_DISK"].data["thickness"]):
+                    plt.plot(radius, -np.log(1-data), label=wavelength)
                 plt.ylabel(r"Optical depth (a.u.)")
+                legend = plt.legend()
+                set_legend_color(legend, OPTIONS["plot.color.background"])
             plt.xlabel(r"Radius (mas)")
             plt.xscale("log")
 
@@ -707,16 +711,16 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
             ax.set_ylim([0, None])
 
         if key == "vis":
-            ax.set_xlabel(r"$\mathrm{B}k/\lambda$ (M$\lambda$)")
+            ax.set_xlabel(r"$\mathrm{B}$ (M$\lambda$)")
             ax.set_ylabel("Correlated fluxes (Jy)")
 
         if key == "vis2":
-            ax.set_xlabel(r"$\mathrm{B}/\lambda$ (M$\lambda$)")
+            ax.set_xlabel(r"$\mathrm{B}$ (M$\lambda$)")
             ax.set_ylabel("Visibilities (a.u.)")
             ax.set_ylim([0, 1])
 
         if key == "t3phi":
-            ax.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}/\lambda$ (M$\lambda$)")
+            ax.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}$ (M$\lambda$)")
             ax.set_ylabel(r"Closure Phases ($^\circ$)")
             lower_bound = np.min([np.min(value) for value in cphases])
             lower_bound += lower_bound*0.25
