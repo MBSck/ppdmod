@@ -55,6 +55,7 @@ setup(
         "openpyxl >= 3.1.2",
         "cython >= 3.0.2",
         "pandas >= 2.1.0",
+        "dynesty >=2.1.3",
         "jax[cpu]",
     ],
     include_dirs=[np.get_include()],

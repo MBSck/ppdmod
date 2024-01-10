@@ -295,7 +295,6 @@ class HankelComponent(Component):
             radius = np.logspace(np.log10(rin.value),
                                np.log10(rout.value), dim)*self.params["rin"].unit
         return radius.astype(OPTIONS["model.dtype.real"])
-    
 
     def _get_opacity(self, wavelength: u.um) -> u.cm**2/u.g:
         """Set the opacity from wavelength."""

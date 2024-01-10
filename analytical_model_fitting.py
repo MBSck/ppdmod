@@ -57,11 +57,7 @@ kappa_abs.value, kappa_abs.wavelength = opacity, wavelength_axes
 kappa_cont = Parameter(**STANDARD_PARAMETERS["kappa_cont"])
 kappa_cont.value, kappa_cont.wavelength = continuum_opacity, wavelength_axes
 
-# fov, pixel_size = 220, 0.1
-# dim = utils.get_next_power_of_two(fov / pixel_size)
-
-dim = 32
-distance = 148.3
+dim, distance = 32, 148.3
 OPTIONS["model.constant_params"] = {
     "dim": dim, "dist": 148.3,
     "eff_temp": 7500, "f": star_flux,
@@ -144,6 +140,8 @@ labels = inner_ring_labels + outer_ring_labels + shared_params_labels
 OPTIONS["model.modulation.order"] = 1
 OPTIONS["model.gridtype"] = "logarithmic"
 
+OPTIONS["fit.method"] = "emcee"
+
 model_result_dir = Path("../model_results/")
 day_dir = model_result_dir / str(datetime.now().date())
 time = datetime.now()
@@ -156,12 +154,15 @@ if __name__ == "__main__":
     nburnin, nsteps, nwalkers = 2, 5, 35
     # ncores = nwalkers // 2
     ncores = 6
-    sampler = fitting.run_fitting(nwalkers, nsteps, nburnin,
-                            ncores=ncores, method="analytical", debug=False)
+    sampler = fitting.run_fit(
+            nwalkers=nwalkers, nsteps=nsteps, nburin=nburnin,
+            ncores=ncores, method="analytical", debug=True)
     theta = fitting.get_best_fit(sampler, discard=nburnin)
 
-    plot.plot_chains(sampler, labels, discard=nburnin, savefig=result_dir / "chains.pdf")
-    plot.plot_corner(sampler, labels, discard=nburnin, savefig=result_dir / "corner.pdf")
+    plot.plot_chains(sampler, labels, discard=nburnin,
+                     savefig=result_dir / "chains.pdf")
+    plot.plot_corner(sampler, labels, discard=nburnin,
+                     savefig=result_dir / "corner.pdf")
     np.save(result_dir / "best_fit_params.npy", theta)
     # result_dir = Path("/Users/scheuck/Data/model_results/2023-11-23/results_model_nsteps7500_nwalkers100_11:18:52")
     # theta = np.load(result_dir / "best_fit_params.npy")
@@ -177,14 +178,14 @@ if __name__ == "__main__":
     for component in components:
         component.params["rin0"] = innermost_radius
 
-    plot.save_fits(
-            4096, 0.1, distance,
-            OPTIONS["fit.wavelengths"], components,
-            component_labels, opacities=[kappa_abs, kappa_cont],
-            savefits=result_dir / "model.fits",
-            options=OPTIONS, object_name="HD 142666",
-            nwalkers=nwalkers, nsteps=nburnin+nsteps,
-            ncores=ncores)
+    # plot.save_fits(
+    #         4096, 0.1, distance,
+    #         OPTIONS["fit.wavelengths"], components,
+    #         component_labels, opacities=[kappa_abs, kappa_cont],
+    #         savefits=result_dir / "model.fits",
+    #         options=OPTIONS, object_name="HD 142666",
+    #         nwalkers=nwalkers, nsteps=nburnin+nsteps,
+    #         ncores=ncores)
 
     plot.plot_fit(
             new_params["sh_elong"], new_params["sh_pa"],

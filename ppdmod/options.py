@@ -77,8 +77,10 @@ OPTIONS["spectrum.coefficients"] = {
 OPTIONS["spectrum.kernel_width"] = 10
 
 # NOTE: Plot
-OPTIONS["plot.color.colormap"] = "seaborn-v0_8-colorblind"
-OPTIONS["plot.color.number"] = 100
+OPTIONS["plot.dpi"] = 300
+OPTIONS["plot.color.background"] = "white"
+OPTIONS["plot.color.colormap"] = "tab20"
+OPTIONS["plot.color.number"] = 20
 OPTIONS["plot.color"] = get_colorlist(OPTIONS["plot.color.colormap"],
                                       OPTIONS["plot.color.number"])
 OPTIONS["plot.errorbar"] = {"color": "",
