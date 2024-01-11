@@ -21,7 +21,8 @@ os.environ["OMP_NUM_THREADS"] = "1"
 OPTIONS["fit.data"] = ["vis2", "t3phi"]
 OPTIONS["data.binning.window"] = 0.1*u.um
 data.set_fit_wavelengths([1.6, 2.25, 3.5, 8., 9., 10., 11.3, 12.5]*u.um)
-fits_files = list(Path("tests/data/fits").glob("*.fits"))
+# fits_files = list(Path("tests/data/fits").glob("*.fits"))
+fits_files = list(Path("tests/data/fits").glob("GRAVI*.fits"))
 data.set_data(fits_files)
 
 # TODO: Check if the configuration of these parameters is ok
@@ -139,7 +140,6 @@ labels = inner_ring_labels + outer_ring_labels + shared_params_labels
 
 OPTIONS["model.modulation.order"] = 1
 OPTIONS["model.gridtype"] = "logarithmic"
-
 OPTIONS["fit.method"] = "emcee"
 
 model_result_dir = Path("../model_results/")
@@ -150,10 +150,11 @@ result_dir = day_dir / file_name
 if not result_dir.exists():
     result_dir.mkdir(parents=True)
 
+
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 2, 5, 35
-    # ncores = nwalkers // 2
-    ncores = 6
+    nburnin, nsteps, nwalkers = 200, 500, 100
+    ncores = nwalkers // 2
+    # ncores = 6
     sampler = fitting.run_fit(
             nwalkers=nwalkers, nsteps=nsteps, nburin=nburnin,
             ncores=ncores, method="analytical", debug=True)
@@ -164,8 +165,6 @@ if __name__ == "__main__":
     plot.plot_corner(sampler, labels, discard=nburnin,
                      savefig=result_dir / "corner.pdf")
     np.save(result_dir / "best_fit_params.npy", theta)
-    # result_dir = Path("/Users/scheuck/Data/model_results/2023-11-23/results_model_nsteps7500_nwalkers100_11:18:52")
-    # theta = np.load(result_dir / "best_fit_params.npy")
     new_params = dict(zip(labels, theta))
 
     components_and_params, shared_params = fitting.set_params_from_theta(theta)
@@ -178,14 +177,14 @@ if __name__ == "__main__":
     for component in components:
         component.params["rin0"] = innermost_radius
 
-    # plot.save_fits(
-    #         4096, 0.1, distance,
-    #         OPTIONS["fit.wavelengths"], components,
-    #         component_labels, opacities=[kappa_abs, kappa_cont],
-    #         savefits=result_dir / "model.fits",
-    #         options=OPTIONS, object_name="HD 142666",
-    #         nwalkers=nwalkers, nsteps=nburnin+nsteps,
-    #         ncores=ncores)
+    plot.save_fits(
+            4096, 0.1, distance,
+            OPTIONS["fit.wavelengths"], components,
+            component_labels, opacities=[kappa_abs, kappa_cont],
+            savefits=result_dir / "model.fits",
+            options=OPTIONS, object_name="HD 142666",
+            nwalkers=nwalkers, nsteps=nburnin+nsteps,
+            ncores=ncores)
 
     plot.plot_fit(
             new_params["sh_elong"], new_params["sh_pa"],

@@ -1,10 +1,10 @@
 from multiprocessing import Pool
-from typing import Optional, List, Dict
-from pathlib import Path
+from typing import Optional, List, Dict, Union
 
 import astropy.units as u
 import emcee
 import numpy as np
+# from dynesty import NestedSampler
 from scipy.stats import gaussian_kde
 
 from .custom_components import assemble_components
@@ -13,7 +13,21 @@ from .parameter import Parameter
 from .options import OPTIONS
 
 
-# TODO: Check if the order is preserved here.
+def get_priors() -> np.ndarray:
+    """Gets the priors from the model parameters."""
+    priors = []
+    for _, params in OPTIONS["model.components_and_params"]:
+        for param in params.values():
+            if param.free:
+                priors.append([param.min, param.max])
+
+    if OPTIONS["model.shared_params"] is not None:
+        for param in OPTIONS["model.shared_params"].values():
+            if param.free:
+                priors.append([param.min, param.max])
+    return np.array(priors)
+
+
 def set_theta_from_params(
         components_and_params: List[List[Dict]],
         shared_params: Optional[Dict[str, Parameter]] = None) -> np.ndarray:
@@ -49,7 +63,7 @@ def set_params_from_theta(theta: np.ndarray) -> float:
     return new_components_and_params, new_shared_params
 
 
-def init_randomly(nwalkers: float) -> np.ndarray:
+def init_randomly(nwalkers: Optional[int] = None) -> np.ndarray:
     """initialises a random numpy.ndarray from the parameter's limits.
 
     parameters
@@ -64,6 +78,9 @@ def init_randomly(nwalkers: float) -> np.ndarray:
     for (_, param) in OPTIONS["model.components_and_params"]:
         params.extend(param.values())
     params.extend(OPTIONS["model.shared_params"].values())
+    if nwalkers is None:
+        return np.array([np.random.uniform(param.min, param.max)
+                         for param in params])
     return np.array([[np.random.uniform(param.min, param.max)
                       for param in params] for _ in range(nwalkers)])
 
@@ -189,6 +206,13 @@ def calculate_observables_chi_sq(
     return float(total_chi_sq)
 
 
+# NOTE: In nested fitting priors can depend on each other
+# use that in the future
+def transform_uniform_prior(x, a, b):
+    """Prior transform for uniform priors."""
+    return a + (b-a)*x
+
+
 def lnprior(components_and_params: List[List[Dict]],
             shared_params: Optional[Dict[str, float]] = None) -> float:
     """Checks if the priors are in bounds.
@@ -239,9 +263,10 @@ def lnprob(theta: np.ndarray) -> float:
     """
     parameters, shared_params = set_params_from_theta(theta)
 
-    lnp = lnprior(parameters, shared_params)
-    if np.isinf(lnp):
-        return -np.inf
+    if OPTIONS["fit.method"] == "emcee":
+        lnp = lnprior(parameters, shared_params)
+        if np.isinf(lnp):
+            return -np.inf
 
     components = assemble_components(parameters, shared_params)
 
@@ -285,7 +310,8 @@ def run_mcmc(nwalkers: int,
              nsteps: Optional[int] = 100,
              nsteps_burnin: Optional[int] = 0,
              ncores: Optional[int] = 6,
-             debug: Optional[bool] = False) -> np.ndarray:
+             debug: Optional[bool] = False, 
+             **kwargs) -> np.ndarray:
     """Runs the emcee Hastings Metropolitan sampler.
 
     The EnsambleSampler recieves the parameters and the args are passed to
@@ -299,45 +325,66 @@ def run_mcmc(nwalkers: int,
     nsteps : int, optional
     discard : int, optional
     ncores : int, optional
-    save_path: pathlib.Path, optional
+    debug : bool, optional
 
     Returns
     -------
     sampler : numpy.ndarray
     """
     theta = init_randomly(nwalkers)
-    print(f"Executing MCMC with {ncores} cores.")
-    print(f"{'':-^50}")
-    if debug:
-        sampler = emcee.EnsembleSampler(
-            nwalkers, theta.shape[1], lnprob, pool=None)
-        if nsteps_burnin is not None:
-            print("Running burn-in...")
-            sampler.run_mcmc(theta, nsteps_burnin, progress=True)
-            print("Running production...")
-        sampler.reset()
-        sampler.run_mcmc(theta, nsteps, progress=True)
-    else:
-        with Pool(processes=ncores) as pool:
-            sampler = emcee.EnsembleSampler(
-                nwalkers, theta.shape[1], lnprob, pool=pool)
-            if nsteps_burnin is not None:
-                print("Running burn-in...")
-                sampler.run_mcmc(theta, nsteps_burnin, progress=True)
-                print("Running production...")
-            sampler.reset()
-            sampler.run_mcmc(theta, nsteps, progress=True)
+    pool = Pool(processes=ncores) if not debug else None
+
+    print(f"Executing MCMC.\n{'':-^50}")
+    sampler = emcee.EnsembleSampler(
+        nwalkers, theta.shape[1], lnprob, pool=pool)
+    if nsteps_burnin is not None:
+        print("Running burn-in...")
+        sampler.run_mcmc(theta, nsteps_burnin, progress=True)
+
+    sampler.reset()
+    print("Running production...")
+    sampler.run_mcmc(theta, nsteps, progress=True)
+
+    if not debug:
+        pool.close()
+        pool.join()
     return sampler
 
 
-def run_dynesty(debug: Optional[bool] = False) -> np.ndarray:
-    """Runs the dynesty sampler."""
-    sampler = None
-    if debug:
-        ...
-    else:
-        ...
-    return sampler
+# def run_dynesty(nlive: Optional[int] = 1000,
+#                 sample: Optional[str] = "rwalk",
+#                 bound: Optional[str] = "multi",
+#                 ncores: Optional[int] = 6,
+#                 debug: Optional[bool] = False,
+#                 **kwargs) -> np.ndarray:
+#     """Runs the dynesty nested sampler.
+
+#     Parameters
+#     ----------
+#     ncores : int, optional
+#     debug : bool, optional
+
+#     Returns
+#     -------
+#     sampler : numpy.ndarray
+#     """
+#     ndim = init_randomly().shape[0]
+#     pool = Pool(processes=ncores) if not debug else None
+#     queue_size = ncores if not debug else None
+#     sampler_kwargs = {"nlive": nlive, "sample": sample,
+#                       "ptform_args": get_priors(),
+#                       "bound": bound, "queue_size": queue_size,
+#                       "pool": pool, "update_interval": ndim}
+
+#     print(f"Executing Dynesty.\n{'':-^50}")
+#     sampler = NestedSampler(lnprob, transform_uniform_prior,
+#                             ndim, **sampler_kwargs)
+#     sampler.run_nested(dlogz=0.01, print_progress=True)
+
+#     if not debug:
+#         pool.close()
+#         pool.join()
+#     return sampler
 
 
 def run_fit(**kwargs) -> np.ndarray:
@@ -346,10 +393,13 @@ def run_fit(**kwargs) -> np.ndarray:
     Parameters
     ----------
     nwalkers : int, optional
+        The number of walkers in the emcee sampler.
     nsteps : int, optional
+        The number of steps in the emcee sampler.
     discard : int, optional
+        The number of steps to discard in the emcee sampler.
     ncores : int, optional
-    save_path: pathlib.Path, optional
+        The number of cores to use in the emcee sampler.
 
     Returns
     -------
@@ -357,16 +407,20 @@ def run_fit(**kwargs) -> np.ndarray:
     """
     if OPTIONS["fit.method"] == "emcee":
         return run_mcmc(**kwargs)
-    return run_dynesty(**kwargs)
+    # return run_dynesty(**kwargs)
 
 
-def get_best_fit(sampler: emcee.EnsembleSampler,
-                 discard: Optional[int] = 0,
-                 method: Optional[str] = "gaussian") -> np.ndarray:
+def get_best_fit(
+        sampler: Union[emcee.EnsembleSampler],
+        discard: Optional[int] = 0, method: Optional[str] = "gaussian"
+        ) -> np.ndarray:
     """Gets the best fit from the emcee sampler."""
-    samples = sampler.get_chain(flat=True, discard=discard)
-    if method == "gaussian":
-        kde = gaussian_kde(samples.T)
-        probability = kde.pdf(samples.T)
-    probability = sampler.get_log_prob(flat=True, discard=discard)
-    return samples[np.argmax(probability)]
+    if OPTIONS["fit.method"] == "emcee":
+        samples = sampler.get_chain(flat=True, discard=discard)
+        if method == "gaussian":
+            kde = gaussian_kde(samples.T)
+            probability = kde.pdf(samples.T)
+        probability = sampler.get_log_prob(flat=True, discard=discard)
+        return samples[np.argmax(probability)]
+    else:
+        ...
