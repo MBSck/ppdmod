@@ -307,10 +307,10 @@ def lnprob(theta: np.ndarray) -> float:
 
 
 def run_mcmc(nwalkers: int,
-             nsteps: Optional[int] = 100,
              nsteps_burnin: Optional[int] = 0,
+             nsteps: Optional[int] = 100,
              ncores: Optional[int] = 6,
-             debug: Optional[bool] = False, 
+             debug: Optional[bool] = False,
              **kwargs) -> np.ndarray:
     """Runs the emcee Hastings Metropolitan sampler.
 

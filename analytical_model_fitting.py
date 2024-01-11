@@ -16,11 +16,12 @@ from ppdmod.options import OPTIONS
 
 # TODO: Make function that saves model parameters to load.
 # NOTE: Turns off numpys automated parellelization.
-os.environ["OMP_NUM_THREADS"] = "1"
+# os.environ["OMP_NUM_THREADS"] = "1"
 
 OPTIONS["fit.data"] = ["vis2", "t3phi"]
 OPTIONS["data.binning.window"] = 0.1*u.um
-data.set_fit_wavelengths([1.6, 2.25, 3.5, 8., 9., 10., 11.3, 12.5]*u.um)
+# data.set_fit_wavelengths([1.6, 2.25, 3.5, 8., 9., 10., 11.3, 12.5]*u.um)
+data.set_fit_wavelengths([2.25]*u.um)
 # fits_files = list(Path("tests/data/fits").glob("*.fits"))
 fits_files = list(Path("tests/data/fits").glob("GRAVI*.fits"))
 data.set_data(fits_files)
@@ -156,8 +157,8 @@ if __name__ == "__main__":
     ncores = nwalkers // 2
     # ncores = 6
     sampler = fitting.run_fit(
-            nwalkers=nwalkers, nsteps=nsteps, nburin=nburnin,
-            ncores=ncores, method="analytical", debug=True)
+            nwalkers=nwalkers, nsteps_burnin=nburnin, nsteps=nsteps,
+            ncores=ncores, method="analytical", debug=False)
     theta = fitting.get_best_fit(sampler, discard=nburnin)
 
     plot.plot_chains(sampler, labels, discard=nburnin,
