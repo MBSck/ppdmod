@@ -153,7 +153,7 @@ if not result_dir.exists():
 
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 200, 500, 100
+    nburnin, nsteps, nwalkers = 2500, 7500, 100
     ncores = nwalkers // 2
     # ncores = 6
     sampler = fitting.run_fit(
