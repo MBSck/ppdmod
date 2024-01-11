@@ -14,7 +14,6 @@ from astropy.io import fits
 from astropy.table import Table
 from astropy.wcs import WCS
 # from dynesty import plotting as dyplot
-from matplotlib import colormaps as mcm
 from matplotlib.gridspec import GridSpec
 
 from .component import Component

@@ -299,9 +299,9 @@ class HankelComponent(Component):
     def _get_opacity(self, wavelength: u.um) -> u.cm**2/u.g:
         """Set the opacity from wavelength."""
         if self.continuum_contribution:
-            opacity = self.params["kappa_abs"](wavelength) +\
-                      self.params["cont_weight"]() *\
-                      self.params["kappa_cont"](wavelength)
+            cont_weight = self.params["cont_weight"]()
+            opacity = (1-cont_weight)*self.params["kappa_abs"](wavelength)\
+                + cont_weight*self.params["kappa_cont"](wavelength)
         else:
             opacity = self.params["kappa_abs"](wavelength)
         return opacity.astype(OPTIONS["model.dtype.real"])
@@ -379,8 +379,8 @@ class HankelComponent(Component):
         xx, yy = np.meshgrid(xx, xx)
         if self.elliptic:
             pa, elong = self.params["pa"](), self.params["elong"]()
-            xx = xx*np.cos(pa)+yy*np.sin(pa)
-            yy = (-xx*np.sin(pa)+yy*np.cos(pa))/elong
+            xx = xx*np.cos(pa)-yy*np.sin(pa)
+            yy = (xx*np.sin(pa)+yy*np.cos(pa))/elong
         azimuthal_modulation = self._azimuthal_modulation(xx, yy)
         radius = np.hypot(xx, yy)
         radial_profile = np.logical_and(radius >= self.params["rin"](),
