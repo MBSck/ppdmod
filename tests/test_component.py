@@ -9,7 +9,7 @@ import pytest
 from astropy.modeling.models import BlackBody
 
 from ppdmod import utils
-from ppdmod.component import Component, AnalyticalComponent,\
+from ppdmod.component import Component, AnalyticalComponent, \
         NumericalComponent, HankelComponent
 from ppdmod.data import ReadoutFits
 from ppdmod.parameter import STANDARD_PARAMETERS, Parameter
@@ -21,8 +21,8 @@ COMPONENT_DIR = Path("component")
 VISIBILITY = "Visibility"
 CLOSURE_PHASE = "Closure Phase"
 
-READOUT = ReadoutFits(Path("data/fits") \
-        / "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits")
+READOUT = ReadoutFits(Path("data/fits")
+                      / "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT_flux_avg_vis.fits")
 BASELINES = [f"B {baseline}" for baseline in np.around(np.hypot(READOUT.ucoord, READOUT.vcoord), 0)]
 TRIANGLES = [f"T {triangle}" for triangle in np.around(np.hypot(READOUT.u123coord, READOUT.v123coord).max(axis=0), 0)]
 TRIANGLES[-1] += ".0"
@@ -33,12 +33,6 @@ utils.make_workbook(
         VISIBILITY: ["Dimension (px)", *BASELINES, "Computation Time (s)"],
         CLOSURE_PHASE: ["Dimension (px)", *TRIANGLES, "Computation Time (s)"],
     })
-
-@pytest.fixture
-def readout() -> Path:
-    """A MATISSE (.fits)-file."""
-    file = "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits"
-    return ReadoutFits(Path("data/fits") / file)
 
 
 @pytest.fixture
@@ -237,24 +231,26 @@ def test_hankel_component_brightness_function():
 def test_hankel_component_total_flux(
         hankel_component: HankelComponent, wavelength: u.um) -> None:
     """Tests the calculation of the total flux."""
-    total_flux = hankel_component.calculate_total_flux(wavelength)
+    total_flux = hankel_component.calculate_flux(wavelength)
     assert total_flux
 
 
+# TODO: Write here check if higher orders are implemented
 @pytest.mark.parametrize("order", [0, 1, 2, 3])
 def test_hankel_component_hankel_transform(
-        hankel_component: HankelComponent, order: int,
-        readout: ReadoutFits, wavelength: u.um) -> None:
+        hankel_component: HankelComponent,
+        order: int, wavelength: u.um) -> None:
     """Tests the hankel component's hankel transformation."""
     radius = hankel_component._calculate_internal_grid(512)
     temp_profile = 1500*u.K*(radius/(hankel_component.params["rin"]()))**(-0.5)
     brightness_profile = BlackBody(temp_profile)(wavelength)
-    
+
     OPTIONS["model.modulation.order"] = order
-    visibilities, modulations = hankel_component.hankel_transform(
+    corr_fluxes, modulations = hankel_component.hankel_transform(
             brightness_profile.to(u.erg/(u.Hz*u.cm**2*u.s*u.rad**2)),
-            radius, readout.ucoord, readout.vcoord, wavelength)
-    assert visibilities.shape == (6, )
+            radius, READOUT.ucoord, READOUT.vcoord, wavelength)
+    assert corr_fluxes.shape == (6, )
+    assert corr_fluxes.unit == u.Jy
     if order == 0:
         assert modulations.shape == (0, )
     else:
@@ -263,34 +259,34 @@ def test_hankel_component_hankel_transform(
 
 
 @pytest.mark.parametrize("order", [0, 1, 2, 3])
-def test_hankel_component_visibilities(
-        hankel_component: HankelComponent, order: int,
-        readout: ReadoutFits, wavelength: u.um) -> None:
+def test_hankel_component_corr_fluxes(
+        hankel_component: HankelComponent,
+        order: int, wavelength: u.um) -> None:
     """Tests the hankel component's hankel transformation."""
     OPTIONS["model.modulation.order"] = order
-    visibilities = hankel_component.calculate_visibility(
-            readout.ucoord, readout.vcoord, wavelength)
-    assert visibilities.shape == (6, )
+    corr_fluxes = hankel_component.calculate_corr_flux(
+            READOUT.ucoord, READOUT.vcoord, wavelength)
+    assert corr_fluxes.shape == (6, )
+    assert isinstance(corr_fluxes, np.ndarray)
     OPTIONS["model.modulation.order"] = 0
 
 
-# # TODO: Write test that checks the k
-# @pytest.mark.parametrize("order", [0, 1, 2, 3])
-# def test_hankel_component_closure_phases(
-#         hankel_component: HankelComponent, order: int,
-#         readout: ReadoutFits, wavelength: u.um) -> None:
-#     """Tests the hankel component's hankel transformation."""
-#     OPTIONS["model.modulation.order"] = order
-#     closure_phases = hankel_component.calculate_closure_phase(
-#             readout.u123coord, readout.v123coord, wavelength)
-#     assert closure_phases.shape == (4, )
-#     OPTIONS["model.modulation.order"] = 0
+@pytest.mark.parametrize("order", [0, 1, 2, 3])
+def test_hankel_component_closure_phases(
+        hankel_component: HankelComponent,
+        order: int, wavelength: u.um) -> None:
+    """Tests the hankel component's hankel transformation."""
+    OPTIONS["model.modulation.order"] = order
+    closure_phases = hankel_component.calculate_closure_phase(
+            READOUT.u123coord, READOUT.v123coord, wavelength)
+
+    assert closure_phases.shape == (4, )
+    OPTIONS["model.modulation.order"] = 0
 
 
 @pytest.mark.parametrize(
         "dim", [4096, 2096, 1024, 512, 256, 128, 64, 32])
-def test_hankel_resolution(
-        dim: int, readout: ReadoutFits, wavelength: u.um) -> None:
+def test_hankel_resolution(dim: int, wavelength: u.um) -> None:
     """Tests the hankel component's resolution."""
     hankel_component = HankelComponent(
             rin=0.5, rout=3, pa=33,
@@ -300,15 +296,14 @@ def test_hankel_resolution(
     hankel_component.asymmetric = True
 
     OPTIONS["model.modulation.order"] = 1
-    
     start_time_vis = time.perf_counter()
-    visibilities = hankel_component.calculate_visibility(
-            readout.ucoord, readout.vcoord, wavelength)
+    visibilities = hankel_component.calculate_corr_flux(
+            READOUT.ucoord, READOUT.vcoord, wavelength)
     end_time_vis = time.perf_counter()-start_time_vis
 
     start_time_cphase = time.perf_counter()
     closure_phases = hankel_component.calculate_closure_phase(
-            readout.u123coord, readout.v123coord, wavelength)
+            READOUT.u123coord, READOUT.v123coord, wavelength)
     end_time_cphase = time.perf_counter()-start_time_cphase
 
     vis_data = {"Dimension (px)": [dim],

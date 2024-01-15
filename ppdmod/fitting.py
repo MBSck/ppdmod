@@ -127,14 +127,11 @@ def calculate_observables(components: List[Component], wavelength: u.um,
     if components is not None:
         stellar_flux = components[0].calculate_stellar_flux(wavelength)
         for component in components[1:]:
-            tmp_flux = component.calculate_total_flux(
-                    wavelength, star_flux=stellar_flux)
-            tmp_corr_flux = component.calculate_visibility(
-                    ucoord, vcoord, wavelength,
-                    star_flux=stellar_flux)
+            tmp_flux = component.calculate_flux(wavelength)
+            tmp_corr_flux = component.calculate_corr_flux(
+                    ucoord, vcoord, wavelength)
             tmp_cphase = component.calculate_closure_phase(
-                    u123coord, v123coord, wavelength,
-                    star_flux=stellar_flux)
+                    u123coord, v123coord, wavelength)
 
             if flux_model is None:
                 flux_model = tmp_flux
@@ -144,6 +141,9 @@ def calculate_observables(components: List[Component], wavelength: u.um,
                 flux_model += tmp_flux
                 corr_flux_model += tmp_corr_flux
                 cphase_model += tmp_cphase
+        flux_model += stellar_flux
+        if "vis2" in OPTIONS["fit.data"]:
+            corr_flux_model /= flux_model
     return flux_model, corr_flux_model, cphase_model
 
 
@@ -169,7 +169,7 @@ def calculate_observables_chi_sq(
         The model's total flux.
     vis : numpy.ndarray
         Either the correlated fluxes or the visibilities.
-    corr_flux_err : numpy.ndarray
+    vis_err : numpy.ndarray
         Either the error of the correlated fluxes or the
         error of the visibilities.
     corr_flux_model : numpy.ndarray
