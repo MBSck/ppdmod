@@ -18,12 +18,12 @@ from ppdmod.options import OPTIONS
 # NOTE: Turns off numpys automated parellelization.
 # os.environ["OMP_NUM_THREADS"] = "1"
 
-OPTIONS["fit.data"] = ["vis2", "t3phi"]
+OPTIONS["fit.data"] = ["flux", "vis2", "t3phi"]
 OPTIONS["data.binning.window"] = 0.1*u.um
 # data.set_fit_wavelengths([1.6, 2.25, 3.5, 8., 9., 10., 11.3, 12.5]*u.um)
-data.set_fit_wavelengths([2.25]*u.um)
+data.set_fit_wavelengths([1.6, 2.25, 3.5]*u.um)
 # fits_files = list(Path("tests/data/fits").glob("*.fits"))
-fits_files = list(Path("tests/data/fits").glob("GRAVI*.fits"))
+fits_files = list(Path("tests/data/fits").glob("*fits"))
 data.set_data(fits_files)
 
 # TODO: Check if the configuration of these parameters is ok
@@ -86,30 +86,30 @@ rout.free = True
 inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma, "p": p}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
-rin = Parameter(**STANDARD_PARAMETERS["rin"])
-rout = Parameter(**STANDARD_PARAMETERS["rout"])
-a = Parameter(**STANDARD_PARAMETERS["a"])
-phi = Parameter(**STANDARD_PARAMETERS["phi"])
-p = Parameter(**STANDARD_PARAMETERS["p"])
-inner_sigma = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
+# rin = Parameter(**STANDARD_PARAMETERS["rin"])
+# rout = Parameter(**STANDARD_PARAMETERS["rout"])
+# a = Parameter(**STANDARD_PARAMETERS["a"])
+# phi = Parameter(**STANDARD_PARAMETERS["phi"])
+# p = Parameter(**STANDARD_PARAMETERS["p"])
+# inner_sigma = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
 
-rin.value = 13
-a.value = 0.5
-phi.value = 130
-p.value = 0.5
-inner_sigma.value = 1e-3
+# rin.value = 13
+# a.value = 0.5
+# phi.value = 130
+# p.value = 0.5
+# inner_sigma.value = 1e-3
 
-# NOTE: Set outer radius to be constant and calculate flux once?
-rin.set(min=4, max=30)
-p.set(min=0., max=1.)
-inner_sigma.set(min=0, max=1e-2)
-a.set(min=0., max=1.)
-phi.set(min=0, max=360)
+# # NOTE: Set outer radius to be constant and calculate flux once?
+# rin.set(min=4, max=30)
+# p.set(min=0., max=1.)
+# inner_sigma.set(min=0, max=1e-2)
+# a.set(min=0., max=1.)
+# phi.set(min=0, max=360)
 
-rout.free = True
+# rout.free = True
 
-outer_ring = {"rin": rin, "a": a, "phi": phi, "inner_sigma": inner_sigma, "p": p}
-outer_ring_labels = [f"or_{label}" for label in outer_ring]
+# outer_ring = {"rin": rin, "a": a, "phi": phi, "inner_sigma": inner_sigma, "p": p}
+# outer_ring_labels = [f"or_{label}" for label in outer_ring]
 
 q = Parameter(**STANDARD_PARAMETERS["q"])
 pa = Parameter(**STANDARD_PARAMETERS["pa"])
@@ -134,10 +134,11 @@ shared_params_labels = [f"sh_{label}"
 OPTIONS["model.components_and_params"] = [
     ["Star", {}],
     ["AnalyticalTempGradient", inner_ring],
-    ["AnalyticalAsymmetricTempGradient", outer_ring],
+    # ["AnalyticalAsymmetricTempGradient", outer_ring],
 ]
 
-labels = inner_ring_labels + outer_ring_labels + shared_params_labels
+# labels = inner_ring_labels + outer_ring_labels + shared_params_labels
+labels = inner_ring_labels + shared_params_labels
 
 OPTIONS["model.modulation.order"] = 1
 OPTIONS["model.gridtype"] = "logarithmic"
@@ -153,7 +154,7 @@ if not result_dir.exists():
 
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 2500, 7500, 100
+    nburnin, nsteps, nwalkers = 250, 750, 100
     ncores = nwalkers // 2
     # ncores = 6
     sampler = fitting.run_fit(

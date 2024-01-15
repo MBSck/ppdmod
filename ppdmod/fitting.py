@@ -125,7 +125,7 @@ def calculate_observables(components: List[Component], wavelength: u.um,
     """Calculates the observables from the model."""
     flux_model, corr_flux_model, cphase_model = None, None, None
     if components is not None:
-        stellar_flux = components[0].calculate_stellar_flux(wavelength)
+        stellar_flux = components[0].calculate_stellar_flux(wavelength).value
         for component in components[1:]:
             tmp_flux = component.calculate_flux(wavelength)
             tmp_corr_flux = component.calculate_corr_flux(
@@ -142,6 +142,7 @@ def calculate_observables(components: List[Component], wavelength: u.um,
                 corr_flux_model += tmp_corr_flux
                 cphase_model += tmp_cphase
         flux_model += stellar_flux
+        corr_flux_model += stellar_flux
         if "vis2" in OPTIONS["fit.data"]:
             corr_flux_model /= flux_model
     return flux_model, corr_flux_model, cphase_model
