@@ -18,12 +18,13 @@ from ppdmod.options import OPTIONS
 # NOTE: Turns off numpys automated parellelization.
 # os.environ["OMP_NUM_THREADS"] = "1"
 
-OPTIONS["fit.data"] = ["flux", "vis2", "t3phi"]
+OPTIONS["fit.data"] = ["flux", "vis", "t3phi"]
 OPTIONS["data.binning.window"] = 0.1*u.um
 # data.set_fit_wavelengths([1.6, 2.25, 3.5, 8., 9., 10., 11.3, 12.5]*u.um)
-data.set_fit_wavelengths([1.6, 2.25, 3.5]*u.um)
-# fits_files = list(Path("tests/data/fits").glob("*.fits"))
-fits_files = list(Path("tests/data/fits").glob("*fits"))
+# data.set_fit_wavelengths([1.6, 2.25, 3.5]*u.um)
+# data.set_fit_wavelengths([8., 9., 10., 11.3, 12.5]*u.um)
+data.set_fit_wavelengths([3.5]*u.um)
+fits_files = list(Path("tests/data/fits").glob("*04-23*HAWAII*fits"))
 data.set_data(fits_files)
 
 # TODO: Check if the configuration of these parameters is ok
@@ -76,8 +77,8 @@ rout.value = 7.
 p.value = 0.5
 inner_sigma.value = 1e-3
 
-rin.set(min=0.5, max=3)
-rout.set(min=1., max=4)
+rin.set(min=0.5, max=5)
+rout.set(min=0.5, max=10)
 p.set(min=0., max=1.)
 inner_sigma.set(min=0, max=1e-2)
 
@@ -100,7 +101,7 @@ inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 # inner_sigma.value = 1e-3
 
 # # NOTE: Set outer radius to be constant and calculate flux once?
-# rin.set(min=4, max=30)
+# rin.set(min=1, max=40)
 # p.set(min=0., max=1.)
 # inner_sigma.set(min=0, max=1e-2)
 # a.set(min=0., max=1.)
@@ -111,34 +112,43 @@ inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 # outer_ring = {"rin": rin, "a": a, "phi": phi, "inner_sigma": inner_sigma, "p": p}
 # outer_ring_labels = [f"or_{label}" for label in outer_ring]
 
-q = Parameter(**STANDARD_PARAMETERS["q"])
+# q = Parameter(**STANDARD_PARAMETERS["q"])
 pa = Parameter(**STANDARD_PARAMETERS["pa"])
 elong = Parameter(**STANDARD_PARAMETERS["elong"])
 cont_weight = Parameter(**STANDARD_PARAMETERS["cont_weight"])
 
-q.value = 0.5
+# q.value = 0.5
 pa.value = 145
 elong.value = 0.5
 cont_weight.value = 130
 
-q.set(min=0., max=1.)
+# q.set(min=0., max=1.)
 pa.set(min=0, max=360)
 elong.set(min=0, max=1)
 cont_weight.set(min=0., max=1.)
 
-OPTIONS["model.shared_params"] = {"q": q, "pa": pa, "elong": elong,
+# OPTIONS["model.shared_params"] = {"q": q, "pa": pa, "elong": elong,
+                                  # "cont_weight": cont_weight}
+OPTIONS["model.shared_params"] = {"pa": pa, "elong": elong,
                                   "cont_weight": cont_weight}
 shared_params_labels = [f"sh_{label}"
                         for label in OPTIONS["model.shared_params"]]
 
+# OPTIONS["model.components_and_params"] = [
+    # ["Star", {}],
+    # ["AnalyticalTempGradient", inner_ring],
+    # ["AnalyticalAsymmetricTempGradient", outer_ring],
+# ]
+
 OPTIONS["model.components_and_params"] = [
     ["Star", {}],
-    ["AnalyticalTempGradient", inner_ring],
-    # ["AnalyticalAsymmetricTempGradient", outer_ring],
+    ["AnalyticalGreyBody", inner_ring],
+    # ["AnalyticalAsymmetricGreyBody", outer_ring],
 ]
 
 # labels = inner_ring_labels + outer_ring_labels + shared_params_labels
 labels = inner_ring_labels + shared_params_labels
+# labels = outer_ring_labels + shared_params_labels
 
 OPTIONS["model.modulation.order"] = 1
 OPTIONS["model.gridtype"] = "logarithmic"
@@ -154,7 +164,7 @@ if not result_dir.exists():
 
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 250, 750, 100
+    nburnin, nsteps, nwalkers = 2500, 7500, 100
     ncores = nwalkers // 2
     # ncores = 6
     sampler = fitting.run_fit(
@@ -172,7 +182,9 @@ if __name__ == "__main__":
     components_and_params, shared_params = fitting.set_params_from_theta(theta)
     components = custom_components.assemble_components(
             components_and_params, shared_params)
-    component_labels = ["Star", "Inner Ring", "Outer Ring"]
+    # component_labels = ["Star", "Inner Ring", "Outer Ring"]
+    # component_labels = ["Star", "Inner Ring"]
+    component_labels = ["Star", "Outer Ring"]
 
     # HACK: This is to include innermost radius for rn.
     innermost_radius = components[1].params["rin"]
