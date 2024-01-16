@@ -170,10 +170,13 @@ def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
                 radius, innermost_radius)]*len(wavelengths)
 
             for wavelength in wavelengths:
-                if not "thickness" in data:
+                if "flux" not in data:
+                    data["flux"] = []
+                if "thickness" not in data:
                     data["thickness"] = []
-                if not "brightness" in data:
+                if "brightness" not in data:
                     data["brightness"] = []
+                data["flux"].append(component.calculate_total_flux(wavelength))
                 data["thickness"].append(component._thickness_profile_function(
                         radius, innermost_radius, wavelength))
                 data["brightness"].append(component._brightness_profile_function(
@@ -206,7 +209,8 @@ def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
             data = {col.name: table.data[col.name] for col in table.columns}
             continue
         for column in table.columns:
-            if column.name in ["wavelength", "kappa_abs", "kappa_cont"]:
+            # TODO: Make calculation work for total flux
+            if column.name in ["wavelength", "kappa_abs", "kappa_cont", "flux"]:
                 continue
             if column.name == "radius":
                 filler = np.tile(
@@ -258,6 +262,7 @@ def plot_model(fits_file: Path, data_type: Optional[str] = "image",
                wavelength: Optional[float] = None,
                pixel_size: Optional[float] = None,
                factor: Optional[float] = None,
+               zoom: Optional[int] = 30,
                colormap: Optional[str] = OPTIONS["plot.color.colormap"],
                title: Optional[str] = None,
                savefig: Optional[Path] = None) -> None:
@@ -284,8 +289,8 @@ def plot_model(fits_file: Path, data_type: Optional[str] = "image",
             extent = [-image.shape[0]*pixel_size/2, image.shape[0]*pixel_size/2,
                       -image.shape[1]*pixel_size/2, image.shape[1]*pixel_size/2]
             plt.imshow(image, extent=extent)
-            plt.ylim([-30, 30])
-            plt.xlim([-30, 30])
+            plt.ylim([-zoom, zoom])
+            plt.xlim([-zoom, zoom])
             plt.xlabel(r"$\alpha$ (mas)")
             plt.ylabel(r"$\delta$ (mas)")
         else:
@@ -294,27 +299,44 @@ def plot_model(fits_file: Path, data_type: Optional[str] = "image",
             if data_type == "temperature":
                 plt.plot(radius, hdul["FULL_DISK"].data["temperature"][0])
                 plt.ylabel(r"Temperature (K)")
+                plt.xlabel(r"Radius (mas)")
             elif data_type == "brightness":
                 for wavelength, data in zip(
                         wavelengths, hdul["FULL_DISK"].data["brightness"]):
                     plt.plot(radius, data, label=wavelength)
                 plt.ylabel(r"Surface Brightness ($\frac{erg}{cm^2rad^2\,s\,Hz}$)")
                 plt.yscale("log")
+                plt.xscale("log")
                 plt.ylim([1e-10, None])
                 legend = plt.legend()
                 set_legend_color(legend, OPTIONS["plot.color.background"])
+                plt.xlabel(r"Radius (mas)")
+            # TODO: Make this into the full disk
+            elif data_type == "flux":
+                stellar_flux = hdul["STAR"].data["flux"]
+                inner_flux = hdul["INNER_RING"].data["total_flux"]
+                outer_flux = hdul["OUTER_RING"].data["total_flux"]
+                total_flux = stellar_flux+inner_flux+outer_flux
+                breakpoint()
+                plt.plot(wavelengths, total_flux, marker="o")
+                plt.ylabel("Flux (Jy)")
+                plt.xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
             elif data_type == "density":
                 plt.plot(radius, hdul["FULL_DISK"].data["surface_density"][0])
                 plt.ylabel(r"Surface Density (g/cm$^2$)")
                 plt.yscale("log")
+                plt.xscale("log")
+                plt.xlabel(r"Radius (mas)")
             elif data_type == "thickness":
                 for wavelength, data in zip(
                         wavelengths, hdul["FULL_DISK"].data["thickness"]):
                     plt.plot(radius, data, label=wavelength)
                 plt.ylabel(r"Thickness (a.u.)")
                 plt.yscale("log")
+                plt.xscale("log")
                 legend = plt.legend()
                 set_legend_color(legend, OPTIONS["plot.color.background"])
+                plt.xlabel(r"Radius (mas)")
             elif data_type == "depth":
                 nwl = len(wavelengths)
                 optical_depth = hdul["FULL_DISK"].data["surface_density"]\
@@ -325,8 +347,8 @@ def plot_model(fits_file: Path, data_type: Optional[str] = "image",
                 plt.ylabel(r"Optical depth (a.u.)")
                 legend = plt.legend()
                 set_legend_color(legend, OPTIONS["plot.color.background"])
-            plt.xlabel(r"Radius (mas)")
-            plt.xscale("log")
+                plt.xscale("log")
+                plt.xlabel(r"Radius (mas)")
 
     if title is not None:
         plt.title(title)
@@ -584,8 +606,8 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
                 if "vis" in ylimits:
                     upper_ax.set_ylim(ylimits["vis"])
             else:
-                residual_label = "Residuals (a.u.)"
-                y_label = "Visibilities (a.u.)"
+                residual_label = "Residuals (Normalized)"
+                y_label = "Visibilities (Normalized)"
                 if "vis2" in ylimits:
                     upper_ax.set_ylim(ylimits["vis2"])
                 else:
@@ -763,7 +785,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
 
         if key == "vis2":
             ax.set_xlabel(r"$\mathrm{B}$ (M$\lambda$)")
-            ax.set_ylabel("Visibilities (a.u.)")
+            ax.set_ylabel("Visibilities (Normalized)")
             if "vis2" in ylimits:
                 ax.set_ylim(ylimits["vis2"])
             else:

@@ -86,7 +86,7 @@ OPTIONS["plot.color"] = get_colorlist(OPTIONS["plot.color.colormap"],
 OPTIONS["plot.errorbar"] = {"color": "",
                             "markeredgecolor": "black",
                             "markeredgewidth": 0.2,
-                            "capsize": 5, "capthick": 2,
+                            "capsize": 5, "capthick": 3,
                             "ecolor": "gray", "zorder": 2}
 OPTIONS["plot.scatter"] = {"color": "", "edgecolor": "black",
                            "linewidths": 0.2, "zorder": 3}
