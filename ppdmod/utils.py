@@ -500,6 +500,7 @@ def distance_to_angular(diameter: u.mas, distance: u.pc) -> u.m:
     return ((diameter.to(u.m)/distance.to(u.m))*u.rad).to(u.mas)
 
 
+# TODO: Make function that takes care of rotation so all occurences are equal.
 def calculate_effective_baselines(
         ucoord: u.m, vcoord: u.m, axis_ratio: u.one,
         pos_angle: u.deg) -> Union[u.Quantity[u.m], u.Quantity[u.one]]:
@@ -528,9 +529,9 @@ def calculate_effective_baselines(
     if not isinstance(ucoord, u.Quantity):
         ucoord, vcoord = map(lambda x: x*u.m, [ucoord, vcoord])
     axis_ratio = axis_ratio*u.one\
-            if not isinstance(axis_ratio, u.Quantity) else axis_ratio
+        if not isinstance(axis_ratio, u.Quantity) else axis_ratio
     pos_angle = pos_angle*u.deg\
-            if not isinstance(pos_angle, u.Quantity) else pos_angle
+        if not isinstance(pos_angle, u.Quantity) else pos_angle
 
     pos_angle = pos_angle.to(u.rad)
     projected_baselines = np.hypot(ucoord, vcoord)
@@ -539,10 +540,11 @@ def calculate_effective_baselines(
     angle_to_deproject = np.arctan2(np.cos(projected_baseline_angle - pos_angle),
                                     np.sin(projected_baseline_angle - pos_angle))
 
+    # TODO: Counterclockwise rotation? Should it not be rotated clockwise here?
     ucoords_eff = projected_baselines * (np.cos(pos_angle) * np.cos(angle_to_deproject)
-            - axis_ratio * np.sin(pos_angle) * np.sin(angle_to_deproject))
+                                         - axis_ratio * np.sin(pos_angle) * np.sin(angle_to_deproject))
     vcoords_eff = projected_baselines * (np.sin(pos_angle) * np.cos(angle_to_deproject)
-            + axis_ratio * np.cos(pos_angle) * np.sin(angle_to_deproject))
+                                         + axis_ratio * np.cos(pos_angle) * np.sin(angle_to_deproject))
     return np.hypot(ucoords_eff, vcoords_eff), np.arctan2(vcoords_eff, ucoords_eff)
 
 

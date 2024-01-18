@@ -1,5 +1,5 @@
 from multiprocessing import Pool
-from typing import Optional, List, Dict, Union
+from typing import Optional, List, Dict, Tuple, Union
 
 import astropy.units as u
 import emcee
@@ -413,15 +413,28 @@ def run_fit(**kwargs) -> np.ndarray:
 
 def get_best_fit(
         sampler: Union[emcee.EnsembleSampler],
-        discard: Optional[int] = 0, method: Optional[str] = "gaussian"
-        ) -> np.ndarray:
+        discard: Optional[int] = 0,
+        distribution: Optional[str] = "default",
+        method: Optional[str] = "quantile"
+        ) -> Tuple[np.ndarray, np.ndarray]:
     """Gets the best fit from the emcee sampler."""
+    params, uncertainties = [], []
     if OPTIONS["fit.method"] == "emcee":
         samples = sampler.get_chain(flat=True, discard=discard)
-        if method == "gaussian":
+        if distribution == "gaussian":
             kde = gaussian_kde(samples.T)
             probability = kde.pdf(samples.T)
-        probability = sampler.get_log_prob(flat=True, discard=discard)
-        return samples[np.argmax(probability)]
+        else:
+            probability = sampler.get_log_prob(flat=True, discard=discard)
+
+        if method == "quantile":
+            for index in range(samples.shape[1]):
+                quantiles = np.percentile(samples[:, index], [16, 50, 84])
+                params.append(quantiles[1])
+                uncertainties.append(np.diff(quantiles))
+            params, uncertainties = map(np.array, (params, uncertainties))
+        elif method == "maximum":
+            params = samples[np.argmax(probability)]
+        return params, uncertainties
     else:
         ...

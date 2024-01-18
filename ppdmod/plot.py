@@ -8,6 +8,7 @@ import matplotlib
 import matplotlib.colors as mcolors
 import matplotlib.cm as cm
 import matplotlib.lines as mlines
+import matplotlib.ticker as ticker
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
@@ -125,7 +126,6 @@ def plot_chains(sampler: np.ndarray, labels: List[str],
     plt.close()
 
 
-# TODO: Add components to this as well as the parameters in a sub HDULIST.
 def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
               wavelengths: List[u.Quantity[u.um]],
               components: List[Component],
@@ -137,12 +137,14 @@ def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
               nwalkers: Optional[int] = None,
               nsteps: Optional[int] = None,
               ncores: Optional[int] = None) -> None:
-    """Saves a (.fits)-file of the model with all the information on the parameter space."""
-    pixel_size = pixel_size if isinstance(pixel_size, u.Quantity) else pixel_size*u.mas
-    wavelengths = wavelengths if isinstance(wavelengths, u.Quantity) else wavelengths*u.um
+    """Saves a (.fits)-file of the model with all the information on the
+    parameter space."""
+    pixel_size = pixel_size if isinstance(pixel_size, u.Quantity)\
+        else pixel_size*u.mas
+    wavelengths = wavelengths if isinstance(wavelengths, u.Quantity)\
+        else wavelengths*u.um
     distance = distance if isinstance(distance, u.Quantity) else distance*u.pc
 
-    # TODO: Make this for the numerical case as well.
     model, images = Model(components), []
     for wavelength in wavelengths:
         images.append(model.calculate_image(dim, pixel_size, wavelength))
@@ -317,7 +319,6 @@ def plot_model(fits_file: Path, data_type: Optional[str] = "image",
                 inner_flux = hdul["INNER_RING"].data["total_flux"]
                 outer_flux = hdul["OUTER_RING"].data["total_flux"]
                 total_flux = stellar_flux+inner_flux+outer_flux
-                breakpoint()
                 plt.plot(wavelengths, total_flux, marker="o")
                 plt.ylabel("Flux (Jy)")
                 plt.xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
@@ -615,6 +616,7 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
             lower_ax.set_ylabel(residual_label)
             upper_ax.set_ylabel(y_label)
             upper_ax.tick_params(**tick_settings)
+            upper_ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
             if not len(axarr) > 1:
                 legend = upper_ax.legend(handles=[dot_label, x_label])
                 set_legend_color(legend, OPTIONS["plot.color.background"])
@@ -782,6 +784,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
             ax.set_ylabel("Correlated fluxes (Jy)")
             if "vis" in ylimits:
                 ax.set_ylim(ylimits["vis"])
+            ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
 
         if key == "vis2":
             ax.set_xlabel(r"$\mathrm{B}$ (M$\lambda$)")
@@ -790,6 +793,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
                 ax.set_ylim(ylimits["vis2"])
             else:
                 ax.set_ylim([0, 1])
+            ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
 
         if key == "t3phi":
             ax.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}$ (M$\lambda$)")
