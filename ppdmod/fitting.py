@@ -429,7 +429,8 @@ def get_best_fit(
 
         if method == "quantile":
             for index in range(samples.shape[1]):
-                quantiles = np.percentile(samples[:, index], [16, 50, 84])
+                quantiles = np.percentile(samples[:, index],
+                                          OPTIONS["fit.quantiles"])
                 params.append(quantiles[1])
                 uncertainties.append(np.diff(quantiles))
             params, uncertainties = map(np.array, (params, uncertainties))
