@@ -341,7 +341,8 @@ class HankelComponent(Component):
             return 1
         surface_density_profile = self._surface_density_profile_function(
             radius, innermost_radius)
-        thickness_profile = (1-np.exp(-surface_density_profile*self._get_opacity(wavelength)))
+        optical_depth = surface_density_profile*self._get_opacity(wavelength)
+        thickness_profile = (1-np.exp(-optical_depth/self.params["elong"]()))
         return thickness_profile.astype(OPTIONS["model.dtype.real"])
 
     def _brightness_profile_function(self, radius: u.mas, wavelength: u.um) -> u.Jy:
@@ -446,9 +447,9 @@ class HankelComponent(Component):
             The visibilities.
         modulations : astropy.units.Jy
         """
-        radius = radius.to(u.rad)
+        radius, cos_i = radius.to(u.rad), self.params["elong"]()
         baseline_groups, baseline_angle_groups = calculate_effective_baselines(
-                ucoord, vcoord, self.params["elong"](), self.params["pa"]())
+                ucoord, vcoord, cos_i, self.params["pa"]())
         baseline_groups /= wavelength.to(u.m).value*u.rad
 
         if len(baseline_groups.shape) == 1:
