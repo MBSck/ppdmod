@@ -503,7 +503,7 @@ def distance_to_angular(diameter: u.mas, distance: u.pc) -> u.m:
 # TODO: Make function that takes care of rotation so all occurences are equal.
 def calculate_effective_baselines(
         ucoord: u.m, vcoord: u.m, axis_ratio: u.one,
-        pos_angle: u.deg) -> Union[u.Quantity[u.m], u.Quantity[u.one]]:
+        pos_angle: u.deg) -> Tuple[u.Quantity[u.m], u.Quantity[u.one]]:
     """Calculates the effective baselines from the projected baselines
     in mega lambda.
 
@@ -533,19 +533,13 @@ def calculate_effective_baselines(
     pos_angle = pos_angle*u.deg\
         if not isinstance(pos_angle, u.Quantity) else pos_angle
 
+    vcoord_comp = vcoord*axis_ratio
     pos_angle = pos_angle.to(u.rad)
-    projected_baselines = np.hypot(ucoord, vcoord)
-    projected_baseline_angle = np.arctan2(vcoord, ucoord)
 
-    angle_to_deproject = np.arctan2(np.cos(projected_baseline_angle - pos_angle),
-                                    np.sin(projected_baseline_angle - pos_angle))
-
-    # TODO: Counterclockwise rotation? Should it not be rotated clockwise here?
-    ucoords_eff = projected_baselines * (np.cos(pos_angle) * np.cos(angle_to_deproject)
-                                         - axis_ratio * np.sin(pos_angle) * np.sin(angle_to_deproject))
-    vcoords_eff = projected_baselines * (np.sin(pos_angle) * np.cos(angle_to_deproject)
-                                         + axis_ratio * np.cos(pos_angle) * np.sin(angle_to_deproject))
-    return np.hypot(ucoords_eff, vcoords_eff), np.arctan2(vcoords_eff, ucoords_eff)
+    ucoords_eff = ucoord * np.cos(pos_angle) - vcoord_comp * np.sin(pos_angle)
+    vcoords_eff = ucoord * np.sin(pos_angle) + vcoord_comp * np.cos(pos_angle)
+    return np.hypot(ucoords_eff, vcoords_eff), \
+        np.arctan2(vcoords_eff, ucoords_eff)
 
 
 def restrict_phase(phase: np.ndarray):
