@@ -179,7 +179,7 @@ def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
                     data["thickness"] = []
                 if "brightness" not in data:
                     data["brightness"] = []
-                data["flux"].append(component.calculate_total_flux(wavelength))
+                data["flux"].append(component.calculate_flux(wavelength))
                 data["thickness"].append(component._thickness_profile_function(
                         radius, innermost_radius, wavelength))
                 data["brightness"].append(component._brightness_profile_function(

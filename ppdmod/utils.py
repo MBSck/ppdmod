@@ -1,6 +1,6 @@
 import time as time
 from pathlib import Path
-from typing import Optional, Union, Dict, List
+from typing import Optional, Union, Dict, Tuple, List
 
 import astropy.units as u
 import numpy as np
