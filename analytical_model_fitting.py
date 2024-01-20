@@ -18,7 +18,7 @@ from ppdmod.options import OPTIONS
 # NOTE: Turns off numpys automated parellelization.
 # os.environ["OMP_NUM_THREADS"] = "1"
 
-OPTIONS["fit.data"] = ["flux", "vis", "t3phi"]
+OPTIONS["fit.data"] = ["flux", "vis2", "t3phi"]
 OPTIONS["data.binning.window"] = 0.1*u.um
 # data.set_fit_wavelengths([1.6, 2.25, 3.5, 8., 9., 10., 11.3, 12.5]*u.um)
 # data.set_fit_wavelengths([1.6, 2.25, 3.5]*u.um)
@@ -170,6 +170,8 @@ if __name__ == "__main__":
     sampler = fitting.run_fit(
             nwalkers=nwalkers, nsteps_burnin=nburnin, nsteps=nsteps,
             ncores=ncores, method="analytical", debug=False)
+    np.save(result_dir / "sampler", sampler)
+
     theta, uncertainties = fitting.get_best_fit(
             sampler, discard=nburnin, method="quantile")
     np.save(result_dir / "best_fit_params.npy", theta)
@@ -178,6 +180,7 @@ if __name__ == "__main__":
                      savefig=result_dir / "chains.pdf")
     plot.plot_corner(sampler, labels, discard=nburnin,
                      savefig=result_dir / "corner.pdf")
+    breakpoint()
     new_params = dict(zip(labels, theta))
 
     components_and_params, shared_params = fitting.set_params_from_theta(theta)

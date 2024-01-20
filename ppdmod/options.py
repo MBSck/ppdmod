@@ -98,4 +98,4 @@ OPTIONS["fit.chi2.weight.flux"] = 1
 OPTIONS["fit.data"] = ["flux", "vis", "t3phi"]
 OPTIONS["fit.method"] = "emcee"
 OPTIONS["fit.wavelengths"] = None
-OPTIONS["fit.quantiles"] = [0.16, 0.5, 0.84]
+OPTIONS["fit.quantiles"] = [16, 50, 84]

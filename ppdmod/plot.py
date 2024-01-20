@@ -78,7 +78,7 @@ def plot_corner(sampler: np.ndarray, labels: List[str],
         samples = sampler.get_chain(discard=discard, flat=True)
         corner.corner(samples, show_titles=True,
                       labels=labels, plot_datapoints=True,
-                      quantiles=OPTIONS["fit.quantiles"],
+                      quantiles=[x/100 for x in OPTIONS["fit.quantiles"]],
                       title_kwargs={"fontsize": 12})
     else:
         dyplot.cornerplot(sampler.results)
