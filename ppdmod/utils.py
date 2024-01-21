@@ -533,14 +533,10 @@ def calculate_effective_baselines(
     pos_angle = pos_angle*u.deg\
         if not isinstance(pos_angle, u.Quantity) else pos_angle
 
-    baselines = np.hypot(ucoord, vcoord)
-    baseline_angles = np.arctan2(ucoord, vcoord)
-    angle_diff = baseline_angles-pos_angle.to(u.rad)
-
-    ucoord_eff = baselines*np.cos(angle_diff)
-    vcoord_eff = axis_ratio*baselines*np.sin(angle_diff)
-    return np.hypot(ucoord_eff, vcoord_eff), \
-        np.arctan2(vcoord_eff, ucoord_eff)
+    ucoord_eff = ucoord*np.cos(pos_angle) - vcoord*np.sin(pos_angle)
+    vcoord_eff = ucoord*np.sin(pos_angle) + vcoord*np.cos(pos_angle)
+    return np.hypot(ucoord_eff, vcoord_eff*axis_ratio), \
+        np.arctan2(vcoord_eff, ucoord_eff*axis_ratio)
 
 
 def restrict_phase(phase: np.ndarray):
