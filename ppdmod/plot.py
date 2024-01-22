@@ -889,7 +889,7 @@ def plot_observables(wavelength_range: u.um,
     cphase_dir.mkdir(exist_ok=True, parents=True)
     for index, (uc, vc) in enumerate(zip(ucoord, vcoord)):
         _, ax = plt.subplots(tight_layout=True)
-        baseline, baseline_angle = np.hypot(uc, vc), np.arctan2(uc, vc)
+        baseline, baseline_angle = np.hypot(uc, vc), np.arctan2(uc, vc)*u.rad.to(u.deg)
         ax.plot(wavelengths, vis[:, index],
                 label=rf"B={baseline:.2f} m, $\phi$={baseline_angle:.2f}$^\circ$")
         ax.set_xlabel(r"$\lambda$ ($\mu$m)")
