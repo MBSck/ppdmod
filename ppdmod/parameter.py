@@ -19,7 +19,7 @@ STANDARD_PARAMETERS = {
               "unit": u.mas, "free": False},
         "f": {"name": "flux", "shortname": "f",
               "value": None, "description": "The wavelength dependent flux",
-              "unit": u.Jy, "free": False},
+              "unit": u.Jy, "free": False, "interpolation": True},
         "elong": {"name": "elong", "shortname": "elong",
                   "value": 1, "description": "Inclination of the object", "unit": u.one},
         "pa": {"name": "pa", "shortname": "pa",
@@ -62,10 +62,12 @@ STANDARD_PARAMETERS = {
                         "value": 0, "unit": u.g/u.cm**2, "free": True,
                         "description": "Inner surface density"},
         "kappa_abs": {"name": "kappa_abs", "shortname": "kappaabs",
-                      "value": 0, "unit": u.cm**2/u.g, "free": False,
+                      "value": 0, "unit": u.cm**2/u.g,
+                      "interpolation": True, "free": False,
                       "description": "Dust mass absorption coefficient"},
         "kappa_cont": {"name": "kappa_cont", "shortname": "kappacon",
-                       "value": 0, "unit": u.cm**2/u.g, "free": False,
+                       "value": 0, "unit": u.cm**2/u.g,
+                       "interpolation": True, "free": False,
                        "description": "Continuum dust mass absorption coefficient"},
         "cont_weight": {"name": "cont_weight", "shortname": "conwei",
                         "value": 0, "unit": u.one, "free": True,
@@ -95,6 +97,7 @@ class Parameter:
     max: Optional[float] = None
     dtype: Optional[type] = None
     wavelength: Optional[u.Quantity[u.um]] = None
+    interpolation: Optional[bool] = False
 
     def __setattr__(self, key: str, value: Any):
         """Sets an attribute."""
@@ -114,11 +117,14 @@ class Parameter:
         if wavelength is None or self.wavelength is None:
             value = self.value
         else:
-            # Hack: Multiplying by microns makes it work.
-            indices = list(get_closest_indices(
-                wavelength, array=self.wavelength*u.um,
-                window=OPTIONS["data.binning.window"]).values())
-            value = self.value[indices[0]].mean()
+            if self.interpolation:
+                value = np.interp(wavelength, self.wavelength*u.um, self.value)
+            else:
+                # HACK: Multiplying by microns makes it work.
+                indices = list(get_closest_indices(
+                    wavelength, array=self.wavelength*u.um,
+                    window=OPTIONS["data.binning.window"]).values())
+                value = self.value[indices[0]].mean()
         return u.Quantity(value, unit=self.unit, dtype=self.dtype)
 
     def __str__(self):

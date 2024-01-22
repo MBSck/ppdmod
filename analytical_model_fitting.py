@@ -37,6 +37,7 @@ matisse_flux = utils.opacity_to_matisse_opacity(
     wavelength_axes, wavelength_grid=wavelengths*u.um, opacity=flux*u.Jy).value*u.Jy
 star_flux = Parameter(**STANDARD_PARAMETERS["f"])
 star_flux.value, star_flux.wavelength = matisse_flux, wavelength_axes
+star_flux.interpolation = True
 
 weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
 qval_file_dir = Path("tests/data/qval")
@@ -112,22 +113,26 @@ inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 # outer_ring_labels = [f"or_{label}" for label in outer_ring]
 
 # q = Parameter(**STANDARD_PARAMETERS["q"])
+# inner_temp = Parameter(**STANDARD_PARAMETERS["inner_temp"])
 pa = Parameter(**STANDARD_PARAMETERS["pa"])
 elong = Parameter(**STANDARD_PARAMETERS["elong"])
 cont_weight = Parameter(**STANDARD_PARAMETERS["cont_weight"])
 
 # q.value = 0.5
+# inner_temp.value = 1500
 pa.value = 145
 elong.value = 0.5
 cont_weight.value = 130
 
 # q.set(min=0., max=1.)
+# inner_temp.set(min=300, max=2000)
 pa.set(min=0, max=360)
 elong.set(min=0, max=1)
 cont_weight.set(min=0., max=1.)
 
-# OPTIONS["model.shared_params"] = {"q": q, "pa": pa, "elong": elong,
-                                  # "cont_weight": cont_weight}
+# OPTIONS["model.shared_params"] = {"q": q, "inner_temp": inner_temp,
+#                                   "pa": pa, "elong": elong,
+#                                   "cont_weight": cont_weight}
 OPTIONS["model.shared_params"] = {"pa": pa, "elong": elong,
                                   "cont_weight": cont_weight}
 shared_params_labels = [f"sh_{label}"
@@ -167,12 +172,12 @@ if not result_dir.exists():
 
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 250, 750, 100
-    ncores = nwalkers // 2
-    # ncores = 6
+    nburnin, nsteps, nwalkers = 2, 5, 100
+    # ncores = nwalkers // 2
+    ncores = 6
     sampler = fitting.run_fit(
             nwalkers=nwalkers, nsteps_burnin=nburnin, nsteps=nsteps,
-            ncores=ncores, method="analytical", debug=False)
+            ncores=ncores, method="analytical", debug=True)
     np.save(result_dir / "sampler", sampler)
 
     theta, uncertainties = fitting.get_best_fit(
@@ -188,6 +193,9 @@ if __name__ == "__main__":
     components_and_params, shared_params = fitting.set_params_from_theta(theta)
     components = custom_components.assemble_components(
             components_and_params, shared_params)
+
+    plot.plot_observables([8, 12]*u.um,
+                          components, fits_files)
 
     # HACK: This is to include innermost radius for rn.
     innermost_radius = components[1].params["rin"]
