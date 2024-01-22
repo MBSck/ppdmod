@@ -18,6 +18,7 @@ from astropy.wcs import WCS
 from matplotlib.gridspec import GridSpec
 
 from .component import Component
+from .data import ReadoutFits
 from .fitting import calculate_observables
 from .model import Model
 from .options import OPTIONS, get_colormap
@@ -817,3 +818,92 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
     else:
         plt.show()
     plt.close()
+
+
+def plot_observables(wavelength_range: u.um,
+                     components: List[Component],
+                     fits_files: List[Path],
+                     corr_flux: Optional[bool] = None,
+                     save_dir: Optional[Path] = None) -> None:
+    """Plots the observables of the model.
+
+    Parameters
+    ----------
+    wavelength_range : astropy.units.m
+    """
+    save_dir = Path.cwd() if save_dir is None else save_dir
+    wavelengths = np.linspace(wavelength_range[0],
+                              wavelength_range[1])
+
+    readouts = list(map(ReadoutFits, fits_files))
+    ucoord = np.concatenate([readout.ucoord for readout in readouts])
+    vcoord = np.concatenate([readout.vcoord for readout in readouts])
+    u123coord = np.hstack([readout.u123coord for readout in readouts])
+    v123coord = np.hstack([readout.v123coord for readout in readouts])
+
+    corr_flux = not "vis2" in OPTIONS["fit.data"] if corr_flux is None\
+        else corr_flux
+
+    flux = []
+    vis = np.empty([len(wavelengths), ucoord.shape[0]])
+    cphase = np.empty([len(wavelengths), u123coord.shape[1]])
+    for index, wavelength in enumerate(wavelengths):
+        stellar_flux = components[0].calculate_stellar_flux(wavelength).value
+        tmp_flux, tmp_vis, tmp_cphase = 0, None, None
+        for component in components[1:]:
+            tmp_flux += component.calculate_flux(wavelength)
+
+            if tmp_vis is None:
+                tmp_vis = component.calculate_corr_flux(
+                        ucoord, vcoord, wavelength).tolist()
+                tmp_cphase = component.calculate_closure_phase(
+                        u123coord, v123coord, wavelength).tolist()
+            else:
+                tmp_vis.extend(component.calculate_corr_flux(
+                        ucoord, vcoord, wavelength).tolist())
+                tmp_cphase.extend(component.calculate_closure_phase(
+                        u123coord, v123coord, wavelength).tolist())
+
+        tmp_flux += stellar_flux
+        tmp_vis += stellar_flux
+
+        if not corr_flux:
+            tmp_vis /= tmp_flux
+
+        flux.append(tmp_flux)
+        vis[index] = tmp_vis
+        cphase[index] = tmp_cphase
+    flux = np.array(flux)
+    _, ax = plt.subplots(tight_layout=True)
+    ax.plot(wavelengths, flux)
+    ax.set_xlabel(r"$\lambda$ ($\mu$m)")
+    ax.set_ylabel("Flux (Jy)")
+    plt.savefig(save_dir / "sed.pdf", format="pdf")
+    plt.close()
+
+    baseline_dir = save_dir / "baselines"
+    baseline_dir.mkdir(exist_ok=True, parents=True)
+    vis_dir = baseline_dir / "vis"
+    vis_dir.mkdir(exist_ok=True, parents=True)
+    cphase_dir = baseline_dir / "cphase"
+    cphase_dir.mkdir(exist_ok=True, parents=True)
+    for index, (uc, vc) in enumerate(zip(ucoord, vcoord)):
+        _, ax = plt.subplots(tight_layout=True)
+        baseline, baseline_angle = np.hypot(uc, vc), np.arctan2(uc, vc)
+        ax.plot(wavelengths, vis[:, index],
+                label=rf"B={baseline:.2f} m, $\phi$={baseline_angle:.2f}$^\circ$")
+        ax.set_xlabel(r"$\lambda$ ($\mu$m)")
+        ax.set_ylabel("Visibilities (Normalized)")
+        ax.set_ylim([0, 1])
+        plt.legend()
+        plt.savefig(vis_dir / f"vis_{baseline:.2f}.pdf", format="pdf")
+        plt.close()
+
+    for index, baseline in enumerate(np.hypot(u123coord, v123coord).max(axis=0)):
+        _, ax = plt.subplots(tight_layout=True)
+        ax.plot(wavelengths, cphase[:, index], label=f"B={baseline:.2f} m")
+        ax.set_xlabel(r"$\lambda$ ($\mu$m)")
+        ax.set_ylabel(r"Closure Phases ($^\circ$)")
+        plt.legend()
+        plt.savefig(cphase_dir / f"t3phi_{baseline:.2f}.pdf", format="pdf")
+        plt.close()

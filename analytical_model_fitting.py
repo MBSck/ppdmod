@@ -23,7 +23,7 @@ OPTIONS["data.binning.window"] = 0.1*u.um
 # data.set_fit_wavelengths([1.6, 2.25, 3.5]*u.um)
 data.set_fit_wavelengths([3.5]*u.um)
 # data.set_fit_wavelengths([8., 9., 10., 11.3, 12.5]*u.um)
-fits_files = list(Path("tests/data/fits").glob("*04-23*HAW*fits"))
+fits_files = list(Path("tests/data/fits").glob("*fits"))
 data.set_data(fits_files)
 
 # TODO: Check if the configuration of these parameters is ok
@@ -37,7 +37,6 @@ matisse_flux = utils.opacity_to_matisse_opacity(
     wavelength_axes, wavelength_grid=wavelengths*u.um, opacity=flux*u.Jy).value*u.Jy
 star_flux = Parameter(**STANDARD_PARAMETERS["f"])
 star_flux.value, star_flux.wavelength = matisse_flux, wavelength_axes
-star_flux.interpolation = True
 
 weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
 qval_file_dir = Path("tests/data/qval")
@@ -194,8 +193,8 @@ if __name__ == "__main__":
     components = custom_components.assemble_components(
             components_and_params, shared_params)
 
-    plot.plot_observables([8, 12]*u.um,
-                          components, fits_files)
+    plot.plot_observables([3, 12]*u.um, components,
+                          fits_files, save_dir=result_dir)
 
     # HACK: This is to include innermost radius for rn.
     innermost_radius = components[1].params["rin"]
