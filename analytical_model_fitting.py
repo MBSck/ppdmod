@@ -193,7 +193,7 @@ if __name__ == "__main__":
     components = custom_components.assemble_components(
             components_and_params, shared_params)
 
-    plot.plot_observables([3, 12]*u.um, components,
+    plot.plot_observables("hd142666", [3, 12]*u.um, components,
                           fits_files, save_dir=result_dir)
 
     # HACK: This is to include innermost radius for rn.

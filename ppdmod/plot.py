@@ -3,6 +3,7 @@ from typing import Optional, Any, Dict, List
 from pathlib import Path
 
 import astropy.units as u
+import astropy.constants as const
 import corner
 import matplotlib
 import matplotlib.colors as mcolors
@@ -820,7 +821,76 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
     plt.close()
 
 
-def plot_observables(wavelength_range: u.um,
+def plot_target(target: str,
+                wavelength_range: Optional[List[float]] = None,
+                radius: Optional[float] = 1,
+                ax: Optional[plt.Axes] = None,
+                title: Optional[str] = None,
+                filters: Optional[List[str]] = None,
+                show_legend: Optional[bool] = False,
+                savefig: Optional[Path] = None) -> None:
+    """Plots the target's photometry from Vizier.
+
+    Parameters
+    ----------
+    target : str
+    radius : float, optional
+    """
+    sed = Table.read(f"https://vizier.cds.unistra.fr/viz-bin/sed?-c={target}&-c.rs={radius}")
+
+    if ax is None:
+        fig = plt.figure()
+        ax = fig.add_subplot()
+        ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
+        ax.set_ylabel("Flux (Jy)")
+        ax.set_title(title)
+    else:
+        fig = None
+
+    if filters is not None:
+        for filter in filters:
+            filtered_sed = sed[[filter_name.startswith(filter)
+                                for filter_name in sed['sed_filter']]]
+
+            for tabname in set(filtered_sed['_tabname']):
+                subset = filtered_sed[filtered_sed['_tabname'] == tabname]
+                frequency, flux = subset["sed_freq"], subset["sed_flux"]
+                wavelength = (const.c/(frequency).to(u.Hz)).to(u.um)
+
+                if wavelength_range is not None:
+                    indices = np.where((wavelength > wavelength_range[0]) &
+                                       (wavelength < wavelength_range[1]))[0]
+                    wavelength = wavelength[indices]
+                    flux = flux[indices]
+
+                ax.scatter(wavelength, flux, label=f"{filter}, {tabname}")
+    else:
+        for tabname in set(sed['_tabname']):
+            subset = sed[sed['_tabname'] == tabname]
+            frequency, flux = subset["sed_freq"], subset["sed_flux"]
+            wavelength = (const.c/(frequency).to(u.Hz)).to(u.um)
+
+            if wavelength_range is not None:
+                indices = np.where((wavelength > wavelength_range[0]) &
+                                   (wavelength < wavelength_range[1]))[0]
+                wavelength = wavelength[indices]
+                flux = flux[indices]
+
+            ax.scatter(wavelength, flux)
+
+    if show_legend:
+        ax.legend()
+
+    if savefig is not None:
+        plt.savefig(savefig, format=Path(savefig).suffix[1:],
+                    dpi=OPTIONS["plot.dpi"])
+
+    if fig is not None:
+        plt.close()
+
+
+def plot_observables(target: str,
+                     wavelength_range: u.um,
                      components: List[Component],
                      fits_files: List[Path],
                      corr_flux: Optional[bool] = None,
@@ -876,8 +946,10 @@ def plot_observables(wavelength_range: u.um,
     flux = np.array(flux)
     _, ax = plt.subplots(tight_layout=True)
     ax.plot(wavelengths, flux)
+    plot_target(target, wavelength_range=wavelength_range, ax=ax)
     ax.set_xlabel(r"$\lambda$ ($\mu$m)")
     ax.set_ylabel("Flux (Jy)")
+    ax.set_ylim([0, None])
     plt.savefig(save_dir / "sed.pdf", format="pdf")
     plt.close()
 
