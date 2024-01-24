@@ -893,6 +893,10 @@ def plot_target(target: str,
                 if wavelength_range is not None:
                     indices = np.where((wavelength > wavelength_range[0]) &
                                        (wavelength < wavelength_range[1]))[0]
+
+                    if indices.size == 0:
+                        continue
+
                     wavelength = wavelength[indices]
                     flux = flux[indices]
 
@@ -907,10 +911,14 @@ def plot_target(target: str,
             if wavelength_range is not None:
                 indices = np.where((wavelength > wavelength_range[0]) &
                                    (wavelength < wavelength_range[1]))[0]
+
+                if indices.size == 0:
+                    continue
+
                 wavelength = wavelength[indices]
                 flux = flux[indices]
 
-            ax.scatter(wavelength, flux, colors[index])
+            ax.scatter(wavelength, flux, color=colors[index])
 
     if show_legend:
         ax.legend()
