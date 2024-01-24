@@ -869,8 +869,10 @@ def plot_target(target: str,
     sed = Table.read(f"https://vizier.cds.unistra.fr/viz-bin/sed?-c={target}&-c.rs={radius}")
 
     if ax is None:
-        fig = plt.figure()
-        ax = fig.add_subplot()
+        _ = plt.figure(facecolor=OPTIONS["plot.color.background"],
+                   tight_layout=True)
+        ax = plt.axes(facecolor=OPTIONS["plot.color.background"])
+        set_axes_color(ax, OPTIONS["plot.color.background"])
         ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
         ax.set_ylabel("Flux (Jy)")
         ax.set_title(title)
@@ -976,7 +978,11 @@ def plot_observables(target: str,
         vis[index] = tmp_vis
         cphase[index] = tmp_cphase
     flux = np.array(flux)
-    _, ax = plt.subplots(tight_layout=True)
+
+    _ = plt.figure(facecolor=OPTIONS["plot.color.background"],
+                   tight_layout=True)
+    ax = plt.axes(facecolor=OPTIONS["plot.color.background"])
+    set_axes_color(ax, OPTIONS["plot.color.background"])
     ax.plot(wavelengths, flux, label="Model")
     plot_target(target, wavelength_range=wavelength_range, ax=ax)
     ax.set_xlabel(r"$\lambda$ ($\mu$m)")
@@ -993,7 +999,11 @@ def plot_observables(target: str,
     cphase_dir = baseline_dir / "cphase"
     cphase_dir.mkdir(exist_ok=True, parents=True)
     for index, (uc, vc) in enumerate(zip(ucoord, vcoord)):
-        _, ax = plt.subplots(tight_layout=True)
+        _ = plt.figure(facecolor=OPTIONS["plot.color.background"],
+                       tight_layout=True)
+        ax = plt.axes(facecolor=OPTIONS["plot.color.background"])
+        set_axes_color(ax, OPTIONS["plot.color.background"])
+
         baseline, baseline_angle = np.hypot(uc, vc), np.arctan2(uc, vc)*u.rad.to(u.deg)
         ax.plot(wavelengths, vis[:, index],
                 label=rf"B={baseline:.2f} m, $\phi$={baseline_angle:.2f}$^\circ$")
@@ -1005,7 +1015,10 @@ def plot_observables(target: str,
         plt.close()
 
     for index, baseline in enumerate(np.hypot(u123coord, v123coord).max(axis=0)):
-        _, ax = plt.subplots(tight_layout=True)
+        _ = plt.figure(facecolor=OPTIONS["plot.color.background"],
+                       tight_layout=True)
+        ax = plt.axes(facecolor=OPTIONS["plot.color.background"])
+        set_axes_color(ax, OPTIONS["plot.color.background"])
         ax.plot(wavelengths, cphase[:, index], label=f"B={baseline:.2f} m")
         ax.set_xlabel(r"$\lambda$ ($\mu$m)")
         ax.set_ylabel(r"Closure Phases ($^\circ$)")
