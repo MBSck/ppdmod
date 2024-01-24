@@ -262,7 +262,6 @@ def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
     hdu.writeto(savefits, overwrite=True)
 
 
-# TODO: Make this plot multiple models for each wavelength
 def plot_model(fits_file: Path, data_type: Optional[str] = "image",
                wavelength: Optional[float] = None,
                pixel_size: Optional[float] = None,
@@ -305,17 +304,17 @@ def plot_model(fits_file: Path, data_type: Optional[str] = "image",
                 plt.plot(radius, hdul["FULL_DISK"].data["temperature"][0])
                 plt.ylabel(r"Temperature (K)")
                 plt.xlabel(r"Radius (mas)")
+
             elif data_type == "brightness":
                 for wavelength, data in zip(
                         wavelengths, hdul["FULL_DISK"].data["brightness"]):
-                    plt.plot(radius, data, label=wavelength)
+                    plt.loglog(radius, data, label=wavelength)
                 plt.ylabel(r"Surface Brightness ($\frac{erg}{cm^2rad^2\,s\,Hz}$)")
-                plt.yscale("log")
-                plt.xscale("log")
                 plt.ylim([1e-10, None])
                 legend = plt.legend()
                 set_legend_color(legend, OPTIONS["plot.color.background"])
                 plt.xlabel(r"Radius (mas)")
+
             # TODO: Make this into the full disk
             elif data_type == "flux":
                 stellar_flux = hdul["STAR"].data["flux"]
@@ -325,22 +324,21 @@ def plot_model(fits_file: Path, data_type: Optional[str] = "image",
                 plt.plot(wavelengths, total_flux, marker="o")
                 plt.ylabel("Flux (Jy)")
                 plt.xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
+
             elif data_type == "density":
-                plt.plot(radius, hdul["FULL_DISK"].data["surface_density"][0])
+                plt.loglog(radius, hdul["FULL_DISK"].data["surface_density"][0])
                 plt.ylabel(r"Surface Density (g/cm$^2$)")
-                plt.yscale("log")
-                plt.xscale("log")
                 plt.xlabel(r"Radius (mas)")
-            elif data_type == "thickness":
+
+            elif data_type == "emissivity":
                 for wavelength, data in zip(
                         wavelengths, hdul["FULL_DISK"].data["thickness"]):
-                    plt.plot(radius, data, label=wavelength)
-                plt.ylabel(r"Thickness (a.u.)")
-                plt.yscale("log")
-                plt.xscale("log")
+                    plt.loglog(radius, data, label=wavelength)
+                plt.ylabel(r"Emissivity (a.u.)")
                 legend = plt.legend()
                 set_legend_color(legend, OPTIONS["plot.color.background"])
                 plt.xlabel(r"Radius (mas)")
+
             elif data_type == "depth":
                 nwl = len(wavelengths)
                 optical_depth = hdul["FULL_DISK"].data["surface_density"]\
@@ -360,9 +358,41 @@ def plot_model(fits_file: Path, data_type: Optional[str] = "image",
     if savefig is not None:
         plt.savefig(savefig, format=Path(savefig).suffix[1:],
                     dpi=OPTIONS["plot.dpi"])
-    else:
-        plt.show()
     plt.close()
+
+
+def plot_all(model_file: Path,
+             pixel_size: u.mas,
+             wavelengths: u.um,
+             zoom: Optional[float] = 25,
+             save_dir: Optional[Path] = None) -> None:
+    """Plots all the plots.
+
+    Parameters
+    ----------
+    model_file : pathlib.Path
+    pixel_size : astropy.units.Quantity
+    wavelengths : astropy.units.Quantity
+    zoom : float
+    """
+    for wavelength in wavelengths:
+        wavelength = wavelength.value
+        plot_model(model_file, data_type="image",
+                   wavelength=wavelength,
+                   pixel_size=pixel_size.value,
+                   savefig=f"image{wavelength:.2f}.pdf", zoom=zoom)
+    plot_model(model_file, data_type="temperature",
+               savefig=save_dir / "temperature.pdf")
+    plot_model(model_file, data_type="flux",
+               savefig=save_dir / "flux.pdf")
+    plot_model(model_file, data_type="brightness",
+               savefig=save_dir / "brightness.pdf")
+    plot_model(model_file, data_type="density",
+               savefig=save_dir / "density.pdf")
+    plot_model(model_file, data_type="emissivity",
+               savefig=save_dir / "emissivity.pdf")
+    plot_model(model_file, data_type="depth",
+               factor=0.505, savefig=save_dir / "depth.pdf")
 
 
 # TODO: Implement here Sebastian's code
@@ -847,12 +877,13 @@ def plot_target(target: str,
     else:
         fig = None
 
+    colors = OPTIONS["plot.color"]
     if filters is not None:
         for filter in filters:
             filtered_sed = sed[[filter_name.startswith(filter)
                                 for filter_name in sed['sed_filter']]]
 
-            for tabname in set(filtered_sed['_tabname']):
+            for index, tabname in enumerate(set(filtered_sed['_tabname'])):
                 subset = filtered_sed[filtered_sed['_tabname'] == tabname]
                 frequency, flux = subset["sed_freq"], subset["sed_flux"]
                 wavelength = (const.c/(frequency).to(u.Hz)).to(u.um)
@@ -863,9 +894,10 @@ def plot_target(target: str,
                     wavelength = wavelength[indices]
                     flux = flux[indices]
 
-                ax.scatter(wavelength, flux, label=f"{filter}, {tabname}")
+                ax.scatter(wavelength, flux, label=f"{filter}, {tabname}",
+                           color=colors[index])
     else:
-        for tabname in set(sed['_tabname']):
+        for index, tabname in enumerate(set(sed['_tabname'])):
             subset = sed[sed['_tabname'] == tabname]
             frequency, flux = subset["sed_freq"], subset["sed_flux"]
             wavelength = (const.c/(frequency).to(u.Hz)).to(u.um)
@@ -876,7 +908,7 @@ def plot_target(target: str,
                 wavelength = wavelength[indices]
                 flux = flux[indices]
 
-            ax.scatter(wavelength, flux)
+            ax.scatter(wavelength, flux, colors[index])
 
     if show_legend:
         ax.legend()
@@ -945,11 +977,12 @@ def plot_observables(target: str,
         cphase[index] = tmp_cphase
     flux = np.array(flux)
     _, ax = plt.subplots(tight_layout=True)
-    ax.plot(wavelengths, flux)
+    ax.plot(wavelengths, flux, label="Model")
     plot_target(target, wavelength_range=wavelength_range, ax=ax)
     ax.set_xlabel(r"$\lambda$ ($\mu$m)")
     ax.set_ylabel("Flux (Jy)")
     ax.set_ylim([0, None])
+    ax.legend()
     plt.savefig(save_dir / "sed.pdf", format="pdf")
     plt.close()
 
