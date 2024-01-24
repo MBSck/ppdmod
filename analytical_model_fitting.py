@@ -121,7 +121,7 @@ cont_weight = Parameter(**STANDARD_PARAMETERS["cont_weight"])
 # inner_temp.value = 1500
 pa.value = 145
 elong.value = 0.5
-cont_weight.value = 130
+cont_weight.value = 0.5             # Relative contribution (adds to 1). Mass fractions
 
 # q.set(min=0., max=1.)
 # inner_temp.set(min=300, max=2000)
@@ -166,8 +166,20 @@ day_dir = model_result_dir / str(datetime.now().date())
 time = datetime.now()
 file_name = f"results_model_{time.hour}:{time.minute}:{time.second}"
 result_dir = day_dir / file_name
-if not result_dir.exists():
-    result_dir.mkdir(parents=True)
+result_dir.mkdir(parents=True, exist_ok=True)
+
+pre_fit_dir = result_dir / "pre_fit"
+pre_fit_dir.mkdir(parents=True, exist_ok=True)
+
+components = custom_components.assemble_components(
+        OPTIONS["model.components_and_params"],
+        OPTIONS["model.shared_params"])
+plot.plot_overview(savefig=pre_fit_dir / "data_overview.png")
+plot.plot_observables("hd142666", [3, 12]*u.um, components,
+                      fits_files, save_dir=pre_fit_dir)
+
+post_fit_dir = result_dir / "post_fit"
+post_fit_dir.mkdir(parents=True, exist_ok=True)
 
 
 if __name__ == "__main__":
@@ -177,16 +189,15 @@ if __name__ == "__main__":
     sampler = fitting.run_fit(
             nwalkers=nwalkers, nsteps_burnin=nburnin, nsteps=nsteps,
             ncores=ncores, method="analytical", debug=True)
-    np.save(result_dir / "sampler", sampler)
+    np.save(post_fit_dir / "sampler", sampler)
 
     theta, uncertainties = fitting.get_best_fit(
             sampler, discard=nburnin, method="quantile")
-    np.save(result_dir / "best_fit_params.npy", theta)
 
     plot.plot_chains(sampler, labels, discard=nburnin,
-                     savefig=result_dir / "chains.pdf")
+                     savefig=post_fit_dir / "chains.pdf")
     plot.plot_corner(sampler, labels, discard=nburnin,
-                     savefig=result_dir / "corner.pdf")
+                     savefig=post_fit_dir / "corner.pdf")
     new_params = dict(zip(labels, theta))
 
     components_and_params, shared_params = fitting.set_params_from_theta(theta)
@@ -194,7 +205,7 @@ if __name__ == "__main__":
             components_and_params, shared_params)
 
     plot.plot_observables("hd142666", [3, 12]*u.um, components,
-                          fits_files, save_dir=result_dir)
+                          fits_files, save_dir=post_fit_dir)
 
     # HACK: This is to include innermost radius for rn.
     innermost_radius = components[1].params["rin"]
@@ -205,7 +216,7 @@ if __name__ == "__main__":
             4096, 0.1, distance,
             OPTIONS["fit.wavelengths"], components,
             component_labels, opacities=[kappa_abs, kappa_cont],
-            savefits=result_dir / "model.fits",
+            savefits=post_fit_dir / "model.fits",
             options=OPTIONS, object_name="HD 142666",
             nwalkers=nwalkers, nsteps=nburnin+nsteps,
             ncores=ncores)
@@ -213,4 +224,4 @@ if __name__ == "__main__":
     plot.plot_fit(
             new_params["sh_elong"], new_params["sh_pa"],
             components=components,
-            savefig=result_dir / "fit_results.pdf")
+            savefig=post_fit_dir / "fit_results.pdf")
