@@ -71,16 +71,16 @@ STANDARD_PARAMETERS = {
                        "description": "Continuum dust mass absorption coefficient"},
         "cont_weight": {"name": "cont_weight", "shortname": "conwei",
                         "value": 0, "unit": u.one, "free": True,
-                        "description": "Dust mass continuum absorption coefficient's weight"},
-    "dist": {"name": "dist", "shortname": "dist",
-             "value": 0, "unit": u.pc, "free": False,
-             "description": "Distance to the star"},
-    "eff_temp": {"name": "eff_temp", "shortname": "efftemp",
-                 "value": 0, "unit": u.K, "free": False,
-                 "description": "The star's effective temperature"},
-    "eff_radius": {"name": "eff_radius", "shortname": "effrad",
-                   "value": 0, "unit": u.Rsun, "free": False,
-                   "description": "The stellar radius"},
+                        "description": "Mass fraction of continuum vs. silicate"},
+        "dist": {"name": "dist", "shortname": "dist",
+                 "value": 0, "unit": u.pc, "free": False,
+                 "description": "Distance to the star"},
+        "eff_temp": {"name": "eff_temp", "shortname": "efftemp",
+                     "value": 0, "unit": u.K, "free": False,
+                     "description": "The star's effective temperature"},
+        "eff_radius": {"name": "eff_radius", "shortname": "effrad",
+                       "value": 0, "unit": u.Rsun, "free": False,
+                       "description": "The stellar radius"},
 }
 
 
@@ -129,7 +129,7 @@ class Parameter:
 
     def __str__(self):
         message = f"Parameter: {self.name} has the value {self.value} and "\
-                  f"is {'free' if self.free else 'not free'}"
+                f"is {'free' if self.free else 'not free'}"
         if self.max is not None:
             message += f" with its limits being {self.min}-{self.max}"
         return message
