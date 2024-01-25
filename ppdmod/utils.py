@@ -3,8 +3,11 @@ from pathlib import Path
 from typing import Any, Callable, Optional, Dict, Tuple, List
 
 import astropy.units as u
+import matplotlib.pyplot as plt
 import numpy as np
 from astropy.convolution import Gaussian1DKernel, Box1DKernel, convolve
+from matplotlib.axes import Axes
+from matplotlib.legend import Legend
 from numpy.polynomial.polynomial import polyval
 from openpyxl import Workbook, load_workbook
 from scipy.interpolate import interp1d
@@ -13,7 +16,8 @@ from scipy.special import j1
 from .options import OPTIONS
 
 
-def take_time_average(func, *args, nsteps=10):
+def take_time_average(func: Callable, *args,
+                      nsteps: Optional[int] = 10) -> Tuple[Callable, float]:
     """Takes a time average of the code."""
     execution_times = []
     for _ in range(nsteps):
@@ -23,7 +27,7 @@ def take_time_average(func, *args, nsteps=10):
     return return_val, np.array(execution_times).mean()
 
 
-def execution_time(func):
+def execution_time(func: Callable) -> Callable:
     """Prints the execution time of the decorated function."""
     def wrapper(*args, **kwargs):
         start_time = time.time()
@@ -31,38 +35,6 @@ def execution_time(func):
         print(f"Execution time: {time.time() - start_time:.6f} seconds")
         return result
     return wrapper
-
-
-def make_workbook(file: Path, sheets: Dict[str, List[str]]) -> None:
-    """Creates an (.xslx)-sheet with subsheets.
-
-    Parameters
-    ----------
-    file : Path
-    sheets : dict of list
-        A dictionary having the sheet name as they key
-        and a list of columns as the value.
-    """
-    file_existed = True
-    if file.exists():
-        workbook = load_workbook(file)
-    else:
-        workbook = Workbook()
-        file_existed = False
-    for index, (sheet, columns) in enumerate(sheets.items()):
-        if sheet not in workbook.sheetnames:
-            if index == 0 and not file_existed:
-                worksheet = workbook.active
-                worksheet.title = sheet
-            else:
-                worksheet = workbook.create_sheet(title=sheet)
-        else:
-            worksheet = workbook[sheet]
-        worksheet.delete_rows(1, worksheet.max_row)
-        for col_idx, column_name in enumerate(columns, start=1):
-            cell = worksheet.cell(row=1, column=col_idx)
-            cell.value = column_name
-    workbook.save(file)
 
 
 def get_closest_indices(
@@ -89,56 +61,99 @@ def get_closest_indices(
     return {key: value for key, value in indices.items() if value.size != 0}
 
 
-def uniform_disk(pixel_size: u.mas, dim: int,
-                 diameter: Optional[u.Quantity[u.mas]] = None) -> u.one:
-    """The brightness profile of a uniform disk.
+def angular_to_distance(angular_diameter: u.mas, distance: u.pc) -> u.m:
+    """Converts an angular diameter of an object at a certain distance
+    from the observer from mas to meters.
 
     Parameters
     ----------
-    pixel_size : astropy.units.mas
-        The size of a pixel in the image.
-    dim : float
-        The image's dimension [px].
-    diameter : astropy.units.mas, optional
-        The uniform disk's diameter.
+    angular_diameter : astropy.units.mas
+        The angular diameter of an object.
+    distance : astropy.units.pc
+        The distance to the object.
 
     Returns
     -------
-    radial_profile : astropy.units.one
+    diameter : astropy.units.m
+        The diameter of the object.
+
+    Notes
+    -----
+    The formula for the angular diameter small angle approximation is
+
+    .. math:: d = \\delta*D
+
+    where 'd' is the diameter of the object and 'D' is the distance from the
+    observer to the object and ..math::`\\delta` is the angular diameter.
     """
-    if diameter is not None:
-        v = np.linspace(-0.5, 0.5, dim, endpoint=False)\
-            * pixel_size.to(u.mas)*dim
-        x_arr, y_arr = np.meshgrid(v, v)
-        radius = np.hypot(x_arr, y_arr) < diameter/2
-    else:
-        radius = np.ones((dim, dim)).astype(bool)
-        diameter = 1*u.mas
-    return 4*u.one*radius/(np.pi*diameter.value**2)
+    return (angular_diameter.to(u.rad).value*distance.to(u.m))
 
 
-def uniform_disk_vis(diameter: u.mas, ucoord: u.m,
-                     vcoord: u.m, wavelength: u.um) -> np.ndarray:
-    """Defines the complex visibility function of a uniform disk.
+def distance_to_angular(diameter: u.mas, distance: u.pc) -> u.m:
+    """Converts an angular diameter of an object at a certain distance
+    from the observer from mas to meters.
 
     Parameters
     ----------
-    diameter : astropy.units.mas
-        The uniform disk's diameter.
-    ucoord : astropy.units.m
-        The u-coordinates.
-    vcoord : astropy.units.m
-        The v-coordinates.
-    wavelength : astropy.units.um
-        The wavelength for the spatial frequencies' unit conversion.
+    angular_diameter : astropy.units.mas
+        The angular diameter of an object.
+    distance : astropy.units.pc
+        The distance to the object.
 
     Returns
     -------
-    complex_visibility_function : numpy.ndarray
+    diameter : astropy.units.m
+        The diameter of the object.
+
+    Notes
+    -----
+    The formula for the angular diameter small angle approximation is
+
+    .. math:: \\delta = \\frac{d}{D}
+
+    where 'd' is the diameter of the object and 'D' is the distance from the
+    observer to the object and ..math::`\\delta` is the angular diameter.
     """
-    rho = np.hypot(ucoord, vcoord)/wavelength.to(u.m)
-    return 2*j1(np.pi*rho*diameter.to(u.rad).value)\
-        / (np.pi*diameter.to(u.rad).value*rho)
+    return ((diameter.to(u.m)/distance.to(u.m))*u.rad).to(u.mas)
+
+
+# TODO: Make function that takes care of rotation so all occurences are equal.
+def calculate_effective_baselines(
+        ucoord: u.m, vcoord: u.m, axis_ratio: u.one,
+        pos_angle: u.deg) -> Tuple[u.Quantity[u.m], u.Quantity[u.one]]:
+    """Calculates the effective baselines from the projected baselines
+    in mega lambda.
+
+    Parameters
+    ----------
+    ucoord: astropy.units.m
+        The u coordinate.
+    vcoord: astropy.units.m
+        The v coordinate.
+    axis_ratio: astropy.units.one
+        The axis ratio of the ellipse
+    pos_angle: astropy.units.deg
+        The positional angle of the object
+    wavelength: astropy.units.um, optional
+        The wavelength.
+
+    Returns
+    -------
+    astropy.units.m or astropy.units.one
+        Returns the projected baselines either in meter or
+        mega lambda.
+    """
+    if not isinstance(ucoord, u.Quantity):
+        ucoord, vcoord = map(lambda x: x*u.m, [ucoord, vcoord])
+    axis_ratio = axis_ratio*u.one\
+        if not isinstance(axis_ratio, u.Quantity) else axis_ratio
+    pos_angle = pos_angle*u.deg\
+        if not isinstance(pos_angle, u.Quantity) else pos_angle
+
+    ucoord_eff = ucoord*np.cos(pos_angle) - vcoord*np.sin(pos_angle)
+    vcoord_eff = (ucoord*np.sin(pos_angle) + vcoord*np.cos(pos_angle))*axis_ratio
+    return np.hypot(ucoord_eff, vcoord_eff), \
+        np.arctan2(ucoord_eff, vcoord_eff)
 
 
 def binary(dim: int, pixel_size: u.mas,
@@ -149,7 +164,7 @@ def binary(dim: int, pixel_size: u.mas,
     Parameters
     ----------
     dim : float
-        The image's dimension [px].
+        The image's dimension (px).
     pixel_size : astropy.units.mas
         The size of a pixel in the image.
     flux1 : astropy.units.Jy
@@ -204,6 +219,90 @@ def binary_vis(flux1: u.Jy, flux2: u.Jy,
             [position1, position2]))
     return (flux1.value*np.exp(2*np.pi*1j*xy_and_uv[0].value)
             + flux2.value*np.exp(2*np.pi*1j*xy_and_uv[1].value))
+
+
+def uniform_disk(pixel_size: u.mas, dim: int,
+                 diameter: Optional[u.Quantity[u.mas]] = None) -> u.one:
+    """The brightness profile of a uniform disk.
+
+    Parameters
+    ----------
+    pixel_size : astropy.units.mas
+        The size of a pixel in the image.
+    dim : float
+        The image's dimension [px].
+    diameter : astropy.units.mas, optional
+        The uniform disk's diameter.
+
+    Returns
+    -------
+    radial_profile : astropy.units.one
+    """
+    if diameter is not None:
+        v = np.linspace(-0.5, 0.5, dim, endpoint=False)\
+            * pixel_size.to(u.mas)*dim
+        x_arr, y_arr = np.meshgrid(v, v)
+        radius = np.hypot(x_arr, y_arr) < diameter/2
+    else:
+        radius = np.ones((dim, dim)).astype(bool)
+        diameter = 1*u.mas
+    return 4*u.one*radius/(np.pi*diameter.value**2)
+
+
+def uniform_disk_vis(diameter: u.mas, ucoord: u.m,
+                     vcoord: u.m, wavelength: u.um) -> np.ndarray:
+    """Defines the complex visibility function of a uniform disk.
+
+    Parameters
+    ----------
+    diameter : astropy.units.mas
+        The uniform disk's diameter.
+    ucoord : astropy.units.m
+        The u-coordinates.
+    vcoord : astropy.units.m
+        The v-coordinates.
+    wavelength : astropy.units.um
+        The wavelength for the spatial frequencies' unit conversion.
+
+    Returns
+    -------
+    complex_visibility_function : numpy.ndarray
+    """
+    rho = np.hypot(ucoord, vcoord)/wavelength.to(u.m)
+    return 2*j1(np.pi*rho*diameter.to(u.rad).value)\
+        / (np.pi*diameter.to(u.rad).value*rho)
+
+
+def make_workbook(file: Path, sheets: Dict[str, List[str]]) -> None:
+    """Creates an (.xslx)-sheet with subsheets.
+
+    Parameters
+    ----------
+    file : Path
+    sheets : dict of list
+        A dictionary having the sheet name as they key
+        and a list of columns as the value.
+    """
+    file_existed = True
+    if file.exists():
+        workbook = load_workbook(file)
+    else:
+        workbook = Workbook()
+        file_existed = False
+    for index, (sheet, columns) in enumerate(sheets.items()):
+        if sheet not in workbook.sheetnames:
+            if index == 0 and not file_existed:
+                worksheet = workbook.active
+                worksheet.title = sheet
+            else:
+                worksheet = workbook.create_sheet(title=sheet)
+        else:
+            worksheet = workbook[sheet]
+        worksheet.delete_rows(1, worksheet.max_row)
+        for col_idx, column_name in enumerate(columns, start=1):
+            cell = worksheet.cell(row=1, column=col_idx)
+            cell.value = column_name
+    workbook.save(file)
 
 
 def qval_to_opacity(qval_file: Path) -> u.cm**2/u.g:
@@ -371,103 +470,29 @@ def linearly_combine_data(files: List[Path], weights: u.one,
     return combined_data
 
 
-def angular_to_distance(angular_diameter: u.mas, distance: u.pc) -> u.m:
-    """Converts an angular diameter of an object at a certain distance
-    from the observer from mas to meters.
-
-    Parameters
-    ----------
-    angular_diameter : astropy.units.mas
-        The angular diameter of an object.
-    distance : astropy.units.pc
-        The distance to the object.
-
-    Returns
-    -------
-    diameter : astropy.units.m
-        The diameter of the object.
-
-    Notes
-    -----
-    The formula for the angular diameter small angle approximation is
-
-    .. math:: d = \\delta*D
-
-    where 'd' is the diameter of the object and 'D' is the distance from the
-    observer to the object and ..math::`\\delta` is the angular diameter.
-    """
-    return (angular_diameter.to(u.rad).value*distance.to(u.m))
-
-
-def distance_to_angular(diameter: u.mas, distance: u.pc) -> u.m:
-    """Converts an angular diameter of an object at a certain distance
-    from the observer from mas to meters.
-
-    Parameters
-    ----------
-    angular_diameter : astropy.units.mas
-        The angular diameter of an object.
-    distance : astropy.units.pc
-        The distance to the object.
-
-    Returns
-    -------
-    diameter : astropy.units.m
-        The diameter of the object.
-
-    Notes
-    -----
-    The formula for the angular diameter small angle approximation is
-
-    .. math:: \\delta = \\frac{d}{D}
-
-    where 'd' is the diameter of the object and 'D' is the distance from the
-    observer to the object and ..math::`\\delta` is the angular diameter.
-    """
-    return ((diameter.to(u.m)/distance.to(u.m))*u.rad).to(u.mas)
-
-
-# TODO: Make function that takes care of rotation so all occurences are equal.
-def calculate_effective_baselines(
-        ucoord: u.m, vcoord: u.m, axis_ratio: u.one,
-        pos_angle: u.deg) -> Tuple[u.Quantity[u.m], u.Quantity[u.one]]:
-    """Calculates the effective baselines from the projected baselines
-    in mega lambda.
-
-    Parameters
-    ----------
-    ucoord: astropy.units.m
-        The u coordinate.
-    vcoord: astropy.units.m
-        The v coordinate.
-    axis_ratio: astropy.units.one
-        The axis ratio of the ellipse
-    pos_angle: astropy.units.deg
-        The positional angle of the object
-    wavelength: astropy.units.um, optional
-        The wavelength.
-
-    Returns
-    -------
-    astropy.units.m or astropy.units.one
-        Returns the projected baselines either in meter or
-        mega lambda.
-    """
-    if not isinstance(ucoord, u.Quantity):
-        ucoord, vcoord = map(lambda x: x*u.m, [ucoord, vcoord])
-    axis_ratio = axis_ratio*u.one\
-        if not isinstance(axis_ratio, u.Quantity) else axis_ratio
-    pos_angle = pos_angle*u.deg\
-        if not isinstance(pos_angle, u.Quantity) else pos_angle
-
-    ucoord_eff = ucoord*np.cos(pos_angle) - vcoord*np.sin(pos_angle)
-    vcoord_eff = (ucoord*np.sin(pos_angle) + vcoord*np.cos(pos_angle))*axis_ratio
-    return np.hypot(ucoord_eff, vcoord_eff), \
-        np.arctan2(ucoord_eff, vcoord_eff)
-
-
 def restrict_phase(phase: np.ndarray):
     """Restricts the phase to [-180, 180] degrees."""
     restricted_phase = phase % 360
     restricted_phase[restricted_phase > 180] -= 360
     return restricted_phase
+
+
+def set_axes_color(ax: Axes, background_color: str) -> None:
+    """Sets all the axes' facecolor."""
+    opposite_color = "white" if background_color == "black" else "black"
+    ax.set_facecolor(background_color)
+    ax.spines['bottom'].set_color(opposite_color)
+    ax.spines['top'].set_color(opposite_color)
+    ax.spines['right'].set_color(opposite_color)
+    ax.spines['left'].set_color(opposite_color)
+    ax.xaxis.label.set_color(opposite_color)
+    ax.yaxis.label.set_color(opposite_color)
+    ax.tick_params(axis='x', colors=opposite_color)
+    ax.tick_params(axis='y', colors=opposite_color)
+
+
+def set_legend_color(legend: Legend, background_color: str) -> None:
+    """Sets the legend's facecolor."""
+    opposite_color = "white" if background_color == "black" else "black"
+    plt.setp(legend.get_texts(), color=opposite_color)
+    legend.get_frame().set_facecolor(background_color)

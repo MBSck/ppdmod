@@ -172,8 +172,6 @@ class AnalyticalComponent(Component):
             if pixel_size is None else pixel_size
         dim = u.Quantity(value=dim, unit=u.one, dtype=int)
         pixel_size = u.Quantity(value=pixel_size, unit=u.mas)
-        dim = get_new_dimension(
-                dim, OPTIONS["fourier.binning"], OPTIONS["fourier.padding"])
         x_arr, y_arr = self._calculate_internal_grid(dim, pixel_size)
         return self._image_function(x_arr, y_arr, wavelength)
 
@@ -196,8 +194,6 @@ class AnalyticalComponent(Component):
             if pixel_size is None else pixel_size
         dim = u.Quantity(value=dim, unit=u.one, dtype=int)
         pixel_size = u.Quantity(value=pixel_size, unit=u.mas)
-        dim = get_new_dimension(
-                dim, OPTIONS["fourier.binning"], OPTIONS["fourier.padding"])
         return self._visibility_function(dim, pixel_size, wavelength)
 
 

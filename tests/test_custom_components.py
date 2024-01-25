@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Dict
 
 import astropy.units as u
 import matplotlib.pyplot as plt

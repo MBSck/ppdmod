@@ -20,39 +20,10 @@ from .component import Component
 from .data import ReadoutFits
 from .fitting import calculate_observables
 from .options import OPTIONS, get_colormap
-from .utils import calculate_effective_baselines, restrict_phase
+from .utils import calculate_effective_baselines, restrict_phase, \
+        set_legend_color, set_axes_color
 
 matplotlib.use('Agg')
-
-HEADER_DICT = {
-        "BUNIT": ("Jy", "Unit of original pixel value"),
-        "BTYPE": ("Brightness", "Type of original pixel value"),
-        "EXTEND": (True, "EXTEND"),
-        "COMMENT": "Best fit model image per wavelength",
-        }
-
-
-def set_axes_color(ax: matplotlib.axes.Axes,
-                   background_color: str) -> None:
-    """Sets all the axes to the opposite color."""
-    opposite_color = "white" if background_color == "black" else "black"
-    ax.set_facecolor(background_color)
-    ax.spines['bottom'].set_color(opposite_color)
-    ax.spines['top'].set_color(opposite_color)
-    ax.spines['right'].set_color(opposite_color)
-    ax.spines['left'].set_color(opposite_color)
-    ax.xaxis.label.set_color(opposite_color)
-    ax.yaxis.label.set_color(opposite_color)
-    ax.tick_params(axis='x', colors=opposite_color)
-    ax.tick_params(axis='y', colors=opposite_color)
-
-
-def set_legend_color(legend: matplotlib.legend.Legend,
-                     background_color: str) -> None:
-    """Sets the legend color."""
-    opposite_color = "white" if background_color == "black" else "black"
-    plt.setp(legend.get_texts(), color=opposite_color)
-    legend.get_frame().set_facecolor(background_color)
 
 
 def plot_corner(sampler: np.ndarray, labels: List[str],

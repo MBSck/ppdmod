@@ -59,12 +59,6 @@ OPTIONS["model.gridtype"] = "linear"
 OPTIONS["model.modulation.order"] = 0
 OPTIONS["model.shared_params"] = {}
 
-# NOTE: Fourier transform
-OPTIONS["fourier.backend"] = "numpy"
-OPTIONS["fourier.binning"] = None
-OPTIONS["fourier.method"] = "complex"
-OPTIONS["fourier.padding"] = None
-
 # NOTE: Spectrum
 OPTIONS["spectrum.binning"] = 7
 OPTIONS["spectrum.coefficients"] = {
