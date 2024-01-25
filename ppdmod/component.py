@@ -6,8 +6,8 @@ from astropy.modeling.models import BlackBody
 from scipy.special import j0, jv
 
 from ._spectral_cy import grid
-from .parameter import STANDARD_PARAMETERS, Parameter
-from .options import OPTIONS
+from .parameter import Parameter
+from .options import STANDARD_PARAMETERS, OPTIONS
 from .utils import distance_to_angular, calculate_effective_baselines
 
 

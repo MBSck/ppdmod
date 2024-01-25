@@ -3,7 +3,8 @@ import numpy as np
 import pytest
 from numpy.typing import ArrayLike
 
-from ppdmod.parameter import STANDARD_PARAMETERS, Parameter
+from ppdmod.options import STANDARD_PARAMETERS
+from ppdmod.parameter import Parameter
 
 
 VALUE = np.arange(0, 10)*u.mas
@@ -58,4 +59,10 @@ def test_multiple_wavelength_calling(x: Parameter):
     """Tests the __call__ of the Parameter class for
     multiple wavelengths."""
     x.value, x.wavelength = VALUE, WAVELENGTH
-    assert np.array_equal(x(WAVELENGTH), VALUE)
+    assert np.allclose(x(WAVELENGTH), VALUE)
+
+
+def test_interpolation(x: Parameter):
+    """Tests the interpolation function."""
+    x.interpolation = True
+    ...

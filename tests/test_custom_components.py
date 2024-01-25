@@ -8,8 +8,9 @@ import pytest
 
 from ppdmod.component import Component
 from ppdmod.custom_components import Star, assemble_components
-from ppdmod.parameter import STANDARD_PARAMETERS, Parameter
 from ppdmod.data import ReadoutFits
+from ppdmod.options import STANDARD_PARAMETERS
+from ppdmod.parameter import Parameter
 from ppdmod.utils import data_to_matisse_grid, \
     linearly_combine_data, make_workbook
 
@@ -172,10 +173,10 @@ def test_assemble_components() -> None:
     del params["p"]
 
     components_and_params = [["Star", params],
-                             ["AsymmetricSDGreyBodyContinuum", params]]
+                             ["GreyBody", params]]
     components = assemble_components(components_and_params, shared_params)
     assert isinstance(components[0], Star)
-    assert isinstance(components[1], AsymmetricSDGreyBodyContinuum)
+    assert isinstance(components[1], GreyBody)
     assert all(param not in components[0].params
                for param in param_names if param not in ["pa", "elong"])
     assert all(param in components[1].params for param in param_names)

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, List
+from typing import List
 
 import astropy.units as u
 import matplotlib.pyplot as plt
@@ -7,9 +7,8 @@ import numpy as np
 import pytest
 
 from ppdmod import utils
-from ppdmod.options import OPTIONS
-
 from ppdmod.data import ReadoutFits
+from ppdmod.options import OPTIONS
 
 
 @pytest.fixture
@@ -32,17 +31,13 @@ def qval_files(qval_file_dir: Path) -> List[Path]:
 @pytest.fixture
 def fits_file() -> Path:
     """A MATISSE (.fits)-file."""
-    return Path("data/fits") /\
-        "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits"
+    return list(Path("data/fits").glob("*2022-04-23*AQU*.fits"))[0]
 
 
 @pytest.fixture
 def fits_files() -> Path:
     """A MATISSE (.fits)-file."""
-    fits_files = [
-        "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_HAWAII-2RG_FINAL_TARGET_INT.fits",
-        "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits"]
-    return [Path("data/fits") / file for file in fits_files]
+    return list(Path("data/fits").glob("*2022-04-23*.fits"))
 
 
 @pytest.fixture
@@ -103,23 +98,64 @@ def test_get_closest_indices(
     assert len(indices_l_band) == 1
 
 
-def test_uniform_disk() -> None:
-    """Tests the calculation of a uniform disk's brightness."""
-    uniform_disk = utils.uniform_disk(0.1*u.mas, 512,
-                                      diameter=4*u.mas)
-    assert uniform_disk.shape == (512, 512)
-    assert uniform_disk.unit == u.one
+@pytest.mark.parametrize(
+    "distance, expected", [(2.06*u.km, 1*u.cm), (1*u.au, 725.27*u.km),
+                           (1*u.lyr, 45_866_916*u.km), (1*u.pc, 1*u.au)])
+def test_angular_to_distance(distance: u.Quantity,
+                             expected: u.Quantity) -> None:
+    """Tests the angular diameter equation to
+    convert angules to distance.
+
+    Test values for 1" angular diameter from wikipedia:
+    https://en.wikipedia.org/wiki/Angular_diameter.
+    """
+    diameter = utils.angular_to_distance(1*u.arcsec, distance)
+    assert np.isclose(diameter, expected.to(u.m), atol=1e-3)
 
 
-def test_uniform_disk_vis(wavelength: u.um) -> None:
-    """Tests the calculation of a uniform disk's complex
-    visibility function."""
-    ucoord = np.linspace(80, 100, 20)*u.m
-    uniform_disk_vis = utils.uniform_disk_vis(4*u.mas,
-                                              ucoord, ucoord*0,
-                                              wavelength)
-    assert uniform_disk_vis.unit == u.one
-    assert np.array_equal(np.real(uniform_disk_vis), uniform_disk_vis)
+@pytest.mark.parametrize(
+    "distance, diameter", [(2.06*u.km, 1*u.cm), (1*u.au, 725.27*u.km),
+                           (1*u.lyr, 45_866_916*u.km), (1*u.pc, 1*u.au)])
+def test_distance_to_angular(distance: u.Quantity,
+                             diameter: u.Quantity) -> None:
+    """Tests the angular diameter to diameter calculation."""
+    angular_diameter = utils.distance_to_angular(diameter, distance)
+    assert np.isclose(angular_diameter.to(u.arcsec), 1*u.arcsec, atol=1e-2)
+
+
+def test_calculate_effective_baselines(fits_file: Path,
+                                       wavelength: u.um) -> None:
+    """Tests the calculation of the effective baselines."""
+    axis_ratio, pos_angle = 1, 33*u.deg
+    readout = ReadoutFits(fits_file)
+
+    baseline_dir = Path("baselines")
+    if not baseline_dir.exists():
+        baseline_dir.mkdir()
+
+    index = np.where(wavelength == readout.wavelength)
+
+    effective_baselines = utils.calculate_effective_baselines(
+        readout.ucoord, readout.vcoord, axis_ratio, pos_angle)
+
+    plt.scatter(effective_baselines/wavelength.value,
+                readout.vis[:, index].squeeze())
+    plt.savefig(baseline_dir / "baseline_vs_vis.pdf", format="pdf")
+    plt.close()
+
+    assert effective_baselines.unit == u.m
+    assert effective_baselines.size == 6
+
+    effective_baselines_cp = utils.calculate_effective_baselines(
+        readout.u123coord, readout.v123coord, axis_ratio, pos_angle).max(axis=0)
+
+    plt.scatter(effective_baselines_cp/wavelength.value,
+                readout.t3phi[:, index].squeeze())
+    plt.savefig(baseline_dir / "baseline_vs_t3phi.pdf", format="pdf")
+    plt.close()
+
+    assert effective_baselines_cp.unit == u.m
+    assert effective_baselines_cp.shape == (4,)
 
 
 def test_binary() -> None:
@@ -148,6 +184,25 @@ def test_binary_vis(wavelength: u.um) -> None:
     assert not np.array_equal(np.real(binary_vis), binary_vis)
 
 
+def test_uniform_disk() -> None:
+    """Tests the calculation of a uniform disk's brightness."""
+    uniform_disk = utils.uniform_disk(0.1*u.mas, 512,
+                                      diameter=4*u.mas)
+    assert uniform_disk.shape == (512, 512)
+    assert uniform_disk.unit == u.one
+
+
+def test_uniform_disk_vis(wavelength: u.um) -> None:
+    """Tests the calculation of a uniform disk's complex
+    visibility function."""
+    ucoord = np.linspace(80, 100, 20)*u.m
+    uniform_disk_vis = utils.uniform_disk_vis(4*u.mas,
+                                              ucoord, ucoord*0,
+                                              wavelength)
+    assert uniform_disk_vis.unit == u.one
+    assert np.array_equal(np.real(uniform_disk_vis), uniform_disk_vis)
+
+
 @pytest.mark.parametrize(
     "file", ["Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat",
              "Q_Am_Mgolivine_Jae_DHS_f1.0_rv1.5.dat",
@@ -155,9 +210,9 @@ def test_binary_vis(wavelength: u.um) -> None:
              "Q_Fo_Suto_DHS_f1.0_rv0.1.dat",
              "Q_Fo_Suto_DHS_f1.0_rv1.5.dat",
              "Q_En_Jaeger_DHS_f1.0_rv1.5.dat"])
-def test_transform_opacity(qval_file_dir: Path, file: str,
-                           high_wavelength_solution: u.um,
-                           wavelength_solution: u.um) -> None:
+def test_transform_data(qval_file_dir: Path, file: str,
+                        high_wavelength_solution: u.um,
+                        wavelength_solution: u.um) -> None:
     """Tests the opacity interpolation from one wavelength
     axis to another."""
     opacity_dir = Path("opacities")
@@ -207,7 +262,7 @@ def test_opacity_to_matisse_opacity(
     """Tests the interpolation to the MATISSE wavelength grid."""
     qval_file = qval_file_dir / "Q_SILICA_RV0.1.DAT"
     continuum_opacity = utils.data_to_matisse_grid(wavelength_solution,
-                                                         qval_file=qval_file)
+                                                   qval_file=qval_file)
     assert continuum_opacity.unit == u.cm**2/u.g
 
 
@@ -268,61 +323,3 @@ def test_linearly_combine_opacities(
         assert opacity[1].shape == wavelength_solutions[field[0]].shape
 
 
-@pytest.mark.parametrize(
-    "distance, expected", [(2.06*u.km, 1*u.cm), (1*u.au, 725.27*u.km),
-                           (1*u.lyr, 45_866_916*u.km), (1*u.pc, 1*u.au)])
-def test_angular_to_distance(distance: u.Quantity,
-                             expected: u.Quantity) -> None:
-    """Tests the angular diameter equation to
-    convert angules to distance.
-
-    Test values for 1" angular diameter from wikipedia:
-    https://en.wikipedia.org/wiki/Angular_diameter.
-    """
-    diameter = utils.angular_to_distance(1*u.arcsec, distance)
-    assert np.isclose(diameter, expected.to(u.m), atol=1e-3)
-
-
-@pytest.mark.parametrize(
-    "distance, diameter", [(2.06*u.km, 1*u.cm), (1*u.au, 725.27*u.km),
-                           (1*u.lyr, 45_866_916*u.km), (1*u.pc, 1*u.au)])
-def test_distance_to_angular(distance: u.Quantity,
-                             diameter: u.Quantity) -> None:
-    """Tests the angular diameter to diameter calculation."""
-    angular_diameter = utils.distance_to_angular(diameter, distance)
-    assert np.isclose(angular_diameter.to(u.arcsec), 1*u.arcsec, atol=1e-2)
-
-
-def test_calculate_effective_baselines(fits_file: Path,
-                                       wavelength: u.um) -> None:
-    """Tests the calculation of the effective baselines."""
-    axis_ratio, pos_angle = 1, 33*u.deg
-    readout = ReadoutFits(fits_file)
-
-    baseline_dir = Path("baselines")
-    if not baseline_dir.exists():
-        baseline_dir.mkdir()
-
-    index = np.where(wavelength == readout.wavelength)
-
-    effective_baselines = utils.calculate_effective_baselines(
-        readout.ucoord, readout.vcoord, axis_ratio, pos_angle)
-
-    plt.scatter(effective_baselines/wavelength.value,
-                readout.vis[:, index].squeeze())
-    plt.savefig(baseline_dir / "baseline_vs_vis.pdf", format="pdf")
-    plt.close()
-
-    assert effective_baselines.unit == u.m
-    assert effective_baselines.size == 6
-
-    effective_baselines_cp = utils.calculate_effective_baselines(
-        readout.u123coord, readout.v123coord, axis_ratio, pos_angle).max(axis=0)
-
-    plt.scatter(effective_baselines_cp/wavelength.value,
-                readout.t3phi[:, index].squeeze())
-    plt.savefig(baseline_dir / "baseline_vs_t3phi.pdf", format="pdf")
-    plt.close()
-
-    assert effective_baselines_cp.unit == u.m
-    assert effective_baselines_cp.shape == (4,)

@@ -7,8 +7,8 @@ from astropy.modeling import models
 
 from .component import Component, AnalyticalComponent, \
         HankelComponent
-from .parameter import STANDARD_PARAMETERS, Parameter
-from .options import OPTIONS
+from .parameter import Parameter
+from .options import STANDARD_PARAMETERS, OPTIONS
 from .utils import distance_to_angular
 
 
@@ -106,7 +106,7 @@ class Star(AnalyticalComponent):
         return np.ones((dim, dim))*star_flux.value
 
 
-class AnalyticalGreyBody(HankelComponent):
+class GreyBody(HankelComponent):
     """An analytical implementation of an asymmetric temperature
     gradient."""
     name = "Asymmetric Continuum Grey Body"
@@ -115,7 +115,7 @@ class AnalyticalGreyBody(HankelComponent):
     continuum_contribution = True
 
 
-class AnalyticalAsymmetricGreyBody(HankelComponent):
+class AsymmetricGreyBody(HankelComponent):
     """An analytical implementation of an asymmetric temperature
     gradient."""
     name = "Asymmetric Continuum Grey Body"
@@ -125,7 +125,7 @@ class AnalyticalAsymmetricGreyBody(HankelComponent):
     continuum_contribution = True
 
 
-class AnalyticalTempGradient(HankelComponent):
+class TempGradient(HankelComponent):
     """An analytical implementation of an asymmetric temperature
     gradient."""
     name = "Asymmetric Continuum Grey Body"
@@ -134,7 +134,7 @@ class AnalyticalTempGradient(HankelComponent):
     continuum_contribution = True
 
 
-class AnalyticalAsymmetricTempGradient(HankelComponent):
+class AsymmetricTempGradient(HankelComponent):
     """An analytical implementation of an asymmetric temperature
     gradient."""
     name = "Asymmetric Continuum Grey Body"
@@ -144,7 +144,6 @@ class AnalyticalAsymmetricTempGradient(HankelComponent):
     continuum_contribution = True
 
 
-# TODO: Check that this is working properly.
 def assemble_components(
         parameters: Dict[str, Dict],
         shared_params: Optional[Dict[str, Parameter]] = None

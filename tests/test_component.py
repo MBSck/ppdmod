@@ -12,8 +12,8 @@ from ppdmod import utils
 from ppdmod.component import Component, AnalyticalComponent, \
         HankelComponent
 from ppdmod.data import ReadoutFits
-from ppdmod.parameter import STANDARD_PARAMETERS, Parameter
-from ppdmod.options import OPTIONS
+from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
+from ppdmod.parameter import Parameter
 
 
 CALCULATION_FILE = Path("analytical_calculation.xlsx")
