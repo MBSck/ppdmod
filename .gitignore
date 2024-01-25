@@ -1,20 +1,6 @@
 __pycache__/
 ppdmod.egg-info/
-fft/
-tests/data/qval
-tests/data/fits
-fluxes/
 build/
-component/
-opacities/
-binning/
-padding/
-plots/
-resolution/
-phase/
-interpolation/
-results_model/
-line_profiler/
 .DS_Store
 *.pdf
 *.xlsx
@@ -26,3 +12,11 @@ line_profiler/
 *.exe
 cython_src/*.c
 *.fits
+
+# Results of tests
+fluxes/
+component/
+opacities/
+plots/
+phase/
+results_model/
