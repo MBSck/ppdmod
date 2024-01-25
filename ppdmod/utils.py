@@ -1,6 +1,6 @@
 import time as time
 from pathlib import Path
-from typing import Optional, Union, Dict, Tuple, List
+from typing import Optional, Dict, Tuple, List
 
 import astropy.units as u
 import numpy as np
@@ -206,100 +206,6 @@ def binary_vis(flux1: u.Jy, flux2: u.Jy,
             + flux2.value*np.exp(2*np.pi*1j*xy_and_uv[1].value))
 
 
-def get_next_power_of_two(number: Union[int, float]) -> int:
-    """Returns the next higher power of two for an integer or float input.
-
-    Parameters
-    ----------
-    number : int or float
-        An input number.
-
-    Returns
-    -------
-    closest_power_of_two : int
-        The, to the input, closest power of two.
-    """
-    return int(2**np.ceil(np.log2(number)))
-
-
-def get_new_dimension(dim: int,
-                      binning_factor: Optional[int] = None,
-                      padding_factor: Optional[int] = None) -> int:
-    """Gets the binned dimension from the original dimension
-    and the binning factor."""
-    binning_factor = binning_factor if binning_factor is not None else 0
-    padding_factor = padding_factor if padding_factor is not None else 0
-    return int(dim*2**-binning_factor*2**padding_factor)
-
-
-def rebin_image(image: np.ndarray,
-                binning_factor: Optional[int] = None) -> np.ndarray:
-    """Bins a 2D-image down according to the binning factor.
-
-    Parameters
-    ----------
-    image : numpy.ndarray
-        The image to be rebinned.
-    binning_factor : int, optional
-        The binning factor. The default is 0
-
-    Returns
-    -------
-    rebinned_image : numpy.ndarray
-        The rebinned image.
-    """
-    if binning_factor is None:
-        return image
-    new_dim = get_new_dimension(image.shape[-1], binning_factor)
-    binned_shape = (new_dim, int(image.shape[-1] / new_dim),
-                    new_dim, int(image.shape[-1] / new_dim))
-    image = image.reshape(binned_shape)
-    if OPTIONS["model.output"] == "surface_brightness":
-        return image.mean(-1).mean(1)
-    return image.sum(-1).sum(1)
-
-
-def upbin_image(image: np.ndarray,
-                upbinning_factor: Optional[int] = None) -> np.ndarray:
-    """Bins a 2D-image up according to the binning factor.
-
-    Parameters
-    ----------
-    image : numpy.ndarray
-        The image to be rebinned.
-    binning_factor : int, optional
-        The binning factor. The default is 0
-
-    Returns
-    -------
-    rebinned_image : numpy.ndarray
-        The rebinned image.
-    """
-    upbinning_factor = upbinning_factor if upbinning_factor is not None else 0
-    upbinning = 2**upbinning_factor
-    return np.kron(image, np.ones((upbinning, upbinning)))/(upbinning*upbinning)
-
-
-def pad_image(image: np.ndarray, padding_factor: int) -> np.ndarray:
-    """Pads an image with additional zeros to avoid
-    artefacts of aperiodicity before a Fourier transform.
-
-    Parameters
-    ----------
-    image : numpy.ndarray
-    padding_factor : int
-
-    Returns
-    -------
-    padded_image : numpy.ndarray
-    """
-    new_dim = image.shape[0]*2**padding_factor
-    padding = (new_dim-image.shape[0])//2
-    return np.pad(
-        image, ((padding, padding), (padding, padding)),
-        mode='constant', constant_values=0)
-
-
 def qval_to_opacity(qval_file: Path) -> u.cm**2/u.g:
     """Reads the qval file and returns the opacity.
 
@@ -315,7 +221,7 @@ def qval_to_opacity(qval_file: Path) -> u.cm**2/u.g:
     with open(qval_file, "r+", encoding="utf8") as file:
         _, grain_size, density = map(float, file.readline().strip().split())
     wavelength_grid, qval = np.loadtxt(qval_file, skiprows=1, unpack=True)
-    return wavelength_grid*u.um,\
+    return wavelength_grid*u.um, \
         3*qval/(4*(grain_size*u.um).to(u.cm)*(density*u.g/u.cm**3))
 
 
@@ -403,8 +309,11 @@ def opacity_to_matisse_opacity(wavelength_solution: u.um,
     if qval_file is not None:
         wavelength_grid, opacity = qval_to_opacity(qval_file)
     elif opacity_file is not None:
-        wavelength_grid, opacity = np.loadtxt(
+        wavelength_grid, opacity, *_ = np.loadtxt(
             opacity_file, skiprows=1, unpack=True)
+
+    wavelength_grid = u.Quantity(wavelength_grid, unit=u.um)
+    opacity = u.Quantity(opacity, unit=u.cm**2/u.g)
 
     ind = np.where(np.logical_and(
         (wavelength_solution.min()-1*u.um) < wavelength_grid,
@@ -422,6 +331,7 @@ def opacity_to_matisse_opacity(wavelength_solution: u.um,
 
 def linearly_combine_opacities(weights: u.one, files: List[Path],
                                wavelength_solution: u.um,
+                               method: Optional[str] = "qval",
                                resolution: Optional[str] = "low") -> np.ndarray:
     """Linearly combines multiple opacities by their weights.
 
@@ -434,9 +344,14 @@ def linearly_combine_opacities(weights: u.one, files: List[Path],
         The MATISSE wavelength solution.
     """
     total_opacity = None
+    kwargs = {"resolution": resolution}
     for weight, file in zip(weights, files):
+        if method == "qval":
+            kwargs["qval_file"] = file
+        else:
+            kwargs["opacity_file"] = file
         opacity = opacity_to_matisse_opacity(
-            wavelength_solution, qval_file=file, resolution=resolution)
+            wavelength_solution, **kwargs)
         if total_opacity is None:
             total_opacity = weight*opacity
         else:

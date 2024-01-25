@@ -10,7 +10,7 @@ from astropy.modeling.models import BlackBody
 
 from ppdmod import utils
 from ppdmod.component import Component, AnalyticalComponent, \
-        NumericalComponent, HankelComponent
+        HankelComponent
 from ppdmod.data import ReadoutFits
 from ppdmod.parameter import STANDARD_PARAMETERS, Parameter
 from ppdmod.options import OPTIONS
@@ -51,12 +51,6 @@ def component() -> Component:
 def analytic_component() -> AnalyticalComponent:
     """Initializes an analytical component."""
     return AnalyticalComponent()
-
-
-@pytest.fixture
-def numerical_component() -> NumericalComponent:
-    """Initializes a numerical component."""
-    return NumericalComponent()
 
 
 @pytest.fixture
@@ -185,31 +179,6 @@ def test_analytical_component_calculate_complex_visibility(
     """Tests the analytical component's complex visibility
     function calculation."""
     assert analytic_component.calculate_complex_visibility() is None
-
-
-def test_numerical_component_init(numerical_component: NumericalComponent) -> None:
-    """Tests if the initialization of the numerical component works."""
-    numerical_component.elliptic = True
-    numerical_component.__init__()
-    assert "pa" in numerical_component.params
-    assert "elong" in numerical_component.params
-    assert "pixel_size" in numerical_component.params
-
-
-def test_numerical_component_calculate_image(
-        numerical_component: NumericalComponent) -> None:
-    """Tests the numerical component's image calculation."""
-    assert numerical_component.calculate_image() is None
-
-
-def test_numerical_component_calculate_complex_visibility(
-        numerical_component: NumericalComponent) -> None:
-    """Tests the numerical component's complex visibility
-    function calculation."""
-    # NOTE: Raises attribute error here as image is not calculated
-    # and None has no value attribute.
-    with pytest.raises(AttributeError) as e_info:
-        numerical_component.calculate_complex_visibility(wavelength=8*u.um)
 
 
 @pytest.mark.parametrize("grid_type", ["linear", "logarithmic"])

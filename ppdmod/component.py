@@ -6,11 +6,9 @@ from astropy.modeling.models import BlackBody
 from scipy.special import j0, jv
 
 from ._spectral_cy import grid
-from .fft import compute_real2Dfourier_transform
 from .parameter import STANDARD_PARAMETERS, Parameter
 from .options import OPTIONS
-from .utils import rebin_image, upbin_image, get_new_dimension,\
-        distance_to_angular, calculate_effective_baselines
+from .utils import distance_to_angular, calculate_effective_baselines
 
 
 class Component:
@@ -509,122 +507,3 @@ class HankelComponent(Component):
                 vis += np.vstack((mod[:2], mod[-1].conj()))
         return np.angle(np.prod(vis.value, axis=0),
                         deg=True).astype(OPTIONS["model.dtype.real"])
-
-
-class NumericalComponent(Component):
-    """Base class with increased computational performance for numerical
-    calculations.
-
-    Parameters
-    ----------
-    pixel_size : float
-        The size of a pixel [mas].
-    pa : float
-        Positional angle [deg].
-    elong : float
-        Elongation of the disk [dimensionless].
-    dim : float
-        The dimension [px].
-
-    Attributes
-    ----------
-
-    Notes
-    -----
-    This class will automaticall set-up a cache directory in order to speed up
-    the calculations. The directory itself can be set via the 'cache_dir' keyword.
-    """
-    elliptic = False
-
-    def _image_function(self, xx: u.mas,
-                        yy: u.mas, wavelength: u.um) -> u.Jy:
-        """Calculates the image from a 2D grid.
-
-        Parameters
-        ----------
-        xx : astropy.units.mas
-            The x-coordinate grid.
-        yy : astropy.units.mas
-            The y-coordinate grid.
-        wavelength : astropy.units.um, optional
-
-        Returns
-        -------
-        image : astropy.units.Quantity, optional
-        """
-        return
-
-    def calculate_image(self, dim: Optional[float] = None,
-                        pixel_size: Optional[float] = None,
-                        wavelength: Optional[u.Quantity[u.um]] = None) -> u.Jy:
-        """Calculates a 2D image.
-
-        Parameters
-        ----------
-        dim : float
-            The dimension [px].
-        pixel_size : float
-            The size of a pixel [mas].
-        wavelength : astropy.units.um, optional
-
-        Returns
-        -------
-        image : astropy.units.Quantity
-        """
-        dim = self.params["dim"]() if dim is None else dim
-        pixel_size = self.params["pixel_size"]()\
-            if pixel_size is None else pixel_size
-        dim = u.Quantity(value=dim, unit=u.one, dtype=int)
-        pixel_size = u.Quantity(value=pixel_size, unit=u.mas)
-
-        if OPTIONS["model.matryoshka"]:
-            image = None
-            new_dim = get_new_dimension(
-                    dim, OPTIONS["model.matryoshka.binning_factors"][0])
-            for binning_factor in OPTIONS["model.matryoshka.binning_factors"]:
-                binning_factor = binning_factor if binning_factor is not None else 0
-                if image is None:
-                    x_arr, y_arr = self._calculate_internal_grid(
-                            new_dim, pixel_size*2**binning_factor)
-                    image_part = self._image_function(x_arr, y_arr, wavelength)
-                    image = upbin_image(image_part, binning_factor)\
-                            * (2**binning_factor*2**binning_factor)
-                else:
-                    x_arr, y_arr = self._calculate_internal_grid(
-                            new_dim, pixel_size*2**-binning_factor)
-                    image_part = self._image_function(x_arr, y_arr, wavelength)
-                    image_part = rebin_image(image_part, binning_factor)
-                    start = (image.shape[0]-image_part.shape[0])//2
-                    end = start + image_part.shape[0]
-                    image[start:end, start:end] =\
-                            image_part/(2**binning_factor*2**binning_factor)
-        else:
-            x_arr, y_arr = self._calculate_internal_grid(dim, pixel_size)
-            image = self._image_function(x_arr, y_arr, wavelength)
-        if OPTIONS["fourier.binning"] is not None:
-            image = rebin_image(image, OPTIONS["fourier.binning"])
-        if OPTIONS["fourier.padding"] is not None:
-            image = pad_image(image, OPTIONS["fourier.padding"])
-        return image
-
-    def calculate_complex_visibility(
-            self, dim: Optional[float] = None,
-            pixel_size: Optional[float] = None,
-            wavelength: Optional[u.Quantity[u.um]] = None) -> np.ndarray:
-        """Calculates the complex visibility of the the component's image.
-
-        Parameters
-        ----------
-        wavelength : astropy.units.um, optional
-
-        Returns
-        -------
-        complex_visibility_function : numpy.ndarray
-        """
-        dim = self.params["dim"]() if dim is None else dim
-        pixel_size = self.params["pixel_size"]()\
-            if pixel_size is None else pixel_size
-        dim = u.Quantity(value=dim, unit=u.one, dtype=int)
-        pixel_size = u.Quantity(value=pixel_size, unit=u.mas)
-        image = self.calculate_image(dim, pixel_size, wavelength)
-        return compute_real2Dfourier_transform(image.value)

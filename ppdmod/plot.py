@@ -21,7 +21,6 @@ from matplotlib.gridspec import GridSpec
 from .component import Component
 from .data import ReadoutFits
 from .fitting import calculate_observables
-from .model import Model
 from .options import OPTIONS, get_colormap
 from .utils import calculate_effective_baselines, restrict_phase
 
@@ -33,6 +32,7 @@ HEADER_DICT = {
         "EXTEND": (True, "EXTEND"),
         "COMMENT": "Best fit model image per wavelength",
         }
+
 
 def set_axes_color(ax: matplotlib.axes.Axes,
                    background_color: str) -> None:

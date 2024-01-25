@@ -1,23 +1,16 @@
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 import astropy.units as u
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import pytest
 
-from ppdmod.component import Component, NumericalComponent
-from ppdmod.custom_components import Star, TemperatureGradient,\
-    AsymmetricSDTemperatureGradient, AsymmetricSDGreyBody,\
-    AsymmetricSDGreyBodyContinuum, assemble_components
+from ppdmod.component import Component
+from ppdmod.custom_components import Star, assemble_components
 from ppdmod.parameter import STANDARD_PARAMETERS, Parameter
 from ppdmod.data import ReadoutFits
-from ppdmod.options import OPTIONS
-from ppdmod.utils import opacity_to_matisse_opacity,\
-    linearly_combine_opacities, get_new_dimension,\
-    make_workbook, get_next_power_of_two, rebin_image,\
-    upbin_image
+from ppdmod.utils import opacity_to_matisse_opacity, \
+    linearly_combine_opacities, make_workbook
 
 
 FLUX_DIR = Path("fluxes")
@@ -95,19 +88,6 @@ def continuum_opacity(qval_file_dir: Path,
 
 
 @pytest.fixture
-def grid() -> u.mas:
-    """A spatial grid."""
-    numerical_component = NumericalComponent(dim=512, pixel_size=0.1)
-    return numerical_component._calculate_internal_grid(512, 0.1*u.mas)
-
-
-@pytest.fixture
-def radius(grid: Tuple[u.Quantity[u.mas], u.Quantity[u.mas]]) -> u.mas:
-    """A radius based on a spatial grid"""
-    return np.hypot(*grid)
-
-
-@pytest.fixture
 def star_parameters() -> Dict[str, float]:
     """The star's parameters"""
     return {"dim": 512, "dist": 145, "eff_temp": 7800, "eff_radius": 1.8}
@@ -125,46 +105,6 @@ def temp_gradient_parameters() -> Dict[str, float]:
 def star(star_parameters: Dict[str, float]) -> Star:
     """Initializes a star component."""
     return Star(**star_parameters)
-
-
-@pytest.fixture
-def temp_gradient(star_parameters: Dict[str, float],
-                  temp_gradient_parameters: Dict[str, float]
-                  ) -> TemperatureGradient:
-    """Initializes a temperature gradient component."""
-    return TemperatureGradient(**star_parameters,
-                               **temp_gradient_parameters)
-
-
-@pytest.fixture
-def asym_temp_gradient(star_parameters: Dict[str, float],
-                       temp_gradient_parameters: Dict[str, float]
-                       ) -> AsymmetricSDTemperatureGradient:
-    """Initializes an asymmetric temperature gradient component."""
-    return AsymmetricSDTemperatureGradient(**star_parameters,
-                                           **temp_gradient_parameters)
-
-
-@pytest.fixture
-def asym_grey_body(star_parameters: Dict[str, float],
-                   temp_gradient_parameters: Dict[str, float]
-                   ) -> AsymmetricSDGreyBody:
-    """Initializes an asymmetric temperature gradient component."""
-    asym_grey_body = AsymmetricSDGreyBody(**star_parameters,
-                                          **temp_gradient_parameters)
-    asym_grey_body.params["q"] = 0
-    return asym_grey_body
-
-
-@pytest.fixture
-def asym_continuum_grey_body(star_parameters: Dict[str, float],
-                             temp_gradient_parameters: Dict[str, float]
-                             ) -> AsymmetricSDGreyBodyContinuum:
-    """Initializes an asymmetric temperature gradient component."""
-    asym_grey_body = AsymmetricSDGreyBodyContinuum(**star_parameters,
-                                                   **temp_gradient_parameters)
-    asym_grey_body.params["q"] = 0
-    return asym_grey_body
 
 
 def test_get_component() -> Component:
@@ -213,184 +153,6 @@ def test_star_visibility_function(star: Star,
     complex_visibility = star._visibility_function(512, 0.1*u.mas, wavelength)
     assert complex_visibility.shape == (star.params["dim"](),
                                         star.params["dim"]())
-
-
-def test_temperature_gradient_init(
-        temp_gradient: TemperatureGradient) -> None:
-    """Tests the asymmetric's initialization."""
-    assert "pa" in temp_gradient.params
-    assert "elong" in temp_gradient.params
-    assert "dist" in temp_gradient.params
-    assert "inner_temp" in temp_gradient.params
-    assert "eff_temp" in temp_gradient.params
-    assert "eff_radius" in temp_gradient.params
-    assert "q" in temp_gradient.params
-    assert "p" in temp_gradient.params
-    assert "inner_sigma" in temp_gradient.params
-    assert "kappa_abs" in temp_gradient.params
-    assert "a" in temp_gradient.params
-    assert "phi" in temp_gradient.params
-    assert "kappa_cont" in temp_gradient.params
-    assert "cont_weight" in temp_gradient.params
-
-
-def test_temperature_gradient_image_function(
-        temp_gradient: TemperatureGradient,
-        grid: Tuple[u.Quantity[u.mas], u.Quantity[u.mas]],
-        wavelength: u.um, opacity: Parameter) -> None:
-    """Tests the temperature gradient's image function."""
-    temp_gradient.params["kappa_abs"] = opacity
-    image = temp_gradient._image_function(*grid, wavelength)
-    assert image.shape == grid[0].shape
-    assert image.unit == u.Jy
-
-    # TODO: Test the binning somewhere different
-    # OPTIONS["fourier.binning"] = 1
-    # image = temp_gradient._image_function(*grid, wavelength)
-    # OPTIONS["fourier.binning"] = None
-    # assert image.shape == .array(grid[0].shape)//2)
-    # assert image.unit == u.Jy
-
-
-def test_numerical_component_calculate_complex_visibility(
-        temp_gradient: TemperatureGradient,
-        wavelength: u.um, opacity: Parameter) -> None:
-    """Tests the numerical component's complex visibility
-    function calculation."""
-    temp_gradient.params["kappa_abs"] = opacity
-    dim = temp_gradient.params["dim"]()
-    complex_visibility = temp_gradient.calculate_complex_visibility(wavelength=wavelength)
-    assert np.all(complex_visibility != 0)
-    assert complex_visibility.shape == (dim, dim)
-
-    OPTIONS["fourier.binning"] = 2
-    binned_dim = get_new_dimension(dim, OPTIONS["fourier.binning"])
-    complex_visibility = temp_gradient.calculate_complex_visibility(wavelength=wavelength)
-    OPTIONS["fourier.binning"] = None
-    assert np.all(complex_visibility != 0)
-    assert complex_visibility.shape == (binned_dim, binned_dim)
-
-
-# NOTE: Fov 420 is 8192 and 820 is 16xxx
-# (not much change for the lower resolutions).
-@pytest.mark.parametrize(
-    "rin, fov, pixel_size", [(rin, fov, pixel_size)
-                             for rin in [1, 2, 6, 10]*u.mas
-                             for pixel_size in range(1, 3)*u.mas/10
-                             for fov in [20, 40, 60, 120, 220]])
-def test_flux_resolution(
-        rin: u.mas, pixel_size: u.mas,
-        fov: int, wavelength: u.um) -> None:
-    """Tests the resolution of the flux for different pixel sizes
-    and field of views."""
-    dim = get_next_power_of_two(fov/pixel_size.value)
-    asym_grey_body = AsymmetricSDGreyBodyContinuum(
-        dist=145, eff_temp=7800, eff_radius=1.8,
-        dim=dim, rin=rin, a=0.3, phi=33,
-        pixel_size=pixel_size.value, pa=45,
-        elong=1.6, inner_sigma=1e-3, kappa_abs=1000,
-        kappa_cont=1500, cont_weight=0.5, p=0.5)
-    asym_grey_body.optically_thick = False
-
-    image = asym_grey_body.calculate_image(
-            dim, pixel_size, wavelength=wavelength)
-    flux = np.nansum(image)
-
-    data = {"FOV [mas]": [fov],
-            "Dimension [px]": [fov/pixel_size.value],
-            "Dimension (Nearest Power of 2) [px]": [dim],
-            "Flux [Jy]": [np.around(flux, 8).value],
-            "Pixel Size [mas/px]": [pixel_size],
-            "Inner Radius [mas]": [rin.value]}
-    if FLUX_FILE.exists():
-        df = pd.read_excel(FLUX_FILE, sheet_name=FLUX_SHEET)
-        new_df = pd.DataFrame(data)
-        df = pd.concat([df, new_df])
-    else:
-        df = pd.DataFrame(data)
-    with pd.ExcelWriter(FLUX_FILE, engine="openpyxl",
-                        mode="a", if_sheet_exists="replace") as writer:
-        df.to_excel(writer, sheet_name=FLUX_SHEET, index=False)
-
-    temp_grad_dir = FLUX_DIR / "temp_gradient"
-    if not temp_grad_dir.exists():
-        temp_grad_dir.mkdir()
-
-    plt.imshow(image.value)
-    plt.title("Temperature Gradient")
-    plt.xlabel("dim [px]")
-    plt.savefig(temp_grad_dir /
-                f"temperature_gradient_dim{dim}_rin{rin.value}_px{pixel_size.value}.pdf",
-                format="pdf")
-    plt.close()
-
-
-@pytest.mark.parametrize(
-    "dim, matryoshka_factors", [(4096, [3, 0, 1]), (4096, [3, 1, 2]), (4096, [4, 0, 1]),
-                                (4096, [5, 0, 1]), (2048, [2, 0, 1]), (2048, [2, 1, 2]),
-                                (2048, [3, 0, 1])])
-def test_matryoshka(dim: int, matryoshka_factors: List[int]) -> None:
-    """Test the matryoshka approach for computational speed."""
-    matryoshka_dir = FLUX_DIR / "matryoshka"
-    if not matryoshka_dir.exists():
-        matryoshka_dir.mkdir()
-
-    image = None
-    dim_new = get_new_dimension(dim, matryoshka_factors[0])
-    for binning_factor in matryoshka_factors:
-        binning_factor = binning_factor if binning_factor is not None else 0
-        if image is None:
-            x = np.ones((dim_new, dim_new))
-            image = upbin_image(x, binning_factor)
-        else:
-            x = np.ones((dim_new, dim_new))
-            image_part = rebin_image(x, binning_factor)
-            start = (image.shape[0]-image_part.shape[0])//2
-            end = start + image_part.shape[0]
-            image[start:end, start:end] = image_part
-
-    plt.imshow(image)
-    plt.savefig(matryoshka_dir /
-                f"dim{dim}_factors{':'.join(map(str, matryoshka_factors))}_matryoshka_method_test.pdf", format="pdf")
-    plt.close()
-
-@pytest.mark.parametrize(
-    "dim, matryoshka_factors", [(4096, [3, 0, 1]), (4096, [3, 1, 2]), (4096, [4, 0, 1]),
-                                (4096, [5, 0, 1]), (2048, [2, 0, 1]), (2048, [2, 1, 2]),
-                                (2048, [3, 0, 1])])
-def test_calculate_image(dim: int, matryoshka_factors: List[int], wavelength: u.um) -> None:
-    """Tests the image calculation for the normal and the matryoshka method."""
-    rin, pixel_size, = 0.5*u.mas, 0.1*u.mas
-    asym_grey_body = AsymmetricSDGreyBodyContinuum(
-        dist=145, eff_temp=7800, eff_radius=1.8,
-        dim=dim, rin=rin, a=0.3, phi=33,
-        pixel_size=pixel_size.value, pa=45,
-        elong=1.6, inner_sigma=1e-3, kappa_abs=1000,
-        kappa_cont=1500, cont_weight=0.5, p=0.5)
-    asym_grey_body.optically_thick = False
-
-    OPTIONS["model.matryoshka"] = True
-    OPTIONS["model.matryoshka.binning_factors"] = matryoshka_factors
-
-    image = asym_grey_body.calculate_image(
-            dim, pixel_size, wavelength=wavelength)
-
-    matryoshka_dir = FLUX_DIR / "matryoshka"
-    if not matryoshka_dir.exists():
-        matryoshka_dir.mkdir()
-
-    centre = dim//2
-    window = dim*0.2
-
-    plt.imshow(image.value)
-    plt.title("Temperature Gradient Matryoshka")
-    plt.xlabel("dim [px]")
-    plt.xlim(centre-window, centre+window)
-    plt.ylim(centre-window, centre+window)
-    plt.savefig(matryoshka_dir /
-                f"dim{dim}_factors{':'.join(map(str, matryoshka_factors))}_matryoshka_method.pdf", format="pdf")
-    plt.close()
-    OPTIONS["model.matryoshka"] = False
 
 
 def test_assemble_components() -> None:

@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 
 from ppdmod import utils
-from ppdmod.custom_components import AsymmetricSDGreyBodyContinuum
 from ppdmod.options import OPTIONS
 
 from ppdmod.data import ReadoutFits
@@ -82,20 +81,6 @@ def rin() -> float:
     return 35.
 
 
-@pytest.fixture
-def temp_gradient_image(rin: float, wavelength: u.um) -> None:
-    """A temperature gradient."""
-    dim = utils.get_next_power_of_two(200/0.1)
-    asym_grey_body = AsymmetricSDGreyBodyContinuum(
-        dist=145, eff_temp=7800, eff_radius=1.8,
-        dim=dim, rin=rin, a=0.3, phi=33,
-        pixel_size=0.1, pa=45,
-        elong=1.6, inner_sigma=2000, kappa_abs=1000,
-        kappa_cont=3000, cont_weight=0.5, p=0.5)
-    asym_grey_body.optically_thick = True
-    return asym_grey_body.calculate_image(wavelength=wavelength)
-
-
 def test_exection_time() -> None:
     ...
 
@@ -161,158 +146,6 @@ def test_binary_vis(wavelength: u.um) -> None:
                                   wavelength)
     assert isinstance(binary_vis, np.ndarray)
     assert not np.array_equal(np.real(binary_vis), binary_vis)
-
-
-@pytest.mark.parametrize(
-    "number, expected", [(22.5, 32), (100, 128),
-                         (560, 1024), (100/0.1, 1024),
-                         (200/0.1, 2048)])
-def test_get_next_power_of_two(number: Union[int, float],
-                               expected: int) -> None:
-    """Tests the function that gets the next power of two."""
-    assert utils.get_next_power_of_two(number) == expected
-
-
-@pytest.mark.parametrize(
-    "dimension, binning_factor, expected", [(1024, 2, 256), (1024, 1, 512),
-                                            (1024, 3, 128), (2048, 1, 1024)])
-def test_get_binned_dimension(dimension: int,
-                              binning_factor: int, expected: int) -> None:
-    """Tests if the binned dimension is properly calculated from
-    the binning factor."""
-    assert utils.get_new_dimension(dimension, binning_factor) == expected
-
-
-@pytest.mark.parametrize(
-    "binning_factor, expected", [(1, 1024), (2, 512), (3, 256),
-                                 (4, 128), (5, 64), (6, 32)])
-def test_rebin_image(rin: float, temp_gradient_image: u.mas,
-                     binning_factor: int, expected: int) -> None:
-    """Tests the rebinning of an image"""
-    px, dim, dia = 0.1, 2048, 60
-    ud_image = utils.uniform_disk(px*u.mas, dim, diameter=dia*u.mas)
-    rebinned_ud = utils.rebin_image(ud_image, binning_factor)
-    rebinned_temp_grad = utils.rebin_image(temp_gradient_image,
-                                           binning_factor)
-
-    binning_dir = Path("binning")
-    if not binning_dir.exists():
-        binning_dir.mkdir()
-
-    _, (ax, bx) = plt.subplots(1, 2)
-    ax.imshow(ud_image.value)
-    ax.set_title("Pre-binning")
-    ax.set_xlabel("dim [px]")
-    bx.imshow(rebinned_ud.value)
-    bx.set_title("After-binning")
-    bx.set_xlabel("dim [px]")
-    plt.savefig(binning_dir /
-                f"ud_px{px}_dim{dim}_dia{dia}_bin{binning_factor}.pdf",
-                format="pdf")
-    plt.close()
-
-    assert ud_image.shape == (dim, dim)
-    assert rebinned_ud.shape == (expected, expected)
-
-    _, (ax, bx) = plt.subplots(1, 2)
-    ax.imshow(temp_gradient_image.value)
-    ax.set_title("Pre-binning")
-    ax.set_xlabel("dim [px]")
-    bx.imshow(rebinned_temp_grad.value)
-    bx.set_title("After-binning")
-    bx.set_xlabel("dim [px]")
-    plt.savefig(binning_dir /
-                f"temp_gradient_rin{rin}_"
-                f"px{px}_dim{dim}_dia{dia}_bin{binning_factor}.pdf",
-                format="pdf")
-    plt.close()
-
-    assert temp_gradient_image.shape == (dim, dim)
-    assert rebinned_temp_grad.shape == (expected, expected)
-
-
-@pytest.mark.parametrize(
-    "binning_factor, expected", [(1, 128), (2, 256), (3, 512),
-                                 (4, 1024), (5, 2048), (6, 4096)])
-def test_upbin_image(binning_factor: int, expected: int) -> None:
-    """Tests the rebinning of an image"""
-    px, dim, dia = 0.1, 64, 3
-    ud_image = utils.uniform_disk(px*u.mas, dim, diameter=dia*u.mas)
-    rebinned_ud = utils.upbin_image(ud_image, binning_factor)
-
-    binning_dir = Path("binning")
-    if not binning_dir.exists():
-        binning_dir.mkdir()
-
-    _, (ax, bx) = plt.subplots(1, 2)
-    ax.imshow(ud_image.value)
-    ax.set_title("Pre-binning")
-    ax.set_xlabel("dim [px]")
-    bx.imshow(rebinned_ud.value)
-    bx.set_title("After-binning")
-    bx.set_xlabel("dim [px]")
-    plt.savefig(binning_dir /
-                f"ud_px{px}_dim{dim}_dia{dia}_upbin{binning_factor}.pdf",
-                format="pdf")
-    plt.close()
-
-    assert ud_image.shape == (dim, dim)
-    assert rebinned_ud.shape == (expected, expected)
-
-
-# NOTE: Padding high dimensions takes ages.
-@pytest.mark.parametrize(
-    "padding_factor, expected", [(1, 4096), (2, 8192)])
-def test_pad_image(rin: float, temp_gradient_image: u.mas,
-                   padding_factor: int, expected: int) -> None:
-    """Tests the padding of an image"""
-    dim, px = 2048, 0.1
-    ud_image = utils.uniform_disk(px*u.mas, dim)
-    padded_image = utils.pad_image(ud_image, padding_factor)
-    padded_temp_gradient = utils.pad_image(
-        temp_gradient_image, padding_factor)
-
-    padding_dir = Path("padding")
-    if not padding_dir.exists():
-        padding_dir.mkdir()
-
-    _, (ax, bx) = plt.subplots(1, 2)
-    ax.imshow(ud_image.value, vmin=0.0, vmax=0.1)
-    ax.set_title("Pre-padding")
-    ax.set_xlabel("dim [px]")
-    bx.imshow(padded_image.value)
-    bx.set_title("After-padding")
-    bx.set_xlabel("dim [px]")
-    plt.savefig(padding_dir / f"ud_dim{dim}_px{px}_pad{padding_factor}.pdf",
-                format="pdf")
-    plt.close()
-
-    assert ud_image.shape == (dim, dim)
-    assert padded_image.shape == (expected, expected)
-
-    _, (ax, bx) = plt.subplots(1, 2)
-    ax.imshow(temp_gradient_image.value)
-    ax.set_title("Pre-padding")
-    ax.set_xlabel("dim [px]")
-    bx.imshow(padded_temp_gradient.value)
-    bx.set_title("After-padding")
-    bx.set_xlabel("dim [px]")
-    plt.savefig(padding_dir /
-                f"temp_gradient_rin{rin}_"
-                f"dim{dim}_px{px}_pad{padding_factor}.pdf",
-                format="pdf")
-    plt.close()
-
-    assert temp_gradient_image.shape == (dim, dim)
-    assert padded_image.shape == (expected, expected)
-
-
-def test_qval_to_opacity(qval_file_dir: Path) -> None:
-    """Tests the readout of a qval file."""
-    qval_file = qval_file_dir / "Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat"
-    wavelength, opacity = utils.qval_to_opacity(qval_file)
-    assert wavelength.unit == u.um
-    assert opacity.unit == u.cm**2/u.g
 
 
 @pytest.mark.parametrize(
