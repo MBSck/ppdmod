@@ -4,6 +4,7 @@ from pathlib import Path
 import astropy.units as u
 import numpy as np
 
+from ppdmod import analysis
 from ppdmod import custom_components
 from ppdmod import data
 from ppdmod import fitting
@@ -32,9 +33,9 @@ wavelength_axes = list(
 wavelength_axes = np.sort(np.unique(np.concatenate(wavelength_axes)))
 
 flux_file = Path("tests/data/flux/HD142666_stellar_model.txt.gz")
-wavelengths, flux = np.loadtxt(flux_file, comments="#", unpack=True)[:2]
-matisse_flux = utils.opacity_to_matisse_opacity(
-    wavelength_axes, wavelength_grid=wavelengths*u.um, opacity=flux*u.Jy).value*u.Jy
+matisse_flux = utils.data_to_matisse_grid(
+        wavelength_axes, wavelength_grid=wavelengths,
+        skiprows=0, data_file=flux_file, unit=u.Jy)
 star_flux = Parameter(**STANDARD_PARAMETERS["f"])
 star_flux.value, star_flux.wavelength = matisse_flux, wavelength_axes
 
@@ -47,12 +48,13 @@ qval_files = ["Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat",
               "Q_Fo_Suto_DHS_f1.0_rv1.5.dat",
               "Q_En_Jaeger_DHS_f1.0_rv1.5.dat"]
 qval_paths = list(map(lambda x: qval_file_dir / x, qval_files))
-opacity = utils.linearly_combine_opacities(
+opacity = utils.linearly_combine_data(
     weights, qval_paths, wavelength_axes)
-background_file = "Q_amorph_c_rv0.1.dat"
-# background_file = "Q_iron_0.10um_dhs_0.99.dat"
-continuum_opacity = utils.opacity_to_matisse_opacity(
-    wavelength_axes, qval_file=qval_file_dir / background_file)
+
+continuum_file = qval_file_dir / "Q_amorph_c_rv0.1.dat"
+# continuum_file = qval_file_dir / "Q_iron_0.10um_dhs_0.99.dat"
+continuum_opacity = utils.data_to_matisse_grid(
+    wavelength_axes, data_file=continuum_file, unit=u.cm**2/u.g)
 
 kappa_abs = Parameter(**STANDARD_PARAMETERS["kappa_abs"])
 kappa_abs.value, kappa_abs.wavelength = opacity, wavelength_axes
@@ -178,6 +180,13 @@ plot.plot_overview(savefig=pre_fit_dir / "data_overview.png")
 plot.plot_observables("hd142666", [3, 12]*u.um, components,
                       fits_files, save_dir=pre_fit_dir)
 
+analysis.save_fits(
+        4096, 0.1, distance,
+        OPTIONS["fit.wavelengths"], components,
+        component_labels, opacities=[kappa_abs, kappa_cont],
+        savefits=pre_fit_dir / "model.fits",
+        options=OPTIONS, object_name="HD 142666")
+
 post_fit_dir = result_dir / "post_fit"
 post_fit_dir.mkdir(parents=True, exist_ok=True)
 
@@ -212,7 +221,7 @@ if __name__ == "__main__":
     for component in components:
         component.params["rin0"] = innermost_radius
 
-    plot.save_fits(
+    analysis.save_fits(
             4096, 0.1, distance,
             OPTIONS["fit.wavelengths"], components,
             component_labels, opacities=[kappa_abs, kappa_cont],

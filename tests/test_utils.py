@@ -181,7 +181,7 @@ def test_transform_opacity(qval_file_dir: Path, file: str,
             (wavelength_solutions[field[0]].min()-1*u.um) < wavelength_grid,
             wavelength_grid < (wavelength_solutions[field[0]].max()+1*u.um)))
         wl_grid, opc = wavelength_grid[ind], opacity[ind]
-        opacities.append(utils.transform_opacity(
+        opacities.append(utils.transform_data(
                 wl_grid, opc, wavelength_solutions[field[0]],
                 dl_coeffs=OPTIONS["spectrum.coefficients"][field[1]]))
 
@@ -206,7 +206,7 @@ def test_opacity_to_matisse_opacity(
         qval_file_dir: Path, wavelength_solution: u.um) -> None:
     """Tests the interpolation to the MATISSE wavelength grid."""
     qval_file = qval_file_dir / "Q_SILICA_RV0.1.DAT"
-    continuum_opacity = utils.opacity_to_matisse_opacity(wavelength_solution,
+    continuum_opacity = utils.data_to_matisse_grid(wavelength_solution,
                                                          qval_file=qval_file)
     assert continuum_opacity.unit == u.cm**2/u.g
 
@@ -233,11 +233,11 @@ def test_linearly_combine_opacities(
                             "high": high_wavelength_solution}
     for field in fields:
         opacity = []
-        opacity.append(utils.linearly_combine_opacities(
+        opacity.append(utils.linearly_combine_data(
             weights, qval_files,
             wavelength_solutions[field[0]], field[1]))
 
-        opacity.append(utils.linearly_combine_opacities(
+        opacity.append(utils.linearly_combine_data(
             weights_background, files,
             wavelength_solutions[field[0]], field[1]))
         opacities.append(opacity)

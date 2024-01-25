@@ -1,6 +1,6 @@
 import time as time
 from pathlib import Path
-from typing import Optional, Dict, Tuple, List
+from typing import Any, Callable, Optional, Dict, Tuple, List
 
 import astropy.units as u
 import numpy as np
@@ -207,11 +207,16 @@ def binary_vis(flux1: u.Jy, flux2: u.Jy,
 
 
 def qval_to_opacity(qval_file: Path) -> u.cm**2/u.g:
-    """Reads the qval file and returns the opacity.
+    """Reads a qval file, then calculates and returns the
+    opacity.
 
     Parameters
     ----------
     qval_file : pathlib.Path
+
+    Returns
+    -------
+    opacity : astropy.units.cm**2/u.g
 
     Notes
     -----
@@ -225,19 +230,19 @@ def qval_to_opacity(qval_file: Path) -> u.cm**2/u.g:
         3*qval/(4*(grain_size*u.um).to(u.cm)*(density*u.g/u.cm**3))
 
 
-def transform_opacity(
-        wavelength_grid: u.um, opacity: u.cm**2/u.g, wavelength_solution: u.um,
+def transform_data(
+        wavelength_grid: u.um, data: u.Quantity, wavelength_solution: u.um,
         dl_coeffs: Optional[u.Quantity[u.one]] = OPTIONS["spectrum.coefficients"]["low"],
         spectral_binning: Optional[float] = 7,
         kernel_width: Optional[float] = 10
-        ) -> u.cm**2/u.g:
+        ) -> u.Quantity:
     """Transform a spectrum to the real wavlength grid of MATISSE.
     Function written by József Varga.
 
     Parameters
     ----------
     wavelength_grid : astropy.units.um
-    opacity : astropy.units.cm**2/astropy.units.g
+    data : astropy.units.Quantity
     wavelength_solution : astropy.units.um
     dl_coeffs : list of float
     kernel_width : float
@@ -246,7 +251,7 @@ def transform_opacity(
 
     Returns
     -------
-    transformed_opacity : astropy.units.cm**2/astropy.units.g
+    transformed_data : astropy.units.Quantity
     """
     min_wl, max_wl = np.min(wavelength_grid), np.max(wavelength_grid)
     wavelength, wl_new = min_wl, [min_wl]
@@ -255,7 +260,7 @@ def transform_opacity(
             + u.um*polyval(wavelength.value, dl_coeffs)/kernel_width
         wl_new.append(wavelength)
     wl_new = u.Quantity(wl_new, unit=u.um)
-    f_spec_new = interp1d(wavelength_grid, opacity,
+    f_spec_new = interp1d(wavelength_grid, data,
                           kind="cubic", fill_value="extrapolate")
     spec_new = f_spec_new(wl_new)
 
@@ -278,16 +283,19 @@ def transform_opacity(
         spec_final = convolve(spec_interp, kernel, boundary="extend")
     else:
         spec_final = spec_interp
-    return spec_final*u.cm**2/u.g
+    return spec_final
 
 
-def opacity_to_matisse_opacity(wavelength_solution: u.um,
-                               opacity: Optional[u.Quantity[u.cm**2/u.g]] = None,
-                               wavelength_grid: Optional[u.Quantity[u.um]] = None,
-                               opacity_file: Optional[Path] = None,
-                               qval_file: Optional[Path] = None,
-                               resolution: Optional[str] = "low",
-                               save_path: Optional[Path] = None) -> np.ndarray:
+def data_to_matisse_grid(wavelength_solution: u.um,
+                         data: Optional[Any] = None,
+                         wavelength_grid: Optional[u.Quantity[u.um]] = None,
+                         data_file: Optional[Path] = None,
+                         unit: Optional[u.Quantity] = None,
+                         resolution: Optional[str] = "low",
+                         load_func: Optional[Callable] = None,
+                         skiprows: Optional[str] = 1,
+                         comments: Optional[str] = "#",
+                         save_path: Optional[Path] = None) -> np.ndarray:
     """Interpolates an opacity from its wavelength grid to the
     MATISSE wavelength grid.
 
@@ -295,44 +303,52 @@ def opacity_to_matisse_opacity(wavelength_solution: u.um,
     ----------
     wavelength_solution : astropy.units.um
         The MATISSE wavelength solution.
-    opacity : astropy.units.cm**2/astropy.units.g, optional
-        An input opacity.
-    opacity_file : pathlib.Path, optional
-    qval_file : pathlib.Path, optional
-    resolution : str, optional
-    save_path : pathlib.Path, optional
+    data : numpy.ndarray
+        The data.
+    wavelength_grid : astropy.units.um
+        The wavelength grid.
+    data_file : pathlib.Path
+        The data file.
+    unit : astropy.units, optional
+        The unit of the data.
+    resolution : str
+        The resolution of the data.
+    method : str
+        The method to use.
 
     Returns
     -------
     numpy.ndarray
     """
-    if qval_file is not None:
-        wavelength_grid, opacity = qval_to_opacity(qval_file)
-    elif opacity_file is not None:
-        wavelength_grid, opacity, *_ = np.loadtxt(
-            opacity_file, skiprows=1, unpack=True)
+    if data_file is not None:
+        if load_func is not None:
+            wavelength_grid, data = load_func(data_file)
+        else:
+            wavelength_grid, data, *_ = np.loadtxt(
+                data_file, skiprows=skiprows,
+                comments=comments, unpack=True)
 
     wavelength_grid = u.Quantity(wavelength_grid, unit=u.um)
-    opacity = u.Quantity(opacity, unit=u.cm**2/u.g)
-
     ind = np.where(np.logical_and(
         (wavelength_solution.min()-1*u.um) < wavelength_grid,
         wavelength_grid < (wavelength_solution.max()+1*u.um)))
-    wavelength_grid, opacity = wavelength_grid[ind], opacity[ind]
-    matisse_opacity = transform_opacity(
-        wavelength_grid, opacity, wavelength_solution,
+    wavelength_grid, data = wavelength_grid[ind], data[ind]
+    matisse_data = transform_data(
+        wavelength_grid, data, wavelength_solution,
         OPTIONS["spectrum.coefficients"][resolution],
         OPTIONS["spectrum.binning"],
         OPTIONS["spectrum.kernel_width"])
+
     if save_path is not None:
-        np.save(save_path, [wavelength_solution, matisse_opacity])
-    return matisse_opacity
+        np.save(save_path, [wavelength_solution, matisse_data])
+    return u.Quantity(matisse_data, unit=unit)
 
 
-def linearly_combine_opacities(weights: u.one, files: List[Path],
-                               wavelength_solution: u.um,
-                               method: Optional[str] = "qval",
-                               resolution: Optional[str] = "low") -> np.ndarray:
+def linearly_combine_data(files: List[Path], weights: u.one,
+                          wavelength_solution: u.um,
+                          unit: Optional[u.Quantity] = None,
+                          load_func: Optional[Callable] = None,
+                          resolution: Optional[str] = "low") -> np.ndarray:
     """Linearly combines multiple opacities by their weights.
 
     Parameters
@@ -343,20 +359,16 @@ def linearly_combine_opacities(weights: u.one, files: List[Path],
     wavelength_solution : u.um
         The MATISSE wavelength solution.
     """
-    total_opacity = None
-    kwargs = {"resolution": resolution}
-    for weight, file in zip(weights, files):
-        if method == "qval":
-            kwargs["qval_file"] = file
+    combined_data = None
+    for weight, data_file in zip(weights, files):
+        data = data_to_matisse_grid(
+                wavelength_solution, load_func=load_func,
+                data_file=data_file, resolution=resolution, unit=unit)
+        if combined_data is None:
+            combined_data = weight*data
         else:
-            kwargs["opacity_file"] = file
-        opacity = opacity_to_matisse_opacity(
-            wavelength_solution, **kwargs)
-        if total_opacity is None:
-            total_opacity = weight*opacity
-        else:
-            total_opacity += weight*opacity
-    return total_opacity
+            combined_data += weight*data
+    return combined_data
 
 
 def angular_to_distance(angular_diameter: u.mas, distance: u.pc) -> u.m:

@@ -9,8 +9,8 @@ from ppdmod.component import Component
 from ppdmod.custom_components import Star, assemble_components
 from ppdmod.parameter import STANDARD_PARAMETERS, Parameter
 from ppdmod.data import ReadoutFits
-from ppdmod.utils import opacity_to_matisse_opacity, \
-    linearly_combine_opacities, make_workbook
+from ppdmod.utils import data_to_matisse_grid, \
+    linearly_combine_data, make_workbook
 
 
 FLUX_DIR = Path("fluxes")
@@ -65,7 +65,7 @@ def opacity(qval_file_dir: Path,
                   "Q_Fo_Suto_DHS_f1.0_rv1.5.dat",
                   "Q_En_Jaeger_DHS_f1.0_rv1.5.dat"]
     qval_paths = list(map(lambda x: qval_file_dir / x, qval_files))
-    opacity = linearly_combine_opacities(weights,
+    opacity = linearly_combine_data(weights,
                                          qval_paths, wavelength_solution)
     return Parameter(name="kappa_abs", value=opacity,
                      wavelength=wavelength_solution,
@@ -78,7 +78,7 @@ def continuum_opacity(qval_file_dir: Path,
                       wavelength_solution: u.um) -> None:
     """A parameter containing the continuum opacity."""
     qval_file = qval_file_dir / "Q_SILICA_RV0.1.DAT"
-    continuum_opacity = opacity_to_matisse_opacity(wavelength_solution,
+    continuum_opacity = data_to_matisse_grid(wavelength_solution,
                                                    qval_file=qval_file)
     return Parameter(name="kappa_cont",
                      value=continuum_opacity,
