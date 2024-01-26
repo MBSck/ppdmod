@@ -10,16 +10,16 @@ from ppdmod import data
 from ppdmod import fitting
 from ppdmod import plot
 from ppdmod import utils
-from ppdmod.parameter import STANDARD_PARAMETERS, Parameter
-from ppdmod.options import OPTIONS
+from ppdmod.parameter import Parameter
+from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 
 # TODO: Make function that saves model parameters to load.
 # NOTE: Turns off numpys automated parellelization.
 # os.environ["OMP_NUM_THREADS"] = "1"
 
-OPTIONS["fit.data"] = ["flux", "vis2", "t3phi"]
-OPTIONS["data.binning.window"] = 0.1*u.um
+OPTIONS.fit.data = ["flux", "vis2", "t3phi"]
+OPTIONS.data.binning.window = 0.1*u.um
 # data.set_fit_wavelengths([1.6, 2.25, 3.5, 8., 9., 10., 11.3, 12.5]*u.um)
 # data.set_fit_wavelengths([1.6, 2.25, 3.5]*u.um)
 data.set_fit_wavelengths([3.5]*u.um)
@@ -29,13 +29,13 @@ data.set_data(fits_files)
 
 # TODO: Check if the configuration of these parameters is ok
 wavelength_axes = list(
-    map(lambda x: x.wavelength, OPTIONS["data.readouts"]))
+    map(lambda x: x.wavelength, OPTIONS.data.readouts))
 wavelength_axes = np.sort(np.unique(np.concatenate(wavelength_axes)))
 
 flux_file = Path("tests/data/flux/HD142666_stellar_model.txt.gz")
 matisse_flux = utils.data_to_matisse_grid(
-        wavelength_axes, wavelength_grid=wavelengths,
-        skiprows=0, data_file=flux_file, unit=u.Jy)
+        wavelength_axes, skiprows=0,
+        data_file=flux_file, unit=u.Jy)
 star_flux = Parameter(**STANDARD_PARAMETERS["f"])
 star_flux.value, star_flux.wavelength = matisse_flux, wavelength_axes
 
@@ -49,12 +49,13 @@ qval_files = ["Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat",
               "Q_En_Jaeger_DHS_f1.0_rv1.5.dat"]
 qval_paths = list(map(lambda x: qval_file_dir / x, qval_files))
 opacity = utils.linearly_combine_data(
-    weights, qval_paths, wavelength_axes)
+    qval_paths, weights, wavelength_axes, load_func=utils.qval_to_opacity)
 
 continuum_file = qval_file_dir / "Q_amorph_c_rv0.1.dat"
 # continuum_file = qval_file_dir / "Q_iron_0.10um_dhs_0.99.dat"
 continuum_opacity = utils.data_to_matisse_grid(
-    wavelength_axes, data_file=continuum_file, unit=u.cm**2/u.g)
+    wavelength_axes, data_file=continuum_file,
+    load_func=utils.qval_to_opacity, unit=u.cm**2/u.g)
 
 kappa_abs = Parameter(**STANDARD_PARAMETERS["kappa_abs"])
 kappa_abs.value, kappa_abs.wavelength = opacity, wavelength_axes
@@ -62,7 +63,7 @@ kappa_cont = Parameter(**STANDARD_PARAMETERS["kappa_cont"])
 kappa_cont.value, kappa_cont.wavelength = continuum_opacity, wavelength_axes
 
 dim, distance = 32, 148.3
-OPTIONS["model.constant_params"] = {
+OPTIONS.model.constant_params = {
     "dim": dim, "dist": 148.3,
     "eff_temp": 7500, "f": star_flux,
     "eff_radius": 1.75, "inner_temp": 1500,
@@ -131,24 +132,23 @@ pa.set(min=0, max=360)
 elong.set(min=0, max=1)
 cont_weight.set(min=0.3, max=0.8)
 
-# OPTIONS["model.shared_params"] = {"q": q, "inner_temp": inner_temp,
-#                                   "pa": pa, "elong": elong,
-#                                   "cont_weight": cont_weight}
-OPTIONS["model.shared_params"] = {"pa": pa, "elong": elong,
-                                  "cont_weight": cont_weight}
-shared_params_labels = [f"sh_{label}"
-                        for label in OPTIONS["model.shared_params"]]
+# OPTIONS.model.shared_params = {"q": q, "inner_temp": inner_temp,
+#                                "pa": pa, "elong": elong,
+#                                "cont_weight": cont_weight}
+OPTIONS.model.shared_params = {"pa": pa, "elong": elong,
+                               "cont_weight": cont_weight}
+shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 
-# OPTIONS["model.components_and_params"] = [
+# OPTIONS.model.components_and_params = [
     # ["Star", {}],
-    # ["AnalyticalTempGradient", inner_ring],
-    # ["AnalyticalAsymmetricTempGradient", outer_ring],
+    # ["TempGradient", inner_ring],
+    # ["AsymmetricTempGradient", outer_ring],
 # ]
 
-OPTIONS["model.components_and_params"] = [
+OPTIONS.model.components_and_params = [
     ["Star", {}],
-    ["AnalyticalGreyBody", inner_ring],
-    # ["AnalyticalAsymmetricGreyBody", outer_ring],
+    ["GreyBody", inner_ring],
+    # ["AsymmetricGreyBody", outer_ring],
 ]
 
 # labels = inner_ring_labels + outer_ring_labels + shared_params_labels
@@ -159,9 +159,9 @@ labels = inner_ring_labels + shared_params_labels
 component_labels = ["Star", "Inner Ring"]
 # component_labels = ["Star", "Outer Ring"]
 
-OPTIONS["model.modulation.order"] = 1
-OPTIONS["model.gridtype"] = "logarithmic"
-OPTIONS["fit.method"] = "emcee"
+OPTIONS.model.modulation.order = 1
+OPTIONS.model.gridtype = "logarithmic"
+OPTIONS.fit.method = "emcee"
 
 model_result_dir = Path("../model_results/")
 day_dir = model_result_dir / str(datetime.now().date())
@@ -174,15 +174,15 @@ pre_fit_dir = result_dir / "pre_fit"
 pre_fit_dir.mkdir(parents=True, exist_ok=True)
 
 components = custom_components.assemble_components(
-        OPTIONS["model.components_and_params"],
-        OPTIONS["model.shared_params"])
+        OPTIONS.model.components_and_params,
+        OPTIONS.model.shared_params)
 plot.plot_overview(savefig=pre_fit_dir / "data_overview.png")
 plot.plot_observables("hd142666", [3, 12]*u.um, components,
                       fits_files, save_dir=pre_fit_dir)
 
 analysis.save_fits(
         4096, 0.1, distance,
-        OPTIONS["fit.wavelengths"], components,
+        OPTIONS.fit.wavelengths, components,
         component_labels, opacities=[kappa_abs, kappa_cont],
         savefits=pre_fit_dir / "model.fits",
         options=OPTIONS, object_name="HD 142666")
@@ -223,7 +223,7 @@ if __name__ == "__main__":
 
     analysis.save_fits(
             4096, 0.1, distance,
-            OPTIONS["fit.wavelengths"], components,
+            OPTIONS.fit.wavelengths, components,
             component_labels, opacities=[kappa_abs, kappa_cont],
             savefits=post_fit_dir / "model.fits",
             options=OPTIONS, object_name="HD 142666",

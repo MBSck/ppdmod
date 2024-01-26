@@ -30,7 +30,7 @@ def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
 
     images = []
     for wavelength in wavelengths:
-        image = np.empty([dim, dim])
+        image = np.empty([dim, dim])*u.Jy
         for component in components:
             image += component.calculate_image(dim, pixel_size, wavelength)
         images.append(image)
@@ -42,8 +42,7 @@ def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
 
         table_header["COMP"] = component.name
         if options is not None:
-            if "model.gridtype" in options:
-                table_header["GRIDTYPE"] = (options["model.gridtype"], "The type of the grid")
+            table_header["GRIDTYPE"] = (options.model.gridtype, "The type of the grid")
 
         data = {"wavelength": wavelengths}
         if component.name != "Star":
@@ -60,12 +59,13 @@ def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
             for wavelength in wavelengths:
                 if "flux" not in data:
                     data["flux"] = []
-                if "thickness" not in data:
-                    data["thickness"] = []
+                if "emissivity" not in data:
+                    data["emissivity"] = []
                 if "brightness" not in data:
                     data["brightness"] = []
+
                 data["flux"].append(component.calculate_flux(wavelength))
-                data["thickness"].append(component._thickness_profile_function(
+                data["emissivity"].append(component._emissivity_profile_function(
                         radius, innermost_radius, wavelength))
                 data["brightness"].append(component._brightness_profile_function(
                         radius, wavelength))
@@ -131,15 +131,6 @@ def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
     header["NCORE"] = (ncores, "Numbers of cores for the fitting")
     header["OBJECT"] = (object_name, "Name of the object")
     header["DATE"] = (f"{datetime.now()}", "Creation date")
-    # header["LTM1_1"] = np.around(pixel_size_au.value, 5), "Pixel size for x-coordinate (au)"
-    # header["LTM2_2"] = np.around(pixel_size_au.value, 5), "Pixel size for y-coordinate (au)"
-
-    if options is not None:
-        if "model.gridtype" in options:
-            header["GRIDTYPE"] = (options["model.gridtype"], "The type of the grid")
-        if "model.flux.factor" in options:
-            header["FLXFACT"] = (options["model.flux.factor"],
-                                 "The factor with which the flux is multiplied")
 
     hdu = fits.HDUList([fits.PrimaryHDU(images, header=header), *tables])
     hdu.writeto(savefits, overwrite=True)

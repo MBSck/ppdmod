@@ -45,11 +45,11 @@ def plot_corner(sampler: np.ndarray, labels: List[str],
     """
     if units is not None:
         labels = [f"{label} [{unit}]" for label, unit in zip(labels, units)]
-    if OPTIONS["fit.method"] == "emcee":
+    if OPTIONS.fit.method == "emcee":
         samples = sampler.get_chain(discard=discard, flat=True)
         corner.corner(samples, show_titles=True,
                       labels=labels, plot_datapoints=True,
-                      quantiles=[x/100 for x in OPTIONS["fit.quantiles"]],
+                      quantiles=[x/100 for x in OPTIONS.fit.quantiles],
                       title_kwargs={"fontsize": 12})
     else:
         dyplot.cornerplot(sampler.results)
@@ -103,7 +103,7 @@ def plot_model(fits_file: Path, data_type: Optional[str] = "image",
                pixel_size: Optional[float] = None,
                factor: Optional[float] = None,
                zoom: Optional[int] = 30,
-               colormap: Optional[str] = OPTIONS["plot.color.colormap"],
+               colormap: Optional[str] = OPTIONS.plot.color.colormap,
                title: Optional[str] = None,
                savefig: Optional[Path] = None) -> None:
     """Plots the model information stored in the (.fits)-file.
@@ -115,9 +115,9 @@ def plot_model(fits_file: Path, data_type: Optional[str] = "image",
     title : float, optional
     savefig : pathlib.Path
     """
-    _ = plt.figure(facecolor=OPTIONS["plot.color.background"])
-    ax = plt.axes(facecolor=OPTIONS["plot.color.background"])
-    set_axes_color(ax, OPTIONS["plot.color.background"])
+    _ = plt.figure(facecolor=OPTIONS.plot.color.background)
+    ax = plt.axes(facecolor=OPTIONS.plot.color.background)
+    set_axes_color(ax, OPTIONS.plot.color.background)
     colormap = get_colormap(colormap)
     with fits.open(fits_file) as hdul:
         if data_type == "image":
@@ -148,7 +148,7 @@ def plot_model(fits_file: Path, data_type: Optional[str] = "image",
                 plt.ylabel(r"Surface Brightness ($\frac{erg}{cm^2rad^2\,s\,Hz}$)")
                 plt.ylim([1e-10, None])
                 legend = plt.legend()
-                set_legend_color(legend, OPTIONS["plot.color.background"])
+                set_legend_color(legend, OPTIONS.plot.color.background)
                 plt.xlabel(r"Radius (mas)")
 
             # TODO: Make this into the full disk
@@ -172,7 +172,7 @@ def plot_model(fits_file: Path, data_type: Optional[str] = "image",
                     plt.loglog(radius, data, label=wavelength)
                 plt.ylabel(r"Emissivity (a.u.)")
                 legend = plt.legend()
-                set_legend_color(legend, OPTIONS["plot.color.background"])
+                set_legend_color(legend, OPTIONS.plot.color.background)
                 plt.xlabel(r"Radius (mas)")
 
             elif data_type == "depth":
@@ -184,7 +184,7 @@ def plot_model(fits_file: Path, data_type: Optional[str] = "image",
                     plt.plot(radius, -np.log(1-data), label=wavelength)
                 plt.ylabel(r"Optical depth (a.u.)")
                 legend = plt.legend()
-                set_legend_color(legend, OPTIONS["plot.color.background"])
+                set_legend_color(legend, OPTIONS.plot.color.background)
                 plt.xscale("log")
                 plt.xlabel(r"Radius (mas)")
 
@@ -193,7 +193,7 @@ def plot_model(fits_file: Path, data_type: Optional[str] = "image",
 
     if savefig is not None:
         plt.savefig(savefig, format=Path(savefig).suffix[1:],
-                    dpi=OPTIONS["plot.dpi"])
+                    dpi=OPTIONS.plot.dpi)
     plt.close()
 
 
@@ -249,10 +249,10 @@ def plot_datapoints(
         axarr, axis_ratio: u.one,
         pos_angle: u.deg, wavelengths: u.um,
         components: Optional[List] = None,
-        data_to_plot: Optional[List[str]] = OPTIONS["fit.data"],
+        data_to_plot: Optional[List[str]] = OPTIONS.fit.data,
         norm: Optional[np.ndarray] = None,
         wavelength_range: Optional[List[float]] = None,
-        colormap: Optional[str] = OPTIONS["plot.color.colormap"]) -> None:
+        colormap: Optional[str] = OPTIONS.plot.color.colormap) -> None:
     """Plots the deviation of a model from real data of an object for
     total flux, visibilities and closure phases.
 
@@ -263,117 +263,105 @@ def plot_datapoints(
     pos_angle : astropy.units.deg
         The position angle.
     data_to_plot : list of str, optional
-        The data to plot. The default is OPTIONS["fit.data"].
+        The data to plot. The default is OPTIONS.fit.data.
     savefig : pathlib.Path, optional
         The save path. The default is None.
     """
     colormap = get_colormap(colormap)
-    hline_color = "gray" if OPTIONS["plot.color.background"] == "white"\
+    hline_color = "gray" if OPTIONS.plot.color.background == "white"\
         else "white"
 
-    fluxes, fluxes_err =\
-        OPTIONS["data.flux"], OPTIONS["data.flux_err"]
 
-    if "vis" in OPTIONS["fit.data"]:
-        vis, vis_err =\
-            OPTIONS["data.corr_flux"], OPTIONS["data.corr_flux_err"]
-        ucoord, vcoord =\
-            OPTIONS["data.corr_flux.ucoord"], OPTIONS["data.corr_flux.vcoord"]
-    else:
-        vis, vis_err =\
-            OPTIONS["data.vis"], OPTIONS["data.vis_err"]
-        ucoord, vcoord =\
-            OPTIONS["data.vis.ucoord"], OPTIONS["data.vis.vcoord"]
+    fluxes = OPTIONS.data.flux
+    vis = OPTIONS.data.vis if "vis" in OPTIONS.fit.data\
+        else OPTIONS.data.vis2
+    t3phi = OPTIONS.data.t3phi
 
-    cphases, cphases_err =\
-        OPTIONS["data.cphase"], OPTIONS["data.cphase_err"]
-    u123coord = OPTIONS["data.cphase.u123coord"]
-    v123coord = OPTIONS["data.cphase.v123coord"]
-    errorbar_params = OPTIONS["plot.errorbar"]
-    scatter_params = OPTIONS["plot.scatter"]
-    if OPTIONS["plot.color.background"] == "black":
-        errorbar_params["markeredgecolor"] = "white"
-        scatter_params["edgecolor"] = "white"
+    errorbar_params = OPTIONS.plot.errorbar
+    scatter_params = OPTIONS.plot.scatter
+    if OPTIONS.plot.color.background == "black":
+        errorbar_params.markeredgecolor = "white"
+        scatter_params.edgecolor = "white"
 
     for index, wavelength in enumerate(wavelengths):
         if wavelength_range is not None:
             if not (wavelength_range[0] <= wavelength <= wavelength_range[1]):
                 continue
         effective_baselines = calculate_effective_baselines(
-            ucoord[index], vcoord[index],
+            vis.ucoord[index], vis.vcoord[index],
             axis_ratio, pos_angle)[0]
         longest_baselines = calculate_effective_baselines(
-            u123coord[index], v123coord[index],
+            t3phi.u123coord[index], t3phi.v123coord[index],
             axis_ratio, pos_angle)[0].max(axis=0)
-        flux_model, corr_flux_model, cphase_model = calculate_observables(
-                components, wavelength, ucoord[index],
-                vcoord[index], u123coord[index], v123coord[index])
+        flux_model, vis_model, cphase_model = calculate_observables(
+                components, wavelength,
+                vis.ucoord[index], vis.vcoord[index],
+                t3phi.u123coord[index], t3phi.v123coord[index])
 
-        vis_model = corr_flux_model if "vis" in data_to_plot\
-            else corr_flux_model/flux_model
         effective_baselines_mlambda = effective_baselines/wavelength.value
         longest_baselines_mlambda = longest_baselines/wavelength.value
         color = colormap(norm(wavelength.value))
-        errorbar_params["color"] = scatter_params["color"] = color
+        errorbar_params.color = scatter_params.color = color
 
         for key in data_to_plot:
             ax_key = "vis" if key in ["vis", "vis2"] else key
             upper_ax, lower_ax = axarr[ax_key]
-            set_axes_color(upper_ax, OPTIONS["plot.color.background"])
-            set_axes_color(lower_ax, OPTIONS["plot.color.background"])
+            set_axes_color(upper_ax, OPTIONS.plot.color.background)
+            set_axes_color(lower_ax, OPTIONS.plot.color.background)
 
             if key == "flux":
                 for flux, flux_err in zip(
-                        fluxes[index], fluxes_err[index]):
+                        fluxes.value[index], fluxes.err[index]):
                     upper_ax.errorbar(
                             wavelength.value, flux, flux_err,
-                            fmt="o", **errorbar_params)
+                            fmt="o", **vars(errorbar_params))
                     upper_ax.scatter(
                             wavelength.value, flux_model,
-                            marker="X", **scatter_params)
+                            marker="X", **vars(scatter_params))
                     lower_ax.scatter(
                             wavelength.value, flux-flux_model,
-                            marker="o", **scatter_params)
+                            marker="o", **vars(scatter_params))
                 lower_ax.axhline(y=0, color=hline_color, linestyle='--')
 
             if key in ["vis", "vis2"]:
                 upper_ax.errorbar(
                         effective_baselines_mlambda.value,
-                        vis[index], vis_err[index],
-                        fmt="o", **errorbar_params)
+                        vis.value[index], vis.err[index],
+                        fmt="o", **vars(errorbar_params))
                 upper_ax.scatter(
                         effective_baselines_mlambda.value, vis_model,
-                        marker="X", **scatter_params)
+                        marker="X", **vars(scatter_params))
                 lower_ax.scatter(
                         effective_baselines_mlambda.value,
-                        vis[index]-vis_model, marker="o", **scatter_params)
+                        vis.value[index]-vis_model,
+                        marker="o", **vars(scatter_params))
                 lower_ax.axhline(y=0, color=hline_color, linestyle='--')
 
             if key == "t3phi":
                 upper_ax.errorbar(
                         longest_baselines_mlambda.value,
-                        cphases[index], cphases_err[index],
-                        fmt="o", **errorbar_params)
+                        t3phi.value[index], t3phi.err[index],
+                        fmt="o", **vars(errorbar_params))
                 upper_ax.scatter(
                         longest_baselines_mlambda.value, cphase_model,
-                        marker="X", **scatter_params)
+                        marker="X", **vars(scatter_params))
                 upper_ax.axhline(y=0, color=hline_color, linestyle='--')
                 lower_ax.scatter(longest_baselines_mlambda.value,
-                                 restrict_phase(cphases[index]-cphase_model),
-                                 marker="o", **scatter_params)
+                                 restrict_phase(t3phi.value[index]-cphase_model),
+                                 marker="o", **vars(scatter_params))
                 lower_ax.axhline(y=0, color=hline_color, linestyle='--')
 
     if "flux" in data_to_plot:
         axarr["flux"][0].set_xticks(wavelengths.value)
         axarr["flux"][1].set_xticks(wavelengths.value)
         axarr["flux"][1].set_xticklabels(wavelengths.value, rotation=45)
-    errorbar_params["color"] = ""
+    errorbar_params.color = ""
 
 
 def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
              components: Optional[List] = None,
              data_to_plot: Optional[List[str]] = None,
-             colormap: Optional[str] = OPTIONS["plot.color.colormap"],
+             colormap: Optional[str] = OPTIONS.plot.color.colormap,
              ylimits: Optional[Dict[str, List[float]]] = {},
              wavelength_range: Optional[List[float]] = None,
              title: Optional[str] = None,
@@ -388,7 +376,7 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
     pos_angle : astropy.units.deg
         The position angle.
     data_to_plot : list of str, optional
-        The data to plot. The default is OPTIONS["fit.data"].
+        The data to plot. The default is OPTIONS.fit.data.
     colormap : str, optional
         The colormap.
     title : str, optional
@@ -396,9 +384,9 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
     savefig : pathlib.Path, optional
         The save path. The default is None.
     """
-    data_to_plot = OPTIONS["fit.data"]\
+    data_to_plot = OPTIONS.fit.data\
         if data_to_plot is None else data_to_plot
-    wavelengths = OPTIONS["fit.wavelengths"]
+    wavelengths = OPTIONS.fit.wavelengths
     norm = mcolors.Normalize(
             vmin=wavelengths[0].value, vmax=wavelengths[-1].value)
 
@@ -412,10 +400,10 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
 
     figsize = (16, 5) if nplots == 3 else ((12, 5) if nplots == 2 else None)
     fig = plt.figure(
-            figsize=figsize, facecolor=OPTIONS["plot.color.background"])
+            figsize=figsize, facecolor=OPTIONS.plot.color.background)
     gs = GridSpec(2, nplots, height_ratios=[3, 1])
     axarr = {key: value for key, value in zip(
-        data_types, [[fig.add_subplot(gs[j, i], facecolor=OPTIONS["plot.color.background"])
+        data_types, [[fig.add_subplot(gs[j, i], facecolor=OPTIONS.plot.color.background)
                       for j in range(2)] for i in range(nplots)])}
 
     plot_datapoints(axarr, axis_ratio, pos_angle,
@@ -430,17 +418,17 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
     cbar.set_ticks(wavelengths.value)
     cbar.set_ticklabels([f"{wavelength:.1f}"
                          for wavelength in wavelengths.value])
-    if OPTIONS["plot.color.background"] == "black":
+    if OPTIONS.plot.color.background == "black":
         cbar.ax.yaxis.set_tick_params(color="white")
         plt.setp(plt.getp(cbar.ax.axes, "yticklabels"), color="white")
         for spine in cbar.ax.spines.values():
             spine.set_edgecolor("white")
-    opposite_color = "white" if OPTIONS["plot.color.background"] == "black"\
+    opposite_color = "white" if OPTIONS.plot.color.background == "black"\
         else "black"
     cbar.set_label(label=r"$\lambda$ ($\mathrm{\mu}$m)",
                    color=opposite_color)
 
-    label_color = "lightgray" if OPTIONS["plot.color.background"] == "black"\
+    label_color = "lightgray" if OPTIONS.plot.color.background == "black"\
         else "k"
     dot_label = mlines.Line2D([], [], color=label_color, marker="o",
                               linestyle="None", label="Data", alpha=0.6)
@@ -465,7 +453,7 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
                 upper_ax.set_ylim([0, None])
             if not len(axarr) > 1:
                 legend = upper_ax.legend(handles=[dot_label, x_label])
-                set_legend_color(legend, OPTIONS["plot.color.background"])
+                set_legend_color(legend, OPTIONS.plot.color.background)
 
         if key in ["vis", "vis2"]:
             lower_ax.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}$ (M$\lambda$)")
@@ -488,15 +476,15 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
             upper_ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
             if not len(axarr) > 1:
                 legend = upper_ax.legend(handles=[dot_label, x_label])
-                set_legend_color(legend, OPTIONS["plot.color.background"])
+                set_legend_color(legend, OPTIONS.plot.color.background)
 
         if key == "t3phi":
             upper_ax.set_ylabel(r"Closure Phases ($^\circ$)")
             lower_ax.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}$ (M$\lambda$)")
             lower_ax.set_ylabel(r"Residuals ($^\circ$)")
-            lower_bound = np.min([np.min(value) for value in OPTIONS["data.cphase"]])
+            lower_bound = np.min([np.min(value) for value in OPTIONS.data.t3phi.value])
             lower_bound += lower_bound*0.25
-            upper_bound = np.max([np.max(value) for value in OPTIONS["data.cphase"]])
+            upper_bound = np.max([np.max(value) for value in OPTIONS.data.t3phi.value])
             upper_bound += upper_bound*0.25
             upper_ax.tick_params(**tick_settings)
             if "t3phi" in ylimits:
@@ -504,21 +492,21 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
             else:
                 upper_ax.set_ylim([lower_bound, upper_bound])
             legend = upper_ax.legend(handles=[dot_label, x_label])
-            set_legend_color(legend, OPTIONS["plot.color.background"])
+            set_legend_color(legend, OPTIONS.plot.color.background)
 
     if title is not None:
         plt.title(title)
 
     if savefig is not None:
         plt.savefig(savefig, format=Path(savefig).suffix[1:],
-                    dpi=OPTIONS["plot.dpi"])
+                    dpi=OPTIONS.plot.dpi)
     else:
         plt.show()
     plt.close()
 
 
 def plot_overview(data_to_plot: Optional[List[str]] = None,
-                  colormap: Optional[str] = OPTIONS["plot.color.colormap"],
+                  colormap: Optional[str] = OPTIONS.plot.color.colormap,
                   wavelength_range: Optional[List[float]] = None,
                   ylimits: Optional[Dict[str, List[float]]] = {},
                   title: Optional[str] = None,
@@ -528,13 +516,13 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
     Parameters
     ----------
     data_to_plot : list of str, optional
-        The data to plot. The default is OPTIONS["fit.data"].
+        The data to plot. The default is OPTIONS.fit.data.
     savefig : pathlib.Path, optional
         The save path. The default is None.
     """
-    data_to_plot = OPTIONS["fit.data"]\
+    data_to_plot = OPTIONS.fit.data\
         if data_to_plot is None else data_to_plot
-    wavelengths = OPTIONS["fit.wavelengths"]
+    wavelengths = OPTIONS.fit.wavelengths
     norm = mcolors.Normalize(
             vmin=wavelengths[0].value, vmax=wavelengths[-1].value)
 
@@ -549,75 +537,64 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
     figsize = (15, 5) if nplots == 3 else ((12, 5) if nplots == 2 else None)
     _, axarr = plt.subplots(1, nplots, figsize=figsize,
                             tight_layout=True,
-                            facecolor=OPTIONS["plot.color.background"])
+                            facecolor=OPTIONS.plot.color.background)
     axarr = dict(zip(data_types, axarr.flatten()))
 
     colormap = get_colormap(colormap)
-    hline_color = "gray" if OPTIONS["plot.color.background"] == "white"\
+    hline_color = "gray" if OPTIONS.plot.color.background == "white"\
         else "white"
 
-    fluxes, fluxes_err =\
-        OPTIONS["data.flux"], OPTIONS["data.flux_err"]
+    fluxes = OPTIONS.data.flux
+    vis = OPTIONS.data.vis if "vis" in OPTIONS.fit.data\
+        else OPTIONS.data.vis2
+    t3phi = OPTIONS.data.t3phi
 
-    if "vis" in OPTIONS["fit.data"]:
-        vis, vis_err =\
-            OPTIONS["data.corr_flux"], OPTIONS["data.corr_flux_err"]
-        ucoord, vcoord =\
-            OPTIONS["data.corr_flux.ucoord"], OPTIONS["data.corr_flux.vcoord"]
-    else:
-        vis, vis_err =\
-            OPTIONS["data.vis"], OPTIONS["data.vis_err"]
-        ucoord, vcoord =\
-            OPTIONS["data.vis.ucoord"], OPTIONS["data.vis.vcoord"]
-
-    cphases, cphases_err =\
-        OPTIONS["data.cphase"], OPTIONS["data.cphase_err"]
-    u123coord = OPTIONS["data.cphase.u123coord"]
-    v123coord = OPTIONS["data.cphase.v123coord"]
-    errorbar_params = OPTIONS["plot.errorbar"]
-    if OPTIONS["plot.color.background"] == "black":
-        errorbar_params["markeredgecolor"] = "white"
+    # TODO: Set the color somewhere centrally so all plots are the same color.
+    errorbar_params = OPTIONS.plot.errorbar
+    if OPTIONS.plot.color.background == "black":
+        errorbar_params.markeredgecolor = "white"
 
     for index, wavelength in enumerate(wavelengths):
         if wavelength_range is not None:
             if not (wavelength_range[0] <= wavelength <= wavelength_range[1]):
                 continue
-        effective_baselines = np.hypot(ucoord[index], vcoord[index])*u.m
-        longest_baselines = np.hypot(u123coord[index], v123coord[index]).max(axis=0)*u.m
+        effective_baselines = np.hypot(vis.ucoord[index], vis.vcoord[index])*u.m
+        longest_baselines = np.hypot(t3phi.u123coord[index],
+                                     t3phi.v123coord[index]).max(axis=0)*u.m
 
         effective_baselines_mlambda = effective_baselines/wavelength.value
         longest_baselines_mlambda = longest_baselines/wavelength.value
         color = colormap(norm(wavelength.value))
-        errorbar_params["color"] = color
+        errorbar_params.color = color
 
         for key in data_to_plot:
             ax_key = "vis" if key in ["vis", "vis2"] else key
             ax = axarr[ax_key]
             if key == "flux":
                 for flux, flux_err in zip(
-                        fluxes[index], fluxes_err[index]):
+                        fluxes.value[index], fluxes.err[index]):
                     ax.errorbar(
                         wavelength.value, flux, flux_err,
-                        fmt="o", **errorbar_params)
+                        fmt="o", **vars(errorbar_params))
 
             if key in ["vis", "vis2"]:
                 ax.errorbar(
                     effective_baselines_mlambda.value,
-                    vis[index], vis_err[index],
-                    fmt="o", **errorbar_params)
+                    vis.value[index], vis.err[index],
+                    fmt="o", **vars(errorbar_params))
 
             if key == "t3phi":
                 ax.errorbar(
                     longest_baselines_mlambda.value,
-                    cphases[index], cphases_err[index],
-                    fmt="o", **errorbar_params)
+                    t3phi.value[index], t3phi.err[index],
+                    fmt="o", **vars(errorbar_params))
                 ax.axhline(y=0, color=hline_color, linestyle='--')
 
     if "flux" in data_to_plot:
         axarr["flux"].set_xticks(wavelengths.value)
         axarr["flux"].set_xticklabels(wavelengths.value, rotation=45)
 
-    errorbar_params["color"] = ""
+    errorbar_params.color = ""
 
     sm = cm.ScalarMappable(cmap=colormap, norm=norm)
     sm.set_array([])
@@ -625,12 +602,12 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
     cbar.set_ticks(wavelengths.value)
     cbar.set_ticklabels([f"{wavelength:.1f}"
                          for wavelength in wavelengths.value])
-    if OPTIONS["plot.color.background"] == "black":
+    if OPTIONS.plot.color.background == "black":
         cbar.ax.yaxis.set_tick_params(color="white")
         plt.setp(plt.getp(cbar.ax.axes, "yticklabels"), color="white")
         for spine in cbar.ax.spines.values():
             spine.set_edgecolor("white")
-    opposite_color = "white" if OPTIONS["plot.color.background"] == "black"\
+    opposite_color = "white" if OPTIONS.plot.color.background == "black"\
         else "black"
     cbar.set_label(label=r"$\lambda$ ($\mathrm{\mu}$m)",
                    color=opposite_color)
@@ -638,7 +615,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
     for key in data_to_plot:
         ax_key = "vis" if key in ["vis", "vis2"] else key
         ax = axarr[ax_key]
-        set_axes_color(ax, OPTIONS["plot.color.background"])
+        set_axes_color(ax, OPTIONS.plot.color.background)
 
         if key == "flux":
             ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
@@ -667,9 +644,9 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
         if key == "t3phi":
             ax.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}$ (M$\lambda$)")
             ax.set_ylabel(r"Closure Phases ($^\circ$)")
-            lower_bound = np.min([np.min(value) for value in cphases])
+            lower_bound = np.min([np.min(value) for value in t3phi.value])
             lower_bound += lower_bound*0.25
-            upper_bound = np.max([np.max(value) for value in cphases])
+            upper_bound = np.max([np.max(value) for value in t3phi.value])
             upper_bound += upper_bound*0.25
             if "t3phi" in ylimits:
                 ax.set_ylim(ylimits["t3phi"])
@@ -681,7 +658,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
 
     if savefig is not None:
         plt.savefig(savefig, format=Path(savefig).suffix[1:],
-                    dpi=OPTIONS["plot.dpi"])
+                    dpi=OPTIONS.plot.dpi)
     else:
         plt.show()
     plt.close()
@@ -705,17 +682,17 @@ def plot_target(target: str,
     sed = Table.read(f"https://vizier.cds.unistra.fr/viz-bin/sed?-c={target}&-c.rs={radius}")
 
     if ax is None:
-        _ = plt.figure(facecolor=OPTIONS["plot.color.background"],
+        _ = plt.figure(facecolor=OPTIONS.plot.color.background,
                    tight_layout=True)
-        ax = plt.axes(facecolor=OPTIONS["plot.color.background"])
-        set_axes_color(ax, OPTIONS["plot.color.background"])
+        ax = plt.axes(facecolor=OPTIONS.plot.color.background)
+        set_axes_color(ax, OPTIONS.plot.color.background)
         ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
         ax.set_ylabel("Flux (Jy)")
         ax.set_title(title)
     else:
         fig = None
 
-    colors = OPTIONS["plot.color"]
+    colors = OPTIONS.plot.color.list
     if filters is not None:
         for filter in filters:
             filtered_sed = sed[[filter_name.startswith(filter)
@@ -761,7 +738,7 @@ def plot_target(target: str,
 
     if savefig is not None:
         plt.savefig(savefig, format=Path(savefig).suffix[1:],
-                    dpi=OPTIONS["plot.dpi"])
+                    dpi=OPTIONS.plot.dpi)
 
     if fig is not None:
         plt.close()
@@ -789,7 +766,7 @@ def plot_observables(target: str,
     u123coord = np.hstack([readout.u123coord for readout in readouts])
     v123coord = np.hstack([readout.v123coord for readout in readouts])
 
-    corr_flux = not "vis2" in OPTIONS["fit.data"] if corr_flux is None\
+    corr_flux = not "vis2" in OPTIONS.fit.data if corr_flux is None\
         else corr_flux
 
     flux = []
@@ -823,10 +800,10 @@ def plot_observables(target: str,
         cphase[index] = tmp_cphase
     flux = np.array(flux)
 
-    _ = plt.figure(facecolor=OPTIONS["plot.color.background"],
+    _ = plt.figure(facecolor=OPTIONS.plot.color.background,
                    tight_layout=True)
-    ax = plt.axes(facecolor=OPTIONS["plot.color.background"])
-    set_axes_color(ax, OPTIONS["plot.color.background"])
+    ax = plt.axes(facecolor=OPTIONS.plot.color.background)
+    set_axes_color(ax, OPTIONS.plot.color.background)
     ax.plot(wavelengths, flux, label="Model")
     plot_target(target, wavelength_range=wavelength_range, ax=ax)
     ax.set_xlabel(r"$\lambda$ ($\mu$m)")
@@ -843,10 +820,10 @@ def plot_observables(target: str,
     cphase_dir = baseline_dir / "cphase"
     cphase_dir.mkdir(exist_ok=True, parents=True)
     for index, (uc, vc) in enumerate(zip(ucoord, vcoord)):
-        _ = plt.figure(facecolor=OPTIONS["plot.color.background"],
+        _ = plt.figure(facecolor=OPTIONS.plot.color.background,
                        tight_layout=True)
-        ax = plt.axes(facecolor=OPTIONS["plot.color.background"])
-        set_axes_color(ax, OPTIONS["plot.color.background"])
+        ax = plt.axes(facecolor=OPTIONS.plot.color.background)
+        set_axes_color(ax, OPTIONS.plot.color.background)
 
         baseline, baseline_angle = np.hypot(uc, vc), np.arctan2(uc, vc)*u.rad.to(u.deg)
         ax.plot(wavelengths, vis[:, index],
@@ -859,10 +836,10 @@ def plot_observables(target: str,
         plt.close()
 
     for index, baseline in enumerate(np.hypot(u123coord, v123coord).max(axis=0)):
-        _ = plt.figure(facecolor=OPTIONS["plot.color.background"],
+        _ = plt.figure(facecolor=OPTIONS.plot.color.background,
                        tight_layout=True)
-        ax = plt.axes(facecolor=OPTIONS["plot.color.background"])
-        set_axes_color(ax, OPTIONS["plot.color.background"])
+        ax = plt.axes(facecolor=OPTIONS.plot.color.background)
+        set_axes_color(ax, OPTIONS.plot.color.background)
         ax.plot(wavelengths, cphase[:, index], label=f"B={baseline:.2f} m")
         ax.set_xlabel(r"$\lambda$ ($\mu$m)")
         ax.set_ylabel(r"Closure Phases ($^\circ$)")

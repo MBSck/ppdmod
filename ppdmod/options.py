@@ -1,4 +1,5 @@
 from typing import List, Optional
+from types import SimpleNamespace
 
 import astropy.units as u
 import matplotlib.pyplot as plt
@@ -30,6 +31,7 @@ def get_colorlist(colormap: str, ncolors: Optional[int] = 10) -> List[str]:
 
 
 # NOTE: A list of standard parameters to be used when defining new components.
+# TODO: Make this into a simple namespace as well
 STANDARD_PARAMETERS = {
         "x": {"name": "x", "shortname": "x",
               "value": 0, "description": "x position",
@@ -104,65 +106,57 @@ STANDARD_PARAMETERS = {
 }
 
 
-OPTIONS = {}
-
-# NOTE: Data.
-OPTIONS["data.binning.window"] = None
-OPTIONS["data.gravity.index"] = 20
-OPTIONS["data.corr_flux"] = []
-OPTIONS["data.corr_flux_err"] = []
-OPTIONS["data.corr_flux.ucoord"] = []
-OPTIONS["data.corr_flux.vcoord"] = []
-OPTIONS["data.cphase"] = []
-OPTIONS["data.cphase_err"] = []
-OPTIONS["data.cphase.u123coord"] = []
-OPTIONS["data.cphase.v123coord"] = []
-OPTIONS["data.flux"] = []
-OPTIONS["data.flux_err"] = []
-OPTIONS["data.vis"] = []
-OPTIONS["data.vis_err"] = []
-OPTIONS["data.vis.ucoord"] = []
-OPTIONS["data.vis.vcoord"] = []
-OPTIONS["data.readouts"] = []
+# NOTE: Data
+vis = SimpleNamespace(value=[], err=[], ucoord=[], vcoord=[])
+vis2 = SimpleNamespace(value=[], err=[], ucoord=[], vcoord=[])
+t3phi = SimpleNamespace(value=[], err=[], u123coord=[], v123coord=[])
+flux = SimpleNamespace(value=[], err=[])
+binning = SimpleNamespace(window=None)
+gravity = SimpleNamespace(index=20)
+data = SimpleNamespace(readouts=[], flux=flux, vis=vis,
+                       vis2=vis2, t3phi=t3phi, gravity=gravity,
+                       binning=binning)
 
 # NOTE: Model
-OPTIONS["model.components_and_params"] = {}
-OPTIONS["model.constant_params"] = {}
-OPTIONS["model.dtype.complex"] = complex64
-OPTIONS["model.dtype.real"] = float32
-OPTIONS["model.flux.factor"] = 1
-OPTIONS["model.gridtype"] = "linear"
-OPTIONS["model.modulation.order"] = 0
-OPTIONS["model.shared_params"] = {}
+dtype = SimpleNamespace(complex=complex64, real=float32)
+model = SimpleNamespace(components_and_params={},
+                        constant_params={}, shared_params={},
+                        dtype=dtype, gridtype="linear",
+                        modulation=SimpleNamespace(order=0))
+
 
 # NOTE: Spectrum
-OPTIONS["spectrum.binning"] = 7
-OPTIONS["spectrum.coefficients"] = {
-    "low": [0.10600484,  0.01502548,  0.00294806, -0.00021434],
-    "high": [-8.02282965e-05,  3.83260266e-03, 7.60090459e-05, -4.30753848e-07]
-}
-OPTIONS["spectrum.kernel_width"] = 10
+coefficients = SimpleNamespace(
+        low=[0.10600484,  0.01502548,  0.00294806, -0.00021434],
+        high=[-8.02282965e-05,  3.83260266e-03, 7.60090459e-05, -4.30753848e-07])
+kernel = SimpleNamespace(width=10)
+spectrum = SimpleNamespace(binning=7, coefficients=coefficients,
+                           kernel=kernel)
 
 # NOTE: Plot
-OPTIONS["plot.dpi"] = 300
-OPTIONS["plot.color.background"] = "white"
-OPTIONS["plot.color.colormap"] = "tab20"
-OPTIONS["plot.color.number"] = 100
-OPTIONS["plot.color"] = get_colorlist(OPTIONS["plot.color.colormap"],
-                                      OPTIONS["plot.color.number"])
-OPTIONS["plot.errorbar"] = {"color": "",
-                            "markeredgecolor": "black",
-                            "markeredgewidth": 0.2,
-                            "capsize": 5, "capthick": 3,
-                            "ecolor": "gray", "zorder": 2}
-OPTIONS["plot.scatter"] = {"color": "", "edgecolor": "black",
-                           "linewidths": 0.2, "zorder": 3}
+color = SimpleNamespace(background="white",
+                        colormap="tab20", number=100,
+                        list=get_colorlist("tab20", 100))
+errorbar = SimpleNamespace(color="",
+                           markeredgecolor="black",
+                           markeredgewidth=0.2,
+                           capsize=5, capthick=3,
+                           ecolor="gray", zorder=2)
+scatter = SimpleNamespace(color="", edgecolor="black",
+                          linewidths=0.2, zorder=3)
+plot = SimpleNamespace(dpi=300, color=color,
+                       errorbar=errorbar, scatter=scatter)
 
 # NOTE: Fitting
-OPTIONS["fit.chi2.weight.corr_flux"] = 1
-OPTIONS["fit.chi2.weight.cphase"] = 1
-OPTIONS["fit.chi2.weight.flux"] = 1
-OPTIONS["fit.data"] = ["flux", "vis", "t3phi"]
-OPTIONS["fit.method"] = "emcee"
-OPTIONS["fit.wavelengths"] = None
-OPTIONS["fit.quantiles"] = [16, 50, 84]
+weights = SimpleNamespace(cphase=1, flux=1,
+                          t3phi=1, vis=1)
+fit = SimpleNamespace(weights=weights,
+                      data=["flux", "vis", "t3phi"],
+                      method="emcee",
+                      wavelengths=[],
+                      quantiles=[16, 50, 84])
+
+# NOTE: All options
+OPTIONS = SimpleNamespace(data=data, model=model,
+                          spectrum=spectrum,
+                          plot=plot, fit=fit)

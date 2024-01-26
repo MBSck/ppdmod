@@ -331,7 +331,8 @@ def qval_to_opacity(qval_file: Path) -> u.cm**2/u.g:
 
 def transform_data(
         wavelength_grid: u.um, data: u.Quantity, wavelength_solution: u.um,
-        dl_coeffs: Optional[u.Quantity[u.one]] = OPTIONS["spectrum.coefficients"]["low"],
+        dl_coeffs: Optional[u.Quantity[u.one]] = None,
+        resolution: Optional[str] = "low",
         spectral_binning: Optional[float] = 7,
         kernel_width: Optional[float] = 10
         ) -> u.Quantity:
@@ -352,6 +353,8 @@ def transform_data(
     -------
     transformed_data : astropy.units.Quantity
     """
+    dl_coeffs = getattr(OPTIONS.spectrum.dl_coeffs, resolution)\
+        if dl_coeffs is None else dl_coeffs
     min_wl, max_wl = np.min(wavelength_grid), np.max(wavelength_grid)
     wavelength, wl_new = min_wl, [min_wl]
     while wavelength < max_wl:
@@ -386,8 +389,8 @@ def transform_data(
 
 
 def data_to_matisse_grid(wavelength_solution: u.um,
-                         data: Optional[Any] = None,
                          wavelength_grid: Optional[u.Quantity[u.um]] = None,
+                         data: Optional[Any] = None,
                          data_file: Optional[Path] = None,
                          unit: Optional[u.Quantity] = None,
                          resolution: Optional[str] = "low",
@@ -426,6 +429,9 @@ def data_to_matisse_grid(wavelength_solution: u.um,
             wavelength_grid, data, *_ = np.loadtxt(
                 data_file, skiprows=skiprows,
                 comments=comments, unpack=True)
+    elif wavelength_grid is None or data is None:
+        raise ValueError("Either a file or a wavelength_grid and its"
+                         "corresponding data must be given.")
 
     wavelength_grid = u.Quantity(wavelength_grid, unit=u.um)
     ind = np.where(np.logical_and(
@@ -434,15 +440,16 @@ def data_to_matisse_grid(wavelength_solution: u.um,
     wavelength_grid, data = wavelength_grid[ind], data[ind]
     matisse_data = transform_data(
         wavelength_grid, data, wavelength_solution,
-        OPTIONS["spectrum.coefficients"][resolution],
-        OPTIONS["spectrum.binning"],
-        OPTIONS["spectrum.kernel_width"])
+        getattr(OPTIONS.spectrum.coefficients, resolution),
+        OPTIONS.spectrum.binning,
+        OPTIONS.spectrum.kernel.width)
 
     if save_path is not None:
         np.save(save_path, [wavelength_solution, matisse_data])
     return u.Quantity(matisse_data, unit=unit)
 
 
+# TODO: Remove the load func here and just use data instead of files?
 def linearly_combine_data(files: List[Path], weights: u.one,
                           wavelength_solution: u.um,
                           unit: Optional[u.Quantity] = None,

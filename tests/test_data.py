@@ -1,5 +1,4 @@
 from typing import List
-from types import SimpleNamespace
 from pathlib import Path
 
 import astropy.units as u

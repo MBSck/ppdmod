@@ -153,5 +153,5 @@ def assemble_components(
     for (component, params) in parameters:
         comp = getattr(sys.modules[__name__], component)
         components.append(comp(**params, **shared_params,
-                               **OPTIONS["model.constant_params"]))
+                               **OPTIONS.model.constant_params))
     return components

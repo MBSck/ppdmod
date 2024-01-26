@@ -48,7 +48,7 @@ class Parameter:
                 # HACK: Multiplying by microns makes it work.
                 indices = list(get_closest_indices(
                     wavelength, array=self.wavelength*u.um,
-                    window=OPTIONS["data.binning.window"]).values())
+                    window=OPTIONS.data.binning.window).values())
                 value = self.value[indices[0]].mean()
         return u.Quantity(value, unit=self.unit, dtype=self.dtype)
 

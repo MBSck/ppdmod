@@ -84,6 +84,7 @@ def test_make_workbook() -> None:
     ...
 
 
+# TODO: Make this completely foolproof
 def test_get_closest_indices(
         wavelength: u.um, wavelengths: u.um,
         wavelength_solution_l_band: u.um,
@@ -123,6 +124,7 @@ def test_distance_to_angular(distance: u.Quantity,
     assert np.isclose(angular_diameter.to(u.arcsec), 1*u.arcsec, atol=1e-2)
 
 
+# TODO: Test it with multiple files (GRAVITY+PIONIER+MATISSE)
 def test_calculate_effective_baselines(fits_file: Path,
                                        wavelength: u.um) -> None:
     """Tests the calculation of the effective baselines."""
@@ -135,7 +137,7 @@ def test_calculate_effective_baselines(fits_file: Path,
 
     index = np.where(wavelength == readout.wavelength)
 
-    effective_baselines = utils.calculate_effective_baselines(
+    effective_baselines, baseline_angles = utils.calculate_effective_baselines(
         readout.ucoord, readout.vcoord, axis_ratio, pos_angle)
 
     plt.scatter(effective_baselines/wavelength.value,
@@ -143,19 +145,26 @@ def test_calculate_effective_baselines(fits_file: Path,
     plt.savefig(baseline_dir / "baseline_vs_vis.pdf", format="pdf")
     plt.close()
 
-    assert effective_baselines.unit == u.m
     assert effective_baselines.size == 6
+    assert effective_baselines.unit == u.m
+    assert baseline_angles.size == 6
+    assert baseline_angles.unit == u.rad
 
-    effective_baselines_cp = utils.calculate_effective_baselines(
-        readout.u123coord, readout.v123coord, axis_ratio, pos_angle).max(axis=0)
+    effective_baselines_cp, baseline_angles = utils.calculate_effective_baselines(
+        readout.u123coord, readout.v123coord, axis_ratio, pos_angle)
+    baseline_angles = baseline_angles
+    effective_baselines_cp = effective_baselines.max(axis=0)
+    breakpoint()
 
     plt.scatter(effective_baselines_cp/wavelength.value,
                 readout.t3phi[:, index].squeeze())
     plt.savefig(baseline_dir / "baseline_vs_t3phi.pdf", format="pdf")
     plt.close()
 
-    assert effective_baselines_cp.unit == u.m
     assert effective_baselines_cp.shape == (4,)
+    assert effective_baselines_cp.unit == u.m
+    assert baseline_angles.shape == (4,)
+    assert baseline_angles.unit == u.rad
 
 
 def test_binary() -> None:
@@ -236,9 +245,9 @@ def test_transform_data(qval_file_dir: Path, file: str,
             (wavelength_solutions[field[0]].min()-1*u.um) < wavelength_grid,
             wavelength_grid < (wavelength_solutions[field[0]].max()+1*u.um)))
         wl_grid, opc = wavelength_grid[ind], opacity[ind]
+        dl_coeffs = getattr(OPTIONS.spectrum.coefficients, field[1])
         opacities.append(utils.transform_data(
-                wl_grid, opc, wavelength_solutions[field[0]],
-                dl_coeffs=OPTIONS["spectrum.coefficients"][field[1]]))
+                wl_grid, opc, wavelength_solutions[field[0]], dl_coeffs=dl_coeffs))
 
     for index, (ax, op) in enumerate(zip(axarr.flatten(), opacities)):
         ax.plot(wl_grid.value, opc.value, label="Original")
@@ -256,7 +265,8 @@ def test_transform_data(qval_file_dir: Path, file: str,
         assert op.shape == wavelength_solutions[field[0]].shape
 
 
-# NOTE: This test, tests nothing.
+# NOTE: This test, tests nothing
+# TODO: Make a plot here
 def test_opacity_to_matisse_opacity(
         qval_file_dir: Path, wavelength_solution: u.um) -> None:
     """Tests the interpolation to the MATISSE wavelength grid."""

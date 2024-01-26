@@ -21,7 +21,7 @@ class ReadoutFits:
         """Reads the data of the (.fits)-files into vectors."""
         with fits.open(Path(self.fits_file)) as hdul:
             instrument = hdul[0].header["instrume"].lower()
-            sci_index = OPTIONS["data.gravity.index"]\
+            sci_index = OPTIONS.data.gravity.index\
                 if instrument == "gravity" else None
             wl_index = 1 if instrument == "gravity" else None
             self.wavelength = (hdul["oi_wavelength", sci_index]
@@ -62,7 +62,7 @@ class ReadoutFits:
         """Gets the data for the given wavelengths."""
         indices = list(get_closest_indices(
             wavelength, array=self.wavelength,
-            window=OPTIONS["data.binning.window"]).values())
+            window=OPTIONS.data.binning.window).values())
 
         if not indices:
             return np.array([])
@@ -84,17 +84,16 @@ def set_fit_wavelengths(
     If called without parameters or recalled, it will clear the
     fit wavelengths.
     """
-    OPTIONS["fit.wavelengths"] = []
-
+    OPTIONS.fit.wavelengths = []
     if wavelengths is None:
         return
 
-    if not isinstance(wavelengths, u.Quantity):
-        wavelengths *= u.m
-    OPTIONS["fit.wavelengths"] = wavelengths.to(u.um).flatten()
+    wavelengths = u.Quantity(wavelengths, u.um)
+    OPTIONS.fit.wavelengths = wavelengths.flatten()
 
 
 def set_data(fits_files: Optional[List[Path]] = None,
+             fit_data: Optional[List[str]] = None,
              wavelengths: Optional[u.Quantity[u.um]] = None) -> None:
     """Sets the data as a global variable from the input files.
 
@@ -107,80 +106,68 @@ def set_data(fits_files: Optional[List[Path]] = None,
     wavelengths : astropy.units.um
         The wavelengths to be fitted.
     """
-    OPTIONS["data.readouts"] = []
-    wavelengths = OPTIONS["fit.wavelengths"] if wavelengths\
+    OPTIONS.data.readouts = []
+    wavelengths = OPTIONS.fit.wavelengths if wavelengths\
         is None else wavelengths
+    fit_data = OPTIONS.fit.data if fit_data is None\
+        else fit_data
 
-    keys = ["flux", "corr_flux", "vis", "cphase"]
+    keys = ["flux", "vis", "vis2", "t3phi"]
     for key in keys:
-        OPTIONS[f"data.{key}"] = [[] for _ in wavelengths]
-        OPTIONS[f"data.{key}_err"] = [[] for _ in wavelengths]
-        if key in ["corr_flux", "vis"]:
-            OPTIONS[f"data.{key}.ucoord"] = [[] for _ in wavelengths]
-            OPTIONS[f"data.{key}.vcoord"] = [[] for _ in wavelengths]
-        elif key == "cphase":
-            OPTIONS[f"data.{key}.u123coord"] = [[] for _ in wavelengths]
-            OPTIONS[f"data.{key}.v123coord"] = [[] for _ in wavelengths]
+        data = getattr(OPTIONS.data, key)
+        data.value = [[] for _ in wavelengths]
+        data.err = [[] for _ in wavelengths]
+        if key in ["vis", "vis2"]:
+            data.ucoord = [[] for _ in wavelengths]
+            data.vcoord = [[] for _ in wavelengths]
+        elif key == "t3phi":
+            data.u123coord = [[] for _ in wavelengths]
+            data.v123coord = [[] for _ in wavelengths]
 
     if fits_files is None:
         return
 
-    readouts = OPTIONS["data.readouts"] =\
-        [ReadoutFits(file) for file in fits_files]
+    readouts = OPTIONS.data.readouts = list(map(ReadoutFits, fits_files))
 
     for readout in readouts:
-        for data_type in OPTIONS["fit.data"]:
-            key = data_type
-            if data_type == "vis":
-                key = "corr_flux"
-            elif data_type == "vis2":
-                key = "vis"
-            elif data_type == "t3phi":
-                key = "cphase"
-
+        for key in fit_data:
+            data = getattr(OPTIONS.data, key)
             for index, wavelength in enumerate(wavelengths):
                 values = readout.get_data_for_wavelength(
-                        wavelength, key=data_type)
+                        wavelength, key=key)
 
                 if values.size == 0:
                     continue
 
                 values_err = readout.get_data_for_wavelength(
-                        wavelength, key=f"{data_type}_err")
+                        wavelength, key=f"{key}_err")
 
-                OPTIONS[f"data.{key}"][index].extend(values)
-                OPTIONS[f"data.{key}_err"][index].extend(values_err)
+                data.value[index].extend(values)
+                data.err[index].extend(values_err)
 
-                if key in ["corr_flux", "vis"]:
-                    OPTIONS[f"data.{key}.ucoord"][index].extend(readout.ucoord)
-                    OPTIONS[f"data.{key}.vcoord"][index].extend(readout.vcoord)
-                elif key == "cphase":
-                    OPTIONS[f"data.{key}.u123coord"][index].extend(readout.u123coord)
-                    OPTIONS[f"data.{key}.v123coord"][index].extend(readout.v123coord)
+                if key in ["vis", "vis2"]:
+                    data.ucoord[index].extend(readout.ucoord)
+                    data.vcoord[index].extend(readout.vcoord)
+                elif key == "t3phi":
+                    data.u123coord[index].extend(readout.u123coord)
+                    data.v123coord[index].extend(readout.v123coord)
 
-    keys = ["flux", "corr_flux", "vis", "cphase"]
+    keys = ["flux", "vis", "vis2", "t3phi"]
     for key in keys:
-        if not any(np.any(value) for value in OPTIONS[f"data.{key}"]):
+        data = getattr(OPTIONS.data, key)
+        if not any(np.any(value) for value in vars(data).values()):
             continue
 
-        OPTIONS[f"data.{key}"] = [np.array(value) for value
-                                  in OPTIONS[f"data.{key}"]]
-        OPTIONS[f"data.{key}_err"] = [np.array(value) for value
-                                      in OPTIONS[f"data.{key}_err"]]
-        if key in ["corr_flux", "vis"]:
-            OPTIONS[f"data.{key}.ucoord"] = [np.array(value) for value
-                                             in OPTIONS[f"data.{key}.ucoord"]]
-            OPTIONS[f"data.{key}.vcoord"] = [np.array(value) for value
-                                             in OPTIONS[f"data.{key}.vcoord"]]
-        elif key == "cphase":
-            OPTIONS[f"data.{key}.u123coord"] =\
-                    [np.array([np.concatenate((value[i::3])) for i in range(3)])
-                     for value in OPTIONS[f"data.{key}.u123coord"]]
-            OPTIONS[f"data.{key}.v123coord"] =\
-                    [np.array([np.concatenate((value[i::3])) for i in range(3)])
-                     for value in OPTIONS[f"data.{key}.v123coord"]]
+        data.value = [np.array(value) for value in data.value]
+        data.err = [np.array(value) for value in data.err]
 
-
-def readout_model(model_fits: Path) -> ReadoutFits:
-    """Reads out the model (.fits)-file"""
-    ...
+        if key in ["vis", "vis2"]:
+            data.ucoord = [np.array(value) for value in data.ucoord]
+            data.vcoord = [np.array(value) for value in data.vcoord]
+        elif key == "t3phi":
+            data.u123coord =\
+                [np.array([np.concatenate((value[i::3])) for i in range(3)])
+                 for value in data.u123coord]
+            data.v123coord =\
+                [np.array([np.concatenate((value[i::3])) for i in range(3)])
+                 for value in data.v123coord]

@@ -16,13 +16,13 @@ from .options import OPTIONS
 def get_priors() -> np.ndarray:
     """Gets the priors from the model parameters."""
     priors = []
-    for _, params in OPTIONS["model.components_and_params"]:
+    for _, params in OPTIONS.model.components_and_params:
         for param in params.values():
             if param.free:
                 priors.append([param.min, param.max])
 
-    if OPTIONS["model.shared_params"] is not None:
-        for param in OPTIONS["model.shared_params"].values():
+    if OPTIONS.model.shared_params is not None:
+        for param in OPTIONS.model.shared_params.values():
             if param.free:
                 priors.append([param.min, param.max])
     return np.array(priors)
@@ -43,8 +43,8 @@ def set_theta_from_params(
 
 def set_params_from_theta(theta: np.ndarray) -> float:
     """Sets the parameters from the theta vector."""
-    components_and_params = OPTIONS["model.components_and_params"]
-    shared_params = OPTIONS["model.shared_params"]
+    components_and_params = OPTIONS.model.components_and_params
+    shared_params = OPTIONS.model.shared_params
 
     new_shared_params = {}
     if shared_params is not None:
@@ -75,9 +75,9 @@ def init_randomly(nwalkers: Optional[int] = None) -> np.ndarray:
     theta : numpy.ndarray
     """
     params = []
-    for (_, param) in OPTIONS["model.components_and_params"]:
+    for (_, param) in OPTIONS.model.components_and_params:
         params.extend(param.values())
-    params.extend(OPTIONS["model.shared_params"].values())
+    params.extend(OPTIONS.model.shared_params.values())
     if nwalkers is None:
         return np.array([np.random.uniform(param.min, param.max)
                          for param in params])
@@ -143,7 +143,7 @@ def calculate_observables(components: List[Component], wavelength: u.um,
                 cphase_model += tmp_cphase
         flux_model += stellar_flux
         corr_flux_model += stellar_flux
-        if "vis2" in OPTIONS["fit.data"]:
+        if "vis2" in OPTIONS.fit.data:
             corr_flux_model /= flux_model
     return flux_model, corr_flux_model, cphase_model
 
@@ -154,10 +154,10 @@ def calculate_observables_chi_sq(
         flux_model: np.ndarray,
         vis: np.ndarray,
         vis_err: np.ndarray,
-        corr_flux_model: np.ndarray,
-        cphase: np.ndarray,
-        cphase_err: np.ndarray,
-        cphase_model: np.ndarray) -> float:
+        vis_model: np.ndarray,
+        t3phi: np.ndarray,
+        t3phi_err: np.ndarray,
+        t3phi_model: np.ndarray) -> float:
     """Calculates the model's observables.
 
     Parameters
@@ -173,13 +173,14 @@ def calculate_observables_chi_sq(
     vis_err : numpy.ndarray
         Either the error of the correlated fluxes or the
         error of the visibilities.
-    corr_flux_model : numpy.ndarray
-        The model's correlated flux.
-    cphase : numpy.ndarray
+    vis_model : numpy.ndarray
+        Either the model's correlated fluxes or the model's
+        visibilities (depends on the fit data).
+    t3phi : numpy.ndarray
         The closure phase.
-    cphase_err : numpy.ndarray
+    t3phi_err : numpy.ndarray
         The closure phase's error.
-    cphase_model : numpy.ndarray
+    t3phi_model : numpy.ndarray
         The model's closure phase.
 
     Returns
@@ -188,27 +189,24 @@ def calculate_observables_chi_sq(
         The total chi square.
     """
     total_chi_sq = 0
-    if "flux" in OPTIONS["fit.data"]:
+    if "flux" in OPTIONS.fit.data:
         total_chi_sq += chi_sq(flux, flux_err, flux_model)\
-            * OPTIONS["fit.chi2.weight.flux"]
+            * OPTIONS.fit.weights.flux
 
-    if "vis" in OPTIONS["fit.data"] or "vis2" in OPTIONS["fit.data"]:
-        if "vis" in OPTIONS["fit.data"]:
-            vis_model = corr_flux_model
-        else:
-            vis_model = corr_flux_model/flux_model
+    if "vis" in OPTIONS.fit.data or "vis2" in OPTIONS.fit.data:
         total_chi_sq += chi_sq(vis, vis_err, vis_model)\
-            * OPTIONS["fit.chi2.weight.corr_flux"]
+            * OPTIONS.fit.weights.vis
 
-    if "t3phi" in OPTIONS["fit.data"]:
-        total_chi_sq += chi_sq(cphase, cphase_err,
-                               cphase_model, method="exponential")\
-            * OPTIONS["fit.chi2.weight.cphase"]
+    if "t3phi" in OPTIONS.fit.data:
+        total_chi_sq += chi_sq(t3phi, t3phi_err,
+                               t3phi_model, method="exponential")\
+            * OPTIONS.fit.weights.t3phi
     return float(total_chi_sq)
 
 
 # NOTE: In nested fitting priors can depend on each other
 # use that in the future
+# TODO: Finish this
 def transform_uniform_prior(x, a, b):
     """Prior transform for uniform priors."""
     return a + (b-a)*x
@@ -232,12 +230,12 @@ def lnprior(components_and_params: List[List[Dict]],
     """
     if shared_params is not None:
         for value, param in zip(shared_params.values(),
-                                OPTIONS["model.shared_params"].values()):
+                                OPTIONS.model.shared_params.values()):
             if param.free:
                 if not param.min < value < param.max:
                     return -np.inf
     for (_, values), (_, params) in zip(
-            components_and_params, OPTIONS["model.components_and_params"]):
+            components_and_params, OPTIONS.model.components_and_params):
         for value, param in zip(values.values(), params.values()):
             if param.free:
                 if not param.min < value < param.max:
@@ -264,7 +262,7 @@ def lnprob(theta: np.ndarray) -> float:
     """
     parameters, shared_params = set_params_from_theta(theta)
 
-    if OPTIONS["fit.method"] == "emcee":
+    if OPTIONS.fit.method == "emcee":
         lnp = lnprior(parameters, shared_params)
         if np.isinf(lnp):
             return -np.inf
@@ -276,34 +274,21 @@ def lnprob(theta: np.ndarray) -> float:
     for component in components:
         component.params["rin0"] = innermost_radius
 
-    fluxes, fluxes_err =\
-        OPTIONS["data.flux"], OPTIONS["data.flux_err"]
-
-    if "vis" in OPTIONS["fit.data"]:
-        vis, vis_err =\
-            OPTIONS["data.corr_flux"], OPTIONS["data.corr_flux_err"]
-        ucoord, vcoord =\
-            OPTIONS["data.corr_flux.ucoord"], OPTIONS["data.corr_flux.vcoord"]
-    else:
-        vis, vis_err =\
-            OPTIONS["data.vis"], OPTIONS["data.vis_err"]
-        ucoord, vcoord =\
-            OPTIONS["data.vis.ucoord"], OPTIONS["data.vis.vcoord"]
-
-    cphases, cphases_err =\
-        OPTIONS["data.cphase"], OPTIONS["data.cphase_err"]
-    u123coord = OPTIONS["data.cphase.u123coord"]
-    v123coord = OPTIONS["data.cphase.v123coord"]
+    flux = OPTIONS.data.flux
+    vis = OPTIONS.data.vis if "vis" in OPTIONS.fit.data\
+        else OPTIONS.data.vis2
+    t3phi = OPTIONS.data.t3phi
 
     total_chi_sq = 0
-    for index, wavelength in enumerate(OPTIONS["fit.wavelengths"]):
+    for index, wavelength in enumerate(OPTIONS.fit.wavelengths):
         flux_model, corr_flux_model, cphase_model = calculate_observables(
-                components, wavelength, ucoord[index],
-                vcoord[index], u123coord[index], v123coord[index])
+                components, wavelength, vis.ucoord[index],
+                vis.vcoord[index], t3phi.u123coord[index],
+                t3phi.v123coord[index])
         total_chi_sq += calculate_observables_chi_sq(
-                fluxes[index], fluxes_err[index], flux_model,
-                vis[index], vis_err[index], corr_flux_model,
-                cphases[index], cphases_err[index], cphase_model)
+                flux.value[index], flux.err[index], flux_model,
+                vis.value[index], vis.err[index], corr_flux_model,
+                t3phi.value[index], t3phi.err[index], cphase_model)
     return total_chi_sq
 
 
@@ -406,7 +391,7 @@ def run_fit(**kwargs) -> np.ndarray:
     -------
     sampler : numpy.ndarray
     """
-    if OPTIONS["fit.method"] == "emcee":
+    if OPTIONS.fit.method == "emcee":
         return run_mcmc(**kwargs)
     # return run_dynesty(**kwargs)
 
@@ -419,7 +404,7 @@ def get_best_fit(
         ) -> Tuple[np.ndarray, np.ndarray]:
     """Gets the best fit from the emcee sampler."""
     params, uncertainties = [], []
-    if OPTIONS["fit.method"] == "emcee":
+    if OPTIONS.fit.method == "emcee":
         samples = sampler.get_chain(flat=True, discard=discard)
         if distribution == "gaussian":
             kde = gaussian_kde(samples.T)
@@ -430,7 +415,7 @@ def get_best_fit(
         if method == "quantile":
             for index in range(samples.shape[1]):
                 quantiles = np.percentile(samples[:, index],
-                                          OPTIONS["fit.quantiles"])
+                                          OPTIONS.fit.quantiles)
                 params.append(quantiles[1])
                 uncertainties.append(np.diff(quantiles))
             params, uncertainties = map(np.array, (params, uncertainties))
