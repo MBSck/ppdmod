@@ -288,7 +288,7 @@ class HankelComponent(Component):
         else:
             radius = np.logspace(np.log10(rin.value),
                                np.log10(rout.value), dim)*self.params["rin"].unit
-        return radius.astype(OPTIONS.model.dtype.real)
+        return radius.astype(OPTIONS.data.dtype.real)
 
     def _get_opacity(self, wavelength: u.um) -> u.cm**2/u.g:
         """Set the opacity from wavelength."""
@@ -298,7 +298,7 @@ class HankelComponent(Component):
                 + cont_weight*self.params["kappa_cont"](wavelength)
         else:
             opacity = self.params["kappa_abs"](wavelength)
-        return opacity.astype(OPTIONS.model.dtype.real)
+        return opacity.astype(OPTIONS.data.dtype.real)
 
     def _azimuthal_modulation(self, xx: u.mas, yy: u.mas) -> u.one:
         """Calculates the azimuthal modulation."""
@@ -306,7 +306,7 @@ class HankelComponent(Component):
             return 1
         azimuthal_modulation = (1+self.params["a"]()\
                 * np.cos(np.arctan2(yy, xx)-self.params["phi"]()))
-        return azimuthal_modulation.astype(OPTIONS.model.dtype.real)
+        return azimuthal_modulation.astype(OPTIONS.data.dtype.real)
 
     def _temperature_profile_function(
             self, radius: u.mas, innermost_radius: u.mas) -> u.K:
@@ -317,14 +317,14 @@ class HankelComponent(Component):
         else:
             temperature_profile = self.params["inner_temp"]()\
                     * (radius/innermost_radius)**(-self.params["q"]())
-        return temperature_profile.astype(OPTIONS.model.dtype.real)
+        return temperature_profile.astype(OPTIONS.data.dtype.real)
 
     def _surface_density_profile_function(
             self, radius: u.mas, innermost_radius: u.mas) -> u.one:
         """Calculates a 1D-surface density profile."""
         surface_density = self.params["inner_sigma"]()\
                 * (radius/innermost_radius)**(-self.params["p"]())
-        return surface_density.astype(OPTIONS.model.dtype.real)
+        return surface_density.astype(OPTIONS.data.dtype.real)
 
     def _emissivity_profile_function(
             self, radius: u.mas, innermost_radius: u.mas, wavelength: u.um) -> u.one:
@@ -337,7 +337,7 @@ class HankelComponent(Component):
             radius, innermost_radius)
         optical_depth = surface_density_profile*self._get_opacity(wavelength)
         thickness_profile = (1-np.exp(-optical_depth/self.params["elong"]()))
-        return thickness_profile.astype(OPTIONS.model.dtype.real)
+        return thickness_profile.astype(OPTIONS.data.dtype.real)
 
     def _brightness_profile_function(self, radius: u.mas, wavelength: u.um) -> u.Jy:
         """Calculates a 1D-brightness profile from a dust-surface density- and
@@ -365,7 +365,7 @@ class HankelComponent(Component):
         emissivity_profile = self._emissivity_profile_function(
                 radius, innermost_radius, wavelength)
         brightness_profile *= emissivity_profile
-        return brightness_profile.astype(OPTIONS.model.dtype.real)
+        return brightness_profile.astype(OPTIONS.data.dtype.real)
 
     # TODO: Check if the image is displayed properly
     def calculate_image(self, dim: int, pixel_size: u.mas, wavelength: u.um) -> u.Jy:
@@ -386,7 +386,7 @@ class HankelComponent(Component):
                 radius, wavelength).to(u.erg/(u.cm**2*u.rad**2*u.s*u.Hz))\
             * pixel_size.to(u.rad)**2
         image = brightness_profile.to(u.Jy)*radial_profile*azimuthal_modulation
-        return image.astype(OPTIONS.model.dtype.real)
+        return image.astype(OPTIONS.data.dtype.real)
 
     # TODO: Think of a way to implement more parameters for the azimuthal modulation.
     def hankel_modulation(self, modulations: List[List[float]],
@@ -476,7 +476,7 @@ class HankelComponent(Component):
         radius = self._calculate_internal_grid(self.params["dim"]())
         brightness_profile = self._brightness_profile_function(radius, wavelength)
         total_flux = (2.*np.pi*np.trapz(radius*brightness_profile, radius).to(u.Jy)).value
-        return np.abs(total_flux.astype(OPTIONS.model.dtype.real))
+        return np.abs(total_flux.astype(OPTIONS.data.dtype.real))
 
     def calculate_corr_flux(self, ucoord: u.m, vcoord: u.m,
                             wavelength: u.um, **kwargs) -> np.ndarray:
@@ -487,7 +487,7 @@ class HankelComponent(Component):
                 radius, ucoord, vcoord, wavelength, **kwargs)
         if vis_mod.size != 0:
             vis += vis_mod.sum(0)
-        return np.abs(vis.value).astype(OPTIONS.model.dtype.real)
+        return np.abs(vis.value).astype(OPTIONS.data.dtype.real)
 
     def calculate_closure_phase(self, ucoord: u.m, vcoord: u.m,
                                 wavelength: u.um, **kwargs) -> np.ndarray:
@@ -503,4 +503,4 @@ class HankelComponent(Component):
                 mod = mod.reshape(ucoord.shape)
                 vis += np.vstack((mod[:2], mod[-1].conj()))
         return np.angle(np.prod(vis.value, axis=0),
-                        deg=True).astype(OPTIONS.model.dtype.real)
+                        deg=True).astype(OPTIONS.data.dtype.real)

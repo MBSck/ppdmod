@@ -1,4 +1,5 @@
 from typing import Optional, List
+from types import SimpleNamespace
 from pathlib import Path
 
 import astropy.units as u
@@ -17,7 +18,7 @@ class ReadoutFits:
         self.fits_file = Path(fits_file)
         self.read_file()
 
-    def read_file(self):
+    def read_file(self) -> None:
         """Reads the data of the (.fits)-files into vectors."""
         with fits.open(Path(self.fits_file)) as hdul:
             instrument = hdul[0].header["instrume"].lower()
@@ -26,55 +27,88 @@ class ReadoutFits:
             wl_index = 1 if instrument == "gravity" else None
             self.wavelength = (hdul["oi_wavelength", sci_index]
                                .data["eff_wave"]*u.m).to(u.um)[wl_index:]
-            self.ucoord = hdul["oi_vis2", sci_index].data["ucoord"]
-            self.vcoord = hdul["oi_vis2", sci_index].data["vcoord"]
+            self.flux = self.read_into_namespace(
+                    hdul, "flux", sci_index, wl_index)
+            self.t3 = self.read_into_namespace(
+                    hdul, "t3", sci_index, wl_index)
+            self.vis = self.read_into_namespace(
+                    hdul, "vis", sci_index, wl_index)
+            self.vis2 = self.read_into_namespace(
+                    hdul, "vis2", sci_index, wl_index)
 
-            try:
-                self.flux = hdul["oi_flux", sci_index].data["fluxdata"]
-                self.flux_err = hdul["oi_flux", sci_index].data["fluxerr"]
-            except KeyError:
-                self.flux = None
-                self.flux_err = None
+    def read_into_namespace(self, hdul: fits.HDUList, key: str,
+                            sci_index: Optional[int],
+                            wl_index: Optional[int]) -> SimpleNamespace:
+        """Reads a (.fits) Card into a SimpleNamespace."""
+        try:
+            data = hdul[f"oi_{key}", sci_index]
+        except KeyError:
+            return SimpleNamespace(value=None, err=None,
+                                   ucoord=None, vcoord=None)
 
-            try:
-                self.vis = hdul["oi_vis", sci_index].data["visamp"][:, wl_index:]
-                self.vis_err = hdul["oi_vis", sci_index].data["visamperr"][:, wl_index:]
-            except KeyError:
-                self.vis = None
-                self.vis_err = None
+        if key == "flux":
+            return SimpleNamespace(value=data.data["fluxdata"],
+                                   err=data.data["fluxerr"])
+        elif key in ["vis", "vis2"]:
+            if key == "vis":
+                value_key, err_key = "visamp", "visamperr"
+            else:
+                value_key, err_key = "vis2data", "vis2err"
+            return SimpleNamespace(value=data.data[value_key][:, wl_index:],
+                                   err=data.data[err_key][:, wl_index:],
+                                   ucoord=data.data["ucoord"],
+                                   vcoord=data.data["vcoord"])
+        elif key == "t3":
+            value = data.data["t3phi"][:, wl_index:]
+            err = data.data["t3phierr"][:, wl_index:]
+            u1coord, u2coord = map(lambda x: data.data[f"u{x}coord"], ["1", "2"])
+            v1coord, v2coord = map(lambda x: data.data[f"v{x}coord"], ["1", "2"])
+            u3coord, v3coord = -(u1coord+u2coord), -(v1coord+v2coord)
+            u123coord = np.array([u1coord, u2coord, u3coord])
+            v123coord = np.array([v1coord, v2coord, v3coord])
+            return SimpleNamespace(value=value, err=err,
+                                   u123coord=u123coord, v123coord=v123coord)
 
-            self.vis2 = hdul["oi_vis2", sci_index].data["vis2data"][:, wl_index:]
-            self.vis2_err = hdul["oi_vis2", sci_index].data["vis2err"][:, wl_index:]
-            self.t3phi = hdul["oi_t3", sci_index].data["t3phi"][:, wl_index:]
-            self.t3phi_err = hdul["oi_t3", sci_index].data["t3phierr"][:, wl_index:]
-            self.u1coord = hdul["oi_t3", sci_index].data["u1coord"]
-            self.u2coord = hdul["oi_t3", sci_index].data["u2coord"]
-            self.u3coord = -(self.u1coord+self.u2coord)
-            self.v1coord = hdul["oi_t3", sci_index].data["v1coord"]
-            self.v2coord = hdul["oi_t3", sci_index].data["v2coord"]
-            self.v3coord = -(self.v1coord+self.v2coord)
-            self.u123coord = np.array([self.u1coord, self.u2coord, self.u3coord])
-            self.v123coord = np.array([self.v1coord, self.v2coord, self.v3coord])
-        return self
-
+    # TODO: Make sure to fill this up to the correct shape if vis is too small
+    # or t3.
     def get_data_for_wavelength(
-            self, wavelength, key: str) -> np.ndarray:
-        """Gets the data for the given wavelengths."""
-        indices = list(get_closest_indices(
-            wavelength, array=self.wavelength,
-            window=OPTIONS.data.binning.window).values())
+            self, wavelength: u.Quantity,
+            key: str, subkey: str) -> np.ndarray:
+        """Gets the data for the given wavelengths.
 
-        if not indices:
-            return np.array([])
-        indices = indices[0]
+        If there is no data for the given wavelengths,
+        a np.nan array is returned of the shape
+        (wavelength.size, data.shape[0]).
 
-        wl_data = getattr(self, key)[:, indices]
-        if wl_data.shape[0] == 1 or len(wl_data.shape) == 1:
-            wl_data = wl_data.mean()
+        Parameters
+        ----------
+        wavelength : astropy.units.um
+            The wavelengths to be returned.
+        key : str
+            The key (header) of the data to be returned.
+        subkey : str
+            The subkey of the data to be returned.
+
+        Returns
+        -------
+        numpy.ndarray
+            The data for the given wavelengths.
+        """
+        indices = get_closest_indices(
+                wavelength, array=self.wavelength,
+                window=OPTIONS.data.binning.window)
+
+        data = getattr(getattr(self, key), subkey)
+        if all(index.size == 0 for index in indices):
+            if key == "flux":
+                return np.full((wavelength.size, 1), np.nan)
+            return np.full((wavelength.size, data.shape[0]), np.nan)
+
+        if key == "flux":
+            data = [[data.squeeze()[index].mean()] for index in indices]
         else:
-            wl_data = wl_data.mean(1)
-        return wl_data if isinstance(wl_data, (list, np.ndarray))\
-            else np.array([wl_data])
+            data = [data[:, index].mean(1) for index in indices]
+        return np.array(data).astype(OPTIONS.data.dtype.real)
 
 
 def set_fit_wavelengths(
@@ -94,7 +128,7 @@ def set_fit_wavelengths(
 
 def set_data(fits_files: Optional[List[Path]] = None,
              fit_data: Optional[List[str]] = None,
-             wavelengths: Optional[u.Quantity[u.um]] = None) -> None:
+             wavelength: Optional[u.Quantity[u.um]] = None) -> None:
     """Sets the data as a global variable from the input files.
 
     If called without parameters or recalled, it will clear the data.
@@ -107,67 +141,76 @@ def set_data(fits_files: Optional[List[Path]] = None,
         The wavelengths to be fitted.
     """
     OPTIONS.data.readouts = []
-    wavelengths = OPTIONS.fit.wavelengths if wavelengths\
-        is None else wavelengths
+    wavelength = OPTIONS.fit.wavelengths if wavelength\
+        is None else wavelength
     fit_data = OPTIONS.fit.data if fit_data is None\
         else fit_data
 
-    keys = ["flux", "vis", "vis2", "t3phi"]
-    for key in keys:
+    for key in fit_data:
         data = getattr(OPTIONS.data, key)
-        data.value = [[] for _ in wavelengths]
-        data.err = [[] for _ in wavelengths]
+        data.value, data.err = [np.array([]).astype(OPTIONS.data.dtype.real)
+                                for _ in range(2)]
         if key in ["vis", "vis2"]:
-            data.ucoord = [[] for _ in wavelengths]
-            data.vcoord = [[] for _ in wavelengths]
-        elif key == "t3phi":
-            data.u123coord = [[] for _ in wavelengths]
-            data.v123coord = [[] for _ in wavelengths]
+            data.ucoord, data.vcoord = [np.array([]).astype(OPTIONS.data.dtype.real)
+                                        for _ in range(2)]
+        elif key in "t3":
+            data.u123coord, data.v123coord =[np.array([]).astype(OPTIONS.data.dtype.real)
+                                             for _ in range(2)]
 
     if fits_files is None:
         return
 
-    readouts = OPTIONS.data.readouts = list(map(ReadoutFits, fits_files))
-
-    for readout in readouts:
+    OPTIONS.data.readouts = list(map(ReadoutFits, fits_files))
+    for readout in OPTIONS.data.readouts:
         for key in fit_data:
             data = getattr(OPTIONS.data, key)
-            for index, wavelength in enumerate(wavelengths):
-                values = readout.get_data_for_wavelength(
-                        wavelength, key=key)
+            data_readout = getattr(readout, key)
+            value = readout.get_data_for_wavelength(
+                    wavelength, key, "value")
+            err = readout.get_data_for_wavelength(
+                    wavelength, key, "err")
 
-                if values.size == 0:
-                    continue
+            if data.value.size == 0:
+                data.value, data.err = value, err
+            else:
+                data.value = np.hstack((data.value, value))
+                data.err = np.hstack((data.err, err))
 
-                values_err = readout.get_data_for_wavelength(
-                        wavelength, key=f"{key}_err")
+            if key in ["vis", "vis2"]:
+                tiled_ucoord = np.tile(
+                        data_readout.ucoord, (wavelength.size, 1))
+                tiled_vcoord = np.tile(
+                        data_readout.vcoord, (wavelength.size, 1))
+                if data.ucoord.size == 0:
+                    data.ucoord, data.vcoord = tiled_ucoord, tiled_vcoord
+                else:
+                    data.ucoord = np.hstack((data.ucoord, tiled_ucoord))
+                    data.vcoord = np.hstack((data.vcoord, tiled_vcoord))
 
-                data.value[index].extend(values)
-                data.err[index].extend(values_err)
+            elif key == "t3":
+                tiled_u123coord = np.tile(
+                        data_readout.u123coord, (wavelength.size, 1, 1))
+                tiled_v123coord = np.tile(
+                        data_readout.v123coord, (wavelength.size, 1, 1))
+                if data.u123coord.size == 0:
+                    data.u123coord, data.v123coord = tiled_u123coord, tiled_v123coord
+                else:
+                    data.u123coord = np.dstack((data.u123coord, tiled_u123coord))
+                    data.v123coord = np.dstack((data.v123coord, tiled_v123coord))
 
-                if key in ["vis", "vis2"]:
-                    data.ucoord[index].extend(readout.ucoord)
-                    data.vcoord[index].extend(readout.vcoord)
-                elif key == "t3phi":
-                    data.u123coord[index].extend(readout.u123coord)
-                    data.v123coord[index].extend(readout.v123coord)
-
-    keys = ["flux", "vis", "vis2", "t3phi"]
-    for key in keys:
+    for key in fit_data:
         data = getattr(OPTIONS.data, key)
-        if not any(np.any(value) for value in vars(data).values()):
-            continue
-
-        data.value = [np.array(value) for value in data.value]
-        data.err = [np.array(value) for value in data.err]
+        nan_indices = [np.isnan(row) for row in data.value]
+        data.value = [row[~ind] for ind, row in zip(nan_indices, data.value)]
+        data.err = [row[~ind] for ind, row in zip(nan_indices, data.err)]
 
         if key in ["vis", "vis2"]:
-            data.ucoord = [np.array(value) for value in data.ucoord]
-            data.vcoord = [np.array(value) for value in data.vcoord]
-        elif key == "t3phi":
-            data.u123coord =\
-                [np.array([np.concatenate((value[i::3])) for i in range(3)])
-                 for value in data.u123coord]
-            data.v123coord =\
-                [np.array([np.concatenate((value[i::3])) for i in range(3)])
-                 for value in data.v123coord]
+            data.ucoord = [row[~ind] for ind, row
+                           in zip(nan_indices, data.ucoord)]
+            data.vcoord = [row[~ind] for ind, row
+                           in zip(nan_indices, data.vcoord)]
+        elif key == "t3":
+            data.u123coord = [np.array([row[~ind] for row in rows])
+                              for ind, rows in zip(nan_indices, data.u123coord)]
+            data.v123coord = [np.array([row[~ind] for row in rows])
+                              for ind, rows in zip(nan_indices, data.v123coord)]

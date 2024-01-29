@@ -40,25 +40,37 @@ def execution_time(func: Callable) -> Callable:
 def get_closest_indices(
         values, array: np.ndarray,
         window: Optional[float] = None,
-        atol: Optional[float] = 1e-2) -> float:
-    """Gets the closest indices of values occurring in a numpy array."""
+        atol: Optional[float] = 1e-2) -> List[np.ndarray]:
+    """Gets the closest indices of values occurring in a numpy array
+    and returns it in a list corresponding to the input values.
+
+    Parameters
+    ----------
+    values : float
+        The values to find.
+    array : numpy.ndarray
+        The array to search in.
+    window : float
+        The window around the value to search in.
+    """
     array = array.value if isinstance(array, u.Quantity) else array
     values = values.value if isinstance(values, u.Quantity) else values
     window = window.value if isinstance(window, u.Quantity) else window
     if not isinstance(values, (list, tuple, np.ndarray)):
         values = [values]
 
-    indices = {}
+    indices = []
     for value in values:
         if window is not None:
-            index = np.where(np.logical_and((value-window) < array,
-                                            (value+window) > array))[0]
+            index = np.where(((value-window) < array)
+                             & ((value+window) > array))[0]
         else:
             index = np.where(array == value)[0]
+
         if index.size == 0:
             index = np.where(np.abs(array - value) <= atol)[0]
-        indices[str(value)] = index.astype(int).squeeze()
-    return {key: value for key, value in indices.items() if value.size != 0}
+        indices.append(index.astype(int).squeeze())
+    return indices
 
 
 def angular_to_distance(angular_diameter: u.mas, distance: u.pc) -> u.m:
@@ -117,7 +129,6 @@ def distance_to_angular(diameter: u.mas, distance: u.pc) -> u.m:
     return ((diameter.to(u.m)/distance.to(u.m))*u.rad).to(u.mas)
 
 
-# TODO: Make function that takes care of rotation so all occurences are equal.
 def calculate_effective_baselines(
         ucoord: u.m, vcoord: u.m, axis_ratio: u.one,
         pos_angle: u.deg) -> Tuple[u.Quantity[u.m], u.Quantity[u.one]]:
