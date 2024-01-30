@@ -1,4 +1,5 @@
 from multiprocessing import Pool
+from types import SimpleNamespace
 from typing import Optional, List, Dict, Tuple, Union
 
 import astropy.units as u
@@ -85,10 +86,10 @@ def init_randomly(nwalkers: Optional[int] = None) -> np.ndarray:
                       for param in params] for _ in range(nwalkers)])
 
 
-def chi_sq(data: u.quantity, error: u.quantity,
-           model_data: u.quantity,
-           method: Optional[str] = "linear",
-           lnf: Optional[float] = None) -> float:
+def calculate_chi_sq(data: u.quantity, error: u.quantity,
+                     model_data: u.quantity,
+                     method: Optional[str] = "linear",
+                     lnf: Optional[float] = None) -> float:
     """the chi square minimisation.
 
     Parameters
@@ -113,8 +114,10 @@ def chi_sq(data: u.quantity, error: u.quantity,
     else:
         inv_sigma_squared = 1./np.sum(
             error**2 + model_data**2*np.exp(2*lnf))
+
     if method == "linear":
         return -0.5*np.sum((data-model_data)**2*inv_sigma_squared + np.log(1/inv_sigma_squared))
+
     diff = np.angle(np.exp((data-model_data)*u.deg.to(u.rad)*1j), deg=False)
     return -0.5*np.sum(diff**2*inv_sigma_squared + np.log(1/inv_sigma_squared))
 
@@ -123,85 +126,78 @@ def calculate_observables(components: List[Component], wavelength: u.um,
                           ucoord: np.ndarray, vcoord: np.ndarray,
                           u123coord: np.ndarray, v123coord: np.ndarray):
     """Calculates the observables from the model."""
-    flux_model, corr_flux_model, cphase_model = None, None, None
+    flux_model, vis_model, t3_model = None, None, None
     if components is not None:
-        stellar_flux = components[0].calculate_stellar_flux(wavelength).value
+        stellar_flux = components[0].calculate_flux(wavelength).value
         for component in components[1:]:
             tmp_flux = component.calculate_flux(wavelength)
-            tmp_corr_flux = component.calculate_corr_flux(
+            tmp_vis = component.calculate_visibility(
                     ucoord, vcoord, wavelength)
-            tmp_cphase = component.calculate_closure_phase(
+            tmp_t3 = component.calculate_closure_phase(
                     u123coord, v123coord, wavelength)
 
             if flux_model is None:
-                flux_model = tmp_flux
-                corr_flux_model = tmp_corr_flux
-                cphase_model = tmp_cphase
+                flux_model, vis_model, t3_model = tmp_flux, tmp_vis, tmp_t3
             else:
                 flux_model += tmp_flux
-                corr_flux_model += tmp_corr_flux
-                cphase_model += tmp_cphase
+                vis_model += tmp_vis
+                t3_model += tmp_t3
+
         flux_model += stellar_flux
-        corr_flux_model += stellar_flux
+        vis_model += stellar_flux
         if "vis2" in OPTIONS.fit.data:
-            corr_flux_model /= flux_model
-    return flux_model, corr_flux_model, cphase_model
+            vis_model = vis_model/flux_model
+    return flux_model, vis_model, t3_model
 
 
-def calculate_observables_chi_sq(
-        flux: np.ndarray,
-        flux_err: np.ndarray,
-        flux_model: np.ndarray,
-        vis: np.ndarray,
-        vis_err: np.ndarray,
-        vis_model: np.ndarray,
-        t3phi: np.ndarray,
-        t3phi_err: np.ndarray,
-        t3phi_model: np.ndarray) -> float:
+def calculate_observable_chi_sq(
+        flux: SimpleNamespace, flux_model: np.ndarray,
+        vis: SimpleNamespace, vis_model: np.ndarray,
+        t3: SimpleNamespace, t3_model: np.ndarray) -> float:
     """Calculates the model's observables.
 
     Parameters
     ----------
-    flux : numpy.ndarray
-        The total flux.
-    flux_err : numpy.ndarray
-        The total flux's error.
+    flux : types.SimpleNamespace
+        The flux data.
     flux_model : numpy.ndarray
         The model's total flux.
-    vis : numpy.ndarray
-        Either the correlated fluxes or the visibilities.
-    vis_err : numpy.ndarray
-        Either the error of the correlated fluxes or the
-        error of the visibilities.
+    vis : types.SimpleNamespace
+        Either the correlated flux or the visibility data.
     vis_model : numpy.ndarray
         Either the model's correlated fluxes or the model's
-        visibilities (depends on the fit data).
-    t3phi : numpy.ndarray
-        The closure phase.
-    t3phi_err : numpy.ndarray
-        The closure phase's error.
-    t3phi_model : numpy.ndarray
+        visibilities (depends on the OPTIONS.fit.data).
+    t3 : types.SimpleNamespace
+        The closure phase data.
+    t3_model : numpy.ndarray
         The model's closure phase.
 
     Returns
     -------
-    total_chi_sq : float
-        The total chi square.
+    chi_sq : float
+        The chi square.
     """
-    total_chi_sq = 0
+    chi_sq = 0.
     if "flux" in OPTIONS.fit.data:
-        total_chi_sq += chi_sq(flux, flux_err, flux_model)\
-            * OPTIONS.fit.weights.flux
+        flux_model = np.tile(flux_model, (flux.value.shape[1]))
+        nan_flux = np.isnan(flux.value)
+        chi_sq += calculate_chi_sq(
+                flux.value[~nan_flux], flux.err[~nan_flux],
+                flux_model[~nan_flux]) * OPTIONS.fit.weights.flux
 
     if "vis" in OPTIONS.fit.data or "vis2" in OPTIONS.fit.data:
-        total_chi_sq += chi_sq(vis, vis_err, vis_model)\
-            * OPTIONS.fit.weights.vis
+        nan_vis = np.isnan(vis.value)
+        chi_sq += calculate_chi_sq(
+                vis.value[~nan_vis], vis.err[~nan_vis],
+                vis_model[~nan_vis]) * OPTIONS.fit.weights.vis
 
-    if "t3phi" in OPTIONS.fit.data:
-        total_chi_sq += chi_sq(t3phi, t3phi_err,
-                               t3phi_model, method="exponential")\
-            * OPTIONS.fit.weights.t3phi
-    return float(total_chi_sq)
+    if "t3" in OPTIONS.fit.data:
+        nan_t3 = np.isnan(t3.value)
+        chi_sq += calculate_chi_sq(
+                t3.value[~nan_t3], t3.err[~nan_t3],
+                t3_model[~nan_t3], method="exponential")\
+            * OPTIONS.fit.weights.t3
+    return float(chi_sq)
 
 
 # NOTE: In nested fitting priors can depend on each other
@@ -277,19 +273,14 @@ def lnprob(theta: np.ndarray) -> float:
     flux = OPTIONS.data.flux
     vis = OPTIONS.data.vis if "vis" in OPTIONS.fit.data\
         else OPTIONS.data.vis2
-    t3phi = OPTIONS.data.t3phi
+    t3 = OPTIONS.data.t3
 
-    total_chi_sq = 0
-    for index, wavelength in enumerate(OPTIONS.fit.wavelengths):
-        flux_model, corr_flux_model, cphase_model = calculate_observables(
-                components, wavelength, vis.ucoord[index],
-                vis.vcoord[index], t3phi.u123coord[index],
-                t3phi.v123coord[index])
-        total_chi_sq += calculate_observables_chi_sq(
-                flux.value[index], flux.err[index], flux_model,
-                vis.value[index], vis.err[index], corr_flux_model,
-                t3phi.value[index], t3phi.err[index], cphase_model)
-    return total_chi_sq
+    flux_model, vis_model, t3_model = calculate_observables(
+            components, OPTIONS.fit.wavelengths, vis.ucoord,
+            vis.vcoord, t3.u123coord, t3.v123coord)
+
+    return calculate_observable_chi_sq(
+            flux, flux_model, vis, vis_model, t3, t3_model)
 
 
 def run_mcmc(nwalkers: int,

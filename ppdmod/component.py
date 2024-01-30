@@ -331,6 +331,7 @@ class HankelComponent(Component):
         """Calculates a 1D-thickness profile."""
         if wavelength.shape == ():
             wavelength.reshape((wavelength.size,))
+
         if self.optically_thick:
             return 1
         surface_density_profile = self._surface_density_profile_function(
@@ -354,11 +355,10 @@ class HankelComponent(Component):
         """
         if wavelength.shape == ():
             wavelength.reshape((wavelength.size,))
+
         innermost_radius = self.params["rin0"]()\
             if self.params["rin0"]() != 0 else self.params["rin"]()
 
-        # TODO: Think of a way how to implement the innermost radius
-        # and at the same time keep the grid as it is.
         temperature_profile = self._temperature_profile_function(
                 radius, innermost_radius)
         brightness_profile = BlackBody(temperature_profile)(wavelength)
@@ -388,44 +388,50 @@ class HankelComponent(Component):
         image = brightness_profile.to(u.Jy)*radial_profile*azimuthal_modulation
         return image.astype(OPTIONS.data.dtype.real)
 
-    # TODO: Think of a way to implement more parameters for the azimuthal modulation.
-    def hankel_modulation(self, modulations: List[List[float]],
-                          radius: u.mas, brightness_profile: u.erg/(u.rad**2*u.s*u.Hz),
-                          baseline: u.m, baseline_angle: np.ndarray) -> None:
+    # TODO: Think of a way to implement higher orders of modulation
+    # TODO: Check all the broadcasting
+    def hankel_modulation(self, radius: u.mas,
+                          brightness_profile: u.erg/(u.rad**2*u.s*u.Hz),
+                          baselines: u.rad, baseline_angles: u.rad) -> u.Jy:
         """The azimuthal modulation as it appears in the hankel transform.
 
         The results of the modulation is flux in Jansky.
 
         Parameters
         ----------
-        modulations : list of list of float
-            The modulations.
         radius : astropy.units.mas
             The radius.
         brightness_profile : astropy.units.erg/(u.rad**2*u.s*u.Hz)
             The brightness profile.
-        baseline : astropy.units.m
+        baselines : astropy.units.rad
             The baseline.
-        baseline_angle : numpy.ndarray
+        baseline_angles : astropy.units.rad
             The baseline angle.
         """
-        for order in range(1, OPTIONS.model.modulation.order+1):
-            modulation = (-1j)**order*self.params["a"]()\
-                    * np.cos(order*(baseline_angle-self.params["phi"]().to(u.rad)))\
-                    * np.trapz(radius*brightness_profile
-                               * jv(order, 2.*np.pi*radius.value*baseline.value), radius)
-            modulations[order-1].append(modulation.to(u.Jy))
+        if not self.asymmetric:
+            return np.array([])
 
-    def hankel_transform(self, brightness_profile: u.erg/(u.rad**2*u.s*u.Hz),
-                         radius: u.mas, ucoord: u.m,
+        angle_diff = baseline_angles-self.params["phi"]().to(u.rad)
+        order = np.arange(1, OPTIONS.model.modulation+1)[np.newaxis, np.newaxis, :]
+        integrand = radius*brightness_profile[:, np.newaxis, ...]
+        bessel_factor = radius.value*baselines.value[..., np.newaxis, :]
+
+        if len(baseline_angles.shape) == 4:
+            order = order[..., np.newaxis, :]
+
+        factor = (-1j)**order*self.params["a"]()*np.cos(order*(angle_diff))
+        integration = np.trapz(integrand * jv(
+                    order[..., np.newaxis], 2.*np.pi*bessel_factor), radius)
+        return u.Quantity(factor*integration, unit=u.Jy)
+
+    # TODO: Check all the broadcasting
+    def hankel_transform(self, radius: u.mas, ucoord: u.m,
                          vcoord: u.m, wavelength: u.um) -> Tuple[u.Quantity, u.Quantity]:
         """Executes the hankel transform and returns the correlated fluxes
         and their modulations.
 
         Parameters
         ----------
-        brightness_profile : astropy.units.erg/(u.rad**2*u.s*u.Hz)
-            The brightness profile.
         radius : astropy.units.mas
             The radius.
         ucoord : astropy.units.m
@@ -441,52 +447,50 @@ class HankelComponent(Component):
             The visibilities.
         modulations : astropy.units.Jy
         """
-        radius, cos_i = radius.to(u.rad), self.params["elong"]()
-        baseline_groups, baseline_angle_groups = calculate_effective_baselines(
-                ucoord, vcoord, cos_i, self.params["pa"]())
-        baseline_groups /= wavelength.to(u.m).value*u.rad
+        radius, axis_ratio = radius.to(u.rad), self.params["elong"]()
+        baselines, baseline_angles = calculate_effective_baselines(
+                ucoord, vcoord, axis_ratio, self.params["pa"]())
 
-        if len(baseline_groups.shape) == 1:
-            baseline_groups = baseline_groups[np.newaxis, :]
-            baseline_angle_groups = baseline_angle_groups[np.newaxis, :]
+        wavelength = wavelength[:, np.newaxis].to(u.m)
+        if len(ucoord.shape) == 1:
+            baselines = (baselines/wavelength).value*u.rad
+            baselines = baselines[..., np.newaxis]
+            baseline_angles = baseline_angles[np.newaxis, :, np.newaxis]
+        else:
+            wavelength = wavelength[..., np.newaxis]
+            baselines = (baselines[np.newaxis, ...]/wavelength).value*u.rad
+            baselines = baselines[..., np.newaxis]
+            baseline_angles = baseline_angles[np.newaxis, ..., np.newaxis]
 
-        visibilities, modulations = [], [[] for _ in range(
-            1, OPTIONS.model.modulation.order+1)]
-        for baselines, baseline_angles in zip(
-                baseline_groups, baseline_angle_groups):
-            for baseline, baseline_angle in zip(baselines, baseline_angles):
-                visibility = 2*np.pi*np.trapz(
-                        radius*brightness_profile*j0(
-                            2.*np.pi*radius.value*baseline.value), radius)
-                visibilities.append(visibility.to(u.Jy))
+        brightness_profile = self._brightness_profile_function(
+                radius, wavelength[:, np.newaxis, :])
 
-                if self.asymmetric:
-                    self.hankel_modulation(modulations, radius,
-                                           brightness_profile,
-                                           baseline, baseline_angle)
+        visibility = 2*np.pi*np.trapz(radius*brightness_profile*j0(
+            2.*np.pi*radius.value*baselines.value), radius).to(u.Jy)
+        visibility = visibility.astype(OPTIONS.data.dtype.complex)
 
-        visibilities = u.Quantity(visibilities, unit=u.Jy,
-                                  dtype=OPTIONS.model.dtype.complex)
-        modulations = u.Quantity(modulations, unit=u.Jy,
-                                 dtype=OPTIONS.model.dtype.complex)
-        return visibilities, modulations
+        modulation = self.hankel_modulation(
+                radius, brightness_profile,
+                baselines, baseline_angles)
+        return visibility.astype(OPTIONS.data.dtype.complex), \
+            modulation.astype(OPTIONS.data.dtype.complex)
 
     def calculate_flux(self, wavelength: u.um) -> u.Jy:
         """Calculates the total flux from the hankel transformation."""
         radius = self._calculate_internal_grid(self.params["dim"]())
-        brightness_profile = self._brightness_profile_function(radius, wavelength)
-        total_flux = (2.*np.pi*np.trapz(radius*brightness_profile, radius).to(u.Jy)).value
-        return np.abs(total_flux.astype(OPTIONS.data.dtype.real))
+        brightness_profile = self._brightness_profile_function(
+                radius, wavelength[:, np.newaxis])
+        flux = (2.*np.pi*np.trapz(radius*brightness_profile, radius).to(u.Jy)).value
+        return np.abs(flux.reshape((flux.shape[0], 1)).astype(OPTIONS.data.dtype.real))
 
-    def calculate_corr_flux(self, ucoord: u.m, vcoord: u.m,
-                            wavelength: u.um, **kwargs) -> np.ndarray:
+    def calculate_visibility(self, ucoord: u.m, vcoord: u.m,
+                             wavelength: u.um, **kwargs) -> np.ndarray:
         """Calculates the correlated fluxes via the hankel transformation."""
         radius = self._calculate_internal_grid(self.params["dim"]())
         vis, vis_mod = self.hankel_transform(
-                self._brightness_profile_function(radius, wavelength),
                 radius, ucoord, vcoord, wavelength, **kwargs)
         if vis_mod.size != 0:
-            vis += vis_mod.sum(0)
+            vis += vis_mod.sum(-1)
         return np.abs(vis.value).astype(OPTIONS.data.dtype.real)
 
     def calculate_closure_phase(self, ucoord: u.m, vcoord: u.m,
@@ -494,13 +498,9 @@ class HankelComponent(Component):
         """Calculates the closure phases via hankel transformation."""
         radius = self._calculate_internal_grid(self.params["dim"]())
         vis, vis_mod = self.hankel_transform(
-                self._brightness_profile_function(radius, wavelength),
                 radius, ucoord, vcoord, wavelength, **kwargs)
-        vis = vis.reshape(ucoord.shape)
-        vis = np.vstack((vis[:2], vis[-1].conj()))
         if vis_mod.size != 0:
-            for mod in vis_mod:
-                mod = mod.reshape(ucoord.shape)
-                vis += np.vstack((mod[:2], mod[-1].conj()))
+            vis += np.concatenate(
+                    (vis_mod[:, :2], np.conj(vis_mod[:, 2:])), axis=1).sum(-1)
         return np.angle(np.prod(vis.value, axis=0),
                         deg=True).astype(OPTIONS.data.dtype.real)

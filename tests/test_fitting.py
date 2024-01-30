@@ -1,5 +1,5 @@
 import random
-from typing import Dict, List
+from typing import Tuple, Dict, List
 from pathlib import Path
 
 import astropy.units as u
@@ -7,14 +7,11 @@ import numpy as np
 import pytest
 
 from ppdmod import data
-from ppdmod import mcmc
-from ppdmod.custom_components import Star, AsymmetricSDGreyBodyContinuum
-from ppdmod.model import Model
-from ppdmod.parameter import STANDARD_PARAMETERS, Parameter
-from ppdmod.options import OPTIONS
+from ppdmod import fitting
+from ppdmod.custom_components import assemble_components
+from ppdmod.parameter import Parameter
+from ppdmod.options import OPTIONS, STANDARD_PARAMETERS
 
-
-# TODO: Add here the calculation of the binning differences.
 
 @pytest.fixture
 def qval_file_dir() -> Path:
@@ -25,41 +22,40 @@ def qval_file_dir() -> Path:
 @pytest.fixture
 def wavelengths() -> u.um:
     """A wavelength grid."""
-    return ([8.28835527e-06, 1.02322101e-05, 13.000458e-6]*u.m).to(u.um)
+    return [3.5, 10, 12.5]*u.um
 
 
 @pytest.fixture
 def fits_files() -> Path:
     """A MATISSE (.fits)-file."""
-    files = [
-        "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits",
-        "hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_AQUARIUS_FINAL_TARGET_INT.fits"]
-    return [Path("data/fits") / file for file in files]
+    day_two = list(Path("data/fits").glob("*2022-04-23*.fits"))
+    day_one = list(Path("data/fits").glob("*2022-04-21*.fits"))
+    return day_two + day_one
 
 
 @pytest.fixture
 def wavelength_solution(fits_files: Path) -> u.um:
     """The wavelength solution of a MATISSE (.fits)-file."""
-    return (data.ReadoutFits(fits_files[0]).wavelength*u.m).to(u.um)
+    return data.ReadoutFits(fits_files[0]).wavelength*u.um
 
 
 @pytest.fixture
-def shared_params() -> Dict[str, Parameter]:
-    """Shared parameters."""
-    return {key: Parameter(**STANDARD_PARAMETERS[key])
-            for key in random.sample(list(STANDARD_PARAMETERS.keys()), 4)}
-
-
-@pytest.fixture
-def components_and_params() -> Dict[str, Dict]:
-    """Parameters."""
-    all_components = ["Star", "AsymmetricSDGreyBodyContinuum",
-                      "AsymmetricSDGreyBody", "TemperatureGradient",
-                      "AsymmetricSDTemperatureGradient"]
+def mock_components_and_params() -> Dict[str, Dict]:
+    """Mock parameters connected to their components."""
+    all_components = ["Star", "GreyBody",
+                      "AsymmetricGreyBody", "TempGradient",
+                      "AsymmetricTemperatureGradient"]
     components = random.sample(all_components, 3)
     return [[component, {key: Parameter(**STANDARD_PARAMETERS[key])
             for key in random.sample(list(STANDARD_PARAMETERS.keys()), 4)}]
             for component in components]
+
+
+@pytest.fixture
+def mock_shared_params() -> Dict[str, Parameter]:
+    """Mock shared parameters."""
+    return {key: Parameter(**STANDARD_PARAMETERS[key])
+            for key in random.sample(list(STANDARD_PARAMETERS.keys()), 4)}
 
 
 @pytest.fixture
@@ -83,38 +79,70 @@ def position_angle() -> u.deg:
 @pytest.fixture
 def axis_ratio() -> u.one:
     """The axis ratio of the model."""
-    return 1.6
+    return 1.6*u.one
 
 
 @pytest.fixture
-def model(dim: int, pixel_size: u.mas,
-          axis_ratio: u.one, position_angle: u.deg) -> Model:
-    """Creates a model."""
-    static_params = {"dim": dim, "dist": 145,
-                     "eff_temp": 7800, "eff_radius": 1.8}
-    star = Star(**static_params)
-    inner_ring = AsymmetricSDGreyBodyContinuum(
-        **static_params,
-        rin=25, rout=30, a=0.3, phi=33,
-        pixel_size=pixel_size.value, pa=position_angle,
-        elong=axis_ratio, inner_sigma=2000, kappa_abs=1000,
-        kappa_cont=3000, cont_weight=0.5, p=0.5)
-    inner_ring.optically_thick = True
-    outer_ring = AsymmetricSDGreyBodyContinuum(
-        **static_params,
-        rin=33, a=0.3, phi=33,
-        pixel_size=pixel_size.value, pa=position_angle,
-        elong=axis_ratio, inner_sigma=2000, kappa_abs=1000,
-        kappa_cont=3000, cont_weight=0.5, p=0.5)
-    outer_ring.optically_thick = True
-    return Model([star, inner_ring, outer_ring])
+def constant_params(dim: int) -> Dict:
+    return {"dim": dim, "dist": 148.3,
+            "eff_temp": 7500, "eff_radius": 1.75,
+            "kappa_abs": 1000, "kappa_cont": 3000}
+
+
+@pytest.fixture
+def components_and_params() -> List[Dict[str, Parameter]]:
+    """Parameters connected to their components."""
+    rin = Parameter(**STANDARD_PARAMETERS["rin"])
+    rout = Parameter(**STANDARD_PARAMETERS["rout"])
+    p = Parameter(**STANDARD_PARAMETERS["p"])
+    a = Parameter(**STANDARD_PARAMETERS["a"])
+    phi = Parameter(**STANDARD_PARAMETERS["phi"])
+    inner_sigma = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
+
+    rin.value = 1.
+    rout.value = 7.
+    a.value = 0.5
+    phi.value = 133
+    p.value = 0.5
+    inner_sigma.value = 1e-3
+
+    rin.set(min=0.5, max=5)
+    rout.set(min=0.5, max=10)
+    a.set(min=0., max=1.)
+    phi.set(min=0, max=360)
+    p.set(min=0., max=1.)
+    inner_sigma.set(min=0, max=1e-2)
+
+    rout.free = True
+
+    inner_ring = {"rin": rin, "rout": rout,
+                  "inner_sigma": inner_sigma, "p": p,
+                  "a": a, "phi": phi}
+    return [["Star", {}], ["AsymmetricGreyBody", inner_ring]]
+
+
+@pytest.fixture
+def shared_params() -> Dict:
+    """Shared parameters."""
+    pa = Parameter(**STANDARD_PARAMETERS["pa"])
+    elong = Parameter(**STANDARD_PARAMETERS["elong"])
+    cont_weight = Parameter(**STANDARD_PARAMETERS["cont_weight"])
+
+    pa.value = 145
+    elong.value = 0.5
+    cont_weight.value = 0.4
+
+    pa.set(min=0, max=360)
+    elong.set(min=0, max=1)
+    cont_weight.set(min=0.3, max=0.8)
+    return {"pa": pa, "elong": elong, "cont_weight": cont_weight}
 
 
 def test_set_theta_from_params(
         components_and_params: Dict[str, Dict],
         shared_params: Dict[str, Parameter]) -> None:
     """Tests the set_theta_from_params function."""
-    theta = mcmc.set_theta_from_params(components_and_params,
+    theta = fitting.set_theta_from_params(components_and_params,
                                        shared_params)
     len_params = sum(len(params) for (_, params) in components_and_params)
     assert theta.size == len_params+len(shared_params)
@@ -122,29 +150,29 @@ def test_set_theta_from_params(
                [parameter.value for parameter in shared_params.values()])
 
 
-# TODO: Test order of appearance for parameters.
+# TODO: Test if order is kept for parameters
 def test_set_params_from_theta(
-        components_and_params: Dict[str, Dict],
-        shared_params: Dict[str, Parameter]) -> None:
+        mock_components_and_params: Dict[str, Dict],
+        mock_shared_params: Dict[str, Parameter]) -> None:
     """Tests the set_params_from_theta function."""
-    OPTIONS["model.components_and_params"] = components_and_params
-    OPTIONS["model.shared_params"] = shared_params
-    theta = mcmc.set_theta_from_params(components_and_params,
-                                       shared_params)
+    OPTIONS.model.components_and_params = mock_components_and_params
+    OPTIONS.model.shared_params = mock_shared_params
+    theta = fitting.set_theta_from_params(mock_components_and_params,
+                                       mock_shared_params)
     new_components_and_params, new_shared_parameters =\
-        mcmc.set_params_from_theta(theta)
+        fitting.set_params_from_theta(theta)
     all_params = []
-    for (_, params) in components_and_params:
+    for (_, params) in mock_components_and_params:
         all_params.extend(list(map(lambda x: x.value, params.values())))
     new_params = []
     for (_, params) in new_components_and_params:
         new_params.extend(list(params.values()))
     assert all_params == new_params
-    assert list(map(lambda x: x.value, shared_params.values())) ==\
+    assert list(map(lambda x: x.value, mock_shared_params.values())) ==\
         list(new_shared_parameters.values())
 
-    OPTIONS["model.components_and_params"] = []
-    OPTIONS["model.shared_params"] = []
+    OPTIONS.model.components_and_params = {}
+    OPTIONS.model.shared_params = {}
 
 
 # TODO: Tests somehow that all components end up where they need to go.
@@ -165,16 +193,16 @@ def test_init_randomly(nwalkers: int) -> None:
     del params["p"]
 
     components_and_params = [["Star", params],
-                             ["AsymmetricSDGreyBodyContinuum", params]]
+                             ["AsymmetricGreyBody", params]]
 
-    OPTIONS["model.components_and_params"] = components_and_params
-    OPTIONS["model.shared_params"] = shared_params
+    OPTIONS.model.components_and_params = components_and_params
+    OPTIONS.model.shared_params = shared_params
 
-    theta = mcmc.init_randomly(nwalkers)
+    theta = fitting.init_randomly(nwalkers)
     assert theta.shape == (nwalkers, len(param_names)*2-1)
 
-    OPTIONS["model.components_and_params"] = []
-    OPTIONS["model.shared_params"] = []
+    OPTIONS.model.components_and_params = []
+    OPTIONS.model.shared_params = []
 
 
 # TODO: Finish test.
@@ -187,80 +215,83 @@ def test_init_randomly(nwalkers: int) -> None:
 #     """Tests the chi squre function."""
 #     assert chi_sq(data, error, data_model) == expected
 
-
-def test_calculate_observables(model: Model,
+# TODO: Test for different modulation orders
+# TODO: Test if modulation is properly calculated in case of symmetrical and asymmetrical
+# components.
+def test_calculate_observables(components_and_params: List[Tuple[str, Dict]],
+                               shared_params: Dict[str, Parameter],
+                               constant_params: Dict[str, Parameter],
                                fits_files: List[Path],
-                               pixel_size: u.mas,
                                wavelengths: u.um) -> None:
     """Tests the calculate_observables function."""
     data.set_fit_wavelengths(wavelengths)
     data.set_data(fits_files)
+    nwl, nfile = wavelengths.size, len(fits_files)
 
-    readout = data.ReadoutFits(fits_files[0])
-    total_flux, corr_flux, cphase = mcmc.calculate_observables(
-        model.calculate_complex_visibility(wavelengths[0]),
-        readout.ucoord, readout.vcoord,
-        readout.u123coord, readout.v123coord,
-        pixel_size, wavelengths[0])
+    OPTIONS.model.components_and_params = components_and_params
+    OPTIONS.model.shared_params = shared_params
+    OPTIONS.model.constant_params = constant_params
+    OPTIONS.model.modulation = 1
 
-    assert total_flux is not None
-    assert corr_flux is not None
-    assert cphase is not None
+    flux_model, vis_model, t3_model = fitting.calculate_observables(
+        assemble_components(components_and_params, shared_params),
+        wavelengths, OPTIONS.data.vis.ucoord, OPTIONS.data.vis.vcoord,
+        OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord)
 
-    assert total_flux.dtype == float
-    assert corr_flux.dtype == float
-    assert cphase.dtype == float
+    assert flux_model is not None
+    assert vis_model is not None
+    assert t3_model is not None
 
-    assert total_flux.shape == ()
-    assert corr_flux.shape == (6,)
-    assert cphase.shape == (4,)
+    assert flux_model.dtype == OPTIONS.data.dtype.real
+    assert vis_model.dtype == OPTIONS.data.dtype.real
+    assert t3_model.dtype == OPTIONS.data.dtype.real
+
+    assert flux_model.shape == (nwl, 1)
+    assert vis_model.shape == (nwl, nfile*6)
+    assert t3_model.shape == (nwl, nfile*4)
 
     data.set_fit_wavelengths()
     data.set_data()
 
+    OPTIONS.model.components_and_params = []
+    OPTIONS.model.shared_params = {}
+    OPTIONS.model.constant_params = {}
+    OPTIONS.model.modulation = 0
 
-def test_calculate_observables_chi_sq(
-        model: Model, fits_files: List[Path],
-        pixel_size: u.mas, wavelengths: u.um) -> None:
+
+def test_calculate__chi_sq(components_and_params: List[Tuple[str, Dict]],
+                           shared_params: Dict[str, Parameter],
+                           constant_params: Dict[str, Parameter],
+                           fits_files: List[Path],
+                           wavelengths: u.um) -> None:
     """Tests the calculate_observables chi sq function."""
     data.set_fit_wavelengths(wavelengths)
     data.set_data(fits_files)
 
-    readout = data.ReadoutFits(fits_files[0])
-    total_flux_model, corr_flux_model, cphase_model =\
-        mcmc.calculate_observables(
-            model.calculate_complex_visibility(wavelengths[0]),
-            readout.ucoord, readout.vcoord,
-            readout.u123coord, readout.v123coord,
-            pixel_size, wavelengths[0])
+    OPTIONS.model.components_and_params = components_and_params
+    OPTIONS.model.shared_params = shared_params
+    OPTIONS.model.constant_params = constant_params
+    OPTIONS.model.modulation = 1
 
-    wavelength_str = str(wavelengths[0].value)
-    total_fluxes, total_fluxes_err =\
-        OPTIONS["data.total_flux"], OPTIONS["data.total_flux_error"]
-    corr_fluxes, corr_fluxes_err =\
-        OPTIONS["data.correlated_flux"], OPTIONS["data.correlated_flux_error"]
-    cphases, cphases_err =\
-        OPTIONS["data.closure_phase"], OPTIONS["data.closure_phase_error"]
+    flux, vis, t3 = OPTIONS.data.flux, OPTIONS.data.vis, OPTIONS.data.t3
+    flux_model, vis_model, t3_model = fitting.calculate_observables(
+        assemble_components(components_and_params, shared_params),
+        wavelengths, OPTIONS.data.vis.ucoord, OPTIONS.data.vis.vcoord,
+        OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord)
 
-    chi_sq = 0
-    for total_flux, total_flux_err, corr_flux,\
-            corr_flux_err, cphase, cphase_err\
-            in zip(total_fluxes, total_fluxes_err,
-                   corr_fluxes, corr_fluxes_err, cphases, cphases_err):
-
-        chi_sq += mcmc.calculate_observables_chi_sq(
-            total_flux[wavelength_str], total_flux_err[wavelength_str],
-            total_flux_model,
-            corr_flux[wavelength_str], corr_flux_err[wavelength_str],
-            corr_flux_model,
-            cphase[wavelength_str], cphase_err[wavelength_str],
-            cphase_model)
+    chi_sq = fitting.calculate_observable_chi_sq(
+            flux, flux_model, vis, vis_model, t3, t3_model)
 
     assert chi_sq != 0
     assert isinstance(chi_sq, float)
 
     data.set_fit_wavelengths()
     data.set_data()
+
+    OPTIONS.model.components_and_params = []
+    OPTIONS.model.shared_params = {}
+    OPTIONS.model.constant_params = {}
+    OPTIONS.model.modulation = 0
 
 
 @pytest.mark.parametrize(
@@ -284,21 +315,24 @@ def test_lnprior(values: List[float], expected: float) -> None:
     del params["p"]
 
     components_and_params = [["Star", params],
-                             ["AsymmetricSDGreyBodyContinuum", shared_params]]
+                             ["AsymmetricGreyBody", shared_params]]
 
-    OPTIONS["model.components_and_params"] = components_and_params
-    OPTIONS["model.shared_params"] = shared_params
+    OPTIONS.model.components_and_params = components_and_params
+    OPTIONS.model.shared_params = shared_params
+    OPTIONS.model.modulation = 1
 
-    theta = mcmc.set_theta_from_params(components_and_params,
+    theta = fitting.set_theta_from_params(components_and_params,
                                        shared_params)
     new_components_and_params, new_shared_parameters =\
-        mcmc.set_params_from_theta(theta)
+            fitting.set_params_from_theta(theta)
 
-    assert mcmc.lnprior(new_components_and_params,
-                        new_shared_parameters) == expected
+    assert fitting.lnprior(new_components_and_params,
+                           new_shared_parameters) == expected
 
-    OPTIONS["model.components_and_params"] = []
-    OPTIONS["model.shared_params"] = []
+    OPTIONS.model.components_and_params = []
+    OPTIONS.model.shared_params = {}
+    OPTIONS.model.constant_params = {}
+    OPTIONS.model.modulation = 0
 
 
 def test_lnprob(fits_files: List[Path], wavelengths: u.um) -> None:
@@ -325,33 +359,37 @@ def test_lnprob(fits_files: List[Path], wavelengths: u.um) -> None:
     del params["elong"]
 
     components_and_params = [["Star", params],
-                             ["AsymmetricSDGreyBodyContinuum", params]]
+                             ["AsymmetricGreyBody", params]]
 
     data.set_fit_wavelengths(wavelengths)
     data.set_data(fits_files)
-    OPTIONS["model.constant_params"] = static_params
-    OPTIONS["model.components_and_params"] = components_and_params
-    OPTIONS["model.shared_params"] = shared_params
+    OPTIONS.model.constant_params = static_params
+    OPTIONS.model.components_and_params = components_and_params
+    OPTIONS.model.shared_params = shared_params
+    OPTIONS.model.modulation = 1
 
-    theta = mcmc.set_theta_from_params(
+    theta = fitting.set_theta_from_params(
         components_and_params, shared_params)
 
-    chi_sq = mcmc.lnprob(theta)
+    chi_sq = fitting.lnprob(theta)
     assert chi_sq != 0
     assert isinstance(chi_sq, float)
 
-    OPTIONS["model.components_and_params"] = []
-    OPTIONS["model.shared_params"] = []
     data.set_fit_wavelengths()
     data.set_data()
 
+    OPTIONS.model.components_and_params = []
+    OPTIONS.model.shared_params = {}
+    OPTIONS.model.constant_params = {}
+    OPTIONS.model.modulation = 0
 
-# TODO: Finish test.
-def test_run_mcmc() -> None:
-    """Tests the run_mcmc function."""
-    ...
+
+# # TODO: Finish test.
+# def test_run_fit() -> None:
+#     """Tests the run_fitting function."""
+#     ...
 
 
-def test_get_best_fit() -> None:
-    """Tests the get_best_fit function."""
-    ...
+# def test_get_best_fit() -> None:
+#     """Tests the get_best_fit function."""
+#     ...

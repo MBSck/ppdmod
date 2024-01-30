@@ -37,6 +37,7 @@ utils.make_workbook(
     })
 
 
+# TODO: Test hankel for multiple wavelengths
 @pytest.fixture
 def wavelength() -> u.um:
     """A wavelength grid."""
@@ -89,7 +90,6 @@ def test_eval(component: Component) -> None:
     assert component.params["x"] == Parameter(**STANDARD_PARAMETERS["fov"])
     assert component.params["y"]() == 10*u.mas
     assert component.params["dim"]() == 512
-
 
 # TODO: Make image of both radius to infinity and rotated with finite radius.
 def test_radius_calculation(component: Component) -> None:
@@ -199,13 +199,15 @@ def test_hankel_component_brightness_function():
     ...
 
 
-def test_hankel_component_total_flux(
+def test_hankel_component_flux(
         hankel_component: HankelComponent, wavelength: u.um) -> None:
     """Tests the calculation of the total flux."""
-    total_flux = hankel_component.calculate_flux(wavelength)
-    assert total_flux
+    flux = hankel_component.calculate_flux(wavelength)
+    assert flux.shape(wavelength.size, 1)
+    assert flux.unit == u.Jy
 
 
+# TODO: Make tests for the hankel component
 # TODO: Write here check if higher orders are implemented
 @pytest.mark.parametrize("order", [0, 1, 2, 3])
 def test_hankel_component_hankel_transform(
@@ -235,7 +237,7 @@ def test_hankel_component_corr_fluxes(
         order: int, wavelength: u.um) -> None:
     """Tests the hankel component's hankel transformation."""
     OPTIONS.model.modulation.order = order
-    corr_fluxes = hankel_component.calculate_corr_flux(
+    corr_fluxes = hankel_component.calculate_visibility(
             READOUT.vis2.ucoord, READOUT.vis2.vcoord, wavelength)
     assert corr_fluxes.shape == (6, )
     assert isinstance(corr_fluxes, np.ndarray)
@@ -268,7 +270,7 @@ def test_hankel_resolution(dim: int, wavelength: u.um) -> None:
 
     OPTIONS.model.modulation.order = 1
     start_time_vis = time.perf_counter()
-    visibilities = hankel_component.calculate_corr_flux(
+    visibilities = hankel_component.calculate_visibility(
             READOUT.vis2.ucoord, READOUT.vis2.vcoord, wavelength)
     end_time_vis = time.perf_counter()-start_time_vis
 

@@ -112,18 +112,20 @@ class ReadoutFits:
 
 
 def set_fit_wavelengths(
-        wavelengths: Optional[u.Quantity[u.um]] = None) -> None:
+        wavelength: Optional[u.Quantity[u.um]] = None) -> None:
     """Sets the wavelengths to be fitted for as a global option.
 
     If called without parameters or recalled, it will clear the
     fit wavelengths.
     """
     OPTIONS.fit.wavelengths = []
-    if wavelengths is None:
+    if wavelength is None:
         return
 
-    wavelengths = u.Quantity(wavelengths, u.um)
-    OPTIONS.fit.wavelengths = wavelengths.flatten()
+    wavelength = u.Quantity(wavelength, u.um)
+    if wavelength.shape == ():
+        wavelength = wavelength.reshape((wavelength.size,))
+    OPTIONS.fit.wavelengths = wavelength.flatten()
 
 
 def set_data(fits_files: Optional[List[Path]] = None,
@@ -177,40 +179,17 @@ def set_data(fits_files: Optional[List[Path]] = None,
                 data.err = np.hstack((data.err, err))
 
             if key in ["vis", "vis2"]:
-                tiled_ucoord = np.tile(
-                        data_readout.ucoord, (wavelength.size, 1))
-                tiled_vcoord = np.tile(
-                        data_readout.vcoord, (wavelength.size, 1))
-                if data.ucoord.size == 0:
-                    data.ucoord, data.vcoord = tiled_ucoord, tiled_vcoord
-                else:
-                    data.ucoord = np.hstack((data.ucoord, tiled_ucoord))
-                    data.vcoord = np.hstack((data.vcoord, tiled_vcoord))
+                data.ucoord = np.concatenate(
+                        (data.ucoord, data_readout.ucoord))
+                data.vcoord = np.concatenate(
+                        (data.vcoord, data_readout.vcoord))
 
             elif key == "t3":
-                tiled_u123coord = np.tile(
-                        data_readout.u123coord, (wavelength.size, 1, 1))
-                tiled_v123coord = np.tile(
-                        data_readout.v123coord, (wavelength.size, 1, 1))
                 if data.u123coord.size == 0:
-                    data.u123coord, data.v123coord = tiled_u123coord, tiled_v123coord
+                    data.u123coord = data_readout.u123coord
+                    data.v123coord = data_readout.v123coord
                 else:
-                    data.u123coord = np.dstack((data.u123coord, tiled_u123coord))
-                    data.v123coord = np.dstack((data.v123coord, tiled_v123coord))
-
-    for key in fit_data:
-        data = getattr(OPTIONS.data, key)
-        nan_indices = [np.isnan(row) for row in data.value]
-        data.value = [row[~ind] for ind, row in zip(nan_indices, data.value)]
-        data.err = [row[~ind] for ind, row in zip(nan_indices, data.err)]
-
-        if key in ["vis", "vis2"]:
-            data.ucoord = [row[~ind] for ind, row
-                           in zip(nan_indices, data.ucoord)]
-            data.vcoord = [row[~ind] for ind, row
-                           in zip(nan_indices, data.vcoord)]
-        elif key == "t3":
-            data.u123coord = [np.array([row[~ind] for row in rows])
-                              for ind, rows in zip(nan_indices, data.u123coord)]
-            data.v123coord = [np.array([row[~ind] for row in rows])
-                              for ind, rows in zip(nan_indices, data.v123coord)]
+                    data.u123coord = np.hstack(
+                            (data.u123coord, data_readout.u123coord))
+                    data.v123coord = np.hstack(
+                            (data.v123coord, data_readout.v123coord))

@@ -68,14 +68,19 @@ class Star(AnalyticalComponent):
             self.params["eff_radius"](), self.params["dist"]())
         return self._stellar_angular_radius
 
-    def calculate_stellar_flux(self, wavelength: u.um) -> u.Jy:
+    def calculate_flux(self, wavelength: u.um) -> u.Jy:
         """Calculates the flux of the star."""
+        wavelength = wavelength[:, np.newaxis]
         if self.params["f"].value is not None:
-            return self.params["f"](wavelength)
-        plancks_law = models.BlackBody(temperature=self.params["eff_temp"]())
-        spectral_radiance = plancks_law(wavelength.to(u.m)).to(
-            u.erg/(u.cm**2*u.Hz*u.s*u.rad**2))
-        return np.pi*(spectral_radiance*self.stellar_radius_angular**2).to(u.Jy)
+            stellar_flux = self.params["f"](wavelength).astype
+        else:
+            plancks_law = models.BlackBody(
+                    temperature=self.params["eff_temp"]())
+            spectral_radiance = plancks_law(wavelength.to(u.m)).to(
+                u.erg/(u.cm**2*u.Hz*u.s*u.rad**2))
+            stellar_flux = np.pi*(spectral_radiance
+                                  * self.stellar_radius_angular**2).to(u.Jy)
+        return stellar_flux.astype(OPTIONS.data.dtype.real)
 
     def _image_function(self, xx: u.mas, yy: u.mas,
                         wavelength: Optional[u.Quantity[u.m]] = None,
@@ -94,16 +99,16 @@ class Star(AnalyticalComponent):
         """
         image = np.zeros(xx.shape)*u.Jy
         centre = xx.shape[0]//2
-        star_flux = self.calculate_stellar_flux(wavelength)/4
+        star_flux = self.calculate_flux(wavelength)/4
         image[centre-1:centre+1, centre-1:centre+1] = star_flux
-        return image
+        return image.astype(OPTIONS.data.dtype.real)
 
     def _visibility_function(self, dim: int, pixel_size: u.mas,
                              wavelength: Optional[u.Quantity[u.um]] = None
                              ) -> np.ndarray:
         """The component's _visibility_function."""
-        star_flux = self.calculate_stellar_flux(wavelength)
-        return np.ones((dim, dim))*star_flux.value
+        star_flux = self.calculate_flux(wavelength)
+        return star_flux.value.astype(OPTIONS.data.dtype.real)
 
 
 class GreyBody(HankelComponent):

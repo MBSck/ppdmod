@@ -86,11 +86,16 @@ def test_read_into_namespace(fits_files: List[Path],
 
 
 @pytest.mark.parametrize(
-        "wavelength", [[8]*u.um, [8, 10]*u.um, [3, 8, 10]*u.um])
+        "wavelength", [8, [8, 10], [3, 8, 10]])
 def test_set_fit_wavelenghts(wavelength: u.um) -> None:
     """Tests the set fit wavelenghts function."""
     set_fit_wavelengths(wavelength)
-    assert np.array_equal(OPTIONS.fit.wavelengths, wavelength)
+    wavelength = [wavelength] if not isinstance(wavelength, list)\
+        else wavelength
+    assert np.array_equal(
+        OPTIONS.fit.wavelengths, wavelength*u.um)
+    assert OPTIONS.fit.wavelengths.unit == u.um
+    assert OPTIONS.fit.wavelengths.shape == (len(wavelength),)
 
     set_fit_wavelengths()
     assert not OPTIONS.fit.wavelengths

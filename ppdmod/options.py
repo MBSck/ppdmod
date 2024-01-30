@@ -122,8 +122,7 @@ data = SimpleNamespace(readouts=[], flux=flux, vis=vis,
 # NOTE: Model
 model = SimpleNamespace(components_and_params={},
                         constant_params={}, shared_params={},
-                        dtype=dtype, gridtype="linear",
-                        modulation=SimpleNamespace(order=0))
+                        dtype=dtype, gridtype="linear", modulation=0)
 
 
 # NOTE: Spectrum
