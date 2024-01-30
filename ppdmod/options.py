@@ -3,9 +3,9 @@ from types import SimpleNamespace
 
 import astropy.units as u
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.colors import ListedColormap
 from matplotlib import colormaps as mcm
-from numpy import float32, complex64
 
 
 def convert_style_to_colormap(style: str) -> ListedColormap:
@@ -41,7 +41,7 @@ STANDARD_PARAMETERS = {
               "unit": u.mas, "free": False},
         "f": {"name": "flux", "shortname": "f",
               "value": None, "description": "The wavelength dependent flux",
-              "unit": u.Jy, "free": False, "interpolation": True},
+              "unit": u.Jy, "free": False},
         "elong": {"name": "elong", "shortname": "elong",
                   "value": 1, "description": "Inclination of the object", "unit": u.one},
         "pa": {"name": "pa", "shortname": "pa",
@@ -84,12 +84,10 @@ STANDARD_PARAMETERS = {
                         "value": 0, "unit": u.g/u.cm**2, "free": True,
                         "description": "Inner surface density"},
         "kappa_abs": {"name": "kappa_abs", "shortname": "kappaabs",
-                      "value": 0, "unit": u.cm**2/u.g,
-                      "interpolation": True, "free": False,
+                      "value": 0, "unit": u.cm**2/u.g, "free": False,
                       "description": "Dust mass absorption coefficient"},
         "kappa_cont": {"name": "kappa_cont", "shortname": "kappacon",
-                       "value": 0, "unit": u.cm**2/u.g,
-                       "interpolation": True, "free": False,
+                       "value": 0, "unit": u.cm**2/u.g, "free": False,
                        "description": "Continuum dust mass absorption coefficient"},
         "cont_weight": {"name": "cont_weight", "shortname": "conwei",
                         "value": 0, "unit": u.one, "free": True,
@@ -107,18 +105,21 @@ STANDARD_PARAMETERS = {
 
 
 # NOTE: Data
-vis = SimpleNamespace(value=[], err=[], ucoord=[], vcoord=[])
-vis2 = SimpleNamespace(value=[], err=[], ucoord=[], vcoord=[])
-t3phi = SimpleNamespace(value=[], err=[], u123coord=[], v123coord=[])
-flux = SimpleNamespace(value=[], err=[])
-binning = SimpleNamespace(window=None)
+vis = SimpleNamespace(value=np.array([]), err=np.array([]),
+                      ucoord=np.array([]), vcoord=np.array([]))
+vis2 = SimpleNamespace(value=np.array([]), err=np.array([]),
+                       ucoord=np.array([]), vcoord=np.array([]))
+t3 = SimpleNamespace(value=np.array([]), err=np.array([]),
+                     u123coord=np.array([]), v123coord=np.array([]))
+flux = SimpleNamespace(value=np.array([]), err=np.array([]))
+binning = SimpleNamespace(window=0.1)
 gravity = SimpleNamespace(index=20)
+dtype = SimpleNamespace(complex=np.complex64, real=np.float32)
 data = SimpleNamespace(readouts=[], flux=flux, vis=vis,
-                       vis2=vis2, t3phi=t3phi, gravity=gravity,
-                       binning=binning)
+                       vis2=vis2, t3=t3, gravity=gravity,
+                       binning=binning, dtype=dtype)
 
 # NOTE: Model
-dtype = SimpleNamespace(complex=complex64, real=float32)
 model = SimpleNamespace(components_and_params={},
                         constant_params={}, shared_params={},
                         dtype=dtype, gridtype="linear",
@@ -148,10 +149,9 @@ plot = SimpleNamespace(dpi=300, color=color,
                        errorbar=errorbar, scatter=scatter)
 
 # NOTE: Fitting
-weights = SimpleNamespace(cphase=1, flux=1,
-                          t3phi=1, vis=1)
+weights = SimpleNamespace(cphase=1, flux=1, t3=1, vis=1)
 fit = SimpleNamespace(weights=weights,
-                      data=["flux", "vis", "t3phi"],
+                      data=["flux", "vis", "t3"],
                       method="emcee",
                       wavelengths=[],
                       quantiles=[16, 50, 84])

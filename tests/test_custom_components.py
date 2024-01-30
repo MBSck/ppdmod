@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from ppdmod.component import Component
-from ppdmod.custom_components import Star, assemble_components
+from ppdmod.custom_components import Star, GreyBody, assemble_components
 from ppdmod.data import ReadoutFits
 from ppdmod.options import STANDARD_PARAMETERS
 from ppdmod.parameter import Parameter

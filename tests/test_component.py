@@ -23,8 +23,10 @@ CLOSURE_PHASE = "Closure Phase"
 
 READOUT = ReadoutFits(Path("data/fits")
                       / "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT_flux_avg_vis.fits")
-BASELINES = [f"B {baseline}" for baseline in np.around(np.hypot(READOUT.ucoord, READOUT.vcoord), 0)]
-TRIANGLES = [f"T {triangle}" for triangle in np.around(np.hypot(READOUT.u123coord, READOUT.v123coord).max(axis=0), 0)]
+BASELINES = [f"B {baseline}" for baseline
+             in np.around(np.hypot(READOUT.vis2.ucoord, READOUT.vis2.vcoord), 0)]
+TRIANGLES = [f"T {triangle}" for triangle
+             in np.around(np.hypot(READOUT.t3.u123coord, READOUT.t3.v123coord).max(axis=0), 0)]
 TRIANGLES[-1] += ".0"
 
 utils.make_workbook(
@@ -38,7 +40,7 @@ utils.make_workbook(
 @pytest.fixture
 def wavelength() -> u.um:
     """A wavelength grid."""
-    return (13.000458e-6*u.m).to(u.um)
+    return 12.5*u.um
 
 
 @pytest.fixture
@@ -185,7 +187,7 @@ def test_analytical_component_calculate_complex_visibility(
 def test_hankel_component_calculate_grid(
         hankel_component: HankelComponent, grid_type: str) -> None:
     """Tests the hankel component's grid calculation."""
-    OPTIONS["model.gridtype"] = grid_type
+    OPTIONS.model.gridtype = grid_type
     radius = hankel_component._calculate_internal_grid(512)
     assert radius.unit == u.mas
     assert radius.shape == (512, )
@@ -214,17 +216,17 @@ def test_hankel_component_hankel_transform(
     temp_profile = 1500*u.K*(radius/(hankel_component.params["rin"]()))**(-0.5)
     brightness_profile = BlackBody(temp_profile)(wavelength)
 
-    OPTIONS["model.modulation.order"] = order
+    OPTIONS.model.modulation.order = order
     corr_fluxes, modulations = hankel_component.hankel_transform(
             brightness_profile.to(u.erg/(u.Hz*u.cm**2*u.s*u.rad**2)),
-            radius, READOUT.ucoord, READOUT.vcoord, wavelength)
+            radius, READOUT.vis2.ucoord, READOUT.vis2.vcoord, wavelength)
     assert corr_fluxes.shape == (6, )
     assert corr_fluxes.unit == u.Jy
     if order == 0:
         assert modulations.shape == (0, )
     else:
         assert modulations.shape == (order, 6)
-    OPTIONS["model.modulation.order"] = 0
+    OPTIONS.model.modulation.order = 0
 
 
 @pytest.mark.parametrize("order", [0, 1, 2, 3])
@@ -232,12 +234,12 @@ def test_hankel_component_corr_fluxes(
         hankel_component: HankelComponent,
         order: int, wavelength: u.um) -> None:
     """Tests the hankel component's hankel transformation."""
-    OPTIONS["model.modulation.order"] = order
+    OPTIONS.model.modulation.order = order
     corr_fluxes = hankel_component.calculate_corr_flux(
-            READOUT.ucoord, READOUT.vcoord, wavelength)
+            READOUT.vis2.ucoord, READOUT.vis2.vcoord, wavelength)
     assert corr_fluxes.shape == (6, )
     assert isinstance(corr_fluxes, np.ndarray)
-    OPTIONS["model.modulation.order"] = 0
+    OPTIONS.model.modulation.order = 0
 
 
 @pytest.mark.parametrize("order", [0, 1, 2, 3])
@@ -245,12 +247,12 @@ def test_hankel_component_closure_phases(
         hankel_component: HankelComponent,
         order: int, wavelength: u.um) -> None:
     """Tests the hankel component's hankel transformation."""
-    OPTIONS["model.modulation.order"] = order
+    OPTIONS.model.modulation.order = order
     closure_phases = hankel_component.calculate_closure_phase(
-            READOUT.u123coord, READOUT.v123coord, wavelength)
+            READOUT.t3.u123coord, READOUT.t3.v123coord, wavelength)
 
     assert closure_phases.shape == (4, )
-    OPTIONS["model.modulation.order"] = 0
+    OPTIONS.model.modulation.order = 0
 
 
 @pytest.mark.parametrize(
@@ -264,15 +266,15 @@ def test_hankel_resolution(dim: int, wavelength: u.um) -> None:
     hankel_component.optically_thick = True
     hankel_component.asymmetric = True
 
-    OPTIONS["model.modulation.order"] = 1
+    OPTIONS.model.modulation.order = 1
     start_time_vis = time.perf_counter()
     visibilities = hankel_component.calculate_corr_flux(
-            READOUT.ucoord, READOUT.vcoord, wavelength)
+            READOUT.vis2.ucoord, READOUT.vis2.vcoord, wavelength)
     end_time_vis = time.perf_counter()-start_time_vis
 
     start_time_cphase = time.perf_counter()
     closure_phases = hankel_component.calculate_closure_phase(
-            READOUT.u123coord, READOUT.v123coord, wavelength)
+            READOUT.t3.u123coord, READOUT.t3.v123coord, wavelength)
     end_time_cphase = time.perf_counter()-start_time_cphase
 
     vis_data = {"Dimension (px)": [dim],
@@ -305,4 +307,4 @@ def test_hankel_resolution(dim: int, wavelength: u.um) -> None:
                         mode="a", if_sheet_exists="replace") as writer:
         df.to_excel(writer, sheet_name=CLOSURE_PHASE, index=False)
 
-    OPTIONS["model.modulation.order"] = 0
+    OPTIONS.model.modulation.order = 0

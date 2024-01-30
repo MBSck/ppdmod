@@ -22,7 +22,7 @@ class Parameter:
     max: Optional[float] = None
     dtype: Optional[type] = None
     wavelength: Optional[u.Quantity[u.um]] = None
-    interpolation: Optional[bool] = False
+    interpolate: Optional[bool] = False
 
     def __setattr__(self, key: str, value: Any):
         """Sets an attribute."""
@@ -34,7 +34,7 @@ class Parameter:
     def __post_init__(self):
         """Post initialisation actions."""
         self.value = self._set_to_numpy_array(self.value)
-        self.wavelength = self._set_to_numpy_array(self.wavelength, True)
+        self.wavelength = self._set_to_numpy_array(self.wavelength)
 
     def __call__(self, wavelength: Optional[u.Quantity[u.um]] = None) -> np.ndarray:
         """Gets the value for the parameter or the corresponding
@@ -42,14 +42,14 @@ class Parameter:
         if wavelength is None or self.wavelength is None:
             value = self.value
         else:
-            if self.interpolation:
+            if self.interpolate:
                 value = np.interp(wavelength, self.wavelength*u.um, self.value)
             else:
-                # HACK: Multiplying by microns makes it work.
-                indices = list(get_closest_indices(
-                    wavelength, array=self.wavelength*u.um,
-                    window=OPTIONS.data.binning.window).values())
-                value = self.value[indices[0]].mean()
+                indices = get_closest_indices(
+                        wavelength, array=self.wavelength,
+                        window=OPTIONS.data.binning.window)
+
+                value = [self.value[index].mean() for index in indices]
         return u.Quantity(value, unit=self.unit, dtype=self.dtype)
 
     def __str__(self):
