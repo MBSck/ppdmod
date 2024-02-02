@@ -118,16 +118,22 @@ def calculate_chi_sq(data: u.quantity, error: u.quantity,
             error**2 + model_data**2*np.exp(2*lnf))
 
     if method == "linear":
-        return -0.5*np.sum((data-model_data)**2*inv_sigma_squared + np.log(1/inv_sigma_squared))
+        return -0.5*np.sum((data-model_data)**2*inv_sigma_squared
+                           + np.log(1/inv_sigma_squared))
 
     diff = np.angle(np.exp((data-model_data)*u.deg.to(u.rad)*1j), deg=False)
     return -0.5*np.sum(diff**2*inv_sigma_squared + np.log(1/inv_sigma_squared))
 
 
-def calculate_observables(components: List[Component], wavelength: u.um,
-                          ucoord: np.ndarray, vcoord: np.ndarray,
-                          u123coord: np.ndarray, v123coord: np.ndarray):
+def calculate_observables(components: List[Component]):
     """Calculates the observables from the model."""
+    corr_flux = "vis2" not in OPTIONS.fit.data
+    vis = OPTIONS.data.vis if corr_flux else OPTIONS.data.vis2
+    ucoord, vcoord = vis.ucoord, vis.vcoord
+    u123coord = OPTIONS.data.t3.u123coord
+    v123coord = OPTIONS.data.t3.v123coord
+    wavelength = OPTIONS.fit.wavelengths
+
     flux_model, vis_model, t3_model = None, None, None
     if components is not None:
         stellar_flux = components[0].calculate_flux(wavelength).value
@@ -147,30 +153,27 @@ def calculate_observables(components: List[Component], wavelength: u.um,
 
         flux_model += stellar_flux
         vis_model += stellar_flux
-        if "vis2" in OPTIONS.fit.data:
+        if not corr_flux:
             vis_model = vis_model/flux_model
+
+        flux_model = np.tile(
+                flux_model, (OPTIONS.data.flux.value.shape[1]))
     return flux_model, vis_model, t3_model
 
 
 def calculate_observable_chi_sq(
-        flux: SimpleNamespace, flux_model: np.ndarray,
-        vis: SimpleNamespace, vis_model: np.ndarray,
-        t3: SimpleNamespace, t3_model: np.ndarray) -> float:
+        flux_model: np.ndarray,
+        vis_model: np.ndarray,
+        t3_model: np.ndarray) -> float:
     """Calculates the model's observables.
 
     Parameters
     ----------
-    flux : types.SimpleNamespace
-        The flux data.
     flux_model : numpy.ndarray
         The model's total flux.
-    vis : types.SimpleNamespace
-        Either the correlated flux or the visibility data.
     vis_model : numpy.ndarray
         Either the model's correlated fluxes or the model's
         visibilities (depends on the OPTIONS.fit.data).
-    t3 : types.SimpleNamespace
-        The closure phase data.
     t3_model : numpy.ndarray
         The model's closure phase.
 
@@ -179,26 +182,17 @@ def calculate_observable_chi_sq(
     chi_sq : float
         The chi square.
     """
+    params = {"flux": flux_model,
+              "vis": vis_model, "t3": t3_model}
     chi_sq = 0.
-    if "flux" in OPTIONS.fit.data:
-        flux_model = np.tile(flux_model, (flux.value.shape[1]))
-        nan_flux = np.isnan(flux.value)
+    for key in OPTIONS.fit.data:
+        data = getattr(OPTIONS.data, key)
+        weight = getattr(OPTIONS.fit.weights, key)
+        nan_indices = np.isnan(data.value)
         chi_sq += calculate_chi_sq(
-                flux.value[~nan_flux], flux.err[~nan_flux],
-                flux_model[~nan_flux]) * OPTIONS.fit.weights.flux
-
-    if "vis" in OPTIONS.fit.data or "vis2" in OPTIONS.fit.data:
-        nan_vis = np.isnan(vis.value)
-        chi_sq += calculate_chi_sq(
-                vis.value[~nan_vis], vis.err[~nan_vis],
-                vis_model[~nan_vis]) * OPTIONS.fit.weights.vis
-
-    if "t3" in OPTIONS.fit.data:
-        nan_t3 = np.isnan(t3.value)
-        chi_sq += calculate_chi_sq(
-                t3.value[~nan_t3], t3.err[~nan_t3],
-                t3_model[~nan_t3], method="exponential")\
-            * OPTIONS.fit.weights.t3
+                data.value[~nan_indices],
+                data.err[~nan_indices],
+                params[key][~nan_indices]) * weight
     return float(chi_sq)
 
 
@@ -272,17 +266,7 @@ def lnprob(theta: np.ndarray) -> float:
     for component in components:
         component.params["rin0"] = innermost_radius
 
-    flux = OPTIONS.data.flux
-    vis = OPTIONS.data.vis if "vis" in OPTIONS.fit.data\
-        else OPTIONS.data.vis2
-    t3 = OPTIONS.data.t3
-
-    flux_model, vis_model, t3_model = calculate_observables(
-            components, OPTIONS.fit.wavelengths, vis.ucoord,
-            vis.vcoord, t3.u123coord, t3.v123coord)
-
-    return calculate_observable_chi_sq(
-            flux, flux_model, vis, vis_model, t3, t3_model)
+    return calculate_observable_chi_sq(*calculate_observables(components))
 
 
 def run_mcmc(nwalkers: int,

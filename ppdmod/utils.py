@@ -1,19 +1,14 @@
 import time as time
 from pathlib import Path
-from typing import Any, Callable, Optional, Dict, Tuple, List
+from typing import Callable, Optional, Dict, Tuple, List
 
 import astropy.units as u
 import matplotlib.pyplot as plt
 import numpy as np
-from astropy.convolution import Gaussian1DKernel, Box1DKernel, convolve
 from matplotlib.axes import Axes
 from matplotlib.legend import Legend
-from numpy.polynomial.polynomial import polyval
 from openpyxl import Workbook, load_workbook
-from scipy.interpolate import interp1d
 from scipy.special import j1
-
-from .options import OPTIONS
 
 
 def take_time_average(func: Callable, *args,
@@ -131,7 +126,8 @@ def distance_to_angular(diameter: u.mas, distance: u.pc) -> u.m:
 
 def calculate_effective_baselines(
         ucoord: u.m, vcoord: u.m, axis_ratio: u.one,
-        pos_angle: u.deg) -> Tuple[u.Quantity[u.m], u.Quantity[u.one]]:
+        pos_angle: u.deg, longest: Optional[bool] = False
+        ) -> Tuple[u.Quantity[u.m], u.Quantity[u.one]]:
     """Calculates the effective baselines from the projected baselines
     in mega lambda.
 
@@ -145,14 +141,13 @@ def calculate_effective_baselines(
         The axis ratio of the ellipse
     pos_angle: astropy.units.deg
         The positional angle of the object
-    wavelength: astropy.units.um, optional
-        The wavelength.
 
     Returns
     -------
-    astropy.units.m or astropy.units.one
-        Returns the projected baselines either in meter or
-        mega lambda.
+    baselines : astropy.units.m
+        Returns the effective baselines.
+    baselines_angles : astropy.units.rad
+        Returns the effective baseline angles.
     """
     if not isinstance(ucoord, u.Quantity):
         ucoord, vcoord = map(lambda x: x*u.m, [ucoord, vcoord])
@@ -162,9 +157,16 @@ def calculate_effective_baselines(
         if not isinstance(pos_angle, u.Quantity) else pos_angle
 
     ucoord_eff = ucoord*np.cos(pos_angle) - vcoord*np.sin(pos_angle)
-    vcoord_eff = (ucoord*np.sin(pos_angle) + vcoord*np.cos(pos_angle))*axis_ratio
-    return np.hypot(ucoord_eff, vcoord_eff), \
-        np.arctan2(ucoord_eff, vcoord_eff)
+    vcoord_eff = ucoord*np.sin(pos_angle) + vcoord*np.cos(pos_angle)
+    baselines_eff = np.hypot(ucoord_eff, vcoord_eff*axis_ratio)
+    baseline_angles_eff = np.arctan2(ucoord_eff, vcoord_eff*axis_ratio)
+
+    if longest:
+        indices = baselines_eff.argmax(0)
+        iteration = np.arange(baselines_eff.shape[1])
+        baselines_eff = baselines_eff[indices, iteration]
+        baseline_angles_eff = baseline_angles_eff[indices, iteration]
+    return baselines_eff.squeeze(), baseline_angles_eff.squeeze()
 
 
 def binary(dim: int, pixel_size: u.mas,
@@ -340,159 +342,86 @@ def qval_to_opacity(qval_file: Path) -> u.cm**2/u.g:
         3*qval/(4*(grain_size*u.um).to(u.cm)*(density*u.g/u.cm**3))
 
 
-def transform_data(
-        wavelength_grid: u.um, data: u.Quantity, wavelength_solution: u.um,
-        dl_coeffs: Optional[u.Quantity[u.one]] = None,
-        resolution: Optional[str] = "low",
-        spectral_binning: Optional[float] = 7,
-        kernel_width: Optional[float] = 10
-        ) -> u.Quantity:
-    """Transform a spectrum to the real wavlength grid of MATISSE.
-    Function written by József Varga.
+def restrict_wavelength(
+        wavelength: np.ndarray, array: np.ndarray,
+        wavelength_range: u.um) -> Tuple[np.ndarray, np.ndarray]:
+    """Restricts the wavelength for an input range."""
+    indices = (wavelength > wavelength_range[0])\
+        & (wavelength < wavelength_range[1])
+    return wavelength[indices], array[indices]
+
+
+def restrict_phase(phase: np.ndarray) -> np.ndarray:
+    """Restricts the phase to [-180, 180] degrees."""
+    restricted_phase = phase % 360
+    restricted_phase[restricted_phase > 180] -= 360
+    return restricted_phase
+
+
+def load_data(files: List[Path],
+              wavelength_range: Optional[u.um] = [0.5, 50],
+              load_func: Optional[Callable] = None,
+              comments: Optional[str] = "#",
+              skiprows: Optional[int] = 1,
+              ) -> Tuple[np.ndarray, np.ndarray]:
+    """Loads data from a file.
+
+    Can either be one or multiple files, but in case
+    of multiple files they need to have the same structure
+    and size (as they will be converted to numpy.ndarrays).
 
     Parameters
     ----------
-    wavelength_grid : astropy.units.um
-    data : astropy.units.Quantity
-    wavelength_solution : astropy.units.um
-    dl_coeffs : list of float
-    kernel_width : float
-        The kernel width [px].
-    spectral_binning : float
+    files : list of pathlib.Path
+    wavelength_range : tuple of float, optional
+    load_func : callable, optional
+    comments : str, optional
+    skiprows : str, optional
 
     Returns
     -------
-    transformed_data : astropy.units.Quantity
+    wavelength_grid : numpy.ndarray
+    data : numpy.ndarray
     """
-    dl_coeffs = getattr(OPTIONS.spectrum.dl_coeffs, resolution)\
-        if dl_coeffs is None else dl_coeffs
-    min_wl, max_wl = np.min(wavelength_grid), np.max(wavelength_grid)
-    wavelength, wl_new = min_wl, [min_wl]
-    while wavelength < max_wl:
-        wavelength = wavelength\
-            + u.um*polyval(wavelength.value, dl_coeffs)/kernel_width
-        wl_new.append(wavelength)
-    wl_new = u.Quantity(wl_new, unit=u.um)
-    f_spec_new = interp1d(wavelength_grid, data,
-                          kind="cubic", fill_value="extrapolate")
-    spec_new = f_spec_new(wl_new)
+    files = files if isinstance(files, list) else [files]
+    wavelength_grids, data = [], []
+    for file in files:
+        if load_func is not None:
+            wavelengths, content = load_func(file)
+        else:
+            wavelengths, content, *_ = np.loadtxt(
+                file, skiprows=skiprows,
+                comments=comments, unpack=True)
 
-    # NOTE: Convolve with Gaussian kernel
-    kernel = Gaussian1DKernel(stddev=kernel_width /
-                              (2.0*np.sqrt(2.0*np.log(2.0))))
-    spec_new[0] = np.nanmedian(spec_new[0:int(kernel.dimension/2.0)])
-    spec_new[-1] = np.nanmedian(spec_new[-1:-int(kernel.dimension/2.0)])
-    spec_convolved = convolve(spec_new, kernel, boundary="extend")
+        if isinstance(wavelengths, u.Quantity):
+            wavelengths = wavelengths.value
+            content = content.value
 
-    # NOTE: Interpolate the convolved spectrum to the input wavelength grid
-    f_spec_new = interp1d(wl_new, spec_convolved,
-                          kind="cubic", fill_value="extrapolate")
-    spec_interp = f_spec_new(wavelength_solution)
+        if wavelength_range is not None:
+            wavelengths, content = restrict_wavelength(
+                    wavelengths, content, wavelength_range)
 
-    # NOTE: Apply spectral binning: Convolve with a top-hat kernel of size
-    # spectral_binning
-    if spectral_binning > 1:
-        kernel = Box1DKernel(spectral_binning)
-        spec_final = convolve(spec_interp, kernel, boundary="extend")
-    else:
-        spec_final = spec_interp
-    return spec_final
+        wavelength_grids.append(wavelengths)
+        data.append(content)
+    return tuple(map(lambda x: np.array(x).squeeze(),
+                     (wavelength_grids, data)))
 
 
-def data_to_matisse_grid(wavelength_solution: u.um,
-                         wavelength_grid: Optional[u.Quantity[u.um]] = None,
-                         data: Optional[Any] = None,
-                         data_file: Optional[Path] = None,
-                         unit: Optional[u.Quantity] = None,
-                         resolution: Optional[str] = "low",
-                         load_func: Optional[Callable] = None,
-                         skiprows: Optional[str] = 1,
-                         comments: Optional[str] = "#",
-                         save_path: Optional[Path] = None) -> np.ndarray:
-    """Interpolates an opacity from its wavelength grid to the
-    MATISSE wavelength grid.
+def linearly_combine_data(data: np.ndarray, weights: u.one) -> np.ndarray:
+    """Linearly combines multiple opacities by their weights.
 
     Parameters
     ----------
-    wavelength_solution : astropy.units.um
-        The MATISSE wavelength solution.
     data : numpy.ndarray
-        The data.
-    wavelength_grid : astropy.units.um
-        The wavelength grid.
-    data_file : pathlib.Path
-        The data file.
-    unit : astropy.units, optional
-        The unit of the data.
-    resolution : str
-        The resolution of the data.
-    method : str
-        The method to use.
+        The data to be linearly combined.
+    weights : u.one
+        The weights for the different data.
 
     Returns
     -------
     numpy.ndarray
     """
-    if data_file is not None:
-        if load_func is not None:
-            wavelength_grid, data = load_func(data_file)
-        else:
-            wavelength_grid, data, *_ = np.loadtxt(
-                data_file, skiprows=skiprows,
-                comments=comments, unpack=True)
-    elif wavelength_grid is None or data is None:
-        raise ValueError("Either a file or a wavelength_grid and its"
-                         "corresponding data must be given.")
-
-    wavelength_grid = u.Quantity(wavelength_grid, unit=u.um)
-    ind = np.where(np.logical_and(
-        (wavelength_solution.min()-1*u.um) < wavelength_grid,
-        wavelength_grid < (wavelength_solution.max()+1*u.um)))
-    wavelength_grid, data = wavelength_grid[ind], data[ind]
-    matisse_data = transform_data(
-        wavelength_grid, data, wavelength_solution,
-        getattr(OPTIONS.spectrum.coefficients, resolution),
-        OPTIONS.spectrum.binning,
-        OPTIONS.spectrum.kernel.width)
-
-    if save_path is not None:
-        np.save(save_path, [wavelength_solution, matisse_data])
-    return u.Quantity(matisse_data, unit=unit)
-
-
-# TODO: Remove the load func here and just use data instead of files?
-def linearly_combine_data(files: List[Path], weights: u.one,
-                          wavelength_solution: u.um,
-                          unit: Optional[u.Quantity] = None,
-                          load_func: Optional[Callable] = None,
-                          resolution: Optional[str] = "low") -> np.ndarray:
-    """Linearly combines multiple opacities by their weights.
-
-    Parameters
-    ----------
-    weights : u.one
-        The weights for the different opacity components.
-    files : list of pathlib.Path
-    wavelength_solution : u.um
-        The MATISSE wavelength solution.
-    """
-    combined_data = None
-    for weight, data_file in zip(weights, files):
-        data = data_to_matisse_grid(
-                wavelength_solution, load_func=load_func,
-                data_file=data_file, resolution=resolution, unit=unit)
-        if combined_data is None:
-            combined_data = weight*data
-        else:
-            combined_data += weight*data
-    return combined_data
-
-
-def restrict_phase(phase: np.ndarray):
-    """Restricts the phase to [-180, 180] degrees."""
-    restricted_phase = phase % 360
-    restricted_phase[restricted_phase > 180] -= 360
-    return restricted_phase
+    return np.sum(data*weights[:, np.newaxis], axis=0)
 
 
 def set_axes_color(ax: Axes, background_color: str) -> None:

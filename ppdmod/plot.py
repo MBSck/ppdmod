@@ -275,7 +275,7 @@ def plot_datapoints(
     fluxes = OPTIONS.data.flux
     vis = OPTIONS.data.vis if "vis" in OPTIONS.fit.data\
         else OPTIONS.data.vis2
-    t3phi = OPTIONS.data.t3phi
+    t3 = OPTIONS.data.t3
 
     errorbar_params = OPTIONS.plot.errorbar
     scatter_params = OPTIONS.plot.scatter
@@ -291,12 +291,12 @@ def plot_datapoints(
             vis.ucoord[index], vis.vcoord[index],
             axis_ratio, pos_angle)[0]
         longest_baselines = calculate_effective_baselines(
-            t3phi.u123coord[index], t3phi.v123coord[index],
+            t3.u123coord[index], t3.v123coord[index],
             axis_ratio, pos_angle)[0].max(axis=0)
         flux_model, vis_model, cphase_model = calculate_observables(
                 components, wavelength,
                 vis.ucoord[index], vis.vcoord[index],
-                t3phi.u123coord[index], t3phi.v123coord[index])
+                t3.u123coord[index], t3.v123coord[index])
 
         effective_baselines_mlambda = effective_baselines/wavelength.value
         longest_baselines_mlambda = longest_baselines/wavelength.value
@@ -337,17 +337,17 @@ def plot_datapoints(
                         marker="o", **vars(scatter_params))
                 lower_ax.axhline(y=0, color=hline_color, linestyle='--')
 
-            if key == "t3phi":
+            if key == "t3":
                 upper_ax.errorbar(
                         longest_baselines_mlambda.value,
-                        t3phi.value[index], t3phi.err[index],
+                        t3.value[index], t3.err[index],
                         fmt="o", **vars(errorbar_params))
                 upper_ax.scatter(
                         longest_baselines_mlambda.value, cphase_model,
                         marker="X", **vars(scatter_params))
                 upper_ax.axhline(y=0, color=hline_color, linestyle='--')
                 lower_ax.scatter(longest_baselines_mlambda.value,
-                                 restrict_phase(t3phi.value[index]-cphase_model),
+                                 restrict_phase(t3.value[index]-cphase_model),
                                  marker="o", **vars(scatter_params))
                 lower_ax.axhline(y=0, color=hline_color, linestyle='--')
 
@@ -478,17 +478,17 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
                 legend = upper_ax.legend(handles=[dot_label, x_label])
                 set_legend_color(legend, OPTIONS.plot.color.background)
 
-        if key == "t3phi":
+        if key == "t3":
             upper_ax.set_ylabel(r"Closure Phases ($^\circ$)")
             lower_ax.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}$ (M$\lambda$)")
             lower_ax.set_ylabel(r"Residuals ($^\circ$)")
-            lower_bound = np.min([np.min(value) for value in OPTIONS.data.t3phi.value])
+            lower_bound = np.min([np.min(value) for value in OPTIONS.data.t3.value])
             lower_bound += lower_bound*0.25
-            upper_bound = np.max([np.max(value) for value in OPTIONS.data.t3phi.value])
+            upper_bound = np.max([np.max(value) for value in OPTIONS.data.t3.value])
             upper_bound += upper_bound*0.25
             upper_ax.tick_params(**tick_settings)
-            if "t3phi" in ylimits:
-                upper_ax.set_ylim(ylimits["t3phi"])
+            if "t3" in ylimits:
+                upper_ax.set_ylim(ylimits["t3"])
             else:
                 upper_ax.set_ylim([lower_bound, upper_bound])
             legend = upper_ax.legend(handles=[dot_label, x_label])
@@ -547,7 +547,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
     fluxes = OPTIONS.data.flux
     vis = OPTIONS.data.vis if "vis" in OPTIONS.fit.data\
         else OPTIONS.data.vis2
-    t3phi = OPTIONS.data.t3phi
+    t3 = OPTIONS.data.t3
 
     # TODO: Set the color somewhere centrally so all plots are the same color.
     errorbar_params = OPTIONS.plot.errorbar
@@ -558,9 +558,9 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
         if wavelength_range is not None:
             if not (wavelength_range[0] <= wavelength <= wavelength_range[1]):
                 continue
-        effective_baselines = np.hypot(vis.ucoord[index], vis.vcoord[index])*u.m
-        longest_baselines = np.hypot(t3phi.u123coord[index],
-                                     t3phi.v123coord[index]).max(axis=0)*u.m
+        effective_baselines = np.hypot(vis.ucoord, vis.vcoord)*u.m
+        longest_baselines = np.hypot(
+                t3.u123coord, t3.v123coord).max(axis=0)*u.m
 
         effective_baselines_mlambda = effective_baselines/wavelength.value
         longest_baselines_mlambda = longest_baselines/wavelength.value
@@ -573,20 +573,26 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
             if key == "flux":
                 for flux, flux_err in zip(
                         fluxes.value[index], fluxes.err[index]):
+                    if flux == np.nan:
+                        continue
                     ax.errorbar(
                         wavelength.value, flux, flux_err,
                         fmt="o", **vars(errorbar_params))
 
             if key in ["vis", "vis2"]:
+                nan_vis = np.isnan(vis.value[index])
                 ax.errorbar(
-                    effective_baselines_mlambda.value,
-                    vis.value[index], vis.err[index],
+                    effective_baselines_mlambda.value[~nan_vis],
+                    vis.value[index][~nan_vis],
+                    vis.err[index][~nan_vis],
                     fmt="o", **vars(errorbar_params))
 
-            if key == "t3phi":
+            if key == "t3":
+                nan_vis = np.isnan(t3.value[index])
                 ax.errorbar(
-                    longest_baselines_mlambda.value,
-                    t3phi.value[index], t3phi.err[index],
+                    longest_baselines_mlambda.value[~nan_vis],
+                    t3.value[index][~nan_vis],
+                    t3.err[index][~nan_vis],
                     fmt="o", **vars(errorbar_params))
                 ax.axhline(y=0, color=hline_color, linestyle='--')
 
@@ -641,15 +647,15 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
                 ax.set_ylim([0, 1])
             ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
 
-        if key == "t3phi":
+        if key == "t3":
             ax.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}$ (M$\lambda$)")
             ax.set_ylabel(r"Closure Phases ($^\circ$)")
-            lower_bound = np.min([np.min(value) for value in t3phi.value])
+            lower_bound = np.min([np.min(value) for value in t3.value])
             lower_bound += lower_bound*0.25
-            upper_bound = np.max([np.max(value) for value in t3phi.value])
+            upper_bound = np.max([np.max(value) for value in t3.value])
             upper_bound += upper_bound*0.25
-            if "t3phi" in ylimits:
-                ax.set_ylim(ylimits["t3phi"])
+            if "t3" in ylimits:
+                ax.set_ylim(ylimits["t3"])
             else:
                 ax.set_ylim([lower_bound, upper_bound])
 
@@ -844,5 +850,5 @@ def plot_observables(target: str,
         ax.set_xlabel(r"$\lambda$ ($\mu$m)")
         ax.set_ylabel(r"Closure Phases ($^\circ$)")
         plt.legend()
-        plt.savefig(cphase_dir / f"t3phi_{baseline:.2f}.pdf", format="pdf")
+        plt.savefig(cphase_dir / f"t3_{baseline:.2f}.pdf", format="pdf")
         plt.close()

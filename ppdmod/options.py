@@ -125,14 +125,6 @@ model = SimpleNamespace(components_and_params={},
                         dtype=dtype, gridtype="linear", modulation=0)
 
 
-# NOTE: Spectrum
-coefficients = SimpleNamespace(
-        low=[0.10600484,  0.01502548,  0.00294806, -0.00021434],
-        high=[-8.02282965e-05,  3.83260266e-03, 7.60090459e-05, -4.30753848e-07])
-kernel = SimpleNamespace(width=10)
-spectrum = SimpleNamespace(binning=7, coefficients=coefficients,
-                           kernel=kernel)
-
 # NOTE: Plot
 color = SimpleNamespace(background="white",
                         colormap="tab20", number=100,
@@ -157,5 +149,4 @@ fit = SimpleNamespace(weights=weights,
 
 # NOTE: All options
 OPTIONS = SimpleNamespace(data=data, model=model,
-                          spectrum=spectrum,
                           plot=plot, fit=fit)

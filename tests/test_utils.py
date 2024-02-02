@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 import astropy.units as u
 import matplotlib.pyplot as plt
@@ -7,49 +7,50 @@ import numpy as np
 import pytest
 
 from ppdmod import utils
-from ppdmod.data import ReadoutFits
+from ppdmod.data import ReadoutFits, set_fit_wavelengths, set_data
 from ppdmod.options import OPTIONS
 
+
 # TODO: Finish the tests here
-
-
 @pytest.fixture
-def qval_dir() -> Path:
-    """The qval-file directory."""
-    return Path("data/qval")
-
-
-@pytest.fixture
-def qval_files(qval_dir: Path) -> List[Path]:
+def qval_files() -> List[Path]:
     files = ["Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat",
              "Q_Am_Mgolivine_Jae_DHS_f1.0_rv1.5.dat",
              "Q_Am_Mgpyroxene_Dor_DHS_f1.0_rv1.5.dat",
              "Q_Fo_Suto_DHS_f1.0_rv0.1.dat",
              "Q_Fo_Suto_DHS_f1.0_rv1.5.dat",
              "Q_En_Jaeger_DHS_f1.0_rv1.5.dat"]
-    return list(map(lambda x: qval_dir / x, files))
+    return list(map(lambda x: Path("data/qval") / x, files))
 
 
 @pytest.fixture
-def grf_files(grf_dir: Path) -> List[Path]:
+def grf_files() -> List[Path]:
     files = ["MgOlivine0.1.Combined.Kappa",
              "MgOlivine2.0.Combined.Kappa",
              "MgPyroxene2.0.Combined.Kappa",
              "Forsterite0.1.Combined.Kappa",
              "Forsterite2.0.Combined.Kappa",
              "Enstatite2.0.Combined.Kappa"]
-    return list(map(lambda x: grf_dir / x, files))
+    return list(map(lambda x: Path("data/grf") / x, files))
 
 
 @pytest.fixture
-def continuum_file(qval_dir: Path) -> Path:
-    return qval_dir / "Q_amorph_c_rv0.1.dat"
+def continuum_file() -> Path:
+    return Path("data/qval") / "Q_amorph_c_rv0.1.dat"
 
 
 @pytest.fixture
 def fits_files() -> Path:
     """MATISSE (.fits)-files."""
     return list(Path("data/fits").glob("*2022-04-23*.fits"))
+
+
+@pytest.fixture
+def all_wavelength_grid() -> Path:
+    """The wavelength grid."""
+    data = list(map(lambda x: ReadoutFits(x).wavelength,
+                    Path("data/fits").glob("*fits")))
+    return np.sort(np.unique(np.concatenate(data)))
 
 
 @pytest.fixture
@@ -123,52 +124,49 @@ def test_distance_to_angular(distance: u.Quantity,
     assert np.isclose(angular_diameter.to(u.arcsec), 1*u.arcsec, atol=1e-2)
 
 
-# TODO: Check if it works
-# TODO: Make sure it calculates the longest baselines as well
-# TODO: Test it with multiple files (GRAVITY+PIONIER+MATISSE)
-# def test_calculate_effective_baselines(fits_files: Path,
-#                                        wavelengths: u.um) -> None:
-#     """Tests the calculation of the effective baselines."""
-#     axis_ratio, pos_angle = 0.35, 33*u.deg
-#     wavelength = wavelengths[0]
-#     readouts = [ReadoutFits(fits_file) for fits_file in fits_files]
-#     ucoord = np.concatenate([readout.ucoord for readout in readouts])
-#     vcoord = np.concatenate([readout.vcoord for readout in readouts])
-#     breakpoint()
+def test_calculate_effective_baselines(
+        fits_files: Path, wavelengths: u.um) -> None:
+    """Tests the calculation of the effective baselines."""
+    axis_ratio, pos_angle = 0.35*u.one, 33*u.deg
+    fit_data = ["flux", "vis", "vis2", "t3"]
+    set_fit_wavelengths(wavelengths)
+    set_data(fits_files, fit_data=fit_data)
 
-#     baseline_dir = Path("baselines")
-#     if not baseline_dir.exists():
-#         baseline_dir.mkdir()
+    nfiles = len(fits_files)
+    baseline_dir = Path("baselines")
+    if not baseline_dir.exists():
+        baseline_dir.mkdir()
 
-#     index = np.where(wavelength == readout.wavelength)
+    vis = OPTIONS.data.vis2
+    effective_baselines, baseline_angles = utils.calculate_effective_baselines(
+        vis.ucoord, vis.vcoord, axis_ratio, pos_angle)
 
-#     effective_baselines, baseline_angles = utils.calculate_effective_baselines(
-#         readout.ucoord, readout.vcoord, axis_ratio, pos_angle)
+    assert effective_baselines.shape == (6*nfiles, )
+    assert effective_baselines.unit == u.m
+    assert baseline_angles.shape == (6*nfiles, )
+    assert baseline_angles.unit == u.rad
 
-#     plt.scatter(effective_baselines/wavelength.value,
-#                 readout.vis[:, index].squeeze())
-#     plt.savefig(baseline_dir / "baseline_vs_vis.pdf", format="pdf")
-#     plt.close()
+    t3 = OPTIONS.data.t3
+    effective_baselines_cp, baseline_angles = utils.calculate_effective_baselines(
+        t3.u123coord, t3.v123coord, axis_ratio, pos_angle, longest=True)
 
-#     assert effective_baselines.size == 6
-#     assert effective_baselines.unit == u.m
-#     assert baseline_angles.size == 6
-#     assert baseline_angles.unit == u.rad
+    assert effective_baselines_cp.shape == (4*nfiles, )
+    assert effective_baselines_cp.unit == u.m
+    assert baseline_angles.shape == (4*nfiles, )
+    assert baseline_angles.unit == u.rad
 
-#     effective_baselines_cp, baseline_angles = utils.calculate_effective_baselines(
-#         readout.u123coord, readout.v123coord, axis_ratio, pos_angle)
-#     baseline_angles = baseline_angles
-#     breakpoint()
-#     effective_baselines_cp = effective_baselines.max(axis=0)
+    _, (ax, bx) = plt.subplots(1, 2, figsize=(12, 4))
+    ax.scatter(effective_baselines.value/wavelengths.value[:, np.newaxis],
+               vis.value)
+    ax.set_xlabel(r"$B_{\mathrm{eff}}$ (M$\lambda$)")
+    ax.set_ylabel("Visibilities")
 
-#     plt.scatter(effective_baselines_cp/wavelength.value,
-#                 readout.t3[:, index].squeeze())
-#     plt.savefig(baseline_dir / "baseline_vs_t3.pdf", format="pdf")
-#     plt.close()
-
-#     assert effective_baselines_cp.shape == (4,)
-#     assert effective_baselines_cp.unit == u.m
-#     assert baseline_angles.shape == (4,)
+    bx.scatter(effective_baselines_cp.value/wavelengths.value[:, np.newaxis],
+               t3.value)
+    bx.set_xlabel(r"$B_{\mathrm{max}}$ (M$\lambda$)")
+    bx.set_ylabel("Closure phase (deg)")
+    plt.savefig(baseline_dir / "effective baselines.pdf", format="pdf")
+    plt.close()
 
 
 def test_binary() -> None:
@@ -198,8 +196,8 @@ def test_binary_vis(wavelengths: u.um) -> None:
 
 def test_uniform_disk() -> None:
     """Tests the calculation of a uniform disk's brightness."""
-    uniform_disk = utils.uniform_disk(0.1*u.mas, 512,
-                                      diameter=4*u.mas)
+    uniform_disk = utils.uniform_disk(
+            0.1*u.mas, 512, diameter=4*u.mas)
     assert uniform_disk.shape == (512, 512)
     assert uniform_disk.unit == u.one
 
@@ -214,124 +212,147 @@ def test_uniform_disk_vis(wavelengths: u.um) -> None:
     assert np.array_equal(np.real(uniform_disk_vis), uniform_disk_vis)
 
 
-# @pytest.mark.parametrize(
-#     "file", ["Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat",
-#              "Q_Am_Mgolivine_Jae_DHS_f1.0_rv1.5.dat",
-#              "Q_Am_Mgpyroxene_Dor_DHS_f1.0_rv1.5.dat",
-#              "Q_Fo_Suto_DHS_f1.0_rv0.1.dat",
-#              "Q_Fo_Suto_DHS_f1.0_rv1.5.dat",
-#              "Q_En_Jaeger_DHS_f1.0_rv1.5.dat"])
-# def test_transform_data(qval_file_dir: Path, file: str,
-#                         high_wavelength_solution: u.um,
-#                         wavelength_solution: u.um) -> None:
-#     """Tests the opacity interpolation from one wavelength
-#     axis to another."""
-#     opacity_dir = Path("opacities")
-#     if not opacity_dir.exists():
-#         opacity_dir.mkdir()
-
-#     qval_file = qval_file_dir / file
-#     wavelength_grid, opacity = utils.qval_to_opacity(qval_file)
-
-#     assert opacity.unit == u.cm**2/u.g
-#     assert opacity.shape == wavelength_grid.shape
-
-#     _, axarr = plt.subplots(2, 2, figsize=(12, 12))
-#     fields = [["low", "low"], ["low", "high"],
-#               ["high", "low"], ["high", "high"]]
-#     wavelength_solutions = {"low": wavelength_solution,
-#                             "high": high_wavelength_solution}
-#     opacities = []
-#     for field in fields:
-#         ind = np.where(np.logical_and(
-#             (wavelength_solutions[field[0]].min()-1*u.um) < wavelength_grid,
-#             wavelength_grid < (wavelength_solutions[field[0]].max()+1*u.um)))
-#         wl_grid, opc = wavelength_grid[ind], opacity[ind]
-#         dl_coeffs = getattr(OPTIONS.spectrum.coefficients, field[1])
-#         opacities.append(utils.transform_data(
-#                 wl_grid, opc, wavelength_solutions[field[0]], dl_coeffs=dl_coeffs))
-
-#     for index, (ax, op) in enumerate(zip(axarr.flatten(), opacities)):
-#         ax.plot(wl_grid.value, opc.value, label="Original")
-#         ax.plot(wavelength_solutions[fields[index][0]].value, op.value, label="After")
-#         ax.set_title(f"Wavelength Solution: {fields[index][0].upper()}; "
-#                      f"Coefficients: {fields[index][1].upper()}")
-#         ax.set_ylabel(r"$\kappa$ (cm$^{2}$g)")
-#         ax.set_xlabel(r"$\lambda$ (um)")
-#         ax.legend()
-#     plt.savefig(opacity_dir / f"{qval_file.stem}_kw10px.pdf", format="pdf")
-#     plt.close()
-
-#     assert all(opacity.unit == u.cm**2/u.g for opacity in opacities)
-#     for field, op in zip(fields, opacities):
-#         assert op.shape == wavelength_solutions[field[0]].shape
+def test_qval_to_opacity(qval_files: List[Path]) -> None:
+    """Tests the conversion of Q-values to opacities."""
+    wavelength, opacity = utils.qval_to_opacity(qval_files[0])
+    assert wavelength.unit == u.um
+    assert opacity.unit == u.cm**2/u.g
 
 
-# # NOTE: This test, tests nothing
-# # TODO: Make a plot here
-# def test_opacity_to_matisse_opacity(
-#         qval_file_dir: Path, wavelength_solution: u.um) -> None:
-#     """Tests the interpolation to the MATISSE wavelength grid."""
-#     qval_file = qval_file_dir / "Q_SILICA_RV0.1.DAT"
-#     continuum_opacity = utils.data_to_matisse_grid(wavelength_solution,
-#                                                    qval_file=qval_file)
-#     assert continuum_opacity.unit == u.cm**2/u.g
+def test_restrict_wavelength() -> None:
+    """Tests the restriction of the wavelength grid."""
+    wavelength = np.linspace(0, 245, 100, endpoint=False)
+    array = np.arange(0, 100)
+    indices = (wavelength > 10) & (wavelength < 50)
+    new_wavelength, new_array = utils.restrict_wavelength(
+            wavelength, array, [10, 50])
+    assert new_wavelength.size == wavelength[indices].size
+    assert new_array.size == array[indices].size
 
 
-# # TODO: Check if it is combined properly.
-# def test_linearly_combine_opacities(
-#         qval_file_dir: Path,
-#         qval_files: List[Path],
-#         high_wavelength_solution: u.um,
-#         wavelength_solution: u.um) -> None:
-#     """Tests the linear combination of interpolated wavelength grids."""
-#     opacity_dir = Path("opacities")
-#     if not opacity_dir.exists():
-#         opacity_dir.mkdir()
-
-#     fields = [["low", "low"], ["low", "high"],
-#               ["high", "low"], ["high", "high"]]
-#     opacities = []
-#     weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
-#     weights_background = np.append(weights, [0.668])
-#     files = qval_files.copy()
-#     files.append(qval_file_dir / "Q_SILICA_RV0.1.DAT")
-#     wavelength_solutions = {"low": wavelength_solution,
-#                             "high": high_wavelength_solution}
-#     for field in fields:
-#         opacity = []
-#         opacity.append(utils.linearly_combine_data(
-#             weights, qval_files,
-#             wavelength_solutions[field[0]], field[1]))
-
-#         opacity.append(utils.linearly_combine_data(
-#             weights_background, files,
-#             wavelength_solutions[field[0]], field[1]))
-#         opacities.append(opacity)
-
-#     _, axarr = plt.subplots(2, 2, figsize=(12, 12))
-#     for index, (ax, opacity) in enumerate(zip(axarr.flatten(), opacities)):
-#         ax.plot(wavelength_solutions[fields[index][0]].value, opacity[0].value)
-#         ax.set_title(f"Wavelength Solution: {fields[index][0].upper()}; "
-#                      f"Coefficients: {fields[index][1].upper()}")
-#         ax.set_xlabel(r"$\lambda$ (um)")
-#         ax.set_ylabel(r"$\kappa$ (cm$^{2}$g)")
-#     plt.savefig(opacity_dir / "combined_opacities.pdf", format="pdf")
-#     plt.close()
-
-#     _, axarr = plt.subplots(2, 2, figsize=(12, 12))
-#     for index, (ax, opacity) in enumerate(zip(axarr.flatten(), opacities)):
-#         ax.plot(wavelength_solutions[fields[index][0]].value, opacity[1].value)
-#         ax.set_title(f"Wavelength Solution: {fields[index][0].upper()}; "
-#                      f"Coefficients: {fields[index][1].upper()}")
-#         ax.set_xlabel(r"$\lambda$ (um)")
-#         ax.set_ylabel(r"$\kappa$ (cm$^{2}$g)")
-#     plt.savefig(opacity_dir / "combined_opacities_with_silica.pdf", format="pdf")
-#     plt.close()
-
-#     for field, opacity in zip(fields, opacities):
-#         assert all(op.unit == u.cm**2/u.g for op in opacity)
-#         assert opacity[0].shape == wavelength_solutions[field[0]].shape
-#         assert opacity[1].shape == wavelength_solutions[field[0]].shape
+@pytest.mark.parametrize("shape", [(1, 10), (2, 10), (3, 10)])
+def test_restrict_phase(shape: Tuple[int, int]) -> None:
+    """Tests the restriction of the phase grid."""
+    phases = np.random.rand(*shape)*360
+    new_phases = utils.restrict_phase(phases)
+    assert ((phases > 180) | (phases < -180)).any()
+    assert ((new_phases < 180) | (new_phases > -180)).all()
 
 
+def test_load_data(qval_files: List[Path],
+                   grf_files: List[Path]) -> None:
+    """Tests the loading of a data file."""
+    wavelength_grids, data = utils.load_data(
+            qval_files[0], load_func=utils.qval_to_opacity)
+    assert len(data.shape) == 1
+    assert len(wavelength_grids.shape) == 1
+
+    wavelength_grids, data = utils.load_data(
+            qval_files, load_func=utils.qval_to_opacity)
+    assert data.shape[0] == 6
+    assert wavelength_grids.shape[0] == 6
+
+    wavelength_grids, data = utils.load_data(grf_files)
+    assert data.shape[0] == 6
+    assert wavelength_grids.shape[0] == 6
+
+
+def test_linearly_combine_data(
+        qval_files: List[Path],
+        grf_files: List[Path],
+        continuum_file: Path,
+        high_wavelength_solution: u.um,
+        wavelength_solutions: u.um,
+        all_wavelength_grid: u.um) -> None:
+    """Tests the linear combination of interpolated wavelength grids."""
+    low_wavelength_solution = wavelength_solutions[1].value
+    high_wavelength_solution = high_wavelength_solution.value
+    all_wavelength_grid = all_wavelength_grid.value
+    opacity_dir = Path("opacities")
+    if not opacity_dir.exists():
+        opacity_dir.mkdir()
+
+    weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
+    wavelength_qval, qval = utils.load_data(
+            qval_files, load_func=utils.qval_to_opacity)
+    wavelength_qval = wavelength_qval[0]
+    qval_combined = utils.linearly_combine_data(qval, weights)
+
+    wavelength_grf, grf = utils.load_data(grf_files)
+    wavelength_grf = wavelength_grf[0]
+    grf_combined = utils.linearly_combine_data(grf, weights)
+
+    assert (grf.shape[1],) == grf_combined.shape
+    assert (qval.shape[1],) == qval_combined.shape
+
+    wavelength_cont, continuum_data = utils.load_data(
+            continuum_file, load_func=utils.qval_to_opacity)
+
+    cont_low = np.interp(
+            low_wavelength_solution, wavelength_cont, continuum_data)
+    cont_high = np.interp(
+            high_wavelength_solution, wavelength_cont, continuum_data)
+    qval_low = np.interp(low_wavelength_solution, wavelength_qval, qval_combined)
+    qval_high = np.interp(high_wavelength_solution, wavelength_qval, qval_combined)
+    grf_low = np.interp(low_wavelength_solution, wavelength_grf, grf_combined)
+    grf_high = np.interp(high_wavelength_solution, wavelength_grf, grf_combined)
+
+    cont_ind = (wavelength_cont >= 1)\
+        & (wavelength_cont <= low_wavelength_solution[-1])
+    qval_ind = (wavelength_qval >= 1)\
+        & (wavelength_qval <= low_wavelength_solution[-1])
+    grf_ind = (wavelength_grf >= 1)\
+        & (wavelength_grf <= low_wavelength_solution[-1])
+
+    _, (ax, bx, cx) = plt.subplots(1, 3, figsize=(12, 4))
+    ax.plot(wavelength_qval[qval_ind], qval_combined[qval_ind])
+    ax.plot(wavelength_grf[grf_ind], grf_combined[grf_ind])
+    ax.plot(wavelength_cont[cont_ind], continuum_data[cont_ind])
+    ax.set_title("No Intp")
+    ax.set_xlabel(r"$\lambda$ ($\mu$m)")
+    ax.set_ylabel(r"$\kappa$ ($cm^{2}g^{-1}$)")
+
+    bx.plot(low_wavelength_solution, qval_low)
+    bx.plot(low_wavelength_solution, grf_low)
+    bx.plot(low_wavelength_solution, cont_low)
+    bx.set_title("Intp LOW")
+    bx.set_xlabel(r"$\lambda$ ($\mu$m)")
+
+    cx.plot(high_wavelength_solution, qval_high, label="Silicates (DHS)")
+    cx.plot(high_wavelength_solution, grf_high, label="Silicates (GRF)")
+    cx.plot(high_wavelength_solution, cont_high, label="Continuum (DHS)")
+    cx.set_title("Intp HIGH")
+    cx.set_xlabel(r"$\lambda$ ($\mu$m)")
+    cx.legend()
+    plt.savefig(opacity_dir / "combined_opacities.pdf", format="pdf")
+    plt.close()
+
+    cont_intp = np.interp(
+            all_wavelength_grid, wavelength_cont, continuum_data)
+    qval_intp = np.interp(all_wavelength_grid, wavelength_qval, qval_combined)
+    grf_intp = np.interp(all_wavelength_grid, wavelength_grf, grf_combined)
+    cont_ind = (wavelength_cont >= all_wavelength_grid[0])\
+        & (wavelength_cont <= all_wavelength_grid[-1])
+    qval_ind = (wavelength_qval >= 1)\
+        & (wavelength_qval <= all_wavelength_grid[-1])
+    grf_ind = (wavelength_grf >= 1)\
+        & (wavelength_grf <= all_wavelength_grid[-1])
+
+    _, (ax, bx) = plt.subplots(1, 2, figsize=(12, 4))
+    ax.plot(wavelength_qval[qval_ind], qval_combined[qval_ind])
+    ax.plot(wavelength_grf[grf_ind], grf_combined[grf_ind])
+    ax.plot(wavelength_cont[cont_ind], continuum_data[cont_ind])
+    ax.set_title("No Interpolation")
+    ax.set_xlabel(r"$\lambda$ ($\mu$m)")
+    ax.set_ylim([None, 5000])
+
+    bx.plot(all_wavelength_grid, qval_intp, label="Silicates (DHS)")
+    bx.plot(all_wavelength_grid, grf_intp, label="Silicates (GRF)")
+    bx.plot(all_wavelength_grid, cont_intp, label="Continuum")
+    bx.set_title("Interpolation")
+    bx.set_xlabel(r"$\lambda$ ($\mu$m)")
+    bx.set_ylabel(r"$\kappa$ ($cm^{2}g^{-1}$)")
+    bx.set_ylim([None, 5000])
+    bx.legend()
+    plt.savefig(opacity_dir / "combined_opacities2.pdf", format="pdf")
+    plt.close()

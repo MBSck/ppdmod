@@ -236,9 +236,7 @@ def test_calculate_observables(components_and_params: List[Tuple[str, Dict]],
     OPTIONS.model.modulation = 1
 
     flux_model, vis_model, t3_model = fitting.calculate_observables(
-        assemble_components(components_and_params, shared_params),
-        wavelength, OPTIONS.data.vis.ucoord, OPTIONS.data.vis.vcoord,
-        OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord)
+        assemble_components(components_and_params, shared_params))
 
     assert flux_model is not None
     assert vis_model is not None
@@ -248,7 +246,7 @@ def test_calculate_observables(components_and_params: List[Tuple[str, Dict]],
     assert vis_model.dtype == OPTIONS.data.dtype.real
     assert t3_model.dtype == OPTIONS.data.dtype.real
 
-    assert flux_model.shape == (nwl, 1)
+    assert flux_model.shape == (nwl, nfile)
     assert vis_model.shape == (nwl, nfile*6)
     assert t3_model.shape == (nwl, nfile*4)
 
@@ -277,14 +275,9 @@ def test_calculate__chi_sq(components_and_params: List[Tuple[str, Dict]],
     OPTIONS.model.constant_params = constant_params
     OPTIONS.model.modulation = 1
 
-    flux, vis, t3 = OPTIONS.data.flux, OPTIONS.data.vis, OPTIONS.data.t3
-    flux_model, vis_model, t3_model = fitting.calculate_observables(
-        assemble_components(components_and_params, shared_params),
-        wavelength, OPTIONS.data.vis.ucoord, OPTIONS.data.vis.vcoord,
-        OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord)
-
+    components = assemble_components(components_and_params, shared_params)
     chi_sq = fitting.calculate_observable_chi_sq(
-            flux, flux_model, vis, vis_model, t3, t3_model)
+            *fitting.calculate_observables(components))
 
     assert chi_sq != 0
     assert isinstance(chi_sq, float)
