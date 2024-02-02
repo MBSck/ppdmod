@@ -117,25 +117,22 @@ def test_wavelength_retrieval(readouts: List[ReadoutFits], wavelength: u.um) -> 
         vis2 = readout.get_data_for_wavelength(wavelength, "vis2", "value")
         vis2_err = readout.get_data_for_wavelength(wavelength, "vis2", "err")
 
-        assert any(flx.size != 0 for flx in flux)
-        assert any(flx.size != 0 for flx in flux_err)
-        assert any(cp.size != 0 for cp in t3)
-        assert any(cp.size != 0 for cp in t3_err)
-        assert any(v.size != 0 for v in vis)
-        assert any(v.size != 0 for v in vis_err)
-        assert any(v.size != 0 for v in vis2)
-        assert any(v.size != 0 for v in vis2_err)
-        assert flux.shape == (wl_len, 1) and flux_err.shape == (wl_len, 1)
-        assert t3.shape == (wl_len, 4) and t3_err.shape == (wl_len, 4)
-        assert vis.shape == (wl_len, 6) and vis_err.shape == (wl_len, 6)
-        assert vis2.shape == (wl_len, 6) and vis2_err.shape == (wl_len, 6)
-
         assert isinstance(flux, np.ndarray)\
             and isinstance(flux_err, np.ndarray)
         assert isinstance(vis, np.ndarray)\
             and isinstance(vis_err, np.ndarray)
         assert isinstance(t3, np.ndarray)\
             and isinstance(t3_err, np.ndarray)
+
+        assert flux.size != 0 and flux_err.size != 0
+        assert t3.size != 0 and t3_err.size != 0
+        assert vis.size != 0 and vis_err.size != 0
+        assert vis2.size != 0 and vis2_err.size != 0
+
+        assert flux.shape == (wl_len, 1) and flux_err.shape == (wl_len, 1)
+        assert t3.shape == (wl_len, 4) and t3_err.shape == (wl_len, 4)
+        assert vis.shape == (wl_len, 6) and vis_err.shape == (wl_len, 6)
+        assert vis2.shape == (wl_len, 6) and vis2_err.shape == (wl_len, 6)
 
 
 @pytest.mark.parametrize(
@@ -147,43 +144,28 @@ def test_get_data(fits_files: List[Path], wavelength: u.um) -> None:
     fit_data = ["flux", "vis", "vis2", "t3"]
     set_fit_wavelengths(wavelength)
     set_data(fits_files, fit_data=fit_data)
+    nwl, nfiles = wavelength.size, len(fits_files)
 
-    for key in fit_data:
-        data = getattr(OPTIONS.data, key)
-        if key == "flux":
-            shape = 1
-        elif key in ["vis", "vis2"]:
-            shape = 6
-        elif key == "t3":
-            shape = 4
+    flux = OPTIONS.data.flux
+    vis = OPTIONS.data.vis if "vis" in OPTIONS.fit.data\
+        else OPTIONS.data.vis2
+    t3 = OPTIONS.data.t3
 
-        assert data.value
-        assert data.err
-        assert isinstance(data.value, list)
-        assert isinstance(data.err, list)
-        assert all(isinstance(d, np.ndarray) for d in data.value)
-        assert all(isinstance(d, np.ndarray) for d in data.err)
+    assert flux.value.size != 0 and flux.err.size != 0
+    assert flux.value.shape == (nwl, nfiles)
+    assert flux.err.shape == (nwl, nfiles)
 
-        assert len(data.value) == wavelength.size\
-            and len(data.err) == wavelength.size
-        assert all(d.shape[0] % shape == 0 for d in data.value)
-        assert all(d.shape[0] % shape == 0 for d in data.err)
+    assert vis.value.size != 0 and vis.err.size != 0
+    assert vis.value.shape == (nwl, 6*nfiles)
+    assert vis.err.shape == (nwl, 6*nfiles)
 
-        if key in ["vis", "vis2"]:
-            assert all(d.shape[0] % shape == 0 for d in data.ucoord)
-            assert all(d.shape[0] % shape == 0 for d in data.vcoord)
-        if key in "t3":
-            assert all(d.shape[0] % shape == 3 for d in data.u123coord)
-            assert all(d.shape[1] % shape == 0 for d in data.u123coord)
-            assert all(d.shape[0] % shape == 3 for d in data.v123coord)
-            assert all(d.shape[1] % shape == 0 for d in data.v123coord)
+    assert t3.value.size != 0 and t3.err.size != 0
+    assert t3.value.shape == (nwl, 4*nfiles)
+    assert t3.err.shape == (nwl, 4*nfiles)
 
     set_data(fit_data=fit_data)
     set_fit_wavelengths()
-    for key in fit_data:
-        data = getattr(OPTIONS.data, key)
-        assert data.value.size == 0 and data.err.size == 0
-        if key in ["vis", "vis2"]:
-            assert data.ucoord.size == 0 and data.vcoord.size == 0
-        if key in "t3":
-            assert data.u123coord.size == 0 and data.v123coord.size == 0
+
+    assert flux.value.size == 0 and flux.err.size == 0
+    assert vis.value.size == 0 and vis.err.size == 0
+    assert t3.value.size == 0 and t3.err.size == 0

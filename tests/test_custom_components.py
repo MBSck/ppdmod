@@ -12,26 +12,8 @@ from ppdmod.data import ReadoutFits
 from ppdmod.options import STANDARD_PARAMETERS
 from ppdmod.parameter import Parameter
 from ppdmod.utils import data_to_matisse_grid, \
-    linearly_combine_data, make_workbook
+    linearly_combine_data
 
-
-FLUX_DIR = Path("fluxes")
-if not FLUX_DIR.exists():
-    FLUX_DIR.mdkir()
-
-FLUX_FILE = Path("flux.xlsx")
-FLUX_SHEET = "Fluxes for 13 um"
-
-make_workbook(
-    FLUX_FILE,
-    {
-        FLUX_SHEET: ["FOV [mas]",
-                     "Dimension [px]",
-                     "Dimension (Nearest Power of 2) [px]",
-                     "Flux [Jy]",
-                     "Pixel Size [mas/px]",
-                     "Inner Radius [mas]"]
-    })
 
 DIMENSION = [2**power for power in range(9, 13)]
 
@@ -39,7 +21,7 @@ DIMENSION = [2**power for power in range(9, 13)]
 @pytest.fixture
 def wavelength() -> u.m:
     """A wavelenght grid."""
-    return (13.000458e-6*u.m).to(u.um)
+    return [12.5]*u.um
 
 
 @pytest.fixture
@@ -132,7 +114,8 @@ def test_star_image(star: Star, dim: int, wl: u.um,
                     wavelength: u.um) -> None:
     """Tests the star's image calculation."""
     image = star.calculate_image(dim, 0.1*u.mas, wavelength)
-    star_dir =  FLUX_DIR / "star"
+
+    star_dir = Path("fluxes/star")
     if not star_dir.exists():
         star_dir.mkdir()
 

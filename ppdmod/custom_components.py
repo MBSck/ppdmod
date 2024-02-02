@@ -107,7 +107,7 @@ class Star(AnalyticalComponent):
                              wavelength: Optional[u.Quantity[u.um]] = None
                              ) -> np.ndarray:
         """The component's _visibility_function."""
-        star_flux = self.calculate_flux(wavelength)
+        star_flux = np.ones((dim, dim))*self.calculate_flux(wavelength)
         return star_flux.value.astype(OPTIONS.data.dtype.real)
 
 

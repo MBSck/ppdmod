@@ -502,5 +502,5 @@ class HankelComponent(Component):
         if vis_mod.size != 0:
             vis += np.concatenate(
                     (vis_mod[:, :2], np.conj(vis_mod[:, 2:])), axis=1).sum(-1)
-        return np.angle(np.prod(vis.value, axis=0),
+        return np.angle(np.prod(vis.value, axis=1),
                         deg=True).astype(OPTIONS.data.dtype.real)

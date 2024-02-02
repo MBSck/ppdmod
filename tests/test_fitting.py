@@ -218,15 +218,17 @@ def test_init_randomly(nwalkers: int) -> None:
 # TODO: Test for different modulation orders
 # TODO: Test if modulation is properly calculated in case of symmetrical and asymmetrical
 # components.
+@pytest.mark.parametrize(
+        "wavelength", [[3.5]*u.um, [8]*u.um,
+                       [3.5, 8]*u.um, [3.5, 8, 10]*u.um])
 def test_calculate_observables(components_and_params: List[Tuple[str, Dict]],
                                shared_params: Dict[str, Parameter],
                                constant_params: Dict[str, Parameter],
-                               fits_files: List[Path],
-                               wavelengths: u.um) -> None:
+                               fits_files: List[Path], wavelength: u.um) -> None:
     """Tests the calculate_observables function."""
-    data.set_fit_wavelengths(wavelengths)
+    data.set_fit_wavelengths(wavelength)
     data.set_data(fits_files)
-    nwl, nfile = wavelengths.size, len(fits_files)
+    nwl, nfile = wavelength.size, len(fits_files)
 
     OPTIONS.model.components_and_params = components_and_params
     OPTIONS.model.shared_params = shared_params
@@ -235,7 +237,7 @@ def test_calculate_observables(components_and_params: List[Tuple[str, Dict]],
 
     flux_model, vis_model, t3_model = fitting.calculate_observables(
         assemble_components(components_and_params, shared_params),
-        wavelengths, OPTIONS.data.vis.ucoord, OPTIONS.data.vis.vcoord,
+        wavelength, OPTIONS.data.vis.ucoord, OPTIONS.data.vis.vcoord,
         OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord)
 
     assert flux_model is not None
@@ -259,13 +261,15 @@ def test_calculate_observables(components_and_params: List[Tuple[str, Dict]],
     OPTIONS.model.modulation = 0
 
 
+@pytest.mark.parametrize(
+        "wavelength", [[3.5]*u.um, [8]*u.um,
+                       [3.5, 8]*u.um, [3.5, 8, 10]*u.um])
 def test_calculate__chi_sq(components_and_params: List[Tuple[str, Dict]],
                            shared_params: Dict[str, Parameter],
                            constant_params: Dict[str, Parameter],
-                           fits_files: List[Path],
-                           wavelengths: u.um) -> None:
+                           fits_files: List[Path], wavelength: u.um) -> None:
     """Tests the calculate_observables chi sq function."""
-    data.set_fit_wavelengths(wavelengths)
+    data.set_fit_wavelengths(wavelength)
     data.set_data(fits_files)
 
     OPTIONS.model.components_and_params = components_and_params
@@ -276,7 +280,7 @@ def test_calculate__chi_sq(components_and_params: List[Tuple[str, Dict]],
     flux, vis, t3 = OPTIONS.data.flux, OPTIONS.data.vis, OPTIONS.data.t3
     flux_model, vis_model, t3_model = fitting.calculate_observables(
         assemble_components(components_and_params, shared_params),
-        wavelengths, OPTIONS.data.vis.ucoord, OPTIONS.data.vis.vcoord,
+        wavelength, OPTIONS.data.vis.ucoord, OPTIONS.data.vis.vcoord,
         OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord)
 
     chi_sq = fitting.calculate_observable_chi_sq(
@@ -335,7 +339,10 @@ def test_lnprior(values: List[float], expected: float) -> None:
     OPTIONS.model.modulation = 0
 
 
-def test_lnprob(fits_files: List[Path], wavelengths: u.um) -> None:
+@pytest.mark.parametrize(
+        "wavelength", [[3.5]*u.um, [8]*u.um,
+                       [3.5, 8]*u.um, [3.5, 8, 10]*u.um])
+def test_lnprob(fits_files: List[Path], wavelength: u.um) -> None:
     """Tests the lnprob function."""
     static_params = {"dim": 2048, "dist": 145, "pixel_size": 0.1,
                      "eff_temp": 7800, "eff_radius": 1.8,
@@ -361,7 +368,7 @@ def test_lnprob(fits_files: List[Path], wavelengths: u.um) -> None:
     components_and_params = [["Star", params],
                              ["AsymmetricGreyBody", params]]
 
-    data.set_fit_wavelengths(wavelengths)
+    data.set_fit_wavelengths(wavelength)
     data.set_data(fits_files)
     OPTIONS.model.constant_params = static_params
     OPTIONS.model.components_and_params = components_and_params
@@ -372,8 +379,8 @@ def test_lnprob(fits_files: List[Path], wavelengths: u.um) -> None:
         components_and_params, shared_params)
 
     chi_sq = fitting.lnprob(theta)
-    assert chi_sq != 0
     assert isinstance(chi_sq, float)
+    assert chi_sq != 0
 
     data.set_fit_wavelengths()
     data.set_data()

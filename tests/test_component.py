@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pytest
-from astropy.modeling.models import BlackBody
 
 from ppdmod import utils
 from ppdmod.component import Component, AnalyticalComponent, \
@@ -18,22 +17,13 @@ from ppdmod.parameter import Parameter
 
 CALCULATION_FILE = Path("analytical_calculation.xlsx")
 COMPONENT_DIR = Path("component")
-VISIBILITY = "Visibility"
-CLOSURE_PHASE = "Closure Phase"
 
-READOUT = ReadoutFits(Path("data/fits")
-                      / "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT_flux_avg_vis.fits")
-BASELINES = [f"B {baseline}" for baseline
-             in np.around(np.hypot(READOUT.vis2.ucoord, READOUT.vis2.vcoord), 0)]
-TRIANGLES = [f"T {triangle}" for triangle
-             in np.around(np.hypot(READOUT.t3.u123coord, READOUT.t3.v123coord).max(axis=0), 0)]
-TRIANGLES[-1] += ".0"
-
+READOUT = ReadoutFits(list(Path("data/fits").glob("*2022-04-23*.fits"))[0])
 utils.make_workbook(
     CALCULATION_FILE,
     {
-        VISIBILITY: ["Dimension (px)", *BASELINES, "Computation Time (s)"],
-        CLOSURE_PHASE: ["Dimension (px)", *TRIANGLES, "Computation Time (s)"],
+        "Vis": ["Dimension (px)", "Computation Time (s)"],
+        "T3": ["Dimension (px)", "Computation Time (s)"],
     })
 
 
@@ -41,7 +31,7 @@ utils.make_workbook(
 @pytest.fixture
 def wavelength() -> u.um:
     """A wavelength grid."""
-    return 12.5*u.um
+    return [12.5]*u.um
 
 
 @pytest.fixture
@@ -192,7 +182,7 @@ def test_hankel_component_calculate_grid(
     assert radius.unit == u.mas
     assert radius.shape == (512, )
     assert radius[0].value == hankel_component.params["rin"].value\
-            and radius[-1].value == hankel_component.params["rout"].value
+        and radius[-1].value == hankel_component.params["rout"].value
 
 
 def test_hankel_component_brightness_function():
@@ -203,11 +193,9 @@ def test_hankel_component_flux(
         hankel_component: HankelComponent, wavelength: u.um) -> None:
     """Tests the calculation of the total flux."""
     flux = hankel_component.calculate_flux(wavelength)
-    assert flux.shape(wavelength.size, 1)
-    assert flux.unit == u.Jy
+    assert flux.shape == (wavelength.size, 1)
 
 
-# TODO: Make tests for the hankel component
 # TODO: Write here check if higher orders are implemented
 @pytest.mark.parametrize("order", [0, 1, 2, 3])
 def test_hankel_component_hankel_transform(
@@ -215,20 +203,16 @@ def test_hankel_component_hankel_transform(
         order: int, wavelength: u.um) -> None:
     """Tests the hankel component's hankel transformation."""
     radius = hankel_component._calculate_internal_grid(512)
-    temp_profile = 1500*u.K*(radius/(hankel_component.params["rin"]()))**(-0.5)
-    brightness_profile = BlackBody(temp_profile)(wavelength)
 
-    OPTIONS.model.modulation.order = order
-    corr_fluxes, modulations = hankel_component.hankel_transform(
-            brightness_profile.to(u.erg/(u.Hz*u.cm**2*u.s*u.rad**2)),
+    OPTIONS.model.modulation = order
+
+    vis, vis_mod = hankel_component.hankel_transform(
             radius, READOUT.vis2.ucoord, READOUT.vis2.vcoord, wavelength)
-    assert corr_fluxes.shape == (6, )
-    assert corr_fluxes.unit == u.Jy
-    if order == 0:
-        assert modulations.shape == (0, )
-    else:
-        assert modulations.shape == (order, 6)
-    OPTIONS.model.modulation.order = 0
+    assert vis.shape == (wavelength.size, 6)
+    assert vis_mod.shape == (wavelength.size, 6, order)
+    assert vis.unit == u.Jy and vis_mod.unit == u.Jy
+
+    OPTIONS.model.modulation = 0
 
 
 @pytest.mark.parametrize("order", [0, 1, 2, 3])
@@ -236,27 +220,34 @@ def test_hankel_component_corr_fluxes(
         hankel_component: HankelComponent,
         order: int, wavelength: u.um) -> None:
     """Tests the hankel component's hankel transformation."""
-    OPTIONS.model.modulation.order = order
-    corr_fluxes = hankel_component.calculate_visibility(
-            READOUT.vis2.ucoord, READOUT.vis2.vcoord, wavelength)
-    assert corr_fluxes.shape == (6, )
-    assert isinstance(corr_fluxes, np.ndarray)
-    OPTIONS.model.modulation.order = 0
+    OPTIONS.model.modulation = order
+
+    vis = hankel_component.calculate_visibility(
+            READOUT.vis2.ucoord, READOUT.vis2.vcoord,
+            wavelength)
+    assert vis.shape == (wavelength.size, 6)
+    assert isinstance(vis, np.ndarray)
+
+    OPTIONS.model.modulation = 0
 
 
+# TODO: Add tests for the wavelength
 @pytest.mark.parametrize("order", [0, 1, 2, 3])
 def test_hankel_component_closure_phases(
         hankel_component: HankelComponent,
         order: int, wavelength: u.um) -> None:
     """Tests the hankel component's hankel transformation."""
-    OPTIONS.model.modulation.order = order
-    closure_phases = hankel_component.calculate_closure_phase(
+    OPTIONS.model.modulation = order
+
+    t3 = hankel_component.calculate_closure_phase(
             READOUT.t3.u123coord, READOUT.t3.v123coord, wavelength)
 
-    assert closure_phases.shape == (4, )
-    OPTIONS.model.modulation.order = 0
+    assert t3.shape == (wavelength.size, 4)
+
+    OPTIONS.model.modulation = 0
 
 
+# TODO: Extend this test to account for multiple files (make files an input)
 @pytest.mark.parametrize(
         "dim", [4096, 2096, 1024, 512, 256, 128, 64, 32])
 def test_hankel_resolution(dim: int, wavelength: u.um) -> None:
@@ -268,27 +259,25 @@ def test_hankel_resolution(dim: int, wavelength: u.um) -> None:
     hankel_component.optically_thick = True
     hankel_component.asymmetric = True
 
-    OPTIONS.model.modulation.order = 1
+    OPTIONS.model.modulation = 1
     start_time_vis = time.perf_counter()
-    visibilities = hankel_component.calculate_visibility(
+    _ = hankel_component.calculate_visibility(
             READOUT.vis2.ucoord, READOUT.vis2.vcoord, wavelength)
     end_time_vis = time.perf_counter()-start_time_vis
 
     start_time_cphase = time.perf_counter()
-    closure_phases = hankel_component.calculate_closure_phase(
+    _ = hankel_component.calculate_closure_phase(
             READOUT.t3.u123coord, READOUT.t3.v123coord, wavelength)
     end_time_cphase = time.perf_counter()-start_time_cphase
 
     vis_data = {"Dimension (px)": [dim],
-                **{baseline: value for baseline, value in zip(BASELINES, visibilities)},
-                   "Computation Time (s)": [end_time_vis]}
+                "Computation Time (s)": [end_time_vis]}
 
-    cphase_data = {"Dimension (px)": [dim],
-                   **{triangle: value for triangle, value in zip(TRIANGLES, closure_phases)},
-                   "Computation Time (s)": [end_time_cphase]}
+    t3_data = {"Dimension (px)": [dim],
+               "Computation Time (s)": [end_time_cphase]}
 
     if CALCULATION_FILE.exists():
-        df = pd.read_excel(CALCULATION_FILE, sheet_name=VISIBILITY)
+        df = pd.read_excel(CALCULATION_FILE, sheet_name="Vis")
         new_df = pd.DataFrame(vis_data)
         df = pd.concat([df, new_df])
     else:
@@ -296,17 +285,17 @@ def test_hankel_resolution(dim: int, wavelength: u.um) -> None:
 
     with pd.ExcelWriter(CALCULATION_FILE, engine="openpyxl",
                         mode="a", if_sheet_exists="replace") as writer:
-        df.to_excel(writer, sheet_name=VISIBILITY, index=False)
+        df.to_excel(writer, sheet_name="Vis", index=False)
 
     if CALCULATION_FILE.exists():
-        df = pd.read_excel(CALCULATION_FILE, sheet_name=CLOSURE_PHASE)
-        new_df = pd.DataFrame(cphase_data)
+        df = pd.read_excel(CALCULATION_FILE, sheet_name="T3")
+        new_df = pd.DataFrame(t3_data)
         df = pd.concat([df, new_df])
     else:
-        df = pd.DataFrame(cphase_data)
+        df = pd.DataFrame(t3_data)
 
     with pd.ExcelWriter(CALCULATION_FILE, engine="openpyxl",
                         mode="a", if_sheet_exists="replace") as writer:
-        df.to_excel(writer, sheet_name=CLOSURE_PHASE, index=False)
+        df.to_excel(writer, sheet_name="T3", index=False)
 
-    OPTIONS.model.modulation.order = 0
+    OPTIONS.model.modulation = 0

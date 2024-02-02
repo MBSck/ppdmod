@@ -7,9 +7,6 @@ import numpy as np
 import pytest
 from scipy.optimize import minimize
 
-from ppdmod import data
-from ppdmod.custom_components import Star
-from ppdmod.model import Model
 from ppdmod.plot import plot_corner, plot_chains
 
 

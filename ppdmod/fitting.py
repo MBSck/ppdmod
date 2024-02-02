@@ -42,7 +42,9 @@ def set_theta_from_params(
     return np.array(theta)
 
 
-def set_params_from_theta(theta: np.ndarray) -> float:
+def set_params_from_theta(
+        theta: np.ndarray
+        ) -> Tuple[List[Dict[str, Component]], Dict[str, Parameter]]:
     """Sets the parameters from the theta vector."""
     components_and_params = OPTIONS.model.components_and_params
     shared_params = OPTIONS.model.shared_params
