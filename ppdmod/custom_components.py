@@ -70,17 +70,17 @@ class Star(AnalyticalComponent):
 
     def calculate_flux(self, wavelength: u.um) -> u.Jy:
         """Calculates the flux of the star."""
-        wavelength = wavelength[:, np.newaxis]
         if self.params["f"].value is not None:
-            stellar_flux = self.params["f"](wavelength).astype
+            stellar_flux = self.params["f"](wavelength)
         else:
             plancks_law = models.BlackBody(
                     temperature=self.params["eff_temp"]())
-            spectral_radiance = plancks_law(wavelength.to(u.m)).to(
+            spectral_radiance = plancks_law(wavelength).to(
                 u.erg/(u.cm**2*u.Hz*u.s*u.rad**2))
             stellar_flux = np.pi*(spectral_radiance
                                   * self.stellar_radius_angular**2).to(u.Jy)
-        return stellar_flux.astype(OPTIONS.data.dtype.real)
+        stellar_flux = stellar_flux.astype(OPTIONS.data.dtype.real)
+        return stellar_flux.reshape((wavelength.size, 1))
 
     def _image_function(self, xx: u.mas, yy: u.mas,
                         wavelength: Optional[u.Quantity[u.m]] = None,

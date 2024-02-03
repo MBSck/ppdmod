@@ -125,8 +125,10 @@ def distance_to_angular(diameter: u.mas, distance: u.pc) -> u.m:
 
 
 def calculate_effective_baselines(
-        ucoord: u.m, vcoord: u.m, axis_ratio: u.one,
-        pos_angle: u.deg, longest: Optional[bool] = False
+        ucoord: u.m, vcoord: u.m,
+        axis_ratio: Optional[u.one] = None,
+        pos_angle: Optional[u.deg] = None,
+        longest: Optional[bool] = False
         ) -> Tuple[u.Quantity[u.m], u.Quantity[u.one]]:
     """Calculates the effective baselines from the projected baselines
     in mega lambda.
@@ -141,6 +143,8 @@ def calculate_effective_baselines(
         The axis ratio of the ellipse
     pos_angle: astropy.units.deg
         The positional angle of the object
+    longest : bool, optional
+        If True, the longest baselines are returned.
 
     Returns
     -------
@@ -149,17 +153,19 @@ def calculate_effective_baselines(
     baselines_angles : astropy.units.rad
         Returns the effective baseline angles.
     """
-    if not isinstance(ucoord, u.Quantity):
-        ucoord, vcoord = map(lambda x: x*u.m, [ucoord, vcoord])
-    axis_ratio = axis_ratio*u.one\
-        if not isinstance(axis_ratio, u.Quantity) else axis_ratio
-    pos_angle = pos_angle*u.deg\
-        if not isinstance(pos_angle, u.Quantity) else pos_angle
+    ucoord, vcoord = map(lambda x: u.Quantity(x, u.m), [ucoord, vcoord])
+    if axis_ratio is not None and pos_angle is not None:
+        axis_ratio = u.Quantity(axis_ratio, u.one)
+        pos_angle = u.Quantity(pos_angle, u.deg)
 
-    ucoord_eff = ucoord*np.cos(pos_angle) - vcoord*np.sin(pos_angle)
-    vcoord_eff = ucoord*np.sin(pos_angle) + vcoord*np.cos(pos_angle)
-    baselines_eff = np.hypot(ucoord_eff, vcoord_eff*axis_ratio)
-    baseline_angles_eff = np.arctan2(ucoord_eff, vcoord_eff*axis_ratio)
+        ucoord_eff = ucoord*np.cos(pos_angle) - vcoord*np.sin(pos_angle)
+        vcoord_eff = (ucoord*np.sin(pos_angle) + vcoord*np.cos(pos_angle))
+        vcoord_eff *= axis_ratio
+    else:
+        ucoord_eff, vcoord_eff = ucoord, vcoord
+
+    baselines_eff = np.hypot(ucoord_eff, vcoord_eff)
+    baseline_angles_eff = np.arctan2(ucoord_eff, vcoord_eff)
 
     if longest:
         indices = baselines_eff.argmax(0)

@@ -218,6 +218,7 @@ def test_init_randomly(nwalkers: int) -> None:
 # TODO: Test for different modulation orders
 # TODO: Test if modulation is properly calculated in case of symmetrical and asymmetrical
 # components.
+# TODO: Test with bigger kappas also
 @pytest.mark.parametrize(
         "wavelength", [[3.5]*u.um, [8]*u.um,
                        [3.5, 8]*u.um, [3.5, 8, 10]*u.um])
@@ -262,10 +263,10 @@ def test_calculate_observables(components_and_params: List[Tuple[str, Dict]],
 @pytest.mark.parametrize(
         "wavelength", [[3.5]*u.um, [8]*u.um,
                        [3.5, 8]*u.um, [3.5, 8, 10]*u.um])
-def test_calculate__chi_sq(components_and_params: List[Tuple[str, Dict]],
-                           shared_params: Dict[str, Parameter],
-                           constant_params: Dict[str, Parameter],
-                           fits_files: List[Path], wavelength: u.um) -> None:
+def test_calculate_chi_sq(components_and_params: List[Tuple[str, Dict]],
+                          shared_params: Dict[str, Parameter],
+                          constant_params: Dict[str, Parameter],
+                          fits_files: List[Path], wavelength: u.um) -> None:
     """Tests the calculate_observables chi sq function."""
     data.set_fit_wavelengths(wavelength)
     data.set_data(fits_files)

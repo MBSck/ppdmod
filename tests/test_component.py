@@ -85,7 +85,7 @@ def test_eval(component: Component) -> None:
 def test_radius_calculation(component: Component) -> None:
     """Tests if the radius calculated from the grid works."""
     dim, pixel_size = 512, 0.1*u.mas
-    grid = component._calculate_internal_grid(dim, pixel_size)
+    grid = component.calculate_internal_grid(dim, pixel_size)
     plt.imshow(np.hypot(*grid))
     plt.title("Image space")
     plt.xlabel("dim [px]")
@@ -106,7 +106,7 @@ def test_radius_calculation(component: Component) -> None:
     assert elliptical_component.params["pa"]() == 33*u.deg
     assert elliptical_component.params["elong"]() == 0.6*u.one
 
-    grid = elliptical_component._calculate_internal_grid(dim, pixel_size)
+    grid = elliptical_component.calculate_internal_grid(dim, pixel_size)
     plt.imshow(np.hypot(*grid))
     plt.title("Image space")
     plt.xlabel("dim [px]")
@@ -178,7 +178,7 @@ def test_hankel_component_calculate_grid(
         hankel_component: HankelComponent, grid_type: str) -> None:
     """Tests the hankel component's grid calculation."""
     OPTIONS.model.gridtype = grid_type
-    radius = hankel_component._calculate_internal_grid(512)
+    radius = hankel_component.calculate_internal_grid(512)
     assert radius.unit == u.mas
     assert radius.shape == (512, )
     assert radius[0].value == hankel_component.params["rin"].value\
@@ -202,7 +202,7 @@ def test_hankel_component_hankel_transform(
         hankel_component: HankelComponent,
         order: int, wavelength: u.um) -> None:
     """Tests the hankel component's hankel transformation."""
-    radius = hankel_component._calculate_internal_grid(512)
+    radius = hankel_component.calculate_internal_grid(512)
 
     OPTIONS.model.modulation = order
 
@@ -245,7 +245,6 @@ def test_hankel_component_closure_phases(
     assert t3.shape == (wavelength.size, 4)
 
     OPTIONS.model.modulation = 0
-
 
 # TODO: Extend this test to account for multiple files (make files an input)
 @pytest.mark.parametrize(

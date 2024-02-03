@@ -125,14 +125,15 @@ def calculate_chi_sq(data: u.quantity, error: u.quantity,
     return -0.5*np.sum(diff**2*inv_sigma_squared + np.log(1/inv_sigma_squared))
 
 
-def calculate_observables(components: List[Component]):
+def calculate_observables(components: List[Component],
+                          wavelength: Optional[np.ndarray] = None):
     """Calculates the observables from the model."""
+    wavelength = OPTIONS.fit.wavelengths if wavelength is None else wavelength
     corr_flux = "vis2" not in OPTIONS.fit.data
     vis = OPTIONS.data.vis if corr_flux else OPTIONS.data.vis2
     ucoord, vcoord = vis.ucoord, vis.vcoord
     u123coord = OPTIONS.data.t3.u123coord
     v123coord = OPTIONS.data.t3.v123coord
-    wavelength = OPTIONS.fit.wavelengths
 
     flux_model, vis_model, t3_model = None, None, None
     if components is not None:

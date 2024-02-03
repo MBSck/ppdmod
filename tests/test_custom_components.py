@@ -11,6 +11,7 @@ from ppdmod.custom_components import Star, GreyBody, assemble_components
 from ppdmod.data import ReadoutFits
 from ppdmod.options import STANDARD_PARAMETERS
 from ppdmod.parameter import Parameter
+from ppdmod.utils import load_data, linearly_combine_data, qval_to_opacity
 
 
 DIMENSION = [2**power for power in range(9, 13)]
@@ -71,6 +72,7 @@ def test_star_stellar_radius_angular(star: Star) -> None:
     assert star.stellar_radius_angular.unit == u.mas
 
 
+# TODO: include test for stellar flux with input file as well.
 @pytest.mark.parametrize("wl, dim",
                          [(wl, dim) for dim in DIMENSION
                           for wl in [8, 9, 10, 11]*u.um])
@@ -100,8 +102,7 @@ def test_star_visibility_function(star: Star,
                                   wavelength: u.um) -> None:
     """Tests the star's complex visibility function calculation."""
     complex_visibility = star._visibility_function(512, 0.1*u.mas, wavelength)
-    assert complex_visibility.shape == (star.params["dim"](),
-                                        star.params["dim"]())
+    assert complex_visibility.shape == tuple(star.params["dim"]() for _ in range(2))
 
 
 def test_assemble_components() -> None:

@@ -48,7 +48,7 @@ def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
         if component.name != "Star":
             innermost_radius = component.params["rin0"]()\
                     if component.params["rin0"]() != 0 else component.params["rin"]()
-            radius = component._calculate_internal_grid(dim)
+            radius = component.calculate_internal_grid(dim)
 
             data["radius"] = [radius]*len(wavelengths)
             data["temperature"] = [component._temperature_profile_function(

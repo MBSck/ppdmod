@@ -112,7 +112,7 @@ vis2 = SimpleNamespace(value=np.array([]), err=np.array([]),
 t3 = SimpleNamespace(value=np.array([]), err=np.array([]),
                      u123coord=np.array([]), v123coord=np.array([]))
 flux = SimpleNamespace(value=np.array([]), err=np.array([]))
-binning = SimpleNamespace(window=0.1)
+binning = SimpleNamespace(window=0.1*u.um)
 gravity = SimpleNamespace(index=20)
 dtype = SimpleNamespace(complex=np.complex64, real=np.float32)
 data = SimpleNamespace(readouts=[], flux=flux, vis=vis,
