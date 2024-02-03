@@ -11,7 +11,6 @@ from ppdmod.data import ReadoutFits, set_fit_wavelengths, set_data
 from ppdmod.options import OPTIONS
 
 
-# TODO: Finish the tests here
 @pytest.fixture
 def qval_files() -> List[Path]:
     files = ["Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat",
@@ -268,6 +267,7 @@ def test_linearly_combine_data(
     low_wavelength_solution = wavelength_solutions[1].value
     high_wavelength_solution = high_wavelength_solution.value
     all_wavelength_grid = all_wavelength_grid.value
+
     opacity_dir = Path("opacities")
     if not opacity_dir.exists():
         opacity_dir.mkdir()
