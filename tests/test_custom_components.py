@@ -11,7 +11,6 @@ from ppdmod.custom_components import Star, GreyBody, assemble_components
 from ppdmod.data import ReadoutFits
 from ppdmod.options import STANDARD_PARAMETERS
 from ppdmod.parameter import Parameter
-from ppdmod.utils import load_data, linearly_combine_data, qval_to_opacity
 
 
 DIMENSION = [2**power for power in range(9, 13)]

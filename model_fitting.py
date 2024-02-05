@@ -15,12 +15,12 @@ from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 
 DATA_DIR = Path("tests/data")
-OPTIONS.fit.data = ["flux", "vis2", "t3"]
-OPTIONS.data.binning.window = 0.1*u.um
-wavelengths = [3.5]*u.um
-# wavelengths = [1.6, 2.25, 3.5, 9., 10., 11.3, 12.5]*u.um
+OPTIONS.fit.data = ["flux", "vis", "t3"]
+# wavelengths = [1.6, 2.25]*u.um
 # wavelengths = [1.6, 2.25, 3.5]*u.um
-# wavelengths = [9., 10., 11.3, 12.5]*u.um
+# wavelengths = [3.5]*u.um
+# wavelengths = [1.6, 2.25, 3.5, 9., 10., 11.3, 12.5]*u.um
+wavelengths = [9., 10., 11.3, 12.5]*u.um
 data.set_fit_wavelengths(wavelengths)
 fits_files = list((DATA_DIR / "fits").glob("*fits"))
 data.set_data(fits_files)
@@ -35,21 +35,33 @@ star_flux = Parameter(**STANDARD_PARAMETERS["f"])
 star_flux.value, star_flux.wavelength = flux, wavelength_axes
 
 weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
-qval_dir = DATA_DIR / "qval"
 qval_files = ["Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat",
               "Q_Am_Mgolivine_Jae_DHS_f1.0_rv1.5.dat",
               "Q_Am_Mgpyroxene_Dor_DHS_f1.0_rv1.5.dat",
               "Q_Fo_Suto_DHS_f1.0_rv0.1.dat",
               "Q_Fo_Suto_DHS_f1.0_rv1.5.dat",
               "Q_En_Jaeger_DHS_f1.0_rv1.5.dat"]
-qval_files = list(map(lambda x: qval_dir / x, qval_files))
-wl_op, opacity = utils.load_data(qval_files, load_func=utils.qval_to_opacity)
+qval_files = list(map(lambda x: DATA_DIR / "qval" / x, qval_files))
+
+grf_files = ["MgOlivine0.1.Combined.Kappa",
+             "MgOlivine2.0.Combined.Kappa",
+             "MgPyroxene2.0.Combined.Kappa",
+             "Forsterite0.1.Combined.Kappa",
+             "Forsterite2.0.Combined.Kappa",
+             "Enstatite2.0.Combined.Kappa"]
+grf_files = list(map(lambda x: DATA_DIR / "grf" / x, grf_files))
+
+wl_dhs, opacity_dhs = utils.load_data(qval_files, load_func=utils.qval_to_opacity)
+wl_grf, opacity_grf = utils.load_data(grf_files)
+wl_op, opacity = wl_grf, opacity_grf
+
 opacity = utils.linearly_combine_data(opacity, weights)
 opacity = np.interp(wavelength_axes.value, wl_op[0], opacity)
 
-wl_cont, cont_opacity = utils.load_data(qval_dir / "Q_amorph_c_rv0.1.dat", 
+wl_cont, cont_opacity = utils.load_data(DATA_DIR / "qval" / "Q_amorph_c_rv0.1.dat",
                                         load_func=utils.qval_to_opacity)
-# wl_cont, cont_opacity = utils.load_data(qval_dir / "Q_iron_0.10um_dhs_0.99.dat")
+# wl_cont, cont_opacity = utils.load_data(qval_dir / "Q_iron_0.10um_dhs_0.99.dat",
+#                                         load_func=utils.qval_to_opacity)
 cont_opacity = np.interp(wavelength_axes.value, wl_cont, cont_opacity)
 
 kappa_abs = Parameter(**STANDARD_PARAMETERS["kappa_abs"])
@@ -61,6 +73,7 @@ dim, distance = 32, 148.3
 OPTIONS.model.constant_params = {
     "dim": dim, "dist": 148.3,
     "eff_temp": 7500, "f": star_flux,
+    "pa": 163, "elong": 0.56,
     "eff_radius": 1.75, "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont}
 
@@ -111,27 +124,26 @@ inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
 # q = Parameter(**STANDARD_PARAMETERS["q"])
 # inner_temp = Parameter(**STANDARD_PARAMETERS["inner_temp"])
-pa = Parameter(**STANDARD_PARAMETERS["pa"])
-elong = Parameter(**STANDARD_PARAMETERS["elong"])
+# pa = Parameter(**STANDARD_PARAMETERS["pa"])
+# elong = Parameter(**STANDARD_PARAMETERS["elong"])
 cont_weight = Parameter(**STANDARD_PARAMETERS["cont_weight"])
 
 # q.value = 0.5
 # inner_temp.value = 1500
-pa.value = 145
-elong.value = 0.5
-cont_weight.value = 0.8             # Relative contribution (adds to 1). Mass fractions
+# pa.value = 145
+# elong.value = 0.5
+cont_weight.value = 0.54             # Relative contribution (adds to 1). Mass fractions
 
 # q.set(min=0., max=1.)
 # inner_temp.set(min=300, max=2000)
-pa.set(min=0, max=360)
-elong.set(min=0, max=1)
+# pa.set(min=0, max=360)
+# elong.set(min=0, max=1)
 cont_weight.set(min=0.3, max=0.8)
 
 # OPTIONS.model.shared_params = {"q": q, "inner_temp": inner_temp,
 #                                "pa": pa, "elong": elong,
 #                                "cont_weight": cont_weight}
-OPTIONS.model.shared_params = {"pa": pa, "elong": elong,
-                               "cont_weight": cont_weight}
+OPTIONS.model.shared_params = {"cont_weight": cont_weight}
 shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 
 # OPTIONS.model.components_and_params = [
@@ -160,9 +172,8 @@ OPTIONS.fit.method = "emcee"
 
 model_result_dir = Path("../model_results/")
 day_dir = model_result_dir / str(datetime.now().date())
-time = datetime.now()
-file_name = f"results_model_{time.hour}:{time.minute}:{time.second}"
-result_dir = day_dir / file_name
+dir_name = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
+result_dir = day_dir / dir_name
 result_dir.mkdir(parents=True, exist_ok=True)
 
 pre_fit_dir = result_dir / "pre_fit"
@@ -171,24 +182,23 @@ pre_fit_dir.mkdir(parents=True, exist_ok=True)
 components = custom_components.assemble_components(
         OPTIONS.model.components_and_params,
         OPTIONS.model.shared_params)
-plot.plot_overview(savefig=pre_fit_dir / "data_overview.png")
-breakpoint()
+plot.plot_overview(savefig=pre_fit_dir / "data_overview.pdf")
 plot.plot_observables("hd142666", [3, 12]*u.um, components,
-                      fits_files, save_dir=pre_fit_dir)
+                      save_dir=pre_fit_dir)
 
 analysis.save_fits(
         4096, 0.1, distance,
-        OPTIONS.fit.wavelengths, components,
-        component_labels, opacities=[kappa_abs, kappa_cont],
+        components, component_labels,
+        opacities=[kappa_abs, kappa_cont],
         savefits=pre_fit_dir / "model.fits",
-        options=OPTIONS, object_name="HD 142666")
+        object_name="HD 142666")
 
 post_fit_dir = result_dir / "post_fit"
 post_fit_dir.mkdir(parents=True, exist_ok=True)
 
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 2, 5, 100
+    nburnin, nsteps, nwalkers = 200, 550, 100
     # ncores = nwalkers // 2
     ncores = 6
     sampler = fitting.run_fit(
@@ -210,23 +220,20 @@ if __name__ == "__main__":
             components_and_params, shared_params)
 
     plot.plot_observables("hd142666", [3, 12]*u.um, components,
-                          fits_files, save_dir=post_fit_dir)
-
-    # HACK: This is to include innermost radius for rn.
-    innermost_radius = components[1].params["rin"]
-    for component in components:
-        component.params["rin0"] = innermost_radius
+                          save_dir=post_fit_dir)
 
     analysis.save_fits(
             4096, 0.1, distance,
-            OPTIONS.fit.wavelengths, components,
-            component_labels, opacities=[kappa_abs, kappa_cont],
+            components, component_labels,
+            opacities=[kappa_abs, kappa_cont],
             savefits=post_fit_dir / "model.fits",
-            options=OPTIONS, object_name="HD 142666",
-            nwalkers=nwalkers, nsteps=nburnin+nsteps,
-            ncores=ncores)
+            object_name="HD 142666", nwalkers=nwalkers,
+            nsteps=nburnin+nsteps, ncores=ncores)
+
+    axis_ratio = OPTIONS.model.constant_params["elong"]
+    pos_angle = OPTIONS.model.constant_params["pa"]
 
     plot.plot_fit(
-            new_params["sh_elong"], new_params["sh_pa"],
+            axis_ratio, pos_angle,
             components=components,
             savefig=post_fit_dir / "fit_results.pdf")

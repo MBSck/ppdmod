@@ -227,8 +227,6 @@ class HankelComponent(Component):
         self.params["eff_temp"] = Parameter(**STANDARD_PARAMETERS["eff_temp"])
         self.params["eff_radius"] = Parameter(**STANDARD_PARAMETERS["eff_radius"])
 
-        self.params["rin0"] = Parameter(**STANDARD_PARAMETERS["rin0"])
-
         self.params["rin"] = Parameter(**STANDARD_PARAMETERS["rin"])
         self.params["rout"] = Parameter(**STANDARD_PARAMETERS["rout"])
 

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, Any, Dict, List
+from typing import Optional, List
 from pathlib import Path
 
 import astropy.units as u
@@ -30,50 +30,45 @@ def save_fits(dim: int, pixel_size: u.mas,
         else OPTIONS.fit.wavelengths
     distance = u.Quantity(distance, u.pc)
 
-    image = np.empty((wavelength.size, dim, dim))*u.Jy
-    for component in components:
-        image += component.calculate_image(dim, pixel_size, wavelength)
-    breakpoint()
-
-    tables = []
+    image, tables = np.empty((wavelength.size, dim, dim))*u.Jy, []
     for index, component in enumerate(components):
-        table_header = fits.Header()
+        image += component.calculate_image(dim, pixel_size, wavelength)
 
+        table_header = fits.Header()
         table_header["COMP"] = component.name
         table_header["GRIDTYPE"] = (OPTIONS.model.gridtype,
                                     "The type of the model grid")
 
         data = {"wavelength": wavelength}
         if component.name != "Star":
-            radius = component.calculate_internal_grid(dim)
+            radius = np.tile(component.calculate_internal_grid(dim), (wavelength.size, 1))
 
-            data["radius"] = [radius]*wavelength.size
-            data["temperature"] = [component.calculate_temperature(radius)]\
-                * wavelength.size
-            data["surface_density"] = [component.calculate_surface_density(radius)]\
-                * wavelength.size
+            data["radius"] = radius
+            data["temperature"] = component.calculate_temperature(radius)
+            data["surface_density"] = component.calculate_surface_density(radius)
 
-            data["flux"] = component.calculate_flux(wavelength)
-            data["emissivity"] = component.calculate_emissivity(radius, wavelength)
-            data["brightness"] = component.calculate_brightness(radius, wavelength)
+            data["flux"] = component.calculate_flux(wavelength[:, np.newaxis])
+            data["emissivity"] = component.calculate_emissivity(
+                    radius, wavelength[:, np.newaxis])
+            data["brightness"] = component.calculate_brightness(
+                    radius, wavelength[:, np.newaxis])
 
-        for wavelength in wavelength:
-            for parameter in component.params.values():
-                if parameter.wavelength is None:
-                    name = parameter.shortname.upper()
-                    if name not in table_header:
-                        description = f"[{parameter.unit}] {parameter.description}"
-                        table_header[name] = (parameter().value, description)
-                else:
-                    if parameter.name not in data:
-                        data[parameter.name] = [parameter(wavelength).value]
-                    else:
-                        data[parameter.name].append(parameter(wavelength).value)
+        for parameter in component.params.values():
+            if parameter.wavelength is None:
+                name = parameter.shortname.upper()
+                if name not in table_header:
+                    description = f"[{parameter.unit}] {parameter.description}"
+                    table_header[name] = (parameter().value, description)
+            else:
+                data[parameter.name] = parameter(wavelength[:, np.newaxis])
 
-        table = fits.BinTableHDU(
-                Table(data=data),
-                name="_".join(component_labels[index].split(" ")).upper(),
-                header=table_header)
+        try:
+            table = fits.BinTableHDU(
+                    Table(data=data),
+                    name="_".join(component_labels[index].split(" ")).upper(),
+                    header=table_header)
+        except ValueError:
+            breakpoint()
         tables.append(table)
 
     data = None
@@ -84,7 +79,6 @@ def save_fits(dim: int, pixel_size: u.mas,
             data = {col.name: table.data[col.name] for col in table.columns}
             continue
         for column in table.columns:
-            # TODO: Make calculation work for total flux
             if column.name in ["wavelength", "kappa_abs", "kappa_cont", "flux"]:
                 continue
             if column.name == "radius":
@@ -105,7 +99,7 @@ def save_fits(dim: int, pixel_size: u.mas,
         tables.append(fits.BinTableHDU(Table(data=data), name="OPACITIES"))
 
     wcs = WCS(naxis=3)
-    wcs.wcs.crpix = (*np.array(images.shape[:2]) // 2, len(wavelength))
+    wcs.wcs.crpix = (*np.array(image.shape[1:]) // 2, wavelength.size)
     wcs.wcs.cdelt = ([pixel_size.value, pixel_size.value, -1.0])
     wcs.wcs.crval = (0.0, 0.0, 1.0)
     wcs.wcs.ctype = ("RA---AIR", "DEC--AIR", "WAVELENGTHS")
@@ -118,6 +112,8 @@ def save_fits(dim: int, pixel_size: u.mas,
     header["NCORE"] = (ncores, "Numbers of cores for the fitting")
     header["OBJECT"] = (object_name, "Name of the object")
     header["DATE"] = (f"{datetime.now()}", "Creation date")
+    header["R0"] = (OPTIONS.model.reference_radius.value,
+                    "[AU] Reference radius for the power laws")
 
-    hdu = fits.HDUList([fits.PrimaryHDU(images, header=header), *tables])
+    hdu = fits.HDUList([fits.PrimaryHDU(image.value, header=header), *tables])
     hdu.writeto(savefits, overwrite=True)

@@ -251,6 +251,7 @@ def plot_datapoints(
         data_to_plot: Optional[List[str]] = OPTIONS.fit.data,
         norm: Optional[np.ndarray] = None,
         wavelength_range: Optional[List[float]] = None,
+        plot_nan: Optional[bool] = False,
         colormap: Optional[str] = OPTIONS.plot.color.colormap) -> None:
     """Plots the deviation of a model from real data of an object for
     total flux, visibilities and closure phases.
@@ -265,16 +266,23 @@ def plot_datapoints(
         The data to plot. The default is OPTIONS.fit.data.
     savefig : pathlib.Path, optional
         The save path. The default is None.
+    plot_nan : bool, optional
+        If True plots the model values at points where the real data
+        is nan (not found in the file for the wavelength specified).
     """
     colormap = get_colormap(colormap)
     hline_color = "gray" if OPTIONS.plot.color.background == "white"\
         else "white"
 
-
-    fluxes = OPTIONS.data.flux
+    flux, t3 = OPTIONS.data.flux, OPTIONS.data.t3
     vis = OPTIONS.data.vis if "vis" in OPTIONS.fit.data\
         else OPTIONS.data.vis2
-    t3 = OPTIONS.data.t3
+    flux_model, vis_model, t3_model = calculate_observables(components)
+
+    effective_baselines, _ = calculate_effective_baselines(
+        vis.ucoord, vis.vcoord, axis_ratio, pos_angle)
+    longest_baselines, _ = calculate_effective_baselines(
+        t3.u123coord, t3.v123coord, axis_ratio, pos_angle, longest=True)
 
     errorbar_params = OPTIONS.plot.errorbar
     scatter_params = OPTIONS.plot.scatter
@@ -286,16 +294,6 @@ def plot_datapoints(
         if wavelength_range is not None:
             if not (wavelength_range[0] <= wavelength <= wavelength_range[1]):
                 continue
-        effective_baselines = calculate_effective_baselines(
-            vis.ucoord[index], vis.vcoord[index],
-            axis_ratio, pos_angle)[0]
-        longest_baselines = calculate_effective_baselines(
-            t3.u123coord[index], t3.v123coord[index],
-            axis_ratio, pos_angle)[0].max(axis=0)
-        flux_model, vis_model, cphase_model = calculate_observables(
-                components, wavelength,
-                vis.ucoord[index], vis.vcoord[index],
-                t3.u123coord[index], t3.v123coord[index])
 
         effective_baselines_mlambda = effective_baselines/wavelength.value
         longest_baselines_mlambda = longest_baselines/wavelength.value
@@ -309,44 +307,65 @@ def plot_datapoints(
             set_axes_color(lower_ax, OPTIONS.plot.color.background)
 
             if key == "flux":
-                for flux, flux_err in zip(
-                        fluxes.value[index], fluxes.err[index]):
-                    upper_ax.errorbar(
-                            wavelength.value, flux, flux_err,
-                            fmt="o", **vars(errorbar_params))
-                    upper_ax.scatter(
-                            wavelength.value, flux_model,
-                            marker="X", **vars(scatter_params))
-                    lower_ax.scatter(
-                            wavelength.value, flux-flux_model,
-                            marker="o", **vars(scatter_params))
+                if not plot_nan:
+                    nan_flux = ~np.isnan(flux.value[index])
+                else:
+                    nan_flux = None
+
+                upper_ax.errorbar(
+                        wavelength.value.repeat(flux.err[index].size)[nan_flux],
+                        flux.value[index][nan_flux],
+                        flux.err[index][nan_flux],
+                        fmt="o", **vars(errorbar_params))
+                upper_ax.scatter(
+                        wavelength.value.repeat(flux.err[index].size)[nan_flux],
+                        flux_model[index][nan_flux],
+                        marker="X", **vars(scatter_params))
+                lower_ax.scatter(
+                        wavelength.value.repeat(flux.err[index].size)[nan_flux],
+                        flux.value[index][nan_flux]-flux_model[index][nan_flux],
+                        marker="o", **vars(scatter_params))
                 lower_ax.axhline(y=0, color=hline_color, linestyle='--')
 
             if key in ["vis", "vis2"]:
+                if not plot_nan:
+                    nan_vis = ~np.isnan(vis.value[index])
+                else:
+                    nan_vis = None
+
                 upper_ax.errorbar(
-                        effective_baselines_mlambda.value,
-                        vis.value[index], vis.err[index],
+                        effective_baselines_mlambda.value[nan_vis],
+                        vis.value[index][nan_vis],
+                        vis.err[index][nan_vis],
                         fmt="o", **vars(errorbar_params))
                 upper_ax.scatter(
-                        effective_baselines_mlambda.value, vis_model,
+                        effective_baselines_mlambda.value[nan_vis],
+                        vis_model[index][nan_vis],
                         marker="X", **vars(scatter_params))
                 lower_ax.scatter(
-                        effective_baselines_mlambda.value,
-                        vis.value[index]-vis_model,
+                        effective_baselines_mlambda.value[nan_vis],
+                        vis.value[index][nan_vis]-vis_model[index][nan_vis],
                         marker="o", **vars(scatter_params))
                 lower_ax.axhline(y=0, color=hline_color, linestyle='--')
 
             if key == "t3":
+                if not plot_nan:
+                    nan_t3 = ~np.isnan(t3.value[index])
+                else:
+                    nan_t3 = None
+
                 upper_ax.errorbar(
-                        longest_baselines_mlambda.value,
-                        t3.value[index], t3.err[index],
+                        longest_baselines_mlambda.value[nan_t3],
+                        t3.value[index][nan_t3], t3.err[index][nan_t3],
                         fmt="o", **vars(errorbar_params))
                 upper_ax.scatter(
-                        longest_baselines_mlambda.value, cphase_model,
+                        longest_baselines_mlambda.value[nan_t3],
+                        t3_model[index][nan_t3],
                         marker="X", **vars(scatter_params))
                 upper_ax.axhline(y=0, color=hline_color, linestyle='--')
-                lower_ax.scatter(longest_baselines_mlambda.value,
-                                 restrict_phase(t3.value[index]-cphase_model),
+                lower_ax.scatter(longest_baselines_mlambda.value[nan_t3],
+                                 restrict_phase(
+                                     t3.value[index][nan_t3]-t3_model[index][nan_t3]),
                                  marker="o", **vars(scatter_params))
                 lower_ax.axhline(y=0, color=hline_color, linestyle='--')
 
@@ -354,7 +373,7 @@ def plot_datapoints(
         axarr["flux"][0].set_xticks(wavelengths.value)
         axarr["flux"][1].set_xticks(wavelengths.value)
         axarr["flux"][1].set_xticklabels(wavelengths.value, rotation=45)
-    errorbar_params.color = ""
+    errorbar_params.color = None
 
 
 def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
@@ -363,6 +382,7 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
              colormap: Optional[str] = OPTIONS.plot.color.colormap,
              ylimits: Optional[Dict[str, List[float]]] = {},
              wavelength_range: Optional[List[float]] = None,
+             plot_nan: Optional[bool] = False,
              title: Optional[str] = None,
              savefig: Optional[Path] = None):
     """Plots the deviation of a model from real data of an object for
@@ -378,6 +398,9 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
         The data to plot. The default is OPTIONS.fit.data.
     colormap : str, optional
         The colormap.
+    plot_nan : bool, optional
+        If True plots the model values at points where the real data
+        is nan (not found in the file for the wavelength specified).
     title : str, optional
         The title. The default is None.
     savefig : pathlib.Path, optional
@@ -409,7 +432,7 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
                     wavelengths, components=components,
                     wavelength_range=wavelength_range,
                     norm=norm, data_to_plot=data_to_plot,
-                    colormap=colormap)
+                    plot_nan=plot_nan, colormap=colormap)
 
     sm = cm.ScalarMappable(cmap=get_colormap(colormap), norm=norm)
     sm.set_array([])
@@ -481,9 +504,11 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
             upper_ax.set_ylabel(r"Closure Phases ($^\circ$)")
             lower_ax.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}$ (M$\lambda$)")
             lower_ax.set_ylabel(r"Residuals ($^\circ$)")
-            lower_bound = np.min([np.min(value) for value in OPTIONS.data.t3.value])
+            t3 = OPTIONS.data.t3
+            nan_t3 = np.isnan(t3.value)
+            lower_bound = t3.value[~nan_t3].min()
             lower_bound += lower_bound*0.25
-            upper_bound = np.max([np.max(value) for value in OPTIONS.data.t3.value])
+            upper_bound = t3.value[~nan_t3].max()
             upper_bound += upper_bound*0.25
             upper_ax.tick_params(**tick_settings)
             if "t3" in ylimits:
@@ -543,10 +568,9 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
     hline_color = "gray" if OPTIONS.plot.color.background == "white"\
         else "white"
 
-    fluxes = OPTIONS.data.flux
+    flux, t3 = OPTIONS.data.flux, OPTIONS.data.t3
     vis = OPTIONS.data.vis if "vis" in OPTIONS.fit.data\
         else OPTIONS.data.vis2
-    t3 = OPTIONS.data.t3
 
     # TODO: Set the color somewhere centrally so all plots are the same color.
     errorbar_params = OPTIONS.plot.errorbar
@@ -572,28 +596,21 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
             ax_key = "vis" if key in ["vis", "vis2"] else key
             ax = axarr[ax_key]
             if key == "flux":
-                for flux, flux_err in zip(
-                        fluxes.value[index], fluxes.err[index]):
-                    if flux == np.nan:
-                        continue
-                    ax.errorbar(
-                        wavelength.value, flux, flux_err,
-                        fmt="o", **vars(errorbar_params))
+                ax.errorbar(
+                    wavelength.value.repeat(flux.err[index].size),
+                    flux.value[index], flux.err[index],
+                    fmt="o", **vars(errorbar_params))
 
             if key in ["vis", "vis2"]:
-                nan_vis = np.isnan(vis.value[index])
                 ax.errorbar(
-                    effective_baselines_mlambda.value[~nan_vis],
-                    vis.value[index][~nan_vis],
-                    vis.err[index][~nan_vis],
+                    effective_baselines_mlambda.value,
+                    vis.value[index], vis.err[index],
                     fmt="o", **vars(errorbar_params))
 
             if key == "t3":
-                nan_vis = np.isnan(t3.value[index])
                 ax.errorbar(
-                    longest_baselines_mlambda.value[~nan_vis],
-                    t3.value[index][~nan_vis],
-                    t3.err[index][~nan_vis],
+                    longest_baselines_mlambda.value,
+                    t3.value[index], t3.err[index],
                     fmt="o", **vars(errorbar_params))
                 ax.axhline(y=0, color=hline_color, linestyle='--')
 
@@ -601,7 +618,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
         axarr["flux"].set_xticks(wavelengths.value)
         axarr["flux"].set_xticklabels(wavelengths.value, rotation=45)
 
-    errorbar_params.color = ""
+    errorbar_params.color = None
 
     sm = cm.ScalarMappable(cmap=colormap, norm=norm)
     sm.set_array([])
@@ -778,7 +795,8 @@ def plot_observables(target: str,
     ax = plt.axes(facecolor=OPTIONS.plot.color.background)
     set_axes_color(ax, OPTIONS.plot.color.background)
     ax.plot(wavelength, flux)
-    plot_target(target, wavelength_range=wavelength_range, ax=ax)
+    plot_target(target, wavelength_range=wavelength_range,
+                ax=ax, show_legend=False)
     ax.set_xlabel(r"$\lambda$ ($\mu$m)")
     ax.set_ylabel("Flux (Jy)")
     ax.set_ylim([0, None])

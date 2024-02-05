@@ -56,9 +56,6 @@ STANDARD_PARAMETERS = {
         "fov": {"name": "fov", "shortname": "fov",
                 "value": 0, "description": "The interferometric field of view",
                 "unit": u.mas, "free": False},
-        "rin0": {"name": "rin0", "shortname": "rin0",
-                 "value": 0, "unit": u.mas,
-                 "description": "Inner radius of the whole disk", "free": False},
         "rin": {"name": "rin", "shortname": "rin",
                 "value": 0, "unit": u.mas,
                 "description": "Innermost radius of the component", "free": True},
@@ -130,7 +127,7 @@ model = SimpleNamespace(components_and_params={},
 color = SimpleNamespace(background="white",
                         colormap="tab20", number=100,
                         list=get_colorlist("tab20", 100))
-errorbar = SimpleNamespace(color="",
+errorbar = SimpleNamespace(color=None,
                            markeredgecolor="black",
                            markeredgewidth=0.2,
                            capsize=5, capthick=3,
@@ -141,7 +138,7 @@ plot = SimpleNamespace(dpi=300, color=color,
                        errorbar=errorbar, scatter=scatter)
 
 # NOTE: Fitting
-weights = SimpleNamespace(cphase=1, flux=1, t3=1, vis=1)
+weights = SimpleNamespace(flux=1, t3=1, vis=1)
 fit = SimpleNamespace(weights=weights,
                       data=["flux", "vis", "t3"],
                       method="emcee",

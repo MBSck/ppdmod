@@ -1,5 +1,4 @@
 from multiprocessing import Pool
-from types import SimpleNamespace
 from typing import Optional, List, Dict, Tuple, Union
 
 import astropy.units as u
@@ -188,6 +187,7 @@ def calculate_observable_chi_sq(
     chi_sq = 0.
     for key in OPTIONS.fit.data:
         data = getattr(OPTIONS.data, key)
+        key = key if key != "vis2" else "vis"
         weight = getattr(OPTIONS.fit.weights, key)
         nan_indices = np.isnan(data.value)
         chi_sq += calculate_chi_sq(
