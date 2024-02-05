@@ -73,6 +73,7 @@ def test_star_stellar_radius_angular(star: Star) -> None:
 
 
 # TODO: include test for stellar flux with input file as well.
+# TODO: Make this for multiple wavelengths
 @pytest.mark.parametrize("wl, dim",
                          [(wl, dim) for dim in DIMENSION
                           for wl in [8, 9, 10, 11]*u.um])
@@ -87,13 +88,14 @@ def test_star_image(star: Star, dim: int, wl: u.um,
 
     centre = dim//2
 
-    plt.imshow(image.value)
+    plt.imshow(image.value[0])
     plt.xlim(centre-20, centre+20)
     plt.ylim(centre-20, centre+20)
     plt.savefig(star_dir / f"dim{dim}_wl{wl.value}_star_image.pdf")
     plt.close()
 
     assert len(image[image != 0]) == 4
+    assert image.shape == (1, dim, dim)
     assert image.unit == u.Jy
     assert np.max(image.value) < 0.1
 

@@ -17,7 +17,6 @@ from astropy.table import Table
 from matplotlib.gridspec import GridSpec
 
 from .component import Component
-from .data import ReadoutFits
 from .fitting import calculate_observables
 from .options import OPTIONS, get_colormap
 from .utils import calculate_effective_baselines, restrict_phase, \
@@ -778,7 +777,7 @@ def plot_observables(target: str,
                    tight_layout=True)
     ax = plt.axes(facecolor=OPTIONS.plot.color.background)
     set_axes_color(ax, OPTIONS.plot.color.background)
-    ax.plot(wavelength, flux, label="Model")
+    ax.plot(wavelength, flux)
     plot_target(target, wavelength_range=wavelength_range, ax=ax)
     ax.set_xlabel(r"$\lambda$ ($\mu$m)")
     ax.set_ylabel("Flux (Jy)")
@@ -787,28 +786,42 @@ def plot_observables(target: str,
     plt.savefig(save_dir / "sed.pdf", format="pdf")
     plt.close()
 
-    for index, (uc, vc) in enumerate(zip(ucoord, vcoord)):
+    vis_data = OPTIONS.data.vis if "vis" in OPTIONS.fit.data\
+        else OPTIONS.data.vis2
+
+    effective_baselines, baseline_angles = calculate_effective_baselines(
+            vis_data.ucoord, vis_data.vcoord,
+            components[1].params["elong"](),
+            components[1].params["pa"]())
+
+    for index, (baseline, baseline_angle) in enumerate(
+            zip(effective_baselines, baseline_angles)):
         _ = plt.figure(facecolor=OPTIONS.plot.color.background,
                        tight_layout=True)
         ax = plt.axes(facecolor=OPTIONS.plot.color.background)
         set_axes_color(ax, OPTIONS.plot.color.background)
 
-        baseline, baseline_angle = np.hypot(uc, vc), np.arctan2(uc, vc)*u.rad.to(u.deg)
-        ax.plot(wavelengths[:, np.newaxis, np.newaxis], vis[:, index],
+        ax.plot(wavelength, vis[:, index],
                 label=rf"B={baseline:.2f} m, $\phi$={baseline_angle:.2f}$^\circ$")
         ax.set_xlabel(r"$\lambda$ ($\mu$m)")
         ax.set_ylabel("Visibilities (Normalized)")
         ax.set_ylim([0, 1])
-        plt.legend()
+        # plt.legend()
         plt.savefig(vis_dir / f"vis_{baseline:.2f}.pdf", format="pdf")
         plt.close()
 
-    for index, baseline in enumerate(np.hypot(u123coord, v123coord).max(axis=0)):
+    effective_baselines, baseline_angles = calculate_effective_baselines(
+            OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord,
+            components[1].params["elong"](),
+            components[1].params["pa"](), longest=True)
+
+    for index, (baseline, baseline_angle) in enumerate(
+            zip(effective_baselines, baseline_angles)):
         _ = plt.figure(facecolor=OPTIONS.plot.color.background,
                        tight_layout=True)
         ax = plt.axes(facecolor=OPTIONS.plot.color.background)
         set_axes_color(ax, OPTIONS.plot.color.background)
-        ax.plot(wavelengths, t3_model[:, index], label=f"B={baseline:.2f} m")
+        ax.plot(wavelength, t3[:, index], label=f"B={baseline:.2f} m")
         ax.set_xlabel(r"$\lambda$ ($\mu$m)")
         ax.set_ylabel(r"Closure Phases ($^\circ$)")
         plt.legend()

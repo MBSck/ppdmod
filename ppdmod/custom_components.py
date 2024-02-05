@@ -97,10 +97,10 @@ class Star(AnalyticalComponent):
         -------
         image : astropy.units.Quantity, optional
         """
-        image = np.zeros(xx.shape)*u.Jy
+        image = np.zeros((wavelength.size, *xx.shape))*u.Jy
         centre = xx.shape[0]//2
-        star_flux = self.calculate_flux(wavelength)/4
-        image[centre-1:centre+1, centre-1:centre+1] = star_flux
+        star_flux = (self.calculate_flux(wavelength)/4)[..., np.newaxis]
+        image[:, centre-1:centre+1, centre-1:centre+1] = star_flux
         return image.astype(OPTIONS.data.dtype.real)
 
     def _visibility_function(self, dim: int, pixel_size: u.mas,

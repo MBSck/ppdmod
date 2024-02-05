@@ -50,7 +50,7 @@ def analytic_component() -> AnalyticalComponent:
 def hankel_component() -> HankelComponent:
     """Initializes a numerical component."""
     hankel_component = HankelComponent(
-            rin=0.5, rout=3, pa=33,
+            rin=0.5, rout=3, pa=33, dist=148.3,
             elong=0.5, dim=512, a=0.5, phi=33,
             inner_temp=1500, q=0.5)
     hankel_component.optically_thick = True

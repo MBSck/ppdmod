@@ -9,15 +9,16 @@ from astropy.table import Table
 from astropy.wcs import WCS
 
 from .component import Component
+from .options import OPTIONS
 
 
-def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
-              wavelengths: List[u.Quantity[u.um]],
+def save_fits(dim: int, pixel_size: u.mas,
+              distance: u.pc,
               components: List[Component],
               component_labels: List[str],
+              wavelength: Optional[u.um] = None,
               opacities: List[np.ndarray] = None,
               savefits: Optional[Path] = None,
-              options: Optional[Dict[str, Any]] = None,
               object_name: Optional[str] = None,
               nwalkers: Optional[int] = None,
               nsteps: Optional[int] = None,
@@ -25,52 +26,38 @@ def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
     """Saves a (.fits)-file of the model with all the information on the
     parameter space."""
     pixel_size = u.Quantity(pixel_size, u.mas)
-    wavelengths = u.Quantity(wavelengths, u.um)
+    wavelength = u.Quantity(wavelength, u.um) if wavelength is not None\
+        else OPTIONS.fit.wavelengths
     distance = u.Quantity(distance, u.pc)
 
-    images = []
-    for wavelength in wavelengths:
-        image = np.empty([dim, dim])*u.Jy
-        for component in components:
-            image += component.calculate_image(dim, pixel_size, wavelength)
-        images.append(image)
-    images = np.array(images)
+    image = np.empty((wavelength.size, dim, dim))*u.Jy
+    for component in components:
+        image += component.calculate_image(dim, pixel_size, wavelength)
+    breakpoint()
 
     tables = []
     for index, component in enumerate(components):
         table_header = fits.Header()
 
         table_header["COMP"] = component.name
-        if options is not None:
-            table_header["GRIDTYPE"] = (options.model.gridtype, "The type of the grid")
+        table_header["GRIDTYPE"] = (OPTIONS.model.gridtype,
+                                    "The type of the model grid")
 
-        data = {"wavelength": wavelengths}
+        data = {"wavelength": wavelength}
         if component.name != "Star":
-            innermost_radius = component.params["rin0"]()\
-                    if component.params["rin0"]() != 0 else component.params["rin"]()
             radius = component.calculate_internal_grid(dim)
 
-            data["radius"] = [radius]*len(wavelengths)
-            data["temperature"] = [component._temperature_profile_function(
-                radius, innermost_radius)]*len(wavelengths)
-            data["surface_density"] = [component._surface_density_profile_function(
-                radius, innermost_radius)]*len(wavelengths)
+            data["radius"] = [radius]*wavelength.size
+            data["temperature"] = [component.calculate_temperature(radius)]\
+                * wavelength.size
+            data["surface_density"] = [component.calculate_surface_density(radius)]\
+                * wavelength.size
 
-            for wavelength in wavelengths:
-                if "flux" not in data:
-                    data["flux"] = []
-                if "emissivity" not in data:
-                    data["emissivity"] = []
-                if "brightness" not in data:
-                    data["brightness"] = []
+            data["flux"] = component.calculate_flux(wavelength)
+            data["emissivity"] = component.calculate_emissivity(radius, wavelength)
+            data["brightness"] = component.calculate_brightness(radius, wavelength)
 
-                data["flux"].append(component.calculate_flux(wavelength))
-                data["emissivity"].append(component._emissivity_profile_function(
-                        radius, innermost_radius, wavelength))
-                data["brightness"].append(component._brightness_profile_function(
-                        radius, wavelength))
-
-        for wavelength in wavelengths:
+        for wavelength in wavelength:
             for parameter in component.params.values():
                 if parameter.wavelength is None:
                     name = parameter.shortname.upper()
@@ -118,7 +105,7 @@ def save_fits(dim: int, pixel_size: u.mas, distance: u.pc,
         tables.append(fits.BinTableHDU(Table(data=data), name="OPACITIES"))
 
     wcs = WCS(naxis=3)
-    wcs.wcs.crpix = (*np.array(images.shape[:2]) // 2, len(wavelengths))
+    wcs.wcs.crpix = (*np.array(images.shape[:2]) // 2, len(wavelength))
     wcs.wcs.cdelt = ([pixel_size.value, pixel_size.value, -1.0])
     wcs.wcs.crval = (0.0, 0.0, 1.0)
     wcs.wcs.ctype = ("RA---AIR", "DEC--AIR", "WAVELENGTHS")

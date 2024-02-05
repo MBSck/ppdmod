@@ -309,39 +309,41 @@ class HankelComponent(Component):
     def calculate_azimuthal_modulation(self, xx: u.mas, yy: u.mas) -> u.one:
         """Calculates the azimuthal modulation."""
         if not self.asymmetric:
-            return 1
+            return np.array([1])[:, np.newaxis]
+
         azimuthal_modulation = (1+self.params["a"]()\
                 * np.cos(np.arctan2(yy, xx)-self.params["phi"]()))
         return azimuthal_modulation.astype(OPTIONS.data.dtype.real)
 
-    def calculate_temperature(
-            self, radius: u.mas, innermost_radius: u.mas) -> u.K:
+    def calculate_temperature(self, radius: u.mas) -> u.K:
         """Calculates a 1D-temperature profile."""
         if self.const_temperature:
             temperature = np.sqrt(self.stellar_radius_angular/(2.0*radius))\
                     * self.params["eff_temp"]()
         else:
+            reference_radius = distance_to_angular(
+                    OPTIONS.model.reference_radius, self.params["dist"]())
             temperature = self.params["inner_temp"]()\
-                    * (radius/innermost_radius)**(-self.params["q"]())
+                * (radius/reference_radius)**(-self.params["q"]())
         return temperature.astype(OPTIONS.data.dtype.real)
 
-    def calculate_surface_density(
-            self, radius: u.mas, innermost_radius: u.mas) -> u.one:
+    def calculate_surface_density(self, radius: u.mas) -> u.one:
         """Calculates a 1D-surface density profile."""
+        reference_radius = distance_to_angular(
+                OPTIONS.model.reference_radius, self.params["dist"]())
         surface_density = self.params["inner_sigma"]()\
-                * (radius/innermost_radius)**(-self.params["p"]())
+            * (radius/reference_radius)**(-self.params["p"]())
         return surface_density.astype(OPTIONS.data.dtype.real)
 
-    def calculate_emissivity(
-            self, radius: u.mas, innermost_radius: u.mas, wavelength: u.um) -> u.one:
+    def calculate_emissivity(self, radius: u.mas, wavelength: u.um) -> u.one:
         """Calculates a 1D-thickness profile."""
         if wavelength.shape == ():
             wavelength.reshape((wavelength.size,))
 
         if self.optically_thick:
-            return 1
-        surface_density = self.calculate_surface_density(
-            radius, innermost_radius)
+            return np.array([1])[:, np.newaxis]
+
+        surface_density = self.calculate_surface_density(radius)
         optical_depth = surface_density*self.get_opacity(wavelength)
         emissivity = (1-np.exp(-optical_depth/self.params["elong"]()))
         return emissivity.astype(OPTIONS.data.dtype.real)
@@ -362,36 +364,34 @@ class HankelComponent(Component):
         if wavelength.shape == ():
             wavelength.reshape((wavelength.size,))
 
-        innermost_radius = self.params["rin0"]()\
-            if self.params["rin0"]() != 0 else self.params["rin"]()
-
-        temperature_profile = self.calculate_temperature(
-                radius, innermost_radius)
-        brightness = BlackBody(temperature_profile)(wavelength)
-        emissivity = self.calculate_emissivity(
-                radius, innermost_radius, wavelength)
-        brightness *= emissivity
-        return brightness.astype(OPTIONS.data.dtype.real)
+        temperature = self.calculate_temperature(radius)
+        brightness = BlackBody(temperature)(wavelength)
+        emissivity = self.calculate_emissivity(radius, wavelength)
+        return (brightness*emissivity).astype(OPTIONS.data.dtype.real)
 
     # TODO: Check if the image is displayed properly
     def calculate_image(self, dim: int, pixel_size: u.mas, wavelength: u.um) -> u.Jy:
         """Calculates the image."""
+        wavelength = wavelength[:, np.newaxis, np.newaxis]
         pixel_size = pixel_size if isinstance(pixel_size, u.Quantity)\
             else pixel_size*u.mas
         xx = np.linspace(-0.5, 0.5, dim)*dim*pixel_size
         xx, yy = np.meshgrid(xx, xx)
+
         if self.elliptic:
             pa, elong = self.params["pa"](), self.params["elong"]()
-            xx = xx*np.cos(pa)+yy*np.sin(pa)
-            yy = (-xx*np.sin(pa)+yy*np.cos(pa))/elong
-        azimuthal_modulation = self.calculate_azimuthal_modulation(xx, yy)
+            xx = xx*np.cos(pa)-yy*np.sin(pa)
+            yy = (xx*np.sin(pa)+yy*np.cos(pa))*elong
+
         radius = np.hypot(xx, yy)
         radial_profile = np.logical_and(radius >= self.params["rin"](),
                                         radius <= self.params["rout"]())
-        brightness_profile = self.calculate_brightness(
+        azimuthal_modulation = self.calculate_azimuthal_modulation(xx, yy)
+        azimuthal_modulation = azimuthal_modulation[np.newaxis, ...]
+        brightness = self.calculate_brightness(
                 radius, wavelength).to(u.erg/(u.cm**2*u.rad**2*u.s*u.Hz))\
             * pixel_size.to(u.rad)**2
-        image = brightness_profile.to(u.Jy)*radial_profile*azimuthal_modulation
+        image = brightness.to(u.Jy)*radial_profile*azimuthal_modulation
         return image.astype(OPTIONS.data.dtype.real)
 
     # TODO: Think of a way to implement higher orders of modulation
