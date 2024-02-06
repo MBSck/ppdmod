@@ -13,6 +13,12 @@ build/
 cython_src/*.c
 *.fits
 
+# Sensitive Data
+tests/data/fits
+tests/data/flux
+tests/data/grf
+tests/data/qval
+
 # Results of tests
 fluxes/
 component/
