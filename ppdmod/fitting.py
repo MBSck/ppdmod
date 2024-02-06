@@ -117,11 +117,11 @@ def calculate_chi_sq(data: u.quantity, error: u.quantity,
             error**2 + model_data**2*np.exp(2*lnf))
 
     if method == "linear":
-        return -0.5*np.sum((data-model_data)**2*inv_sigma_squared
-                           + np.log(1/inv_sigma_squared))
+        return -0.5*((data-model_data)**2*inv_sigma_squared
+                     + np.log(1/inv_sigma_squared)).sum()
 
     diff = np.angle(np.exp((data-model_data)*u.deg.to(u.rad)*1j), deg=False)
-    return -0.5*np.sum(diff**2*inv_sigma_squared + np.log(1/inv_sigma_squared))
+    return -0.5*(diff**2*inv_sigma_squared + np.log(1/inv_sigma_squared)).sum()
 
 
 def calculate_observables(components: List[Component],
@@ -190,10 +190,12 @@ def calculate_observable_chi_sq(
         key = key if key != "vis2" else "vis"
         weight = getattr(OPTIONS.fit.weights, key)
         nan_indices = np.isnan(data.value)
+        method = "linear" if key != "t3" else "exponential"
         chi_sq += calculate_chi_sq(
                 data.value[~nan_indices],
                 data.err[~nan_indices],
-                params[key][~nan_indices]) * weight
+                params[key][~nan_indices],
+                method=method) * weight
     return float(chi_sq)
 
 

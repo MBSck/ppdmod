@@ -1,21 +1,6 @@
 from setuptools import setup, Extension
 
 import numpy as np
-from Cython.Compiler import Options
-# from pybind11.setup_helpers import Pybind11Extension, build_ext
-
-
-Options.docstrings = True
-Options.annotate = True
-Options.language_level = 3
-Options.profile = False
-
-# spectral_cpp = Pybind11Extension(
-#     "ppdmod._spectral",
-#     ["src/spectral.cpp", "src/spectral_wrapper.cpp"],
-#     include_dirs=["include/"],
-#     extra_compile_args=["-O3", "-march=native", "-fno-math-errno"])
-
 
 extensions = [Extension("ppdmod._spectral_cy", ["cython_src/spectral.pyx"],
                         extra_compile_args=["-O3", "-march=native", "-fno-math-errno"])]
