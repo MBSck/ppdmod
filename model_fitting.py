@@ -199,8 +199,8 @@ post_fit_dir.mkdir(parents=True, exist_ok=True)
 
 if __name__ == "__main__":
     nburnin, nsteps, nwalkers = 200, 550, 100
-    # ncores = nwalkers // 2
-    ncores = 6
+    ncores = nwalkers // 2
+    # ncores = 6
     sampler = fitting.run_fit(
             nwalkers=nwalkers, nsteps_burnin=nburnin, nsteps=nsteps,
             ncores=ncores, method="analytical", debug=True)

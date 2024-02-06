@@ -126,8 +126,8 @@ def distance_to_angular(diameter: u.mas, distance: u.pc) -> u.m:
 
 def calculate_effective_baselines(
         ucoord: u.m, vcoord: u.m,
-        axis_ratio: Optional[u.one] = None,
-        pos_angle: Optional[u.deg] = None,
+        axis_ratio: Optional[u.Quantity[u.one]] = None,
+        pos_angle: Optional[u.Quantity[u.deg]] = None,
         longest: Optional[bool] = False
         ) -> Tuple[u.Quantity[u.m], u.Quantity[u.one]]:
     """Calculates the effective baselines from the projected baselines
@@ -365,7 +365,7 @@ def restrict_phase(phase: np.ndarray) -> np.ndarray:
 
 
 def load_data(files: List[Path],
-              wavelength_range: Optional[u.um] = [0.5, 50],
+              wavelength_range: Optional[u.Quantity[u.um]] = [0.5, 50],
               load_func: Optional[Callable] = None,
               comments: Optional[str] = "#",
               skiprows: Optional[int] = 1,

@@ -301,8 +301,8 @@ class HankelComponent(Component):
         if opacity.size == 1:
             return opacity.squeeze()
 
-        shape = [np.newaxis for _ in range(len(wavelength.shape)-1)]
-        return opacity[:, *shape]
+        shape = tuple(np.newaxis for _ in range(len(wavelength.shape)-1))
+        return opacity[(slice(None), *shape)]
 
     def calculate_azimuthal_modulation(self, xx: u.mas, yy: u.mas) -> u.one:
         """Calculates the azimuthal modulation."""
