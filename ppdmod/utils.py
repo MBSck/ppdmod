@@ -126,7 +126,7 @@ def distance_to_angular(diameter: u.mas, distance: u.pc) -> u.m:
 
 def calculate_effective_baselines(
         ucoord: u.m, vcoord: u.m,
-        axis_ratio: Optional[u.Quantity[u.one]] = None,
+        compression: Optional[u.Quantity[u.one]] = None,
         pos_angle: Optional[u.Quantity[u.deg]] = None,
         longest: Optional[bool] = False
         ) -> Tuple[u.Quantity[u.m], u.Quantity[u.one]]:
@@ -139,8 +139,8 @@ def calculate_effective_baselines(
         The u coordinate.
     vcoord: astropy.units.m
         The v coordinate.
-    axis_ratio: astropy.units.one
-        The axis ratio of the ellipse
+    compression: astropy.units.one
+        The compression of the y-axis.
     pos_angle: astropy.units.deg
         The positional angle of the object
     longest : bool, optional
@@ -154,13 +154,13 @@ def calculate_effective_baselines(
         Returns the effective baseline angles.
     """
     ucoord, vcoord = map(lambda x: u.Quantity(x, u.m), [ucoord, vcoord])
-    if axis_ratio is not None and pos_angle is not None:
-        axis_ratio = u.Quantity(axis_ratio, u.one)
+    if compression is not None and pos_angle is not None:
+        compression = u.Quantity(compression, u.one)
         pos_angle = u.Quantity(pos_angle, u.deg)
 
         ucoord_eff = ucoord*np.cos(pos_angle) - vcoord*np.sin(pos_angle)
         vcoord_eff = (ucoord*np.sin(pos_angle) + vcoord*np.cos(pos_angle))
-        vcoord_eff *= axis_ratio
+        vcoord_eff *= compression
     else:
         ucoord_eff, vcoord_eff = ucoord, vcoord
 

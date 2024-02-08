@@ -424,7 +424,7 @@ class HankelComponent(Component):
             order = order[..., np.newaxis, :]
 
         factor = (-1j)**order*self.params["a"]()*np.cos(order*(angle_diff))
-        integration = np.trapz(integrand * jv(
+        integration = 2*np.pi*np.trapz(integrand * jv(
                     order[..., np.newaxis], 2.*np.pi*bessel_factor), radius)
         return u.Quantity(factor*integration, unit=u.Jy)
 
@@ -451,9 +451,9 @@ class HankelComponent(Component):
             The visibilities.
         modulations : astropy.units.Jy
         """
-        axis_ratio = self.params["elong"]()
+        compression = self.params["elong"]()
         baselines, baseline_angles = calculate_effective_baselines(
-                ucoord, vcoord, axis_ratio, self.params["pa"]())
+                ucoord, vcoord, compression, self.params["pa"]())
 
         wavelength = wavelength[:, np.newaxis]
         brightness = self.calculate_brightness(radius, wavelength)
@@ -483,10 +483,12 @@ class HankelComponent(Component):
 
     def calculate_flux(self, wavelength: u.um) -> u.Jy:
         """Calculates the total flux from the hankel transformation."""
+        compression = self.params["elong"]()
         radius = self.calculate_internal_grid(self.params["dim"]())
         brightness_profile = self.calculate_brightness(
                 radius, wavelength[:, np.newaxis])
-        flux = (2.*np.pi*np.trapz(radius*brightness_profile, radius).to(u.Jy)).value
+        flux = (2.*np.pi*compression*np.trapz(
+            radius*brightness_profile, radius).to(u.Jy)).value
         return np.abs(flux.reshape((flux.shape[0], 1)).astype(OPTIONS.data.dtype.real))
 
     def calculate_visibility(self, ucoord: u.m, vcoord: u.m,
