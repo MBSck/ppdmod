@@ -263,7 +263,7 @@ def lnprob(theta: np.ndarray) -> float:
             return -np.inf
 
     components = assemble_components(parameters, shared_params)
-    return calculate_observable_chi_sq( *calculate_observables(components))
+    return calculate_observable_chi_sq(*calculate_observables(components))
 
 
 def run_mcmc(nwalkers: int,
