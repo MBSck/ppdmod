@@ -84,7 +84,7 @@ p = Parameter(**STANDARD_PARAMETERS["p"])
 inner_sigma = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
 
 rin.value = 1.
-rout.value = 7.
+rout.value = 3.
 p.value = 0.5
 inner_sigma.value = 1e-3
 
@@ -199,7 +199,7 @@ post_fit_dir.mkdir(parents=True, exist_ok=True)
 
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 200, 550, 100
+    nburnin, nsteps, nwalkers = 200, 500, 100
     ncores = nwalkers // 2
     # ncores = 6
     sampler = fitting.run_fit(
