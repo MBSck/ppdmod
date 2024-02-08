@@ -501,6 +501,8 @@ class HankelComponent(Component):
             vis += vis_mod.sum(-1)
         return np.abs(vis.value).astype(OPTIONS.data.dtype.real)
 
+    # TODO: Check if the complex conjugation is correct, if the phases are
+    # already minused
     def calculate_closure_phase(self, ucoord: u.m, vcoord: u.m,
                                 wavelength: u.um, **kwargs) -> np.ndarray:
         """Calculates the closure phases via hankel transformation."""

@@ -6,7 +6,8 @@ import numpy as np
 import pytest
 from astropy.io import fits
 
-from ppdmod.data import ReadoutFits, set_fit_wavelengths, set_data
+from ppdmod.data import ReadoutFits, set_fit_wavelengths, set_data, \
+    set_fit_weights
 from ppdmod.options import OPTIONS
 
 
@@ -40,7 +41,7 @@ def test_read_into_namespace(fits_files: List[Path],
 
             u1coord, u2coord = map(lambda x: t3.data[f"u{x}coord"], ["1", "2"])
             v1coord, v2coord = map(lambda x: t3.data[f"v{x}coord"], ["1", "2"])
-            u3coord, v3coord = -(u1coord+u2coord), -(v1coord+v2coord)
+            u3coord, v3coord = (u1coord+u2coord), (v1coord+v2coord)
             u123coord = np.array([u1coord, u2coord, u3coord])
             v123coord = np.array([v1coord, v2coord, v3coord])
 
@@ -138,7 +139,7 @@ def test_wavelength_retrieval(readouts: List[ReadoutFits], wavelength: u.um) -> 
 @pytest.mark.parametrize(
         "wavelength", [[3.5]*u.um, [8]*u.um,
                        [3.5, 8]*u.um, [3.5, 8, 10]*u.um])
-def test_get_data(fits_files: List[Path], wavelength: u.um) -> None:
+def test_set_data(fits_files: List[Path], wavelength: u.um) -> None:
     """Tests the automatic data procurrment from one
     or multiple (.fits)-files."""
     fit_data = ["flux", "vis", "vis2", "t3"]
@@ -169,3 +170,23 @@ def test_get_data(fits_files: List[Path], wavelength: u.um) -> None:
     assert flux.value.size == 0 and flux.err.size == 0
     assert vis.value.size == 0 and vis.err.size == 0
     assert t3.value.size == 0 and t3.err.size == 0
+
+
+@pytest.mark.parametrize(
+        "fit_data", [["flux", "vis", "t3"], ["flux", "vis2", "t3"]])
+def test_set_weights(fits_files: List[Path], fit_data: List[str]) -> None:
+    """Tests the setting of the weights"""
+    set_fit_wavelengths([3.5]*u.um)
+    set_data(fits_files, fit_data=fit_data)
+    set_fit_weights()
+
+    assert OPTIONS.fit.weights.flux != 1
+    assert OPTIONS.fit.weights.vis == 1
+    assert OPTIONS.fit.weights.nt3 != 1
+
+    set_fit_weights([0.5, 0.5, 0.5])
+    assert OPTIONS.fit.weights.flux == 0.5
+    assert OPTIONS.fit.weights.vis == 0.5
+    assert OPTIONS.fit.weights.nt3 == 0.5
+
+    set_data(fit_data=fit_data)

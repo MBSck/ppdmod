@@ -63,7 +63,10 @@ class ReadoutFits:
             err = data.data["t3phierr"][:, wl_index:]
             u1coord, u2coord = map(lambda x: data.data[f"u{x}coord"], ["1", "2"])
             v1coord, v2coord = map(lambda x: data.data[f"v{x}coord"], ["1", "2"])
-            u3coord, v3coord = -(u1coord+u2coord), -(v1coord+v2coord)
+            # TODO: Check this!
+            # NOTE: This should be positive as complex conjugation is applied
+            # later?
+            u3coord, v3coord = u1coord+u2coord, v1coord+v2coord
             u123coord = np.array([u1coord, u2coord, u3coord])
             v123coord = np.array([v1coord, v2coord, v3coord])
             return SimpleNamespace(value=value, err=err,
@@ -128,9 +131,28 @@ def set_fit_wavelengths(
     OPTIONS.fit.wavelengths = wavelength.flatten()
 
 
+def set_fit_weights(weights: Optional[List[float]] = None) -> None:
+    """Sets the weights of the fit parameters
+    from the observed data"""
+    if weights is not None:
+        wflux, wvis, wt3 = weights
+    else:
+        nflux = OPTIONS.data.flux.value.shape[1]
+        nt3 = OPTIONS.data.t3.value.shape[1]
+        if OPTIONS.data.vis2.value.size == 0:
+            nvis = OPTIONS.data.vis.value.shape[1]
+        else:
+            nvis = OPTIONS.data.vis2.value.shape[1]
+        wflux, wvis, wt3 = nvis/nflux, 1, nvis/nt3
+
+    OPTIONS.fit.weights.flux = wflux
+    OPTIONS.fit.weights.vis = wvis
+    OPTIONS.fit.weights.nt3 = wt3
+
+
 def set_data(fits_files: Optional[List[Path]] = None,
-             fit_data: Optional[List[str]] = None,
-             wavelength: Optional[u.Quantity[u.um]] = None) -> None:
+             wavelength: Optional[u.Quantity[u.um]] = None,
+             fit_data: Optional[List[str]] = None) -> None:
     """Sets the data as a global variable from the input files.
 
     If called without parameters or recalled, it will clear the data.
@@ -139,8 +161,13 @@ def set_data(fits_files: Optional[List[Path]] = None,
     ----------
     fits_files : list of Path
         The paths to the MATISSE (.fits)-files.
-    wavelengths : astropy.units.um
+    wavelength : astropy.units.um
         The wavelengths to be fitted.
+    fit_data : list of str, optional
+    set_weights : bool, optional
+        If True will set the weights of the fit parameters from the
+        sizes of the input grids.
+
     """
     OPTIONS.data.readouts = []
     wavelength = OPTIONS.fit.wavelengths if wavelength\
