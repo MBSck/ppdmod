@@ -224,7 +224,7 @@ def test_hankel_component_calculate_grid(
     """Tests the hankel component's grid calculation."""
     OPTIONS["model.gridtype"] = grid_type
     radius = hankel_component._calculate_internal_grid(512)
-    assert radius.unit == u.mas
+    assert radius.unit == u.macalculate_internal_grid
     assert radius.shape == (512, )
     assert radius[0].value == hankel_component.params["rin"].value\
             and radius[-1].value == hankel_component.params["rout"].value
@@ -237,7 +237,7 @@ def test_hankel_component_brightness_function():
 def test_hankel_component_total_flux(
         hankel_component: HankelComponent, wavelength: u.um) -> None:
     """Tests the calculation of the total flux."""
-    total_flux = hankel_component.calculate_total_flux(wavelength)
+    total_flux = hankel_component.calculate_flux(wavelength)
     assert total_flux
 
 
@@ -247,7 +247,7 @@ def test_hankel_component_hankel_transform(
         readout: ReadoutFits, wavelength: u.um) -> None:
     """Tests the hankel component's hankel transformation."""
     radius = hankel_component._calculate_internal_grid(512)
-    temp_profile = 1500*u.K*(radius/(hankel_component.params["rin"]()))**(-0.5)
+    temp_profile = 1500*u.K*(rcalculate_internal_gridparams["rin"]()))**(-0.5)
     brightness_profile = BlackBody(temp_profile)(wavelength)
     
     OPTIONS["model.modulation.order"] = order

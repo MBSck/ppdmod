@@ -8,9 +8,6 @@ from astropy.modeling import models
 from .component import Component, AnalyticalComponent, HankelComponent
 from .parameter import STANDARD_PARAMETERS, Parameter
 from .options import OPTIONS
-from ._spectral_cy import const_temperature,\
-    temperature_power_law, azimuthal_modulation,\
-    optical_thickness, surface_density_profile, intensity
 from .utils import distance_to_angular
 
 
@@ -70,7 +67,7 @@ class Star(AnalyticalComponent):
             self.params["eff_radius"](), self.params["dist"]())
         return self._stellar_angular_radius
 
-    def calculate_stellar_flux(self, wavelength: u.um) -> u.Jy:
+    def calculate_flux(self, wavelength: u.um) -> u.Jy:
         """Calculates the flux of the star."""
         if self.params["f"].value is not None:
             return self.params["f"](wavelength)

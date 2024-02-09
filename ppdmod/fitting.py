@@ -105,11 +105,11 @@ def calculate_observables(components: List[Component], wavelength: u.um,
                           ucoord: np.ndarray, vcoord: np.ndarray,
                           u123coord: np.ndarray, v123coord: np.ndarray):
     """Calculates the observables from the model."""
-    stellar_flux = components[0].calculate_stellar_flux(wavelength)
+    stellar_flux = components[0].calculate_flux(wavelength)
 
     flux_model, corr_flux_model, cphase_model = None, None, None
     for component in components[1:]:
-        tmp_flux = component.calculate_total_flux(wavelength)
+        tmp_flux = component.calculate_flux(wavelength)
         tmp_corr_flux = component.calculate_visibility(
                 ucoord, vcoord, wavelength)
         tmp_cphase = component.calculate_closure_phase(
