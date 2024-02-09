@@ -298,12 +298,12 @@ class HankelComponent(Component):
     def get_opacity(self, wavelength: u.um) -> u.cm**2/u.g:
         """Set the opacity from wavelength."""
         if self.continuum_contribution:
-            opacity = self.params["kappa_abs"](wavelength) +\
-                      self.params["cont_weight"]() *\
-                      self.params["kappa_cont"](wavelength)
+            cont_weight = self.params["cont_weight"]()
+            opacity = (1-cont_weight)*self.params["kappa_abs"](wavelength)\
+                + cont_weight*self.params["kappa_cont"](wavelength)
         else:
             opacity = self.params["kappa_abs"](wavelength)
-        return opacity.astype(OPTIONS["model.dtype.real"])
+        return opacity.astype(OPTIONS.data.dtype.real)
 
     def azimuthal_modulation(self, xx: u.mas, yy: u.mas) -> u.one:
         """Calculates the azimuthal modulation."""
