@@ -55,17 +55,18 @@ grf_files = ["MgOlivine0.1.Combined.Kappa",
              "Enstatite2.0.Combined.Kappa"]
 grf_files = list(map(lambda x: DATA_DIR / "grf" / x, grf_files))
 
-wl_dhs, opacity_dhs = utils.load_data(qval_files, load_func=utils.qval_to_opacity)
+wl_dhs, opacity_dhs = utils.load_data(
+        qval_files, load_func=utils.qval_to_opacity)
 wl_grf, opacity_grf = utils.load_data(grf_files)
 wl_op, opacity = wl_grf, opacity_grf
 
 opacity = utils.linearly_combine_data(opacity, weights)
 opacity = np.interp(wavelength_axes.value, wl_op[0], opacity)
 
-wl_cont, cont_opacity = utils.load_data(DATA_DIR / "qval" / "Q_amorph_c_rv0.1.dat",
-                                        load_func=utils.qval_to_opacity)
-# wl_cont, cont_opacity = utils.load_data(qval_dir / "Q_iron_0.10um_dhs_0.99.dat",
+# wl_cont, cont_opacity = utils.load_data(DATA_DIR / "qval" / "Q_amorph_c_rv0.1.dat",
 #                                         load_func=utils.qval_to_opacity)
+wl_cont, cont_opacity = utils.load_data(DATA_DIR / "qval" / "Q_iron_0.10um_dhs_0.99.dat",
+                                        load_func=utils.qval_to_opacity)
 cont_opacity = np.interp(wavelength_axes.value, wl_cont, cont_opacity)
 
 kappa_abs = Parameter(**STANDARD_PARAMETERS["kappa_abs"])
@@ -92,7 +93,7 @@ p.value = 0.5
 inner_sigma.value = 1e-3
 
 rin.set(min=0.5, max=5)
-rout.set(min=0.5, max=10)
+rout.set(min=1.5, max=6)
 p.set(min=0., max=1.)
 inner_sigma.set(min=0, max=1e-2)
 

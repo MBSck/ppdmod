@@ -227,7 +227,7 @@ class HankelComponent(Component):
         self.params["eff_temp"] = Parameter(**STANDARD_PARAMETERS["eff_temp"])
         self.params["eff_radius"] = Parameter(**STANDARD_PARAMETERS["eff_radius"])
 
-        self.params["r0"] = Parameter(**STANDARD_PARAMETERS["rin"])
+        self.params["r0"] = Parameter(**STANDARD_PARAMETERS["r0"])
         self.params["rin"] = Parameter(**STANDARD_PARAMETERS["rin"])
         self.params["rout"] = Parameter(**STANDARD_PARAMETERS["rout"])
 
@@ -343,7 +343,7 @@ class HankelComponent(Component):
         return surface_density.astype(OPTIONS.data.dtype.real)
 
     def calculate_emissivity(self, radius: u.mas, wavelength: u.um) -> u.one:
-        """Calculates a 1D-thickness profile."""
+        """Calculates a 1D-emissivity profile."""
         if wavelength.shape == ():
             wavelength.reshape((wavelength.size,))
 
@@ -492,7 +492,6 @@ class HankelComponent(Component):
 
     def calculate_flux(self, wavelength: u.um) -> u.Jy:
         """Calculates the total flux from the hankel transformation."""
-        # compression = self.params["elong"]()
         radius = self.calculate_internal_grid(self.params["dim"]())
         brightness_profile = self.calculate_brightness(
                 radius, wavelength[:, np.newaxis])

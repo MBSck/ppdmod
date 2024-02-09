@@ -4,7 +4,7 @@ from typing import Optional, List, Dict, Tuple, Union
 import astropy.units as u
 import emcee
 import numpy as np
-# from dynesty import NestedSampler
+from dynesty import NestedSampler
 from scipy.stats import gaussian_kde
 
 from .custom_components import assemble_components
@@ -263,9 +263,6 @@ def lnprob(theta: np.ndarray) -> float:
             return -np.inf
 
     components = assemble_components(parameters, shared_params)
-    for component in components:
-        component.params["r0"] = components[1].params["r0"]
-
     return calculate_observable_chi_sq(*calculate_observables(components))
 
 
@@ -314,40 +311,40 @@ def run_mcmc(nwalkers: int,
     return sampler
 
 
-# def run_dynesty(nlive: Optional[int] = 1000,
-#                 sample: Optional[str] = "rwalk",
-#                 bound: Optional[str] = "multi",
-#                 ncores: Optional[int] = 6,
-#                 debug: Optional[bool] = False,
-#                 **kwargs) -> np.ndarray:
-#     """Runs the dynesty nested sampler.
+def run_dynesty(nlive: Optional[int] = 1000,
+                sample: Optional[str] = "rwalk",
+                bound: Optional[str] = "multi",
+                ncores: Optional[int] = 6,
+                debug: Optional[bool] = False,
+                **kwargs) -> np.ndarray:
+    """Runs the dynesty nested sampler.
 
-#     Parameters
-#     ----------
-#     ncores : int, optional
-#     debug : bool, optional
+    Parameters
+    ----------
+    ncores : int, optional
+    debug : bool, optional
 
-#     Returns
-#     -------
-#     sampler : numpy.ndarray
-#     """
-#     ndim = init_randomly().shape[0]
-#     pool = Pool(processes=ncores) if not debug else None
-#     queue_size = ncores if not debug else None
-#     sampler_kwargs = {"nlive": nlive, "sample": sample,
-#                       "ptform_args": get_priors(),
-#                       "bound": bound, "queue_size": queue_size,
-#                       "pool": pool, "update_interval": ndim}
+    Returns
+    -------
+    sampler : numpy.ndarray
+    """
+    ndim = init_randomly().shape[0]
+    pool = Pool(processes=ncores) if not debug else None
+    queue_size = ncores if not debug else None
+    sampler_kwargs = {"nlive": nlive, "sample": sample,
+                      "ptform_args": get_priors(),
+                      "bound": bound, "queue_size": queue_size,
+                      "pool": pool, "update_interval": ndim}
 
-#     print(f"Executing Dynesty.\n{'':-^50}")
-#     sampler = NestedSampler(lnprob, transform_uniform_prior,
-#                             ndim, **sampler_kwargs)
-#     sampler.run_nested(dlogz=0.01, print_progress=True)
+    print(f"Executing Dynesty.\n{'':-^50}")
+    sampler = NestedSampler(lnprob, transform_uniform_prior,
+                            ndim, **sampler_kwargs)
+    sampler.run_nested(dlogz=0.01, print_progress=True)
 
-#     if not debug:
-#         pool.close()
-#         pool.join()
-#     return sampler
+    if not debug:
+        pool.close()
+        pool.join()
+    return sampler
 
 
 def run_fit(**kwargs) -> np.ndarray:
