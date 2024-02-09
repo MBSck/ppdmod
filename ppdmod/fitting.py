@@ -105,27 +105,26 @@ def calculate_observables(components: List[Component], wavelength: u.um,
                           ucoord: np.ndarray, vcoord: np.ndarray,
                           u123coord: np.ndarray, v123coord: np.ndarray):
     """Calculates the observables from the model."""
-    flux_model, corr_flux_model, cphase_model = None, None, None
-    if components is not None:
-        stellar_flux = components[0].calculate_stellar_flux(wavelength)
-        for component in components[1:]:
-            tmp_flux = component.calculate_total_flux(
-                    wavelength, star_flux=stellar_flux)
-            tmp_corr_flux = component.calculate_visibility(
-                    ucoord, vcoord, wavelength,
-                    star_flux=stellar_flux)
-            tmp_cphase = component.calculate_closure_phase(
-                    u123coord, v123coord, wavelength,
-                    star_flux=stellar_flux)
+    stellar_flux = components[0].calculate_stellar_flux(wavelength)
 
-            if flux_model is None:
-                flux_model = tmp_flux
-                corr_flux_model = tmp_corr_flux
-                cphase_model = tmp_cphase
-            else:
-                flux_model += tmp_flux
-                corr_flux_model += tmp_corr_flux
-                cphase_model += tmp_cphase
+    flux_model, corr_flux_model, cphase_model = None, None, None
+    for component in components[1:]:
+        tmp_flux = component.calculate_total_flux(wavelength)
+        tmp_corr_flux = component.calculate_visibility(
+                ucoord, vcoord, wavelength)
+        tmp_cphase = component.calculate_closure_phase(
+                u123coord, v123coord, wavelength)
+
+        if flux_model is None:
+            flux_model = tmp_flux
+            corr_flux_model = tmp_corr_flux
+            cphase_model = tmp_cphase
+        else:
+            flux_model += tmp_flux
+            corr_flux_model += tmp_corr_flux
+            cphase_model += tmp_cphase
+    flux_model += stellar_flux
+    corr_flux_model += stellar_flux
     return flux_model, corr_flux_model, cphase_model
 
 
@@ -310,9 +309,9 @@ def run_mcmc(nwalkers: int,
     if debug:
         sampler = emcee.EnsembleSampler(
             nwalkers, theta.shape[1], lnprob, pool=None)
-        if nsteps_burnin is not None:
+        if nburnin is not None:
             print("Running burn-in...")
-            sampler.run_mcmc(theta, nsteps_burnin, progress=True)
+            sampler.run_mcmc(theta, nburnin, progress=True)
             print("Running production...")
         sampler.reset()
         sampler.run_mcmc(theta, nsteps, progress=True)

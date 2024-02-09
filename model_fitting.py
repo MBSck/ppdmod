@@ -1,4 +1,3 @@
-import os
 from datetime import datetime
 from pathlib import Path
 
@@ -15,15 +14,14 @@ from ppdmod.options import OPTIONS
 
 
 # TODO: Make function that saves model parameters to load.
-# NOTE: Turns off numpys automated parellelization.
-# os.environ["OMP_NUM_THREADS"] = "1"
+DATA_DIR = Path("tests/data")
 
 OPTIONS["fit.data"] = ["flux", "vis2", "t3phi"]
 OPTIONS["data.binning.window"] = 0.1*u.um
-wavelengths = [3.2]*u.um
+wavelengths = [2.25]*u.um
 # wavelengths = [1.6, 2.25, 3.5, 8., 9., 10., 11.3, 12.5]*u.um
 data.set_fit_wavelengths(wavelengths)
-fits_files = list(Path("tests/data/fits").glob("*.fits"))
+fits_files = list((DATA_DIR / "fits").glob("*.fits"))
 data.set_data(fits_files)
 
 # TODO: Check if the configuration of these parameters is ok
@@ -159,7 +157,7 @@ if __name__ == "__main__":
     # ncores = 6
     sampler = fitting.run_fit(
         nwalkers=nwalkers, nsteps=nsteps,
-        nburnin=nburnin, ncores=ncores, debug=False)
+        nburnin=nburnin, ncores=ncores, debug=True)
     theta = fitting.get_best_fit(sampler, discard=nburnin)
 
     plot.plot_chains(sampler, labels, discard=nburnin,

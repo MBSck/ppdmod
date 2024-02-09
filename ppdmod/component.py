@@ -393,16 +393,8 @@ class HankelComponent(Component):
 
     def hankel_transform(self, brightness_profile: u.erg/(u.rad**2*u.s*u.Hz),
                          radius: u.mas, ucoord: u.m,
-                         vcoord: u.m, wavelength: u.um,
-                         star_flux: Optional[u.Quantity[u.Jy]] = None,
-                         total_flux: Optional[u.Quantity[u.Jy]] = None) -> np.ndarray:
+                         vcoord: u.m, wavelength: u.um) -> np.ndarray:
         """Executes the hankel transform."""
-        # pad = 1 if OPTIONS['FTPaddingFactor'] is None else OPTIONS['FTPaddingFactor']
-        # fov = radius[-1]-radius[0]
-        # dsfreq0 = 1/(fov*pad).value
-        # sfreq0 = np.linspace(0, pad*nr-1, pad*nr)*dsfreq0
-        star_flux = 0*u.Jy if star_flux is None else star_flux
-        total_flux = 1*u.Jy if total_flux is None else total_flux
         radius = radius.to(u.rad)
         baseline_groups, baseline_angle_groups = calculate_effective_baselines(
                 ucoord, vcoord, self.params["elong"](), self.params["pa"]())
@@ -422,24 +414,22 @@ class HankelComponent(Component):
                 # TODO: Think of a way to implement more parameters for the azimuthal modulation.
                 if self.asymmetric:
                     for order in range(1, OPTIONS["model.modulation.order"]+1):
-                        modulation = (-1j)**order*self.params["a"]()\
+                        modulation = 2*np.pi*(-1j)**order*self.params["a"]()\
                                 * np.cos(order*(baseline_angle-self.params["phi"]().to(u.rad)))\
-                                * np.trapz(radius*brightness_profile\
-                                * jv(order, 2.*np.pi*radius.value*baseline.value), radius)
+                                * np.trapz(radius*brightness_profile
+                                           * jv(order, 2.*np.pi*radius.value*baseline.value), radius)
                         modulations[order-1].append(modulation.to(u.Jy))
-        visibilities = (u.Quantity(visibilities, unit=u.Jy, dtype=np.complex64)+star_flux)/total_flux
-        modulations = u.Quantity(modulations, unit=u.Jy, dtype=np.complex64)/total_flux
+
+        visibilities = u.Quantity(visibilities, unit=u.Jy, dtype=np.complex64)
+        modulations = u.Quantity(modulations, unit=u.Jy, dtype=np.complex64)
         return visibilities.astype(OPTIONS["model.dtype.complex"]),\
                 modulations.astype(OPTIONS["model.dtype.complex"])
 
-    def calculate_total_flux(self, wavelength: u.um,
-                             star_flux: Optional[u.Quantity[u.Jy]] = None) -> u.Jy:
+    def calculate_total_flux(self, wavelength: u.um) -> u.Jy:
         """Calculates the total flux from the hankel transformation."""
-        star_flux = 0*u.Jy if star_flux is None else star_flux
         radius = self._calculate_internal_grid(self.params["dim"]())
         brightness_profile = self._brightness_profile_function(radius, wavelength)
-        total_flux = (2.*np.pi*np.trapz(radius*brightness_profile, radius).to(u.Jy)
-                      + star_flux).value
+        total_flux = (2.*np.pi*np.trapz(radius*brightness_profile, radius).to(u.Jy)).value
         return np.abs(total_flux.astype(OPTIONS["model.dtype.real"]))
 
     def calculate_visibility(self, ucoord: u.m, vcoord: u.m,
@@ -468,122 +458,3 @@ class HankelComponent(Component):
                 vis += np.vstack((mod[:2], mod[-1].conj()))
         return np.angle(np.prod(vis.value, axis=0),
                         deg=True).astype(OPTIONS["model.dtype.real"])
-
-
-class NumericalComponent(Component):
-    """Base class with increased computational performance for numerical
-    calculations.
-
-    Parameters
-    ----------
-    pixel_size : float
-        The size of a pixel [mas].
-    pa : float
-        Positional angle [deg].
-    elong : float
-        Elongation of the disk [dimensionless].
-    dim : float
-        The dimension [px].
-
-    Attributes
-    ----------
-
-    Notes
-    -----
-    This class will automaticall set-up a cache directory in order to speed up
-    the calculations. The directory itself can be set via the 'cache_dir' keyword.
-    """
-    elliptic = False
-
-    def _image_function(self, xx: u.mas,
-                        yy: u.mas, wavelength: u.um) -> u.Jy:
-        """Calculates the image from a 2D grid.
-
-        Parameters
-        ----------
-        xx : astropy.units.mas
-            The x-coordinate grid.
-        yy : astropy.units.mas
-            The y-coordinate grid.
-        wavelength : astropy.units.um, optional
-
-        Returns
-        -------
-        image : astropy.units.Quantity, optional
-        """
-        return
-
-    def calculate_image(self, dim: Optional[float] = None,
-                        pixel_size: Optional[float] = None,
-                        wavelength: Optional[u.Quantity[u.um]] = None) -> u.Jy:
-        """Calculates a 2D image.
-
-        Parameters
-        ----------
-        dim : float
-            The dimension [px].
-        pixel_size : float
-            The size of a pixel [mas].
-        wavelength : astropy.units.um, optional
-
-        Returns
-        -------
-        image : astropy.units.Quantity
-        """
-        dim = self.params["dim"]() if dim is None else dim
-        pixel_size = self.params["pixel_size"]()\
-            if pixel_size is None else pixel_size
-        dim = u.Quantity(value=dim, unit=u.one, dtype=int)
-        pixel_size = u.Quantity(value=pixel_size, unit=u.mas)
-
-        if OPTIONS["model.matryoshka"]:
-            image = None
-            new_dim = get_new_dimension(
-                    dim, OPTIONS["model.matryoshka.binning_factors"][0])
-            for binning_factor in OPTIONS["model.matryoshka.binning_factors"]:
-                binning_factor = binning_factor if binning_factor is not None else 0
-                if image is None:
-                    x_arr, y_arr = self._calculate_internal_grid(
-                            new_dim, pixel_size*2**binning_factor)
-                    image_part = self._image_function(x_arr, y_arr, wavelength)
-                    image = upbin_image(image_part, binning_factor)\
-                            * (2**binning_factor*2**binning_factor)
-                else:
-                    x_arr, y_arr = self._calculate_internal_grid(
-                            new_dim, pixel_size*2**-binning_factor)
-                    image_part = self._image_function(x_arr, y_arr, wavelength)
-                    image_part = rebin_image(image_part, binning_factor)
-                    start = (image.shape[0]-image_part.shape[0])//2
-                    end = start + image_part.shape[0]
-                    image[start:end, start:end] =\
-                            image_part/(2**binning_factor*2**binning_factor)
-        else:
-            x_arr, y_arr = self._calculate_internal_grid(dim, pixel_size)
-            image = self._image_function(x_arr, y_arr, wavelength)
-        if OPTIONS["fourier.binning"] is not None:
-            image = rebin_image(image, OPTIONS["fourier.binning"])
-        if OPTIONS["fourier.padding"] is not None:
-            image = pad_image(image, OPTIONS["fourier.padding"])
-        return image
-
-    def calculate_complex_visibility(
-            self, dim: Optional[float] = None,
-            pixel_size: Optional[float] = None,
-            wavelength: Optional[u.Quantity[u.um]] = None) -> np.ndarray:
-        """Calculates the complex visibility of the the component's image.
-
-        Parameters
-        ----------
-        wavelength : astropy.units.um, optional
-
-        Returns
-        -------
-        complex_visibility_function : numpy.ndarray
-        """
-        dim = self.params["dim"]() if dim is None else dim
-        pixel_size = self.params["pixel_size"]()\
-            if pixel_size is None else pixel_size
-        dim = u.Quantity(value=dim, unit=u.one, dtype=int)
-        pixel_size = u.Quantity(value=pixel_size, unit=u.mas)
-        image = self.calculate_image(dim, pixel_size, wavelength)
-        return compute_real2Dfourier_transform(image.value)
