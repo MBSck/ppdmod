@@ -314,26 +314,35 @@ class HankelComponent(Component):
                 * np.cos(np.arctan2(yy, xx)-self.params["phi"]()))
         return azimuthal_modulation.astype(OPTIONS["model.dtype.real"])
 
-    def calculate_temperature(
-            self, radius: u.mas, innermost_radius: u.mas) -> u.K:
+    def calculate_temperature(self, radius: u.mas) -> u.K:
         """Calculates a 1D-temperature profile."""
+        if self.params["r0"].value != 0:
+            reference_radius = self.params["r0"]()
+        else:
+            reference_radius = distance_to_angular(
+                    OPTIONS["model.reference_radius"], self.params["dist"]())
+
         if self.const_temperature:
             temperature_profile = np.sqrt(self.stellar_radius_angular/(2.0*radius))\
                     * self.params["eff_temp"]()
         else:
             temperature_profile = self.params["inner_temp"]()\
-                    * (radius/innermost_radius)**(-self.params["q"]())
+                    * (radius/reference_radius)**(-self.params["q"]())
         return temperature_profile.astype(OPTIONS["model.dtype.real"])
 
-    def calculate_surface_density(
-            self, radius: u.mas, innermost_radius: u.mas) -> u.one:
+    def calculate_surface_density(self, radius: u.mas) -> u.one:
         """Calculates a 1D-surface density profile."""
+        if self.params["r0"].value != 0:
+            reference_radius = self.params["r0"]()
+        else:
+            reference_radius = distance_to_angular(
+                    OPTIONS["model.reference_radius"], self.params["dist"]())
+
         surface_density = self.params["inner_sigma"]()\
-                * (radius/innermost_radius)**(-self.params["p"]())
+            * (radius/reference_radius)**(-self.params["p"]())
         return surface_density.astype(OPTIONS["model.dtype.real"])
 
-    def calculate_emissivity(
-            self, radius: u.mas, innermost_radius: u.mas, wavelength: u.um) -> u.one:
+    def calculate_emissivity(self, radius: u.mas, wavelength: u.um) -> u.one:
         """Calculates a 1D-thickness profile."""
         if wavelength.shape == ():
             wavelength.reshape((wavelength.size,))
@@ -341,8 +350,7 @@ class HankelComponent(Component):
         if self.optically_thick:
             return np.array([1])
 
-        surface_density_profile = self.calculate_surface_density(
-            radius, innermost_radius)
+        surface_density_profile = self.calculate_surface_density(radius)
         optical_depth = surface_density_profile*self.get_opacity(wavelength)
         emissivity = (1-np.exp(-optical_depth/self.params["elong"]()))
         return emissivity.astype(OPTIONS["model.dtype.real"])
@@ -363,16 +371,9 @@ class HankelComponent(Component):
         if wavelength.shape == ():
             wavelength.reshape((wavelength.size,))
 
-        innermost_radius = self.params["rin0"]()\
-            if self.params["rin0"]() != 0 else self.params["rin"]()
-
-        # TODO: Think of a way how to implement the innermost radius
-        # and at the same time keep the grid as it is.
-        temperature_profile = self.calculate_temperature(
-                radius, innermost_radius)
+        temperature_profile = self.calculate_temperature(radius)
         brightness = BlackBody(temperature_profile)(wavelength)
-        emissivity = self.calculate_emissivity(
-                radius, innermost_radius, wavelength)
+        emissivity = self.calculate_emissivity(radius, wavelength)
         return (brightness*emissivity).astype(OPTIONS["model.dtype.real"])
 
     def calculate_image(self, dim: int, pixel_size: u.mas, wavelength: u.um) -> u.Jy:

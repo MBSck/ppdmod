@@ -1,5 +1,6 @@
 from typing import List, Optional
 
+import astropy.units as u
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from matplotlib import colormaps as mcm
@@ -56,11 +57,9 @@ OPTIONS["model.dtype.complex"] = complex64
 OPTIONS["model.dtype.real"] = float32
 OPTIONS["model.flux.factor"] = 1
 OPTIONS["model.gridtype"] = "linear"
-OPTIONS["model.matryoshka"] = False
-OPTIONS["model.matryoshka.binning_factors"] = [2, 1, 2]
 OPTIONS["model.modulation.order"] = 0
-OPTIONS["model.output"] = "jansky_px"
 OPTIONS["model.shared_params"] = {}
+OPTIONS["model.reference_radius"] = 1*u.au
 
 # NOTE: Fourier transform
 OPTIONS["fourier.backend"] = "numpy"

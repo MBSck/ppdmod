@@ -95,8 +95,10 @@ def chi_sq(data: u.quantity, error: u.quantity,
     else:
         inv_sigma_squared = 1./np.sum(
             error**2 + model_data**2*np.exp(2*lnf))
+
     if method == "linear":
         return -0.5*np.sum((data-model_data)**2*inv_sigma_squared + np.log(1/inv_sigma_squared))
+
     diff = np.angle(np.exp((data-model_data)*u.deg.to(u.rad)*1j), deg=False)
     return -0.5*np.sum(diff**2*inv_sigma_squared + np.log(1/inv_sigma_squared))
 
@@ -244,9 +246,9 @@ def lnprob(theta: np.ndarray) -> float:
     components = assemble_components(parameters, shared_params)
 
     # HACK: This is to include innermost radius for rn.
-    innermost_radius = components[1].params["rin"]
-    for component in components:
-        component.params["rin0"] = innermost_radius
+    # innermost_radius = components[1].params["rin"]
+    # for component in components:
+    #     component.params["rin0"] = innermost_radius
 
     fluxes, fluxes_err =\
         OPTIONS["data.flux"], OPTIONS["data.flux_err"]
