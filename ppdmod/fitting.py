@@ -123,8 +123,8 @@ def calculate_observables(components: List[Component], wavelength: u.um,
             flux_model += tmp_flux
             corr_flux_model += tmp_corr_flux
             cphase_model += tmp_cphase
-    flux_model += stellar_flux
-    corr_flux_model += stellar_flux
+    flux_model += stellar_flux.value
+    corr_flux_model += stellar_flux.value
     return flux_model, corr_flux_model, cphase_model
 
 

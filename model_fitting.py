@@ -157,7 +157,7 @@ if __name__ == "__main__":
     # ncores = 6
     sampler = fitting.run_fit(
         nwalkers=nwalkers, nsteps=nsteps,
-        nburnin=nburnin, ncores=ncores, debug=True)
+        nburnin=nburnin, ncores=ncores, debug=False)
     theta = fitting.get_best_fit(sampler, discard=nburnin)
 
     plot.plot_chains(sampler, labels, discard=nburnin,
