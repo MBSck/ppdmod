@@ -18,8 +18,8 @@ DATA_DIR = Path("tests/data")
 
 OPTIONS.fit.data = ["flux", "vis2", "t3"]
 # wavelengths = [1.6]*u.um
-wavelengths = [2.25]*u.um
-# wavelengths = [1.6, 2.25]*u.um
+# wavelengths = [2.25]*u.um
+wavelengths = [1.6, 2.25]*u.um
 # wavelengths = [1.6, 2.25, 3.5]*u.um
 # wavelengths = [3.5]*u.um
 # wavelengths = [1.6, 2.25, 3.5, 9., 10., 11.3, 12.5]*u.um
@@ -75,24 +75,23 @@ kappa_cont.value, kappa_cont.wavelength = cont_opacity, wavelength_axes
 
 dim, distance = 32, 148.3
 OPTIONS.model.constant_params = {
-    "dim": dim, "dist": 148.3,
+    "dim": dim, "dist": distance,
     "eff_temp": 7500, "f": star_flux,
     "pa": 162, "elong": 0.56,
-    "rin": 1.072,
     "eff_radius": 1.75, "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont}
 
-# rin = Parameter(**STANDARD_PARAMETERS["rin"])
+rin = Parameter(**STANDARD_PARAMETERS["rin"])
 rout = Parameter(**STANDARD_PARAMETERS["rout"])
 p = Parameter(**STANDARD_PARAMETERS["p"])
 inner_sigma = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
 
-# rin.value = 1.
+rin.value = 1.
 rout.value = 2.
 p.value = 0.5
 inner_sigma.value = 1e-3
 
-# rin.set(min=0.5, max=5)
+rin.set(min=0.5, max=5)
 rout.set(min=0.5, max=10)
 p.set(min=0., max=1.)
 inner_sigma.set(min=0, max=1e-2)
@@ -100,7 +99,7 @@ inner_sigma.set(min=0, max=1e-2)
 rout.free = True
 
 # inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma, "p": p}
-inner_ring = {"rout": rout, "inner_sigma": inner_sigma, "p": p}
+inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma, "p": p}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
 # rin = Parameter(**STANDARD_PARAMETERS["rin"])
@@ -185,21 +184,21 @@ result_dir.mkdir(parents=True, exist_ok=True)
 pre_fit_dir = result_dir / "pre_fit"
 pre_fit_dir.mkdir(parents=True, exist_ok=True)
 
-components = custom_components.assemble_components(
-        OPTIONS.model.components_and_params,
-        OPTIONS.model.shared_params)
+# components = custom_components.assemble_components(
+#         OPTIONS.model.components_and_params,
+#         OPTIONS.model.shared_params)
 
 
-plot.plot_overview(savefig=pre_fit_dir / "data_overview.pdf")
-plot.plot_observables("hd142666", [3, 12]*u.um, components,
-                      save_dir=pre_fit_dir)
+# plot.plot_overview(savefig=pre_fit_dir / "data_overview.pdf")
+# plot.plot_observables("hd142666", [3, 12]*u.um, components,
+#                       save_dir=pre_fit_dir)
 
-analysis.save_fits(
-        4096, 0.1, distance,
-        components, component_labels,
-        opacities=[kappa_abs, kappa_cont],
-        savefits=pre_fit_dir / "model.fits",
-        object_name="HD 142666")
+# analysis.save_fits(
+#         4096, 0.1, distance,
+#         components, component_labels,
+#         opacities=[kappa_abs, kappa_cont],
+#         savefits=pre_fit_dir / "model.fits",
+#         object_name="HD 142666")
 
 post_fit_dir = result_dir / "post_fit"
 post_fit_dir.mkdir(parents=True, exist_ok=True)
@@ -210,8 +209,8 @@ if __name__ == "__main__":
     # ncores = nwalkers // 2
     ncores = 6
     sampler = fitting.run_fit(
-            nwalkers=nwalkers, nsteps_burnin=nburnin, nsteps=nsteps,
-            ncores=ncores, method="analytical", debug=True)
+            nwalkers=nwalkers, nsteps_burnin=nburnin,
+            nsteps=nsteps, ncores=ncores, debug=False)
     np.save(post_fit_dir / "sampler", sampler)
 
     theta, uncertainties = fitting.get_best_fit(

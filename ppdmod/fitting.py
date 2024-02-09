@@ -263,6 +263,9 @@ def lnprob(theta: np.ndarray) -> float:
             return -np.inf
 
     components = assemble_components(parameters, shared_params)
+    for component in components:
+        component.params["r0"] = components[1].params["r0"]
+
     return calculate_observable_chi_sq(*calculate_observables(components))
 
 

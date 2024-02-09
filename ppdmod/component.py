@@ -227,6 +227,7 @@ class HankelComponent(Component):
         self.params["eff_temp"] = Parameter(**STANDARD_PARAMETERS["eff_temp"])
         self.params["eff_radius"] = Parameter(**STANDARD_PARAMETERS["eff_radius"])
 
+        self.params["r0"] = Parameter(**STANDARD_PARAMETERS["rin"])
         self.params["rin"] = Parameter(**STANDARD_PARAMETERS["rin"])
         self.params["rout"] = Parameter(**STANDARD_PARAMETERS["rout"])
 
@@ -315,20 +316,28 @@ class HankelComponent(Component):
 
     def calculate_temperature(self, radius: u.mas) -> u.K:
         """Calculates a 1D-temperature profile."""
+        if self.params["r0"].value != 0:
+            reference_radius = self.params["r0"]()
+        else:
+            reference_radius = distance_to_angular(
+                    OPTIONS.model.reference_radius, self.params["dist"]())
+
         if self.const_temperature:
             temperature = np.sqrt(self.stellar_radius_angular/(2.0*radius))\
                     * self.params["eff_temp"]()
         else:
-            reference_radius = distance_to_angular(
-                    OPTIONS.model.reference_radius, self.params["dist"]())
             temperature = self.params["inner_temp"]()\
                 * (radius/reference_radius)**(-self.params["q"]())
         return temperature.astype(OPTIONS.data.dtype.real)
 
     def calculate_surface_density(self, radius: u.mas) -> u.one:
         """Calculates a 1D-surface density profile."""
-        reference_radius = distance_to_angular(
-                OPTIONS.model.reference_radius, self.params["dist"]())
+        if self.params["r0"].value != 0:
+            reference_radius = self.params["r0"]()
+        else:
+            reference_radius = distance_to_angular(
+                    OPTIONS.model.reference_radius, self.params["dist"]())
+
         surface_density = self.params["inner_sigma"]()\
             * (radius/reference_radius)**(-self.params["p"]())
         return surface_density.astype(OPTIONS.data.dtype.real)
@@ -343,7 +352,7 @@ class HankelComponent(Component):
 
         surface_density = self.calculate_surface_density(radius)
         optical_depth = surface_density*self.get_opacity(wavelength)
-        emissivity = (1-np.exp(-optical_depth/self.params["elong"]()))
+        emissivity = (1-np.exp(-optical_depth))
         return emissivity.astype(OPTIONS.data.dtype.real)
 
     def calculate_brightness(self, radius: u.mas, wavelength: u.um) -> u.Jy:
@@ -483,11 +492,11 @@ class HankelComponent(Component):
 
     def calculate_flux(self, wavelength: u.um) -> u.Jy:
         """Calculates the total flux from the hankel transformation."""
-        compression = self.params["elong"]()
+        # compression = self.params["elong"]()
         radius = self.calculate_internal_grid(self.params["dim"]())
         brightness_profile = self.calculate_brightness(
                 radius, wavelength[:, np.newaxis])
-        flux = (2.*np.pi*compression*np.trapz(
+        flux = (2.*np.pi*np.trapz(
             radius*brightness_profile, radius).to(u.Jy)).value
         return np.abs(flux.reshape((flux.shape[0], 1)).astype(OPTIONS.data.dtype.real))
 
