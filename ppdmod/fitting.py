@@ -248,7 +248,7 @@ def lnprob(theta: np.ndarray) -> float:
     # HACK: This is to include innermost radius for rn.
     # innermost_radius = components[1].params["rin"]
     # for component in components:
-    #     component.params["rin0"] = innermost_radius
+    #     component.params["r0"] = innermost_radius
 
     fluxes, fluxes_err =\
         OPTIONS["data.flux"], OPTIONS["data.flux_err"]

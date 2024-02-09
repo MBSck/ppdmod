@@ -232,7 +232,7 @@ class HankelComponent(Component):
         self.params["eff_temp"] = Parameter(**STANDARD_PARAMETERS["eff_temp"])
         self.params["eff_radius"] = Parameter(**STANDARD_PARAMETERS["eff_radius"])
 
-        self.params["rin0"] = Parameter(**STANDARD_PARAMETERS["rin0"])
+        self.params["r0"] = Parameter(**STANDARD_PARAMETERS["r0"])
 
         self.params["rin"] = Parameter(**STANDARD_PARAMETERS["rin"])
         self.params["rout"] = Parameter(**STANDARD_PARAMETERS["rout"])
@@ -303,15 +303,15 @@ class HankelComponent(Component):
                 + cont_weight*self.params["kappa_cont"](wavelength)
         else:
             opacity = self.params["kappa_abs"](wavelength)
-        return opacity.astype(OPTIONS.data.dtype.real)
+        return opacity.astype(OPTIONS["model.dtype.real"])
 
     def azimuthal_modulation(self, xx: u.mas, yy: u.mas) -> u.one:
         """Calculates the azimuthal modulation."""
         if not self.asymmetric:
             return np.array([1])
 
-        azimuthal_modulation = (1+self.params["a"]()\
-                * np.cos(np.arctan2(yy, xx)-self.params["phi"]()))
+        azimuthal_modulation = (1+self.params["a"]()
+                                * np.cos(np.arctan2(yy, xx)-self.params["phi"]()))
         return azimuthal_modulation.astype(OPTIONS["model.dtype.real"])
 
     def calculate_temperature(self, radius: u.mas) -> u.K:
