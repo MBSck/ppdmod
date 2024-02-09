@@ -1,6 +1,5 @@
 from multiprocessing import Pool
 from typing import Optional, List, Dict
-from pathlib import Path
 
 import astropy.units as u
 import emcee

@@ -3,6 +3,8 @@ ppdmod.egg-info/
 fft/
 tests/data/qval
 tests/data/fits
+tests/data/grf
+tests/data/flux
 fluxes/
 build/
 component/
