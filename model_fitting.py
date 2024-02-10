@@ -20,14 +20,14 @@ OPTIONS.fit.data = ["flux", "vis2", "t3"]
 # wavelengths = [1.6]*u.um
 # wavelengths = [2.25]*u.um
 # wavelengths = [1.6, 2.25]*u.um
-# wavelengths = [1.6, 2.25, 3.5]*u.um
+wavelengths = [1.6, 2.25, 3.5]*u.um
 # wavelengths = [3.5]*u.um
 # wavelengths = [1.6, 2.25, 3.5, 9., 10., 11.3, 12.5]*u.um
-wavelengths = [9., 10., 11.3, 12.5]*u.um
+# wavelengths = [9., 10., 11.3, 12.5]*u.um
 data.set_fit_wavelengths(wavelengths)
 fits_files = list((DATA_DIR / "fits").glob("*fits"))
 data.set_data(fits_files)
-data.set_fit_weights([1, 1, 1])
+data.set_fit_weights()
 
 wavelength_axes = list(
     map(lambda x: x.wavelength, OPTIONS.data.readouts))
