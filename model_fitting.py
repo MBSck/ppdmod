@@ -19,11 +19,11 @@ DATA_DIR = Path("tests/data")
 OPTIONS.fit.data = ["flux", "vis2", "t3"]
 # wavelengths = [1.6]*u.um
 # wavelengths = [2.25]*u.um
-wavelengths = [1.6, 2.25]*u.um
+# wavelengths = [1.6, 2.25]*u.um
 # wavelengths = [1.6, 2.25, 3.5]*u.um
 # wavelengths = [3.5]*u.um
 # wavelengths = [1.6, 2.25, 3.5, 9., 10., 11.3, 12.5]*u.um
-# wavelengths = [9., 10., 11.3, 12.5]*u.um
+wavelengths = [9., 10., 11.3, 12.5]*u.um
 data.set_fit_wavelengths(wavelengths)
 fits_files = list((DATA_DIR / "fits").glob("*fits"))
 data.set_data(fits_files)
@@ -82,51 +82,50 @@ OPTIONS.model.constant_params = {
     "eff_radius": 1.75, "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont}
 
-rin = Parameter(**STANDARD_PARAMETERS["rin"])
-rout = Parameter(**STANDARD_PARAMETERS["rout"])
-p = Parameter(**STANDARD_PARAMETERS["p"])
-inner_sigma = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
-
-rin.value = 1.
-rout.value = 2.
-p.value = 0.5
-inner_sigma.value = 1e-3
-
-rin.set(min=0.5, max=5)
-rout.set(min=1.5, max=6)
-p.set(min=0., max=1.)
-inner_sigma.set(min=0, max=1e-2)
-
-rout.free = True
-
-# inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma, "p": p}
-inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma, "p": p}
-inner_ring_labels = [f"ir_{label}" for label in inner_ring]
-
 # rin = Parameter(**STANDARD_PARAMETERS["rin"])
 # rout = Parameter(**STANDARD_PARAMETERS["rout"])
-# a = Parameter(**STANDARD_PARAMETERS["a"])
-# phi = Parameter(**STANDARD_PARAMETERS["phi"])
 # p = Parameter(**STANDARD_PARAMETERS["p"])
 # inner_sigma = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
 
-# rin.value = 13
-# a.value = 0.5
-# phi.value = 130
+# rin.value = 1.
+# rout.value = 2.
 # p.value = 0.5
 # inner_sigma.value = 1e-3
 
-# # NOTE: Set outer radius to be constant and calculate flux once?
-# rin.set(min=1, max=40)
+# rin.set(min=0.5, max=5)
+# rout.set(min=1.5, max=6)
 # p.set(min=0., max=1.)
 # inner_sigma.set(min=0, max=1e-2)
-# a.set(min=0., max=1.)
-# phi.set(min=0, max=360)
 
 # rout.free = True
 
-# outer_ring = {"rin": rin, "a": a, "phi": phi, "inner_sigma": inner_sigma, "p": p}
-# outer_ring_labels = [f"or_{label}" for label in outer_ring]
+# inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma, "p": p}
+# inner_ring_labels = [f"ir_{label}" for label in inner_ring]
+
+rin = Parameter(**STANDARD_PARAMETERS["rin"])
+rout = Parameter(**STANDARD_PARAMETERS["rout"])
+a = Parameter(**STANDARD_PARAMETERS["a"])
+phi = Parameter(**STANDARD_PARAMETERS["phi"])
+p = Parameter(**STANDARD_PARAMETERS["p"])
+inner_sigma = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
+
+rin.value = 13
+a.value = 0.5
+phi.value = 130
+p.value = 0.5
+inner_sigma.value = 1e-3
+
+# NOTE: Set outer radius to be constant and calculate flux once?
+rin.set(min=1, max=40)
+p.set(min=0., max=1.)
+inner_sigma.set(min=0, max=1e-2)
+a.set(min=0., max=1.)
+phi.set(min=0, max=360)
+
+rout.free = True
+
+outer_ring = {"rin": rin, "a": a, "phi": phi, "inner_sigma": inner_sigma, "p": p}
+outer_ring_labels = [f"or_{label}" for label in outer_ring]
 
 # q = Parameter(**STANDARD_PARAMETERS["q"])
 # inner_temp = Parameter(**STANDARD_PARAMETERS["inner_temp"])
@@ -152,21 +151,15 @@ cont_weight.set(min=0.3, max=0.8)
 OPTIONS.model.shared_params = {"cont_weight": cont_weight}
 shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 
-# OPTIONS.model.components_and_params = [
-    # ["Star", {}],
-    # ["TempGradient", inner_ring],
-    # ["AsymmetricTempGradient", outer_ring],
-# ]
-
 OPTIONS.model.components_and_params = [
     ["Star", {}],
-    ["GreyBody", inner_ring],
-    # ["AsymmetricGreyBody", outer_ring],
+    # ["GreyBody", inner_ring],
+    ["AsymmetricGreyBody", outer_ring],
 ]
 
 # labels = inner_ring_labels + outer_ring_labels + shared_params_labels
-labels = inner_ring_labels + shared_params_labels
-# labels = outer_ring_labels + shared_params_labels
+# labels = inner_ring_labels + shared_params_labels
+labels = outer_ring_labels + shared_params_labels
 
 # component_labels = ["Star", "Inner Ring", "Outer Ring"]
 component_labels = ["Star", "Inner Ring"]
@@ -174,7 +167,7 @@ component_labels = ["Star", "Inner Ring"]
 
 OPTIONS.model.modulation = 1
 OPTIONS.model.gridtype = "logarithmic"
-OPTIONS.fit.method = "emcee"
+OPTIONS.fit.method = "dynesty"
 
 model_result_dir = Path("../model_results/")
 day_dir = model_result_dir / str(datetime.now().date())
@@ -210,15 +203,16 @@ if __name__ == "__main__":
     # ncores = nwalkers // 2
     ncores = 6
     sampler = fitting.run_fit(
-            nwalkers=nwalkers, nsteps_burnin=nburnin,
-            nsteps=nsteps, ncores=ncores, debug=False)
-    np.save(post_fit_dir / "sampler", sampler)
+            nwalkers=nwalkers,
+            nsteps_burnin=nburnin, nsteps=nsteps,
+            ncores=ncores, debug=False)
+    # np.save(post_fit_dir / "sampler", sampler)
 
     theta, uncertainties = fitting.get_best_fit(
             sampler, discard=nburnin, method="quantile")
 
-    plot.plot_chains(sampler, labels, discard=nburnin,
-                     savefig=post_fit_dir / "chains.pdf")
+    # plot.plot_chains(sampler, labels, discard=nburnin,
+    #                  savefig=post_fit_dir / "chains.pdf")
     plot.plot_corner(sampler, labels, discard=nburnin,
                      savefig=post_fit_dir / "corner.pdf")
     new_params = dict(zip(labels, theta))

@@ -201,10 +201,10 @@ def calculate_observable_chi_sq(
 
 # NOTE: In nested fitting priors can depend on each other
 # use that in the future
-# TODO: Finish this
-def transform_uniform_prior(x, a, b):
+def transform_uniform_prior(theta: List[float]) -> float:
     """Prior transform for uniform priors."""
-    return a + (b-a)*x
+    priors = get_priors()
+    return priors[:, 0] + (priors[:, 1] - priors[:, 0])*theta
 
 
 def lnprior(components_and_params: List[List[Dict]],
@@ -332,7 +332,6 @@ def run_dynesty(nlive: Optional[int] = 1000,
     pool = Pool(processes=ncores) if not debug else None
     queue_size = ncores if not debug else None
     sampler_kwargs = {"nlive": nlive, "sample": sample,
-                      "ptform_args": get_priors(),
                       "bound": bound, "queue_size": queue_size,
                       "pool": pool, "update_interval": ndim}
 
@@ -367,7 +366,7 @@ def run_fit(**kwargs) -> np.ndarray:
     """
     if OPTIONS.fit.method == "emcee":
         return run_mcmc(**kwargs)
-    # return run_dynesty(**kwargs)
+    return run_dynesty(**kwargs)
 
 
 def get_best_fit(
@@ -397,4 +396,8 @@ def get_best_fit(
             params = samples[np.argmax(probability)]
         return params, uncertainties
     else:
-        ...
+        if method == "quantile":
+            samples = sampler.results.samples
+            quantiles = np.percentile( samples, OPTIONS.fit.quantiles, axis=0)
+            uncertainties = np.diff(quantiles, axis=0).T
+        return quantiles[1], uncertainties

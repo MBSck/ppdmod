@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
 from astropy.table import Table
-# from dynesty import plotting as dyplot
+from dynesty import plotting as dyplot
 from matplotlib.gridspec import GridSpec
 
 from .component import Component
@@ -44,14 +44,20 @@ def plot_corner(sampler: np.ndarray, labels: List[str],
     """
     if units is not None:
         labels = [f"{label} [{unit}]" for label, unit in zip(labels, units)]
+    quantiles = [x/100 for x in OPTIONS.fit.quantiles]
     if OPTIONS.fit.method == "emcee":
         samples = sampler.get_chain(discard=discard, flat=True)
         corner.corner(samples, show_titles=True,
                       labels=labels, plot_datapoints=True,
-                      quantiles=[x/100 for x in OPTIONS.fit.quantiles],
-                      title_kwargs={"fontsize": 12})
+                      quantiles=quantiles, title_kwargs={"fontsize": 12})
     else:
-        dyplot.cornerplot(sampler.results)
+        results = sampler.results
+        dyplot.cornerplot(results, color='blue',
+                          truths=np.zeros(len(labels)),
+                          labels=labels, truth_color='black',
+                          show_titles=True, max_n_ticks=3,
+                          title_quantiles=quantiles,
+                          quantiles=quantiles)
 
     if savefig is not None:
         plt.savefig(savefig, format="pdf")
@@ -80,15 +86,22 @@ def plot_chains(sampler: np.ndarray, labels: List[str],
     if units is not None:
         labels = [f"{label} [{unit}]" for label, unit in zip(labels, units)]
 
-    samples = sampler.get_chain(discard=discard)
-    _, axes = plt.subplots(len(labels), figsize=(10, 7), sharex=True)
+    if OPTIONS.fit.method == "emcee":
+        samples = sampler.get_chain(discard=discard)
+        _, axes = plt.subplots(len(labels), figsize=(10, 7), sharex=True)
 
-    for index, label in enumerate(labels):
-        axes[index].plot(samples[:, :, index], "k", alpha=0.3)
-        axes[index].set_xlim(0, len(samples))
-        axes[index].set_ylabel(label)
-        axes[index].yaxis.set_label_coords(-0.1, 0.5)
-    axes[-1].set_xlabel("step number")
+        for index, label in enumerate(labels):
+            axes[index].plot(samples[:, :, index], "k", alpha=0.3)
+            axes[index].set_xlim(0, len(samples))
+            axes[index].set_ylabel(label)
+            axes[index].yaxis.set_label_coords(-0.1, 0.5)
+        axes[-1].set_xlabel("step number")
+    else:
+        results = sampler.results
+        dyplot.traceplot(results, truths=np.zeros(ndim),
+                         truth_color='black', show_titles=True,
+                         trace_cmap='viridis', connect=True,
+                         connect_highlight=range(5))
 
     if savefig:
         plt.savefig(savefig, format="pdf")
