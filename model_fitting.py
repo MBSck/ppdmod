@@ -27,7 +27,7 @@ wavelengths = [9., 10., 11.3, 12.5]*u.um
 data.set_fit_wavelengths(wavelengths)
 fits_files = list((DATA_DIR / "fits").glob("*fits"))
 data.set_data(fits_files)
-data.set_fit_weights()
+data.set_fit_weights([1, 1, 1])
 
 wavelength_axes = list(
     map(lambda x: x.wavelength, OPTIONS.data.readouts))
