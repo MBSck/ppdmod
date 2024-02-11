@@ -154,23 +154,18 @@ def calculate_effective_baselines(
         Returns the effective baseline angles.
     """
     ucoord, vcoord = map(lambda x: u.Quantity(x, u.m), [ucoord, vcoord])
-    # if compression is not None and pos_angle is not None:
     if pos_angle is not None:
         pos_angle = u.Quantity(pos_angle, u.deg)
         compression = u.Quantity(compression, u.one)
 
-    #     ucoord_eff = ucoord*np.cos(pos_angle) - vcoord*np.sin(pos_angle)
-    #     vcoord_eff = ucoord*np.sin(pos_angle) + vcoord*np.cos(pos_angle)
-    #     vcoord_eff *= compression
-    # else:
-    ucoord_eff, vcoord_eff = ucoord, vcoord
+        ucoord_eff = ucoord*np.cos(pos_angle) - vcoord*np.sin(pos_angle)
+        vcoord_eff = ucoord*np.sin(pos_angle) + vcoord*np.cos(pos_angle)
+        vcoord_eff *= compression
+    else:
+        ucoord_eff, vcoord_eff = ucoord, vcoord
 
     baselines_eff = np.hypot(ucoord_eff, vcoord_eff)
-    baseline_angles_eff = np.arctan2(ucoord_eff, vcoord_eff)
-
-    diff_ang = baseline_angles_eff-pos_angle
-    baselines_eff = baselines_eff*np.sqrt(
-            np.cos(diff_ang)**2+(compression*np.sin(diff_ang))**2)
+    baseline_angles_eff = np.arctan2(vcoord_eff, ucoord_eff)
 
     if longest:
         indices = baselines_eff.argmax(0)

@@ -20,7 +20,11 @@ def save_fits(dim: int, pixel_size: u.mas,
               opacities: List[np.ndarray] = None,
               savefits: Optional[Path] = None,
               object_name: Optional[str] = None,
+              nlive: Optional[int] = None,
+              sample: Optional[str] = None,
+              bound: Optional[str] = None,
               nwalkers: Optional[int] = None,
+              nburnin: Optional[int] = None,
               nsteps: Optional[int] = None,
               ncores: Optional[int] = None) -> None:
     """Saves a (.fits)-file of the model with all the information on the
@@ -107,8 +111,16 @@ def save_fits(dim: int, pixel_size: u.mas,
     wcs.wcs.pc = np.array([[-1, 0, 0], [0, -1, 0], [0, 0, 1]])
     header = wcs.to_header()
 
-    header["NSTEP"] = (nsteps, "Number of steps for the fitting")
-    header["NWALK"] = (nwalkers, "Numbers of walkers for the fitting")
+    header["FITMETH"] = (OPTIONS.fit.method, "Method applied for fitting")
+    if OPTIONS.fit.method == "emcee":
+        header["NBURNIN"] = (nburnin, "Number of burn-in steps for emcee")
+        header["NSTEP"] = (nsteps, "Number of steps for emcee")
+        header["NWALK"] = (nwalkers, "Numbers of walkers for emcee")
+    else:
+        header["NLIVE"] = (nlive, "Number of burn-in steps for dynesty")
+        header["NSTEP"] = (sample, "Method of sampling for dynesty")
+        header["NWALK"] = (bound, "Method of bounding for dynesty")
+
     header["NCORE"] = (ncores, "Numbers of cores for the fitting")
     header["OBJECT"] = (object_name, "Name of the object")
     header["DATE"] = (f"{datetime.now()}", "Creation date")

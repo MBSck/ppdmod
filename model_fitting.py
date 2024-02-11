@@ -20,12 +20,12 @@ OPTIONS.fit.data = ["flux", "vis2", "t3"]
 # wavelengths = [1.6]*u.um
 # wavelengths = [2.25]*u.um
 # wavelengths = [1.6, 2.25]*u.um
-wavelengths = [1.6, 2.25, 3.5]*u.um
+# wavelengths = [1.6, 2.25, 3.5]*u.um
 # wavelengths = [3.5]*u.um
-# wavelengths = [1.6, 2.25, 3.5, 9., 10., 11.3, 12.5]*u.um
-# wavelengths = [9., 10., 11.3, 12.5]*u.um
+# wavelengths = [1.6, 2.25, 3.5, 8., 9., 10., 11.3, 12.5]*u.um
+wavelengths = [8., 9., 10., 11.3, 12.5]*u.um
 data.set_fit_wavelengths(wavelengths)
-fits_files = list((DATA_DIR / "fits").glob("*fits"))
+fits_files = list((DATA_DIR / "fits").glob("*04-23*fits"))
 data.set_data(fits_files)
 data.set_fit_weights()
 
@@ -63,10 +63,10 @@ wl_op, opacity = wl_grf, opacity_grf
 opacity = utils.linearly_combine_data(opacity, weights)
 opacity = np.interp(wavelength_axes.value, wl_op[0], opacity)
 
-# wl_cont, cont_opacity = utils.load_data(DATA_DIR / "qval" / "Q_amorph_c_rv0.1.dat",
-#                                         load_func=utils.qval_to_opacity)
-wl_cont, cont_opacity = utils.load_data(DATA_DIR / "qval" / "Q_iron_0.10um_dhs_0.99.dat",
+wl_cont, cont_opacity = utils.load_data(DATA_DIR / "qval" / "Q_amorph_c_rv0.1.dat",
                                         load_func=utils.qval_to_opacity)
+# wl_cont, cont_opacity = utils.load_data(DATA_DIR / "qval" / "Q_iron_0.10um_dhs_0.99.dat",
+#                                         load_func=utils.qval_to_opacity)
 cont_opacity = np.interp(wavelength_axes.value, wl_cont, cont_opacity)
 
 kappa_abs = Parameter(**STANDARD_PARAMETERS["kappa_abs"])
@@ -82,25 +82,25 @@ OPTIONS.model.constant_params = {
     "eff_radius": 1.75, "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont}
 
-# rin = Parameter(**STANDARD_PARAMETERS["rin"])
-# rout = Parameter(**STANDARD_PARAMETERS["rout"])
-# p = Parameter(**STANDARD_PARAMETERS["p"])
-# inner_sigma = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
+rin = Parameter(**STANDARD_PARAMETERS["rin"])
+rout = Parameter(**STANDARD_PARAMETERS["rout"])
+p = Parameter(**STANDARD_PARAMETERS["p"])
+inner_sigma = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
 
-# rin.value = 1.
-# rout.value = 2.
-# p.value = 0.5
-# inner_sigma.value = 1e-3
+rin.value = 1.
+rout.value = 2.
+p.value = 0.5
+inner_sigma.value = 1e-3
 
-# rin.set(min=0.5, max=5)
-# rout.set(min=1.5, max=6)
-# p.set(min=0., max=1.)
-# inner_sigma.set(min=0, max=1e-2)
+rin.set(min=0.5, max=5)
+rout.set(min=1.5, max=6)
+p.set(min=0., max=1.)
+inner_sigma.set(min=0, max=1e-2)
 
-# rout.free = True
+rout.free = True
 
-# inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma, "p": p}
-# inner_ring_labels = [f"ir_{label}" for label in inner_ring]
+inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma, "p": p}
+inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
 rin = Parameter(**STANDARD_PARAMETERS["rin"])
 rout = Parameter(**STANDARD_PARAMETERS["rout"])
@@ -162,8 +162,8 @@ OPTIONS.model.components_and_params = [
 labels = outer_ring_labels + shared_params_labels
 
 # component_labels = ["Star", "Inner Ring", "Outer Ring"]
-component_labels = ["Star", "Inner Ring"]
-# component_labels = ["Star", "Outer Ring"]
+# component_labels = ["Star", "Inner Ring"]
+component_labels = ["Star", "Outer Ring"]
 
 OPTIONS.model.modulation = 1
 OPTIONS.model.gridtype = "logarithmic"
@@ -178,42 +178,45 @@ result_dir.mkdir(parents=True, exist_ok=True)
 pre_fit_dir = result_dir / "pre_fit"
 pre_fit_dir.mkdir(parents=True, exist_ok=True)
 
-# components = custom_components.assemble_components(
-#         OPTIONS.model.components_and_params,
-#         OPTIONS.model.shared_params)
+components = custom_components.assemble_components(
+        OPTIONS.model.components_and_params,
+        OPTIONS.model.shared_params)
 
 
-# plot.plot_overview(savefig=pre_fit_dir / "data_overview.pdf")
-# plot.plot_observables("hd142666", [3, 12]*u.um, components,
-#                       save_dir=pre_fit_dir)
+plot.plot_overview(savefig=pre_fit_dir / "data_overview.pdf")
+plot.plot_observables("hd142666", [3, 12]*u.um, components,
+                      save_dir=pre_fit_dir)
 
-# analysis.save_fits(
-#         4096, 0.1, distance,
-#         components, component_labels,
-#         opacities=[kappa_abs, kappa_cont],
-#         savefits=pre_fit_dir / "model.fits",
-#         object_name="HD 142666")
+analysis.save_fits(
+        4096, 0.1, distance,
+        components, component_labels,
+        opacities=[kappa_abs, kappa_cont],
+        savefits=pre_fit_dir / "model.fits",
+        object_name="HD 142666")
 
 post_fit_dir = result_dir / "post_fit"
 post_fit_dir.mkdir(parents=True, exist_ok=True)
 
 
 if __name__ == "__main__":
-    nburnin, nsteps, nwalkers = 200, 500, 100
-    # ncores = nwalkers // 2
     ncores = 6
+    fit_params_emcee = {
+            "discard": 200, "nburnin": 200,
+            "nsteps": 500, "nwalkers": 100}
+    fit_params_dynesty = {
+            "nlive": 1500, "sample": "rwalk", "bound": "multi"}
+    fit_params = fit_params_dynesty
+
     sampler = fitting.run_fit(
-            nwalkers=nwalkers,
-            nsteps_burnin=nburnin, nsteps=nsteps,
-            ncores=ncores, debug=False)
-    # np.save(post_fit_dir / "sampler", sampler)
+            **fit_params, ncores=ncores,
+            save_dir=post_fit_dir, debug=False)
 
     theta, uncertainties = fitting.get_best_fit(
-            sampler, discard=nburnin, method="quantile")
+            sampler, **fit_params, method="quantile")
 
-    # plot.plot_chains(sampler, labels, discard=nburnin,
-    #                  savefig=post_fit_dir / "chains.pdf")
-    plot.plot_corner(sampler, labels, discard=nburnin,
+    plot.plot_chains(sampler, labels, **fit_params,
+                     savefig=post_fit_dir / "chains.pdf")
+    plot.plot_corner(sampler, labels, **fit_params,
                      savefig=post_fit_dir / "corner.pdf")
     new_params = dict(zip(labels, theta))
 
@@ -229,8 +232,7 @@ if __name__ == "__main__":
             components, component_labels,
             opacities=[kappa_abs, kappa_cont],
             savefits=post_fit_dir / "model.fits",
-            object_name="HD 142666", nwalkers=nwalkers,
-            nsteps=nburnin+nsteps, ncores=ncores)
+            object_name="HD 142666", **fit_params, ncores=ncores)
 
     axis_ratio = OPTIONS.model.constant_params["elong"]
     pos_angle = OPTIONS.model.constant_params["pa"]

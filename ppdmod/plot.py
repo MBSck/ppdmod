@@ -28,7 +28,8 @@ matplotlib.use('Agg')
 def plot_corner(sampler: np.ndarray, labels: List[str],
                 units: Optional[List[str]] = None,
                 discard: Optional[int] = 0,
-                savefig: Optional[Path] = None) -> None:
+                savefig: Optional[Path] = None,
+                **kwargs) -> None:
     """Plots the corner of the posterior spread.
 
     Parameters
@@ -69,7 +70,8 @@ def plot_corner(sampler: np.ndarray, labels: List[str],
 def plot_chains(sampler: np.ndarray, labels: List[str],
                 units: Optional[List[str]] = None,
                 discard: Optional[int] = 0,
-                savefig: Optional[Path] = None) -> None:
+                savefig: Optional[Path] = None,
+                **kwargs) -> None:
     """Plots the fitter's chains.
 
     Parameters
@@ -86,6 +88,7 @@ def plot_chains(sampler: np.ndarray, labels: List[str],
     if units is not None:
         labels = [f"{label} [{unit}]" for label, unit in zip(labels, units)]
 
+    quantiles = [x/100 for x in OPTIONS.fit.quantiles]
     if OPTIONS.fit.method == "emcee":
         samples = sampler.get_chain(discard=discard)
         _, axes = plt.subplots(len(labels), figsize=(10, 7), sharex=True)
@@ -98,7 +101,9 @@ def plot_chains(sampler: np.ndarray, labels: List[str],
         axes[-1].set_xlabel("step number")
     else:
         results = sampler.results
-        dyplot.traceplot(results, truths=np.zeros(ndim),
+        dyplot.traceplot(results, labels=labels,
+                         truths=np.zeros(len(labels)),
+                         quantiles=quantiles,
                          truth_color='black', show_titles=True,
                          trace_cmap='viridis', connect=True,
                          connect_highlight=range(5))

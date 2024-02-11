@@ -41,7 +41,7 @@ def test_read_into_namespace(fits_files: List[Path],
 
             u1coord, u2coord = map(lambda x: t3.data[f"u{x}coord"], ["1", "2"])
             v1coord, v2coord = map(lambda x: t3.data[f"v{x}coord"], ["1", "2"])
-            u3coord, v3coord = (u1coord+u2coord), (v1coord+v2coord)
+            u3coord, v3coord = -(u1coord+u2coord), -(v1coord+v2coord)
             u123coord = np.array([u1coord, u2coord, u3coord])
             v123coord = np.array([v1coord, v2coord, v3coord])
 

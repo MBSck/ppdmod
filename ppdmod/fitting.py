@@ -1,5 +1,6 @@
 from multiprocessing import Pool
 from typing import Optional, List, Dict, Tuple, Union
+from pathlib import Path
 
 import astropy.units as u
 import emcee
@@ -135,29 +136,28 @@ def calculate_observables(components: List[Component],
     v123coord = OPTIONS.data.t3.v123coord
 
     flux_model, vis_model, t3_model = None, None, None
-    if components is not None:
-        stellar_flux = components[0].calculate_flux(wavelength).value
-        for component in components[1:]:
-            tmp_flux = component.calculate_flux(wavelength)
-            tmp_vis = component.calculate_visibility(
-                    ucoord, vcoord, wavelength)
-            tmp_t3 = component.calculate_closure_phase(
-                    u123coord, v123coord, wavelength)
+    stellar_flux = components[0].calculate_flux(wavelength).value
+    for component in components[1:]:
+        tmp_flux = component.calculate_flux(wavelength)
+        tmp_vis = component.calculate_visibility(
+                ucoord, vcoord, wavelength)
+        tmp_t3 = component.calculate_closure_phase(
+                u123coord, v123coord, wavelength)
 
-            if flux_model is None:
-                flux_model, vis_model, t3_model = tmp_flux, tmp_vis, tmp_t3
-            else:
-                flux_model += tmp_flux
-                vis_model += tmp_vis
-                t3_model += tmp_t3
+        if flux_model is None:
+            flux_model, vis_model, t3_model = tmp_flux, tmp_vis, tmp_t3
+        else:
+            flux_model += tmp_flux
+            vis_model += tmp_vis
+            t3_model += tmp_t3
 
-        flux_model += stellar_flux
-        vis_model += stellar_flux
-        if not corr_flux:
-            vis_model = vis_model/flux_model
+    flux_model += stellar_flux
+    vis_model += stellar_flux
+    if not corr_flux:
+        vis_model = vis_model/flux_model
 
-        flux_model = np.tile(
-                flux_model, (OPTIONS.data.flux.value.shape[1]))
+    flux_model = np.tile(
+            flux_model, (OPTIONS.data.flux.value.shape[1]))
     return flux_model, vis_model, t3_model
 
 
@@ -271,6 +271,7 @@ def run_mcmc(nwalkers: int,
              nsteps: Optional[int] = 100,
              ncores: Optional[int] = 6,
              debug: Optional[bool] = False,
+             save_dir: Optional[Path] = None,
              **kwargs) -> np.ndarray:
     """Runs the emcee Hastings Metropolitan sampler.
 
@@ -305,6 +306,9 @@ def run_mcmc(nwalkers: int,
     print("Running production...")
     sampler.run_mcmc(theta, nsteps, progress=True)
 
+    if save_dir is not None:
+        np.save(save_dir / "sampler.npy", sampler)
+
     if not debug:
         pool.close()
         pool.join()
@@ -316,6 +320,7 @@ def run_dynesty(nlive: Optional[int] = 1000,
                 bound: Optional[str] = "multi",
                 ncores: Optional[int] = 6,
                 debug: Optional[bool] = False,
+                save_dir: Optional[Path] = None,
                 **kwargs) -> np.ndarray:
     """Runs the dynesty nested sampler.
 
@@ -328,6 +333,11 @@ def run_dynesty(nlive: Optional[int] = 1000,
     -------
     sampler : numpy.ndarray
     """
+    if save_dir is not None:
+        checkpoint_file = save_dir / "sampler.save"
+    else:
+        checkpoint_file = None
+
     ndim = init_randomly().shape[0]
     pool = Pool(processes=ncores) if not debug else None
     queue_size = ncores if not debug else None
@@ -338,7 +348,8 @@ def run_dynesty(nlive: Optional[int] = 1000,
     print(f"Executing Dynesty.\n{'':-^50}")
     sampler = NestedSampler(lnprob, transform_uniform_prior,
                             ndim, **sampler_kwargs)
-    sampler.run_nested(dlogz=0.01, print_progress=True)
+    sampler.run_nested(dlogz=0.01, print_progress=True,
+                       checkpoint_file=str(checkpoint_file))
 
     if not debug:
         pool.close()
@@ -373,8 +384,8 @@ def get_best_fit(
         sampler: Union[emcee.EnsembleSampler],
         discard: Optional[int] = 0,
         distribution: Optional[str] = "default",
-        method: Optional[str] = "quantile"
-        ) -> Tuple[np.ndarray, np.ndarray]:
+        method: Optional[str] = "quantile",
+        **kwargs) -> Tuple[np.ndarray, np.ndarray]:
     """Gets the best fit from the emcee sampler."""
     params, uncertainties = [], []
     if OPTIONS.fit.method == "emcee":
