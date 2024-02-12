@@ -158,8 +158,8 @@ def calculate_effective_baselines(
         pos_angle = u.Quantity(pos_angle, u.deg)
         compression = u.Quantity(compression, u.one)
 
-        ucoord_eff = ucoord*np.cos(pos_angle) - vcoord*np.sin(pos_angle)
-        vcoord_eff = ucoord*np.sin(pos_angle) + vcoord*np.cos(pos_angle)
+        ucoord_eff = ucoord*np.cos(pos_angle) + vcoord*np.sin(pos_angle)
+        vcoord_eff = -ucoord*np.sin(pos_angle) + vcoord*np.cos(pos_angle)
         vcoord_eff *= compression
     else:
         ucoord_eff, vcoord_eff = ucoord, vcoord
