@@ -164,7 +164,7 @@ def calculate_effective_baselines(
         ucoord_eff, vcoord_eff = ucoord, vcoord
 
     if compression is not None:
-        vcoord_eff *= 1/compression
+        ucoord_eff *= compression
 
     baselines_eff = np.hypot(ucoord_eff, vcoord_eff)
     baseline_angles_eff = np.arctan2(ucoord_eff, vcoord_eff)

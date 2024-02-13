@@ -123,7 +123,7 @@ def calculate_effective_baselines_berger(
         ucoord_eff, vcoord_eff = ucoord, vcoord
 
     if compression is not None:
-        vcoord_eff *= 1/compression
+        vcoord_eff *= compression
 
     baselines_eff = np.hypot(ucoord_eff, vcoord_eff)
     baseline_angles_eff = np.arctan2(ucoord_eff, vcoord_eff)
@@ -257,7 +257,7 @@ def test_compare_effective_baselines(
     if not baseline_dir.exists():
         baseline_dir.mkdir()
 
-    vis, t3 = OPTIONS.data.vis, OPTIONS.data.t3
+    vis = OPTIONS.data.vis
     calc_func = [utils.calculate_effective_baselines,
                  calculate_effective_baselines_varga,
                  calculate_effective_baselines_berger]
