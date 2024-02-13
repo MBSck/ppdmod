@@ -176,7 +176,7 @@ def set_data(fits_files: Optional[List[Path]] = None,
     fit_data = OPTIONS.fit.data if fit_data is None\
         else fit_data
 
-    for key in fit_data:
+    for key in ["flux", "vis", "vis2", "t3"]:
         data = getattr(OPTIONS.data, key)
         data.value, data.err = [np.array([]).astype(OPTIONS.data.dtype.real)
                                 for _ in range(2)]

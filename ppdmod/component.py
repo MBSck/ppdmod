@@ -352,7 +352,7 @@ class HankelComponent(Component):
 
         surface_density = self.calculate_surface_density(radius)
         optical_depth = surface_density*self.get_opacity(wavelength)
-        emissivity = (1-np.exp(-optical_depth))
+        emissivity = (1-np.exp(-optical_depth/self.params["elong"]()))
         return emissivity.astype(OPTIONS.data.dtype.real)
 
     def calculate_brightness(self, radius: u.mas, wavelength: u.um) -> u.Jy:
@@ -481,7 +481,7 @@ class HankelComponent(Component):
             baseline_angles = baseline_angles[np.newaxis, ..., np.newaxis]
             brightness = brightness[..., np.newaxis, :]
 
-        visibility = 2*np.pi*np.trapz(radius*brightness*j0(
+        visibility = 2*compression*np.pi*np.trapz(radius*brightness*j0(
             2.*np.pi*radius.value*baselines.value), radius).to(u.Jy)
         visibility = visibility.astype(OPTIONS.data.dtype.complex)
 
@@ -492,11 +492,12 @@ class HankelComponent(Component):
 
     def calculate_flux(self, wavelength: u.um) -> u.Jy:
         """Calculates the total flux from the hankel transformation."""
+        compression = self.params["elong"]()
         radius = self.calculate_internal_grid(self.params["dim"]())
         brightness_profile = self.calculate_brightness(
                 radius, wavelength[:, np.newaxis])
         flux = (2.*np.pi*np.trapz(
-            radius*brightness_profile, radius).to(u.Jy)).value
+            radius*compression*brightness_profile, radius).to(u.Jy)).value
         return np.abs(flux.reshape((flux.shape[0], 1)).astype(OPTIONS.data.dtype.real))
 
     def calculate_visibility(self, ucoord: u.m, vcoord: u.m,

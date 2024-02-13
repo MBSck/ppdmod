@@ -158,14 +158,16 @@ def calculate_effective_baselines(
         pos_angle = u.Quantity(pos_angle, u.deg)
         compression = u.Quantity(compression, u.one)
 
-        ucoord_eff = ucoord*np.cos(pos_angle) + vcoord*np.sin(pos_angle)
-        vcoord_eff = -ucoord*np.sin(pos_angle) + vcoord*np.cos(pos_angle)
-        vcoord_eff *= compression
+        ucoord_eff = ucoord*np.cos(pos_angle) - vcoord*np.sin(pos_angle)
+        vcoord_eff = ucoord*np.sin(pos_angle) + vcoord*np.cos(pos_angle)
     else:
         ucoord_eff, vcoord_eff = ucoord, vcoord
 
+    if compression is not None:
+        vcoord_eff *= 1/compression
+
     baselines_eff = np.hypot(ucoord_eff, vcoord_eff)
-    baseline_angles_eff = np.arctan2(vcoord_eff, ucoord_eff)
+    baseline_angles_eff = np.arctan2(ucoord_eff, vcoord_eff)
 
     if longest:
         indices = baselines_eff.argmax(0)

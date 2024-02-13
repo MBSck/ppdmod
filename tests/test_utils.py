@@ -72,6 +72,11 @@ def high_wavelength_solution() -> u.um:
     return np.load(Path("data") / "high_wavelength_solution.npy")*u.um
 
 
+def uniform_disk(baselines, diameter):
+    return 2*j1(np.pi*baselines*diameter.to(u.rad).value)\
+        / (np.pi*diameter.to(u.rad).value*baselines)
+
+
 def calculate_effective_baselines_varga(
         ucoord: u.m, vcoord: u.m,
         compression: Optional[u.Quantity[u.one]] = None,
@@ -81,13 +86,13 @@ def calculate_effective_baselines_varga(
     ucoord, vcoord = map(lambda x: u.Quantity(x, u.m), [ucoord, vcoord])
 
     baselines_eff = np.hypot(ucoord, vcoord)
-    baseline_angles_eff = np.arctan2(vcoord, ucoord)
+    diff_angle = np.arctan2(ucoord, vcoord)
 
     if pos_angle is not None:
         pos_angle = u.Quantity(pos_angle, u.deg)
         compression = u.Quantity(compression, u.one)
 
-        diff_angle = baseline_angles_eff - pos_angle
+        diff_angle -= pos_angle
         baselines_eff = baselines_eff*np.sqrt(
                 np.cos(diff_angle)**2
                 + (compression*np.sin(diff_angle))**2)
@@ -114,12 +119,14 @@ def calculate_effective_baselines_berger(
 
         ucoord_eff = ucoord*np.cos(pos_angle) + vcoord*np.sin(pos_angle)
         vcoord_eff = -ucoord*np.sin(pos_angle) + vcoord*np.cos(pos_angle)
-        vcoord_eff *= compression
     else:
         ucoord_eff, vcoord_eff = ucoord, vcoord
 
+    if compression is not None:
+        vcoord_eff *= 1/compression
+
     baselines_eff = np.hypot(ucoord_eff, vcoord_eff)
-    baseline_angles_eff = np.arctan2(vcoord_eff, ucoord_eff)
+    baseline_angles_eff = np.arctan2(ucoord_eff, vcoord_eff)
 
     if longest:
         indices = baselines_eff.argmax(0)
@@ -185,7 +192,7 @@ def test_distance_to_angular(distance: u.Quantity,
 def test_calculate_effective_baselines(
         fits_files: Path, wavelengths: u.um) -> None:
     """Tests the calculation of the effective baselines."""
-    axis_ratio, pos_angle = 0.35*u.one, 33*u.deg
+    axis_ratio, pos_angle = 2.85*u.one, 33*u.deg
     fit_data = ["flux", "vis", "vis2", "t3"]
     set_fit_wavelengths(wavelengths)
     set_data(fits_files, fit_data=fit_data)
@@ -224,126 +231,77 @@ def test_calculate_effective_baselines(
     bx.set_xlabel(r"$B_{\mathrm{max}}$ (M$\lambda$)")
     bx.set_ylabel("Closure phase (deg)")
     plt.savefig(baseline_dir / "effective_baselines.pdf", format="pdf")
+
     plt.close()
+    set_data()
+    set_fit_wavelengths()
 
 
+# TODO: Test this also for the angles, but it seems promising
+@pytest.mark.parametrize(
+        "fits_file, compression, pos_angle",
+        [("ud.fits", None, None),
+         ("ud_inc.fits", 0.351, None),
+         ("ud_inc_rot.fits", 0.351, 33*u.deg)])
 def test_compare_effective_baselines(
-        fits_files: Path, wavelengths: u.um) -> None:
+        fits_file: Path, compression: float, pos_angle: u.deg) -> None:
     """Compares the different calculations of the effective
     baseline calculation."""
-    compression, pos_angle = 0.35*u.one, 33*u.deg
-    fit_data = ["flux", "vis", "vis2", "t3"]
-    set_fit_wavelengths(wavelengths)
-    set_data(fits_files, fit_data=fit_data)
+    fits_file = Path("data/aspro") / fits_file
+    diameter, wavelength = 20*u.mas, [10]*u.um
+    fit_data = ["vis", "t3"]
+    set_fit_wavelengths(wavelength)
+    set_data([fits_file], fit_data=fit_data)
 
     baseline_dir = Path("baselines")
     if not baseline_dir.exists():
         baseline_dir.mkdir()
 
-    vis, t3 = OPTIONS.data.vis2, OPTIONS.data.t3
+    vis, t3 = OPTIONS.data.vis, OPTIONS.data.t3
+    calc_func = [utils.calculate_effective_baselines,
+                 calculate_effective_baselines_varga,
+                 calculate_effective_baselines_berger]
 
-    eff_baselines, baseline_angle = utils.calculate_effective_baselines(
-        vis.ucoord, vis.vcoord, compression, pos_angle)
-    eff_baselines_vg, baseline_angle_vg = calculate_effective_baselines_varga(
-        vis.ucoord, vis.vcoord, compression, pos_angle)
-    eff_baselines_bg, baseline_angle_bg = calculate_effective_baselines_berger(
-        vis.ucoord, vis.vcoord, compression, pos_angle)
+    names = ["Aspro", "Corr. Matter", "Varga", "Corr. Berger"]
+    ud_visibilities = [vis.value]
+    all_baselines = [np.hypot(vis.ucoord, vis.vcoord)*u.m/wavelength.to(u.m)]
+    all_angles = [np.arctan2(vis.vcoord, vis.ucoord)*u.rad]
+    for func in calc_func:
+        baselines, angles = func(
+                vis.ucoord, vis.vcoord, compression, pos_angle)
+        baselines = baselines/wavelength.to(u.m)
+        all_baselines.append(baselines)
+        all_angles.append(angles)
+        ud_visibilities.append(np.abs(uniform_disk(baselines, diameter)))
 
-    eff_baselines_t3, baseline_angle_t3 = utils.calculate_effective_baselines(
-        t3.u123coord, t3.v123coord, compression, pos_angle)
-    eff_baselines_t3_vg, baseline_angle_t3_vg = calculate_effective_baselines_varga(
-        t3.u123coord, t3.v123coord, compression, pos_angle)
-    eff_baselines_t3_bg, baseline_angle_t3_bg = calculate_effective_baselines_berger(
-        t3.u123coord, t3.v123coord, compression, pos_angle)
+    assert np.allclose(vis.value, ud_visibilities[0], atol=1e-2)
 
-    _, ((ax, bx), (cx, dx)) = plt.subplots(2, 2, figsize=(12, 12))
-    ax.scatter(eff_baselines.value/wavelengths.value[:, np.newaxis],
-               vis.value, label="Matter")
-    ax.scatter(eff_baselines_vg.value/wavelengths.value[:, np.newaxis],
-               vis.value, label="Varga")
-    ax.scatter(eff_baselines_bg.value/wavelengths.value[:, np.newaxis],
-               vis.value, label="Berger", marker="x")
+    _, (ax, bx) = plt.subplots(1, 2, figsize=(12, 6))
+    for name, baseline, angle, ud_vis in zip(
+            names, all_baselines, all_angles, ud_visibilities):
+        ax.scatter(baseline.value*1e-6, ud_vis, label=name, alpha=0.6)
+        bx.scatter(angle.to(u.deg).value, ud_vis, label=name, alpha=0.6)
+
     ax.set_xlabel(r"$B_{\mathrm{eff}}$ (M$\lambda$)")
     ax.set_ylabel("Visibilities")
     ax.legend()
 
-    bx.scatter(eff_baselines_t3.value/wavelengths.value[:, np.newaxis],
-               t3.value, label="Matter")
-    bx.scatter(eff_baselines_t3_vg.value/wavelengths.value[:, np.newaxis],
-               t3.value, label="Varga")
-    bx.scatter(eff_baselines_t3_bg.value/wavelengths.value[:, np.newaxis],
-               t3.value, label="Berger", marker="x")
-    bx.set_xlabel(r"$B_{\mathrm{eff}}$ (M$\lambda$)")
-    bx.set_ylabel("Closure phase (deg)")
+    bx.set_xlabel(r"$\phi_{\mathrm{eff}}$ (deg)")
+    bx.set_ylabel("Visibilities")
     bx.legend()
 
-    cx.scatter(baseline_angle.value/wavelengths.value[:, np.newaxis],
-               vis.value, label="Matter")
-    cx.scatter(baseline_angle_vg.value/wavelengths.value[:, np.newaxis],
-               vis.value, label="Varga")
-    cx.scatter(baseline_angle_bg.value/wavelengths.value[:, np.newaxis],
-               vis.value, label="Berger", marker="x")
-    cx.set_xlabel(r"$\phi_{\mathrm{eff}}$ (deg)")
-    cx.set_ylabel("Visibilities")
-    cx.legend()
+    title = "Uniform Disk"
+    if "inc" in fits_file.name:
+        title += " Inclined"
+    if "rot" in fits_file.name:
+        title += ", Rotated"
 
-    dx.scatter(baseline_angle_t3.value/wavelengths.value[:, np.newaxis],
-               t3.value, label="Matter")
-    dx.scatter(baseline_angle_t3_vg.value/wavelengths.value[:, np.newaxis],
-               t3.value, label="Varga")
-    dx.scatter(baseline_angle_t3_bg.value/wavelengths.value[:, np.newaxis],
-               t3.value, label="Berger", marker="x")
-    dx.set_xlabel(r"$\phi_{\mathrm{eff}}$ (deg)")
-    dx.set_ylabel("Closure phase (deg)")
-    dx.legend()
-    plt.savefig(baseline_dir / "baseline_comparison.pdf", format="pdf")
+    plt.savefig(baseline_dir / f"deprojection_{fits_file.name}.pdf",
+                format="pdf")
     plt.close()
 
-    diameter, wavelength = 20*u.mas, 10*u.um
-    xx = np.linspace(-0.5, 0.5, 100)*500
-    xx, yy = np.meshgrid(xx, xx)*u.m
-    angles = np.arctan2(yy, xx)
-    ud_vis = utils.uniform_disk_vis(diameter, xx, yy, wavelength)
-
-    baselines_matter, angle_matter = utils.calculate_effective_baselines(
-            xx, yy, compression, pos_angle)
-    baselines_vg, angle_vg = calculate_effective_baselines_varga(
-            xx, yy, compression, pos_angle)
-    baselines_bg, angle_bg = calculate_effective_baselines_berger(
-            xx, yy, compression, pos_angle)
-
-    eff_bg = baselines_matter/wavelength.to(u.m)
-    ud_vis_matter = 2*j1(np.pi*eff_bg*diameter.to(u.rad).value)\
-        / (np.pi*diameter.to(u.rad).value*eff_bg)
-
-    eff_vg = baselines_vg/wavelength.to(u.m)
-    ud_vis_vg = 2*j1(np.pi*eff_vg*diameter.to(u.rad).value)\
-        / (np.pi*diameter.to(u.rad).value*eff_vg)
-
-    eff_bg = baselines_bg/wavelength.to(u.m)
-    ud_vis_bg = 2*j1(np.pi*eff_bg*diameter.to(u.rad).value)\
-        / (np.pi*diameter.to(u.rad).value*eff_bg)
-
-    images = [ud_vis, ud_vis_matter, ud_vis_vg, ud_vis_bg]
-    angles = [angles, angle_matter, angle_vg, angle_bg]
-    names = ["Uniform Disk", "Matter", "Varga", "Berger"]
-
-    extent = [xx.min().value, xx.max().value,
-              yy.min().value, yy.max().value]
-    _, axarr = plt.subplots(2, 4, figsize=(14, 8),
-                            sharey=True, sharex=True)
-    for index, (vis, angle, name) in enumerate(zip(images, angles, names)):
-        ax, bx = axarr[:, index]
-        ax.imshow(np.abs(vis.value), extent=extent)
-        ax.set_title(name)
-        if index == 0:
-            ax.set_ylabel("v (m)")
-            bx.set_ylabel("v (m)")
-        bx.imshow(angle.value, extent=extent)
-        bx.set_xlabel("u (m)")
-
-    plt.savefig(baseline_dir / "deprojection_comparison.pdf", format="pdf")
-    plt.close()
+    set_data()
+    set_fit_wavelengths()
 
 
 def test_binary() -> None:
