@@ -242,8 +242,8 @@ if __name__ == "__main__":
 
     # axis_ratio = OPTIONS.model.constant_params["elong"]
     # pos_angle = OPTIONS.model.constant_params["pa"]
-    axis_ratio = shared_params["sh_elong"]
-    compression = shared_params["sh_pa"]
+    axis_ratio = shared_params["elong"]
+    compression = shared_params["pa"]
 
     plot.plot_fit(
             axis_ratio, compression,
