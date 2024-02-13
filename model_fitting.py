@@ -129,26 +129,28 @@ outer_ring_labels = [f"or_{label}" for label in outer_ring]
 
 # q = Parameter(**STANDARD_PARAMETERS["q"])
 # inner_temp = Parameter(**STANDARD_PARAMETERS["inner_temp"])
-# pa = Parameter(**STANDARD_PARAMETERS["pa"])
-# elong = Parameter(**STANDARD_PARAMETERS["elong"])
+pa = Parameter(**STANDARD_PARAMETERS["pa"])
+elong = Parameter(**STANDARD_PARAMETERS["elong"])
 cont_weight = Parameter(**STANDARD_PARAMETERS["cont_weight"])
 
 # q.value = 0.5
 # inner_temp.value = 1500
-# pa.value = 145
-# elong.value = 0.5
+pa.value = 163
+elong.value = 0.5
 cont_weight.value = 0.54             # Relative contribution (adds to 1). Mass fractions
 
 # q.set(min=0., max=1.)
 # inner_temp.set(min=300, max=2000)
-# pa.set(min=0, max=360)
-# elong.set(min=0, max=1)
+pa.set(min=0, max=360)
+elong.set(min=0, max=1)
 cont_weight.set(min=0.3, max=0.8)
 
 # OPTIONS.model.shared_params = {"q": q, "inner_temp": inner_temp,
 #                                "pa": pa, "elong": elong,
 #                                "cont_weight": cont_weight}
-OPTIONS.model.shared_params = {"cont_weight": cont_weight}
+OPTIONS.model.shared_params = {"pa": pa, "elong": elong,
+                               "cont_weight": cont_weight}
+# OPTIONS.model.shared_params = {"cont_weight": cont_weight}
 shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 
 OPTIONS.model.components_and_params = [
@@ -157,13 +159,13 @@ OPTIONS.model.components_and_params = [
     ["AsymmetricGreyBody", outer_ring],
 ]
 
-labels = inner_ring_labels + outer_ring_labels + shared_params_labels
+# labels = inner_ring_labels + outer_ring_labels + shared_params_labels
 # labels = inner_ring_labels + shared_params_labels
 labels = outer_ring_labels + shared_params_labels
 
-component_labels = ["Star", "Inner Ring", "Outer Ring"]
+# component_labels = ["Star", "Inner Ring", "Outer Ring"]
 # component_labels = ["Star", "Inner Ring"]
-# component_labels = ["Star", "Outer Ring"]
+component_labels = ["Star", "Outer Ring"]
 
 OPTIONS.model.modulation = 1
 OPTIONS.model.gridtype = "logarithmic"
@@ -199,13 +201,17 @@ post_fit_dir.mkdir(parents=True, exist_ok=True)
 
 
 if __name__ == "__main__":
-    ncores = 6
-    fit_params_emcee = {
-            "discard": 200, "nburnin": 200,
-            "nsteps": 500, "nwalkers": 100}
-    fit_params_dynesty = {
-            "nlive": 1500, "sample": "rwalk", "bound": "multi"}
-    fit_params = fit_params_dynesty
+    ncores = None
+    fit_params_emcee = {"nburnin": 200, "nsteps": 500, "nwalkers": 100}
+    fit_params_dynesty = {"nlive": 1500, "sample": "rwalk", "bound": "multi"}
+
+    if OPTIONS.fit.method == "emcee":
+        fit_params = fit_params_emcee
+        ncores = fit_params["nwalkers"]//2 if ncores is None else ncores
+        fit_params["discard"] = fit_params["nburnin"]
+    else:
+        ncores = 30 if ncores is None else ncores
+        fit_params = fit_params_dynesty
 
     sampler = fitting.run_fit(
             **fit_params, ncores=ncores,
@@ -234,10 +240,12 @@ if __name__ == "__main__":
             savefits=post_fit_dir / "model.fits",
             object_name="HD 142666", **fit_params, ncores=ncores)
 
-    axis_ratio = OPTIONS.model.constant_params["elong"]
-    pos_angle = OPTIONS.model.constant_params["pa"]
+    # axis_ratio = OPTIONS.model.constant_params["elong"]
+    # pos_angle = OPTIONS.model.constant_params["pa"]
+    axis_ratio = shared_params["sh_elong"]
+    compression = shared_params["sh_pa"]
 
     plot.plot_fit(
-            axis_ratio, pos_angle,
+            axis_ratio, compression,
             components=components,
             savefig=post_fit_dir / "fit_results.pdf")
