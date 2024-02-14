@@ -602,11 +602,13 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
 
         effective_baselines, _ = calculate_effective_baselines(
                 vis.ucoord, vis.vcoord)
-        longest_baselines, _ = calculate_effective_baselines(
-                t3.u123coord, t3.v123coord, longest=True)
-
         effective_baselines_mlambda = effective_baselines/wavelength.value
-        longest_baselines_mlambda = longest_baselines/wavelength.value
+
+        if "t3" in data_to_plot:
+            longest_baselines, _ = calculate_effective_baselines(
+                    t3.u123coord, t3.v123coord, longest=True)
+            longest_baselines_mlambda = longest_baselines/wavelength.value
+
         color = colormap(norm(wavelength.value))
         errorbar_params.color = color
 

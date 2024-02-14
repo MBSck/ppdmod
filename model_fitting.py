@@ -78,7 +78,7 @@ dim, distance = 32, 148.3
 OPTIONS.model.constant_params = {
     "dim": dim, "dist": distance,
     "eff_temp": 7500, "f": star_flux,
-    "pa": 162, "elong": 0.56,
+    # "pa": 162, "elong": 0.56,
     "eff_radius": 1.75, "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont}
 
