@@ -848,20 +848,21 @@ def plot_observables(target: str,
         plt.savefig(vis_dir / f"vis_{baseline:.2f}.pdf", format="pdf")
         plt.close()
 
-    effective_baselines, baseline_angles = calculate_effective_baselines(
-            OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord,
-            components[1].params["elong"](),
-            components[1].params["pa"](), longest=True)
+    if "t3" in OPTIONS.fit.data:
+        effective_baselines, baseline_angles = calculate_effective_baselines(
+                OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord,
+                components[1].params["elong"](),
+                components[1].params["pa"](), longest=True)
 
-    for index, (baseline, baseline_angle) in enumerate(
-            zip(effective_baselines, baseline_angles)):
-        _ = plt.figure(facecolor=OPTIONS.plot.color.background,
-                       tight_layout=True)
-        ax = plt.axes(facecolor=OPTIONS.plot.color.background)
-        set_axes_color(ax, OPTIONS.plot.color.background)
-        ax.plot(wavelength, t3[:, index], label=f"B={baseline:.2f} m")
-        ax.set_xlabel(r"$\lambda$ ($\mu$m)")
-        ax.set_ylabel(r"Closure Phases ($^\circ$)")
-        plt.legend()
-        plt.savefig(t3_dir / f"t3_{baseline:.2f}.pdf", format="pdf")
-        plt.close()
+        for index, (baseline, baseline_angle) in enumerate(
+                zip(effective_baselines, baseline_angles)):
+            _ = plt.figure(facecolor=OPTIONS.plot.color.background,
+                           tight_layout=True)
+            ax = plt.axes(facecolor=OPTIONS.plot.color.background)
+            set_axes_color(ax, OPTIONS.plot.color.background)
+            ax.plot(wavelength, t3[:, index], label=f"B={baseline:.2f} m")
+            ax.set_xlabel(r"$\lambda$ ($\mu$m)")
+            ax.set_ylabel(r"Closure Phases ($^\circ$)")
+            plt.legend()
+            plt.savefig(t3_dir / f"t3_{baseline:.2f}.pdf", format="pdf")
+            plt.close()
