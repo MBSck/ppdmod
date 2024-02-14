@@ -16,7 +16,7 @@ from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 DATA_DIR = Path("tests/data")
 
-OPTIONS.fit.data = ["flux", "vis2", "t3"]
+OPTIONS.fit.data = ["flux", "vis2"]
 # wavelengths = [1.6]*u.um
 # wavelengths = [2.25]*u.um
 # wavelengths = [1.6, 2.25]*u.um

@@ -138,13 +138,24 @@ def set_fit_weights(weights: Optional[List[float]] = None) -> None:
     if weights is not None:
         wflux, wvis, wt3 = weights
     else:
-        nflux = OPTIONS.data.flux.value.shape[1]
-        nt3 = OPTIONS.data.t3.value.shape[1]
         if OPTIONS.data.vis2.value.size == 0:
             nvis = OPTIONS.data.vis.value.shape[1]
         else:
             nvis = OPTIONS.data.vis2.value.shape[1]
-        wflux, wvis, wt3 = nvis/nflux, 1, nvis/nt3
+
+        if "flux" in OPTIONS.fit.data:
+            nflux = OPTIONS.data.flux.value.shape[1]
+            wflux = nvis/nflux
+        else:
+            wflux = 1
+
+        if "t3" in OPTIONS.fit.data:
+            nt3 = OPTIONS.data.t3.value.shape[1]
+            wt3 = nvis/nt3
+        else:
+            wt3 = 1
+
+        wvis = 1
 
     OPTIONS.fit.weights.flux = wflux
     OPTIONS.fit.weights.vis = wvis
