@@ -124,7 +124,7 @@ def distance_to_angular(diameter: u.mas, distance: u.pc) -> u.m:
     return ((diameter.to(u.m)/distance.to(u.m))*u.rad).to(u.mas)
 
 
-def calculate_effective_baselines(
+def compute_effective_baselines(
         ucoord: u.m, vcoord: u.m,
         compression: Optional[u.Quantity[u.one]] = None,
         pos_angle: Optional[u.Quantity[u.deg]] = None,

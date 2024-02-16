@@ -88,10 +88,10 @@ def init_randomly(nwalkers: Optional[int] = None) -> np.ndarray:
                       for param in params] for _ in range(nwalkers)])
 
 
-def calculate_chi_sq(data: u.quantity, error: u.quantity,
-                     model_data: u.quantity,
-                     method: Optional[str] = "linear",
-                     lnf: Optional[float] = None) -> float:
+def compute_chi_sq(data: u.quantity, error: u.quantity,
+                   model_data: u.quantity,
+                   method: Optional[str] = "linear",
+                   lnf: Optional[float] = None) -> float:
     """the chi square minimisation.
 
     Parameters
@@ -125,8 +125,8 @@ def calculate_chi_sq(data: u.quantity, error: u.quantity,
     return -0.5*(diff**2*inv_sigma_squared + np.log(1/inv_sigma_squared)).sum()
 
 
-def calculate_observables(components: List[Component],
-                          wavelength: Optional[np.ndarray] = None):
+def compute_observables(components: List[Component],
+                        wavelength: Optional[np.ndarray] = None):
     """Calculates the observables from the model."""
     wavelength = OPTIONS.fit.wavelengths if wavelength is None else wavelength
     corr_flux = "vis2" not in OPTIONS.fit.data
@@ -136,12 +136,12 @@ def calculate_observables(components: List[Component],
     v123coord = OPTIONS.data.t3.v123coord
 
     flux_model, vis_model, t3_model = None, None, None
-    stellar_flux = components[0].calculate_flux(wavelength).value
+    stellar_flux = components[0].compute_flux(wavelength).value
     for component in components[1:]:
-        tmp_flux = component.calculate_flux(wavelength)
-        tmp_vis = component.calculate_visibility(
+        tmp_flux = component.compute_flux(wavelength)
+        tmp_vis = component.compute_vis(
                 ucoord, vcoord, wavelength)
-        tmp_t3 = component.calculate_closure_phase(
+        tmp_t3 = component.compute_t3(
                 u123coord, v123coord, wavelength)
 
         if flux_model is None:
@@ -161,7 +161,7 @@ def calculate_observables(components: List[Component],
     return flux_model, vis_model, t3_model
 
 
-def calculate_observable_chi_sq(
+def compute_observable_chi_sq(
         flux_model: np.ndarray,
         vis_model: np.ndarray,
         t3_model: np.ndarray) -> float:
@@ -184,6 +184,7 @@ def calculate_observable_chi_sq(
     """
     params = {"flux": flux_model,
               "vis": vis_model, "t3": t3_model}
+
     chi_sq = 0.
     for key in OPTIONS.fit.data:
         data = getattr(OPTIONS.data, key)
@@ -191,7 +192,7 @@ def calculate_observable_chi_sq(
         weight = getattr(OPTIONS.fit.weights, key)
         nan_indices = np.isnan(data.value)
         method = "linear" if key != "t3" else "exponential"
-        chi_sq += calculate_chi_sq(
+        chi_sq += compute_chi_sq(
                 data.value[~nan_indices],
                 data.err[~nan_indices],
                 params[key][~nan_indices],
@@ -263,7 +264,7 @@ def lnprob(theta: np.ndarray) -> float:
             return -np.inf
 
     components = assemble_components(parameters, shared_params)
-    return calculate_observable_chi_sq(*calculate_observables(components))
+    return compute_observable_chi_sq(*compute_observables(components))
 
 
 def run_mcmc(nwalkers: int,

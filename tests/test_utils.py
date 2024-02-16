@@ -203,7 +203,7 @@ def test_calculate_effective_baselines(
         baseline_dir.mkdir()
 
     vis = OPTIONS.data.vis2
-    effective_baselines, baseline_angles = utils.calculate_effective_baselines(
+    effective_baselines, baseline_angles = utils.compute_effective_baselines(
         vis.ucoord, vis.vcoord, axis_ratio, pos_angle)
 
     assert effective_baselines.shape == (6*nfiles, )
@@ -212,7 +212,7 @@ def test_calculate_effective_baselines(
     assert baseline_angles.unit == u.rad
 
     t3 = OPTIONS.data.t3
-    effective_baselines_cp, baseline_angles = utils.calculate_effective_baselines(
+    effective_baselines_cp, baseline_angles = utils.compute_effective_baselines(
         t3.u123coord, t3.v123coord, axis_ratio, pos_angle, longest=True)
 
     assert effective_baselines_cp.shape == (4*nfiles, )
@@ -258,7 +258,7 @@ def test_compare_effective_baselines(
         baseline_dir.mkdir()
 
     vis = OPTIONS.data.vis
-    calc_func = [utils.calculate_effective_baselines,
+    calc_func = [utils.compute_effective_baselines,
                  calculate_effective_baselines_varga,
                  calculate_effective_baselines_berger]
 

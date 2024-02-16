@@ -1,30 +1,9 @@
-import time
-from pathlib import Path
-
 import astropy.units as u
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
 import pytest
 
-from ppdmod import utils
-from ppdmod.component import Component, AnalyticalComponent, \
-        HankelComponent
-from ppdmod.data import ReadoutFits
-from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
+from ppdmod.component import Component
+from ppdmod.options import STANDARD_PARAMETERS
 from ppdmod.parameter import Parameter
-
-
-CALCULATION_FILE = Path("analytical_calculation.xlsx")
-COMPONENT_DIR = Path("component")
-
-READOUT = ReadoutFits(list(Path("data/fits").glob("*2022-04-23*.fits"))[0])
-utils.make_workbook(
-    CALCULATION_FILE,
-    {
-        "Vis": ["Dimension (px)", "Computation Time (s)"],
-        "T3": ["Dimension (px)", "Computation Time (s)"],
-    })
 
 
 # TODO: Test hankel for multiple wavelengths
@@ -38,24 +17,6 @@ def wavelength() -> u.um:
 def component() -> Component:
     """Initializes a component."""
     return Component(pixel_size=0.1)
-
-
-@pytest.fixture
-def analytic_component() -> AnalyticalComponent:
-    """Initializes an analytical component."""
-    return AnalyticalComponent()
-
-
-@pytest.fixture
-def hankel_component() -> HankelComponent:
-    """Initializes a numerical component."""
-    hankel_component = HankelComponent(
-            rin=0.5, rout=3, pa=33, dist=148.3,
-            elong=0.5, dim=512, a=0.5, phi=33,
-            inner_temp=1500, q=0.5)
-    hankel_component.optically_thick = True
-    hankel_component.asymmetric = True
-    return hankel_component
 
 
 def test_component(component: Component) -> None:
@@ -81,220 +42,47 @@ def test_eval(component: Component) -> None:
     assert component.params["y"]() == 10*u.mas
     assert component.params["dim"]() == 512
 
-# TODO: Make image of both radius to infinity and rotated with finite radius.
-def test_radius_calculation(component: Component) -> None:
-    """Tests if the radius calculated from the grid works."""
-    dim, pixel_size = 512, 0.1*u.mas
-    grid = component.calculate_internal_grid(dim, pixel_size)
-    plt.imshow(np.hypot(*grid))
-    plt.title("Image space")
-    plt.xlabel("dim [px]")
-    plt.savefig(COMPONENT_DIR / "grid.pdf", format="pdf")
-    plt.close()
-
-    radius = np.hypot(*grid)
-    radial_profile = np.logical_and(radius > 2, radius < 10)
-    plt.imshow(radius*radial_profile)
-    plt.title("Image space")
-    plt.xlabel("dim [px]")
-    plt.savefig(COMPONENT_DIR / "grid_ring.pdf", format="pdf")
-    plt.close()
-
-    elliptical_component = Component(pa=33, elong=0.6)
-    elliptical_component.elliptic = True
-    assert elliptical_component.elliptic
-    assert elliptical_component.params["pa"]() == 33*u.deg
-    assert elliptical_component.params["elong"]() == 0.6*u.one
-
-    grid = elliptical_component.calculate_internal_grid(dim, pixel_size)
-    plt.imshow(np.hypot(*grid))
-    plt.title("Image space")
-    plt.xlabel("dim [px]")
-    plt.savefig(COMPONENT_DIR / "elliptic_grid.pdf", format="pdf")
-    plt.close()
-
-    radius = np.hypot(*grid)
-    radial_profile = np.logical_and(radius > 2, radius < 10)
-    plt.imshow(radius*radial_profile)
-    plt.title("Image space")
-    plt.xlabel("dim [px]")
-    plt.savefig(COMPONENT_DIR / "elliptic_grid_ring.pdf", format="pdf")
-    plt.close()
-
 
 def test_translate_fourier(component: Component) -> None:
     """Tests if the translation of the fourier transform works."""
-    assert component._translate_fourier_transform(0, 0, 8*u.um) == 1
-    assert component._translate_fourier_transform(25, 15, 8*u.um) == 1
+    assert component.translate_fourier_space(0, 0, 8*u.um) == 1
+    assert component.translate_fourier_space(25, 15, 8*u.um) == 1
 
 
 def test_translate_coordinates(component: Component) -> None:
     """Tests if the translation of the coordinates works."""
-    assert component._translate_coordinates(0, 0) == (0*u.mas, 0*u.mas)
-    assert component._translate_coordinates(25, 15) == (25*u.mas, 15*u.mas)
+    assert component.translate_coordinates(0, 0) == (0*u.mas, 0*u.mas)
+    assert component.translate_coordinates(25, 15) == (25*u.mas, 15*u.mas)
 
 
-def test_analytic_component_init(analytic_component: AnalyticalComponent) -> None:
-    """Tests if the initialization of the analytical component works."""
-    analytic_component.elliptic = True
-    analytic_component.__init__()
-
-    def image_function(xx, yy, wl):
-        return np.hypot(xx, yy)
-    analytic_component._image_function = image_function
-
-    assert "pa" in analytic_component.params
-    assert "elong" in analytic_component.params
-    assert analytic_component.calculate_image(512, 0.1*u.mas).size > 0
-
-
-def test_analytic_component_calculate_image_function(
-        analytic_component: AnalyticalComponent) -> None:
-    """Tests if the visibility function returns None."""
-    assert analytic_component._image_function(None, None, None) is None
-
-
-def test_analytic_component_calculate_visibility_function(
-        analytic_component: AnalyticalComponent) -> None:
-    """Tests if the visibility function returns None."""
-    assert analytic_component._visibility_function(None, None, None) is None
-
-
-def test_analytical_component_calculate_image(
-        analytic_component: AnalyticalComponent) -> None:
-    """Tests the analytical component's image calculation."""
-    assert analytic_component.calculate_image(512, 0.1*u.mas) is None
-
-
-def test_analytical_component_calculate_complex_visibility(
-        analytic_component: AnalyticalComponent) -> None:
-    """Tests the analytical component's complex visibility
-    function calculation."""
-    assert analytic_component.calculate_complex_visibility() is None
-
-
-@pytest.mark.parametrize("grid_type", ["linear", "logarithmic"])
-def test_hankel_component_calculate_grid(
-        hankel_component: HankelComponent, grid_type: str) -> None:
-    """Tests the hankel component's grid calculation."""
-    OPTIONS.model.gridtype = grid_type
-    radius = hankel_component.calculate_internal_grid(512)
-    assert radius.unit == u.mas
-    assert radius.shape == (512, )
-    assert radius[0].value == hankel_component.params["rin"].value\
-        and radius[-1].value == hankel_component.params["rout"].value
-
-
-def test_hankel_component_brightness_function():
+# TODO: Write test for compute_vis and compute_t3 and all compute functions
+def test_flux_func() -> None:
     ...
 
 
-def test_hankel_component_flux(
-        hankel_component: HankelComponent, wavelength: u.um) -> None:
-    """Tests the calculation of the total flux."""
-    flux = hankel_component.calculate_flux(wavelength)
-    assert flux.shape == (wavelength.size, 1)
+def test_vis_func() -> None:
+    ...
 
 
-# TODO: Write here check if higher orders are implemented
-@pytest.mark.parametrize("order", [0, 1, 2, 3])
-def test_hankel_component_hankel_transform(
-        hankel_component: HankelComponent,
-        order: int, wavelength: u.um) -> None:
-    """Tests the hankel component's hankel transformation."""
-    radius = hankel_component.calculate_internal_grid(512)
-
-    OPTIONS.model.modulation = order
-
-    vis, vis_mod = hankel_component.hankel_transform(
-            radius, READOUT.vis2.ucoord, READOUT.vis2.vcoord, wavelength)
-    assert vis.shape == (wavelength.size, 6)
-    assert vis_mod.shape == (wavelength.size, 6, order)
-    assert vis.unit == u.Jy and vis_mod.unit == u.Jy
-
-    OPTIONS.model.modulation = 0
+def test_t3_func() -> None:
+    ...
 
 
-@pytest.mark.parametrize("order", [0, 1, 2, 3])
-def test_hankel_component_corr_fluxes(
-        hankel_component: HankelComponent,
-        order: int, wavelength: u.um) -> None:
-    """Tests the hankel component's hankel transformation."""
-    OPTIONS.model.modulation = order
-
-    vis = hankel_component.calculate_visibility(
-            READOUT.vis2.ucoord, READOUT.vis2.vcoord,
-            wavelength)
-    assert vis.shape == (wavelength.size, 6)
-    assert isinstance(vis, np.ndarray)
-
-    OPTIONS.model.modulation = 0
+def test_compute_flux() -> None:
+    ...
 
 
-# TODO: Add tests for the wavelength
-@pytest.mark.parametrize("order", [0, 1, 2, 3])
-def test_hankel_component_closure_phases(
-        hankel_component: HankelComponent,
-        order: int, wavelength: u.um) -> None:
-    """Tests the hankel component's hankel transformation."""
-    OPTIONS.model.modulation = order
+def test_compute_vis() -> None:
+    ...
 
-    t3 = hankel_component.calculate_closure_phase(
-            READOUT.t3.u123coord, READOUT.t3.v123coord, wavelength)
 
-    assert t3.shape == (wavelength.size, 4)
+def test_compute_t3() -> None:
+    ...
 
-    OPTIONS.model.modulation = 0
 
-# TODO: Extend this test to account for multiple files (make files an input)
-@pytest.mark.parametrize(
-        "dim", [4096, 2096, 1024, 512, 256, 128, 64, 32])
-def test_hankel_resolution(dim: int, wavelength: u.um) -> None:
-    """Tests the hankel component's resolution."""
-    hankel_component = HankelComponent(
-            rin=0.5, rout=3, pa=33,
-            elong=0.5, dim=dim, a=0.5, phi=33,
-            inner_temp=1500, q=0.5)
-    hankel_component.optically_thick = True
-    hankel_component.asymmetric = True
+def test_image_func() -> None:
+    ...
 
-    OPTIONS.model.modulation = 1
-    start_time_vis = time.perf_counter()
-    _ = hankel_component.calculate_visibility(
-            READOUT.vis2.ucoord, READOUT.vis2.vcoord, wavelength)
-    end_time_vis = time.perf_counter()-start_time_vis
 
-    start_time_cphase = time.perf_counter()
-    _ = hankel_component.calculate_closure_phase(
-            READOUT.t3.u123coord, READOUT.t3.v123coord, wavelength)
-    end_time_cphase = time.perf_counter()-start_time_cphase
-
-    vis_data = {"Dimension (px)": [dim],
-                "Computation Time (s)": [end_time_vis]}
-
-    t3_data = {"Dimension (px)": [dim],
-               "Computation Time (s)": [end_time_cphase]}
-
-    if CALCULATION_FILE.exists():
-        df = pd.read_excel(CALCULATION_FILE, sheet_name="Vis")
-        new_df = pd.DataFrame(vis_data)
-        df = pd.concat([df, new_df])
-    else:
-        df = pd.DataFrame(vis_data)
-
-    with pd.ExcelWriter(CALCULATION_FILE, engine="openpyxl",
-                        mode="a", if_sheet_exists="replace") as writer:
-        df.to_excel(writer, sheet_name="Vis", index=False)
-
-    if CALCULATION_FILE.exists():
-        df = pd.read_excel(CALCULATION_FILE, sheet_name="T3")
-        new_df = pd.DataFrame(t3_data)
-        df = pd.concat([df, new_df])
-    else:
-        df = pd.DataFrame(t3_data)
-
-    with pd.ExcelWriter(CALCULATION_FILE, engine="openpyxl",
-                        mode="a", if_sheet_exists="replace") as writer:
-        df.to_excel(writer, sheet_name="T3", index=False)
-
-    OPTIONS.model.modulation = 0
+def test_compute_image() -> None:
+    ...

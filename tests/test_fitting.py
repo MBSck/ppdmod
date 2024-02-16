@@ -236,7 +236,7 @@ def test_calculate_observables(components_and_params: List[Tuple[str, Dict]],
     OPTIONS.model.constant_params = constant_params
     OPTIONS.model.modulation = 1
 
-    flux_model, vis_model, t3_model = fitting.calculate_observables(
+    flux_model, vis_model, t3_model = fitting.compute_observables(
         assemble_components(components_and_params, shared_params))
 
     assert flux_model is not None
@@ -277,8 +277,8 @@ def test_calculate_chi_sq(components_and_params: List[Tuple[str, Dict]],
     OPTIONS.model.modulation = 1
 
     components = assemble_components(components_and_params, shared_params)
-    chi_sq = fitting.calculate_observable_chi_sq(
-            *fitting.calculate_observables(components))
+    chi_sq = fitting.compute_observable_chi_sq(
+            *fitting.compute_observables(components))
 
     assert chi_sq != 0
     assert isinstance(chi_sq, float)

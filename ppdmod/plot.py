@@ -17,9 +17,9 @@ from dynesty import plotting as dyplot
 from matplotlib.gridspec import GridSpec
 
 from .component import Component
-from .fitting import calculate_observables
+from .fitting import compute_observables
 from .options import OPTIONS, get_colormap
-from .utils import calculate_effective_baselines, restrict_phase, \
+from .utils import compute_effective_baselines, restrict_phase, \
         set_legend_color, set_axes_color
 
 matplotlib.use('Agg')
@@ -295,13 +295,13 @@ def plot_datapoints(
     flux, t3 = OPTIONS.data.flux, OPTIONS.data.t3
     vis = OPTIONS.data.vis if "vis" in OPTIONS.fit.data\
         else OPTIONS.data.vis2
-    flux_model, vis_model, t3_model = calculate_observables(components)
+    flux_model, vis_model, t3_model = compute_observables(components)
 
-    effective_baselines, _ = calculate_effective_baselines(
+    effective_baselines, _ = compute_effective_baselines(
         vis.ucoord, vis.vcoord, axis_ratio, pos_angle)
 
     if "t3" in data_to_plot:
-        longest_baselines, _ = calculate_effective_baselines(
+        longest_baselines, _ = compute_effective_baselines(
             t3.u123coord, t3.v123coord, axis_ratio, pos_angle, longest=True)
 
     errorbar_params = OPTIONS.plot.errorbar
@@ -603,12 +603,12 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
             if not (wavelength_range[0] <= wavelength <= wavelength_range[1]):
                 continue
 
-        effective_baselines, _ = calculate_effective_baselines(
+        effective_baselines, _ = compute_effective_baselines(
                 vis.ucoord, vis.vcoord)
         effective_baselines_mlambda = effective_baselines/wavelength.value
 
         if "t3" in data_to_plot:
-            longest_baselines, _ = calculate_effective_baselines(
+            longest_baselines, _ = compute_effective_baselines(
                     t3.u123coord, t3.v123coord, longest=True)
             longest_baselines_mlambda = longest_baselines/wavelength.value
 
@@ -811,7 +811,7 @@ def plot_observables(target: str,
     t3_dir.mkdir(exist_ok=True, parents=True)
 
     wavelength = np.linspace(wavelength_range[0], wavelength_range[1])
-    flux, vis, t3 = calculate_observables(components, wavelength=wavelength)
+    flux, vis, t3 = compute_observables(components, wavelength=wavelength)
 
     _ = plt.figure(facecolor=OPTIONS.plot.color.background,
                    tight_layout=True)
@@ -830,7 +830,7 @@ def plot_observables(target: str,
     vis_data = OPTIONS.data.vis if "vis" in OPTIONS.fit.data\
         else OPTIONS.data.vis2
 
-    effective_baselines, baseline_angles = calculate_effective_baselines(
+    effective_baselines, baseline_angles = compute_effective_baselines(
             vis_data.ucoord, vis_data.vcoord,
             components[1].params["elong"](),
             components[1].params["pa"]())
@@ -852,7 +852,7 @@ def plot_observables(target: str,
         plt.close()
 
     if "t3" in OPTIONS.fit.data:
-        effective_baselines, baseline_angles = calculate_effective_baselines(
+        effective_baselines, baseline_angles = compute_effective_baselines(
                 OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord,
                 components[1].params["elong"](),
                 components[1].params["pa"](), longest=True)

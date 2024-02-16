@@ -73,8 +73,6 @@ class ReadoutFits:
             return SimpleNamespace(value=value, err=err,
                                    u123coord=u123coord, v123coord=v123coord)
 
-    # TODO: Make sure to fill this up to the correct shape if vis is too small
-    # or t3.
     def get_data_for_wavelength(
             self, wavelength: u.Quantity,
             key: str, subkey: str) -> np.ndarray:

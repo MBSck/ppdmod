@@ -36,7 +36,7 @@ def save_fits(dim: int, pixel_size: u.mas,
 
     image, tables = np.empty((wavelength.size, dim, dim))*u.Jy, []
     for index, component in enumerate(components):
-        image += component.calculate_image(dim, pixel_size, wavelength)
+        image += component.compute_image(dim, pixel_size, wavelength)
 
         table_header = fits.Header()
         table_header["COMP"] = component.name
@@ -45,16 +45,16 @@ def save_fits(dim: int, pixel_size: u.mas,
 
         data = {"wavelength": wavelength}
         if component.name != "Star":
-            radius = np.tile(component.calculate_internal_grid(dim), (wavelength.size, 1))
+            radius = np.tile(component.compute_internal_grid(dim), (wavelength.size, 1))
 
             data["radius"] = radius
-            data["temperature"] = component.calculate_temperature(radius)
-            data["surface_density"] = component.calculate_surface_density(radius)
+            data["temperature"] = component.compute_temperature(radius)
+            data["surface_density"] = component.compute_surface_density(radius)
 
-            data["flux"] = component.calculate_flux(wavelength[:, np.newaxis])
-            data["emissivity"] = component.calculate_emissivity(
+            data["flux"] = component.compute_flux(wavelength[:, np.newaxis])
+            data["emissivity"] = component.compute_emissivity(
                     radius, wavelength[:, np.newaxis])
-            data["brightness"] = component.calculate_brightness(
+            data["brightness"] = component.compute_brightness(
                     radius, wavelength[:, np.newaxis])
 
         for parameter in component.params.values():
