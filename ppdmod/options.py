@@ -106,9 +106,11 @@ STANDARD_PARAMETERS = {
 
 # NOTE: Data
 vis = SimpleNamespace(value=np.array([]), err=np.array([]),
-                      ucoord=np.array([]), vcoord=np.array([]))
+                      ucoord=np.array([]).reshape(1, -1),
+                      vcoord=np.array([]).reshape(1, -1))
 vis2 = SimpleNamespace(value=np.array([]), err=np.array([]),
-                       ucoord=np.array([]), vcoord=np.array([]))
+                       ucoord=np.array([]).reshape(1, -1),
+                       vcoord=np.array([]).reshape(1, -1))
 t3 = SimpleNamespace(value=np.array([]), err=np.array([]),
                      u123coord=np.array([]), v123coord=np.array([]))
 flux = SimpleNamespace(value=np.array([]), err=np.array([]))

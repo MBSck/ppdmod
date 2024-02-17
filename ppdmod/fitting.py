@@ -141,7 +141,7 @@ def compute_observables(components: List[Component],
         tmp_flux = component.compute_flux(wavelength)
         tmp_vis = component.compute_vis(
                 ucoord, vcoord, wavelength)
-        tmp_t3 = component.compute_t3(
+        tmp_t3 = component.compute_vis(
                 u123coord, v123coord, wavelength)
 
         if flux_model is None:
@@ -156,8 +156,10 @@ def compute_observables(components: List[Component],
     if not corr_flux:
         vis_model = vis_model/flux_model
 
-    flux_model = np.tile(
-            flux_model, (OPTIONS.data.flux.value.shape[1]))
+    flux_model = np.tile(flux_model, (OPTIONS.data.flux.value.shape[1]))
+    vis_model = np.abs(vis_model).astype(OPTIONS.data.dtype.real)
+    t3_model = np.angle(
+        np.prod(t3_model, axis=1), deg=True).astype(OPTIONS.data.dtype.real)
     return flux_model, vis_model, t3_model
 
 

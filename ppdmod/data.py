@@ -56,8 +56,8 @@ class ReadoutFits:
                 value_key, err_key = "vis2data", "vis2err"
             return SimpleNamespace(value=data.data[value_key][:, wl_index:],
                                    err=data.data[err_key][:, wl_index:],
-                                   ucoord=data.data["ucoord"],
-                                   vcoord=data.data["vcoord"])
+                                   ucoord=data.data["ucoord"].reshape(1, -1),
+                                   vcoord=data.data["vcoord"].reshape(1, -1))
         elif key == "t3":
             value = data.data["t3phi"][:, wl_index:]
             err = data.data["t3phierr"][:, wl_index:]
@@ -187,14 +187,11 @@ def set_data(fits_files: Optional[List[Path]] = None,
 
     for key in ["flux", "vis", "vis2", "t3"]:
         data = getattr(OPTIONS.data, key)
-        data.value, data.err = [np.array([]).astype(OPTIONS.data.dtype.real)
-                                for _ in range(2)]
+        data.value, data.err = [np.array([]) for _ in range(2)]
         if key in ["vis", "vis2"]:
-            data.ucoord, data.vcoord = [np.array([]).astype(OPTIONS.data.dtype.real)
-                                        for _ in range(2)]
+            data.ucoord, data.vcoord = [np.array([]).reshape(1, -1) for _ in range(2)]
         elif key in "t3":
-            data.u123coord, data.v123coord =[np.array([]).astype(OPTIONS.data.dtype.real)
-                                             for _ in range(2)]
+            data.u123coord, data.v123coord =[np.array([]) for _ in range(2)]
 
     if fits_files is None:
         return
@@ -217,9 +214,9 @@ def set_data(fits_files: Optional[List[Path]] = None,
 
             if key in ["vis", "vis2"]:
                 data.ucoord = np.concatenate(
-                        (data.ucoord, data_readout.ucoord))
+                        (data.ucoord, data_readout.ucoord), axis=-1)
                 data.vcoord = np.concatenate(
-                        (data.vcoord, data_readout.vcoord))
+                        (data.vcoord, data_readout.vcoord), axis=-1)
 
             elif key == "t3":
                 if data.u123coord.size == 0:

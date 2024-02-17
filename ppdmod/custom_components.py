@@ -1,6 +1,5 @@
 import sys
 from typing import Tuple, Optional, Dict, List
-
 import astropy.units as u
 import numpy as np
 from astropy.modeling.models import BlackBody
@@ -56,7 +55,7 @@ class Star(Component):
 
     @property
     def stellar_radius_angular(self) -> u.mas:
-        r"""Calculates the parallax from the stellar radius and the distance to
+        r"""Computes the parallax from the stellar radius and the distance to
         the object.
 
         Returns
@@ -69,7 +68,7 @@ class Star(Component):
         return self._stellar_angular_radius
 
     def flux_func(self, wavelength: u.um) -> u.Jy:
-        """Calculates the flux of the star."""
+        """Computes the flux of the star."""
         if self.params["f"].value is not None:
             stellar_flux = self.params["f"](wavelength)
         else:
@@ -80,9 +79,19 @@ class Star(Component):
                                   * self.stellar_radius_angular**2).to(u.Jy)
         return stellar_flux.reshape((wavelength.size, 1))
 
+    def vis_func(self, ucoord: u.m, vcoord: u.m,
+                 wavelength: u.um, **kwargs) -> np.ndarray:
+        """Computes the correlated fluxes via the hankel transformation."""
+        vis = np.tile(self.flux_func(wavelength).value, ucoord.shape)
+        if ucoord.shape[0] == 1:
+            vis = vis.reshape(wavelength.size, -1)
+        else:
+            vis = vis.reshape(wavelength.size, 3, -1)
+        return vis.astype(OPTIONS.data.dtype.complex)
+
     def image_func(self, xx: u.mas, yy: u.mas,
                    pixel_size: u.mas, wavelength: u.m = None) -> u.Jy:
-        """Calculates the image from a 2D grid.
+        """Computes the image from a 2D grid.
 
         Parameters
         ----------
@@ -161,7 +170,7 @@ class TempGradient(Component):
 
     @property
     def stellar_radius_angular(self) -> u.mas:
-        r"""Calculates the parallax from the stellar radius and the distance to
+        r"""Computes the parallax from the stellar radius and the distance to
         the object.
 
         Returns
@@ -174,7 +183,7 @@ class TempGradient(Component):
         return self._stellar_angular_radius
 
     def compute_internal_grid(self, dim: int) -> u.mas:
-        """Calculates the model grid.
+        """Computes the model grid.
 
         Parameters
         ----------
@@ -210,7 +219,7 @@ class TempGradient(Component):
         return opacity[(slice(None), *shape)]
 
     def compute_azimuthal_modulation(self, xx: u.mas, yy: u.mas) -> u.one:
-        """Calculates the azimuthal modulation."""
+        """Computes the azimuthal modulation."""
         if not self.asymmetric:
             return np.array([1])[:, np.newaxis]
 
@@ -219,7 +228,7 @@ class TempGradient(Component):
         return azimuthal_modulation.astype(OPTIONS.data.dtype.real)
 
     def compute_temperature(self, radius: u.mas) -> u.K:
-        """Calculates a 1D-temperature profile."""
+        """Computes a 1D-temperature profile."""
         if self.params["r0"].value != 0:
             reference_radius = self.params["r0"]()
         else:
@@ -235,7 +244,7 @@ class TempGradient(Component):
         return temperature.astype(OPTIONS.data.dtype.real)
 
     def compute_surface_density(self, radius: u.mas) -> u.one:
-        """Calculates a 1D-surface density profile."""
+        """Computes a 1D-surface density profile."""
         if self.params["r0"].value != 0:
             reference_radius = self.params["r0"]()
         else:
@@ -247,7 +256,7 @@ class TempGradient(Component):
         return surface_density.astype(OPTIONS.data.dtype.real)
 
     def compute_emissivity(self, radius: u.mas, wavelength: u.um) -> u.one:
-        """Calculates a 1D-emissivity profile."""
+        """Computes a 1D-emissivity profile."""
         if wavelength.shape == ():
             wavelength.reshape((wavelength.size,))
 
@@ -260,7 +269,7 @@ class TempGradient(Component):
         return emissivity.astype(OPTIONS.data.dtype.real)
 
     def compute_brightness(self, radius: u.mas, wavelength: u.um) -> u.Jy:
-        """Calculates a 1D-brightness profile from a dust-surface density- and
+        """Computes a 1D-brightness profile from a dust-surface density- and
         temperature profile.
 
         Parameters
@@ -349,7 +358,7 @@ class TempGradient(Component):
 
         wavelength = wavelength.to(u.m)
         brightness = brightness[:, np.newaxis, :]
-        if len(ucoord.shape) == 1:
+        if ucoord.shape[0] == 1:
             baselines = (baselines/wavelength).value*u.rad
             baselines = baselines[..., np.newaxis]
             baseline_angles = baseline_angles[np.newaxis, :, np.newaxis]
@@ -369,39 +378,36 @@ class TempGradient(Component):
             modulation.astype(OPTIONS.data.dtype.complex)
 
     def flux_func(self, wavelength: u.um) -> u.Jy:
-        """Calculates the total flux from the hankel transformation."""
+        """Computes the total flux from the hankel transformation."""
         compression = self.params["elong"]()
         radius = self.compute_internal_grid(self.params["dim"]())
         brightness_profile = self.compute_brightness(
                 radius, wavelength[:, np.newaxis])
         flux = (2.*np.pi*np.trapz(
             radius*compression*brightness_profile, radius).to(u.Jy)).value
-        return flux.reshape((flux.shape[0], 1))
+        return flux.reshape((flux.shape[0], 1)).astype(OPTIONS.data.dtype.real)
 
     def vis_func(self, ucoord: u.m, vcoord: u.m,
                  wavelength: u.um, **kwargs) -> np.ndarray:
-        """Calculates the correlated fluxes via the hankel transformation."""
+        """Computes the correlated fluxes via the hankel transformation."""
         radius = self.compute_internal_grid(self.params["dim"]())
         vis, vis_mod = self.compute_hankel_transform(
                 radius, ucoord, vcoord, wavelength, **kwargs)
-        if vis_mod.size != 0:
-            vis += vis_mod.sum(-1)
-        return vis.value
 
-    def t3_func(self, ucoord: u.m, vcoord: u.m,
-                wavelength: u.um, **kwargs) -> np.ndarray:
-        """Calculates the closure phases via hankel transformation."""
-        radius = self.compute_internal_grid(self.params["dim"]())
-        vis, vis_mod = self.compute_hankel_transform(
-                radius, ucoord, vcoord, wavelength, **kwargs)
         if vis_mod.size != 0:
-            vis += np.concatenate(
-                    (vis_mod[:, :2], np.conj(vis_mod[:, 2:])), axis=1).sum(-1)
-        return vis.value
+            if ucoord.shape[0] == 1:
+                vis += vis_mod.sum(-1)
+                vis = vis.reshape(wavelength.size, -1)
+            else:
+                vis += np.concatenate(
+                        (vis_mod[:, :2], np.conj(vis_mod[:, 2:])), axis=1).sum(-1)
+                vis = vis.reshape(wavelength.size, 3, -1)
+
+        return vis.value.astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas,
                    pixel_size: u.mas, wavelength: u.um) -> u.Jy:
-        """Calculates the image."""
+        """Computes the image."""
         radius = np.hypot(xx, yy)
         radial_profile = np.logical_and(radius >= self.params["rin"](),
                                         radius <= self.params["rout"]())

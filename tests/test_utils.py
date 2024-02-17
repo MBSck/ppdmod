@@ -72,7 +72,7 @@ def high_wavelength_solution() -> u.um:
     return np.load(Path("data") / "high_wavelength_solution.npy")*u.um
 
 
-def uniform_disk(baselines, diameter):
+def uniform_disk_vis(baselines, diameter):
     return 2*j1(np.pi*baselines*diameter.to(u.rad).value)\
         / (np.pi*diameter.to(u.rad).value*baselines)
 
@@ -272,7 +272,7 @@ def test_compare_effective_baselines(
         baselines = baselines/wavelength.to(u.m)
         all_baselines.append(baselines)
         all_angles.append(angles)
-        ud_visibilities.append(np.abs(uniform_disk(baselines, diameter)))
+        ud_visibilities.append(uniform_disk_vis(baselines, diameter))
 
     assert np.allclose(vis.value, ud_visibilities[0], atol=1e-2)
 

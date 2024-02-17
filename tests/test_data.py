@@ -57,33 +57,38 @@ def test_read_into_namespace(fits_files: List[Path],
             assert np.array_equal(readout.vis.err,
                                   vis.data["visamperr"][:, wl_index:])
             assert np.array_equal(readout.vis.ucoord,
-                                  vis.data["ucoord"])
-            assert np.array_equal(readout.vis.vcoord, vis.data["vcoord"])
+                                  vis.data["ucoord"].reshape(1, -1))
+            assert np.array_equal(readout.vis.vcoord,
+                                  vis.data["vcoord"].reshape(1, -1))
 
             assert np.array_equal(readout.vis2.value,
                                   vis2.data["vis2data"][:, wl_index:])
             assert np.array_equal(readout.vis2.err,
                                   vis2.data["vis2err"][:, wl_index:])
-            assert np.array_equal(readout.vis2.ucoord, vis2.data["ucoord"])
-            assert np.array_equal(readout.vis2.vcoord, vis2.data["vcoord"])
+            assert np.array_equal(readout.vis2.ucoord,
+                                  vis2.data["ucoord"].reshape(1, -1))
+            assert np.array_equal(readout.vis2.vcoord,
+                                  vis2.data["vcoord"].reshape(1, -1))
 
         assert readout.wavelength.unit == u.um
         wl_len = readout.wavelength.shape[0]
 
         assert readout.t3.value.shape == (4, wl_len)
         assert readout.t3.err.shape == (4, wl_len)
-        assert len(readout.t3.u123coord) == 3
-        assert len(readout.t3.v123coord) == 3
+        assert readout.t3.u123coord.shape == (3, 4)
+        assert readout.t3.v123coord.shape == (3, 4)
 
         assert readout.vis.value.shape == (6, wl_len)
         assert readout.vis.err.shape == (6, wl_len)
-        assert readout.vis.ucoord.shape == (6,)
-        assert readout.vis.vcoord.shape == (6,)
+        assert readout.vis.ucoord.shape == (1, 6)
+        assert readout.vis.vcoord.shape == (1, 6)
 
         assert readout.vis2.value.shape == (6, wl_len)
         assert readout.vis2.err.shape == (6, wl_len)
-        assert readout.vis2.ucoord.shape == (6,)
-        assert readout.vis2.vcoord.shape == (6,)
+        assert readout.vis2.ucoord.shape == (1, 6)
+        assert readout.vis2.vcoord.shape == (1, 6)
+
+
 
 
 @pytest.mark.parametrize(

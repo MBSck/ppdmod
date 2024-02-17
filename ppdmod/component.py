@@ -85,37 +85,36 @@ class Component:
         """
         return np.array([])*u.mas, np.array([])*u.mas
 
-    def translate_fourier_space(
-            self, ucoord: u.m, vcoord: u.m, wavelength: u.um) -> u.one:
-        """Translates a coordinate shift in image space to Fourier space."""
-        x, y = map(lambda x: self.params[x]().to(u.rad), ["x", "y"])
-        ucoord, vcoord = map(lambda x: u.Quantity(x, unit=u.m), [ucoord, vcoord])
-        try:
-            ucoord, vcoord = map(lambda x: x/wavelength.to(u.m)/u.rad, [ucoord, vcoord])
-        except Exception:
-            breakpoint()
-        return np.exp(-2*1j*np.pi*(ucoord*x+vcoord*y)).value
-
-    def translate_coordinates(
+    def translate_image_func(
             self, xx: u.mas, yy: u.mas
             ) -> Tuple[u.Quantity[u.mas], u.Quantity[u.mas]]:
         """Shifts the coordinates in image space according to an offset."""
         xx, yy = map(lambda x: u.Quantity(value=x, unit=u.mas), [xx, yy])
-        return xx-self.params["x"](), yy-self.params["y"]()
+        xx, yy =  xx-self.params["x"](), yy-self.params["y"]()
+        return xx.astype(OPTIONS.data.dtype.real), yy.astype(OPTIONS.data.dtype.real)
+
+    # TODO: Check if the positive factor in the exp here is correct?
+    def translate_vis_func(
+            self, ucoord: u.m, vcoord: u.m, wavelength: u.um) -> np.ndarray:
+        """Translates a coordinate shift in image space to Fourier space."""
+        wavelength = wavelength[:, np.newaxis]
+        if ucoord.shape[0] != 1:
+            wavelength = wavelength[..., np.newaxis]
+
+        x, y = map(lambda x: self.params[x]().to(u.rad), ["x", "y"])
+        ucoord, vcoord = map(lambda x: u.Quantity(x, unit=u.m), [ucoord, vcoord])
+        ucoord, vcoord = map(lambda x: x/wavelength.to(u.m)/u.rad, [ucoord, vcoord])
+        translation = np.exp(2*1j*np.pi*(ucoord*x+vcoord*y)).value 
+        return translation.astype(OPTIONS.data.dtype.complex)
 
     def flux_func(self, wavelength: u.um) -> u.Jy:
         """Calculates the total flux from the hankel transformation."""
-        return np.array([])*u.Jy
+        return (np.array([])*u.Jy).astype(OPTIONS.data.dtype.real)
 
     def vis_func(self, ucoord: u.m, vcoord: u.m,
                  wavelength: u.um, **kwargs) -> np.ndarray:
         """Computes the correlated fluxes."""
-        return np.array([])
-
-    def t3_func(self, ucoord: u.m, vcoord: u.m,
-                wavelength: u.um, **kwargs) -> np.ndarray:
-        """Computes the closure phases."""
-        return np.array([])
+        return np.array([]).astype(OPTIONS.data.dtype.complex)
 
     def compute_flux(self, wavelength: u.um) -> u.Jy:
         """Computes the total fluxes."""
@@ -125,21 +124,13 @@ class Component:
                     wavelength: u.um, **kwargs):
         """Computes the correlated fluxes."""
         vis = self.vis_func(ucoord, vcoord, wavelength, **kwargs)
-        vis *= self.translate_fourier_space(ucoord, vcoord, wavelength[:, np.newaxis])
-        return np.abs(vis).astype(OPTIONS.data.dtype.real)
-
-    def compute_t3(self, ucoord: u.m, vcoord: u.m,
-                   wavelength: u.um, **kwargs):
-        """Computes the closure phases."""
-        vis = self.t3_func(ucoord, vcoord, wavelength, **kwargs)
-        vis *= self.translate_fourier_space(
-                ucoord, vcoord, wavelength[:, np.newaxis, np.newaxis])
-        return np.angle(np.prod(vis, axis=1), deg=True).astype(OPTIONS.data.dtype.real)
+        vis *= self.translate_vis_func(ucoord, vcoord, wavelength)
+        return vis.astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas,
                    pixel_size: u.mas, wavelength: u.um) -> u.Jy:
         """Calculates the image."""
-        return np.array([])*u.Jy
+        return (np.array([])*u.Jy).astype(OPTIONS.data.dtype.real)
 
     def compute_image(self, dim: int, pixel_size: u.mas, wavelength: u.um) -> u.Jy:
         """Computes the image."""
@@ -147,7 +138,7 @@ class Component:
         pixel_size = pixel_size if isinstance(pixel_size, u.Quantity)\
                 else pixel_size*u.mas
         xx = np.linspace(-0.5, 0.5, dim)*dim*pixel_size
-        xx, yy = self.translate_coordinates(*np.meshgrid(xx, xx))
+        xx, yy = self.translate_image_func(*np.meshgrid(xx, xx))
 
         if self.elliptic:
             pa, elong = self.params["pa"](), self.params["elong"]()
