@@ -15,7 +15,7 @@ WAVELENGTHS_AND_VALUES = list(zip(WAVELENGTH, VALUE))
 @pytest.fixture
 def x() -> Parameter:
     """Parameter x."""
-    return Parameter(**STANDARD_PARAMETERS["x"])
+    return Parameter(**STANDARD_PARAMETERS.x)
 
 
 def test_parameter(x: Parameter) -> None:

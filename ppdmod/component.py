@@ -26,19 +26,16 @@ class Component:
 
     def __init__(self, **kwargs):
         """The class's constructor."""
-        self.params = {}
-        self.params["x"] = Parameter(**STANDARD_PARAMETERS["x"])
-        self.params["y"] = Parameter(**STANDARD_PARAMETERS["y"])
-        self.params["dim"] = Parameter(**STANDARD_PARAMETERS["dim"])
-        self.params["pixel_size"] = Parameter(
-                **STANDARD_PARAMETERS["pixel_size"])
-        self.params["pa"] = Parameter(**STANDARD_PARAMETERS["pa"])
-        self.params["elong"] = Parameter(**STANDARD_PARAMETERS["elong"])
+        self.x = Parameter(**STANDARD_PARAMETERS.x)
+        self.y = Parameter(**STANDARD_PARAMETERS.y)
+        self.dim = Parameter(**STANDARD_PARAMETERS.dim)
+        self.pa = Parameter(**STANDARD_PARAMETERS.pa)
+        self.elong = Parameter(**STANDARD_PARAMETERS.elong)
 
         if not self.elliptic:
-            self.params["pa"].free = False
-            self.params["elong"].free = False
-        self._eval(**kwargs)
+            self.pa.free = False
+            self.elong.free = False
+        self.eval(**kwargs)
 
     @property
     def elliptic(self) -> bool:
@@ -50,21 +47,21 @@ class Component:
         """Sets the position angle and the parameters to free or false
         if elliptic is set."""
         if value:
-            self.params["pa"].free = True
-            self.params["elong"].free = True
+            self.pa.free = True
+            self.elong.free = True
         else:
-            self.params["pa"].free = False
-            self.params["elong"].free = False
+            self.pa.free = False
+            self.elong.free = False
         self._elliptic = value
 
-    def _eval(self, **kwargs):
+    def eval(self, **kwargs):
         """Sets the parameters (values) from the keyword arguments."""
         for key, value in kwargs.items():
-            if key in self.params:
+            if hasattr(self, key):
                 if isinstance(value, Parameter):
-                    self.params[key] = value
+                    setattr(self, key, value)
                 else:
-                    self.params[key].value = value
+                    getattr(self, key).value = value
 
     def calculate_internal_grid(
             self, dim: int, pixel_size: u.mas
@@ -90,7 +87,7 @@ class Component:
             ) -> Tuple[u.Quantity[u.mas], u.Quantity[u.mas]]:
         """Shifts the coordinates in image space according to an offset."""
         xx, yy = map(lambda x: u.Quantity(value=x, unit=u.mas), [xx, yy])
-        xx, yy =  xx-self.params["x"](), yy-self.params["y"]()
+        xx, yy =  xx-self.x(), yy-self.y()
         return xx.astype(OPTIONS.data.dtype.real), yy.astype(OPTIONS.data.dtype.real)
 
     # TODO: Check if the positive factor in the exp here is correct?
@@ -101,7 +98,7 @@ class Component:
         if ucoord.shape[0] != 1:
             wavelength = wavelength[..., np.newaxis]
 
-        x, y = map(lambda x: self.params[x]().to(u.rad), ["x", "y"])
+        x, y = map(lambda x: getattr(self, x)().to(u.rad), ["x", "y"])
         ucoord, vcoord = map(lambda x: u.Quantity(x, unit=u.m), [ucoord, vcoord])
         ucoord, vcoord = map(lambda x: x/wavelength.to(u.m)/u.rad, [ucoord, vcoord])
         translation = np.exp(2*1j*np.pi*(ucoord*x+vcoord*y)).value 
@@ -141,7 +138,7 @@ class Component:
         xx, yy = self.translate_image_func(*np.meshgrid(xx, xx))
 
         if self.elliptic:
-            pa, elong = self.params["pa"](), self.params["elong"]()
+            pa, elong = self.pa(), self.elong()
             xx = xx*np.cos(pa)-yy*np.sin(pa)
             yy = (xx*np.sin(pa)+yy*np.cos(pa))*elong
 

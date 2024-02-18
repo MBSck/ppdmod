@@ -46,16 +46,16 @@ def mock_components_and_params() -> Dict[str, Dict]:
                       "AsymmetricGreyBody", "TempGradient",
                       "AsymmetricTemperatureGradient"]
     components = random.sample(all_components, 3)
-    return [[component, {key: Parameter(**STANDARD_PARAMETERS[key])
-            for key in random.sample(list(STANDARD_PARAMETERS.keys()), 4)}]
+    return [[component, {key: Parameter(**getattr(STANDARD_PARAMETERS, key))
+            for key in random.sample(list(vars(STANDARD_PARAMETERS).keys()), 4)}]
             for component in components]
 
 
 @pytest.fixture
 def mock_shared_params() -> Dict[str, Parameter]:
     """Mock shared parameters."""
-    return {key: Parameter(**STANDARD_PARAMETERS[key])
-            for key in random.sample(list(STANDARD_PARAMETERS.keys()), 4)}
+    return {key: Parameter(**getattr(STANDARD_PARAMETERS, key))
+            for key in random.sample(list(vars(STANDARD_PARAMETERS).keys()), 4)}
 
 
 @pytest.fixture
@@ -92,12 +92,12 @@ def constant_params(dim: int) -> Dict:
 @pytest.fixture
 def components_and_params() -> List[Dict[str, Parameter]]:
     """Parameters connected to their components."""
-    rin = Parameter(**STANDARD_PARAMETERS["rin"])
-    rout = Parameter(**STANDARD_PARAMETERS["rout"])
-    p = Parameter(**STANDARD_PARAMETERS["p"])
-    a = Parameter(**STANDARD_PARAMETERS["a"])
-    phi = Parameter(**STANDARD_PARAMETERS["phi"])
-    inner_sigma = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
+    rin = Parameter(**STANDARD_PARAMETERS.rin)
+    rout = Parameter(**STANDARD_PARAMETERS.rout)
+    p = Parameter(**STANDARD_PARAMETERS.p)
+    a = Parameter(**STANDARD_PARAMETERS.a)
+    phi = Parameter(**STANDARD_PARAMETERS.phi)
+    inner_sigma = Parameter(**STANDARD_PARAMETERS.inner_sigma)
 
     rin.value = 1.
     rout.value = 7.
@@ -124,9 +124,9 @@ def components_and_params() -> List[Dict[str, Parameter]]:
 @pytest.fixture
 def shared_params() -> Dict:
     """Shared parameters."""
-    pa = Parameter(**STANDARD_PARAMETERS["pa"])
-    elong = Parameter(**STANDARD_PARAMETERS["elong"])
-    cont_weight = Parameter(**STANDARD_PARAMETERS["cont_weight"])
+    pa = Parameter(**STANDARD_PARAMETERS.pa)
+    elong = Parameter(**STANDARD_PARAMETERS.elong)
+    cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 
     pa.value = 145
     elong.value = 0.5
@@ -184,7 +184,7 @@ def test_init_randomly(nwalkers: int) -> None:
                    "cont_weight", "pa", "elong"]
     limits = [[0, 20], [0, 1], [0, 1],
               [0, 360], [0, 1], [0, 360], [1, 50]]
-    params = {name: Parameter(**STANDARD_PARAMETERS[name])
+    params = {name: Parameter(**getattr(STANDARD_PARAMETERS, name))
               for name in param_names}
     for value, limit, param in zip(values, limits, params.values()):
         param.set(*limit)
@@ -304,7 +304,7 @@ def test_lnprior(values: List[float], expected: float) -> None:
                    "cont_weight", "pa", "elong"]
     limits = [[0, 20], [0, 1], [0, 1],
               [0, 360], [0, 1], [0, 360], [1, 50]]
-    params = {name: Parameter(**STANDARD_PARAMETERS[name])
+    params = {name: Parameter(**getattr(STANDARD_PARAMETERS, name))
               for name in param_names}
     for value, limit, param in zip(values, limits, params.values()):
         param.set(*limit)
@@ -346,7 +346,7 @@ def test_lnprob(fits_files: List[Path], wavelength: u.um) -> None:
     values = [1.5, 0.5, 0.3, 33, 2000, 0.5, 45, 1.6]
     limits = [[0, 20], [0, 1], [0, 1], [0, 360],
               [100, 10000], [0, 1], [0, 360], [1, 50]]
-    params = {name: Parameter(**STANDARD_PARAMETERS[name])
+    params = {name: Parameter(**getattr(STANDARD_PARAMETERS, name))
               for name in param_names}
 
     for value, limit, param in zip(values, limits, params.values()):

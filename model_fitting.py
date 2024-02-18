@@ -35,7 +35,7 @@ wavelength_axes = np.sort(np.unique(np.concatenate(wavelength_axes)))
 
 wl_flux, flux = utils.load_data(DATA_DIR / "flux/HD142666_stellar_model.txt.gz")
 flux = np.interp(wavelength_axes.value, wl_flux, flux)
-star_flux = Parameter(**STANDARD_PARAMETERS["f"])
+star_flux = Parameter(**STANDARD_PARAMETERS.f)
 star_flux.value, star_flux.wavelength = flux, wavelength_axes
 
 weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
@@ -69,9 +69,9 @@ wl_cont, cont_opacity = utils.load_data(DATA_DIR / "qval" / "Q_iron_0.10um_dhs_0
                                         load_func=utils.qval_to_opacity)
 cont_opacity = np.interp(wavelength_axes.value, wl_cont, cont_opacity)
 
-kappa_abs = Parameter(**STANDARD_PARAMETERS["kappa_abs"])
+kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
 kappa_abs.value, kappa_abs.wavelength = opacity, wavelength_axes
-kappa_cont = Parameter(**STANDARD_PARAMETERS["kappa_cont"])
+kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
 kappa_cont.value, kappa_cont.wavelength = cont_opacity, wavelength_axes
 
 dim, distance = 32, 148.3
@@ -82,12 +82,12 @@ OPTIONS.model.constant_params = {
     "eff_radius": 1.75, "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont}
 
-# x = Parameter(**STANDARD_PARAMETERS["x"])
-# y = Parameter(**STANDARD_PARAMETERS["y"])
-rin = Parameter(**STANDARD_PARAMETERS["rin"])
-rout = Parameter(**STANDARD_PARAMETERS["rout"])
-p = Parameter(**STANDARD_PARAMETERS["p"])
-inner_sigma = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
+# x = Parameter(**STANDARD_PARAMETERS.x)
+# y = Parameter(**STANDARD_PARAMETERS.y)
+rin = Parameter(**STANDARD_PARAMETERS.rin)
+rout = Parameter(**STANDARD_PARAMETERS.rout)
+p = Parameter(**STANDARD_PARAMETERS.p)
+inner_sigma = Parameter(**STANDARD_PARAMETERS.inner_sigma)
 
 # x.value = 1
 # y.value = 0
@@ -111,12 +111,12 @@ rout.free = True
 inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma, "p": p}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
-rin = Parameter(**STANDARD_PARAMETERS["rin"])
-rout = Parameter(**STANDARD_PARAMETERS["rout"])
-a = Parameter(**STANDARD_PARAMETERS["a"])
-phi = Parameter(**STANDARD_PARAMETERS["phi"])
-p = Parameter(**STANDARD_PARAMETERS["p"])
-inner_sigma = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
+rin = Parameter(**STANDARD_PARAMETERS.rin)
+rout = Parameter(**STANDARD_PARAMETERS.rout)
+a = Parameter(**STANDARD_PARAMETERS.a)
+phi = Parameter(**STANDARD_PARAMETERS.phi)
+p = Parameter(**STANDARD_PARAMETERS.p)
+inner_sigma = Parameter(**STANDARD_PARAMETERS.inner_sigma)
 
 rin.value = 13
 a.value = 0.5
@@ -136,11 +136,11 @@ rout.free = True
 outer_ring = {"rin": rin, "a": a, "phi": phi, "inner_sigma": inner_sigma, "p": p}
 outer_ring_labels = [f"or_{label}" for label in outer_ring]
 
-# q = Parameter(**STANDARD_PARAMETERS["q"])
-# inner_temp = Parameter(**STANDARD_PARAMETERS["inner_temp"])
-pa = Parameter(**STANDARD_PARAMETERS["pa"])
-elong = Parameter(**STANDARD_PARAMETERS["elong"])
-cont_weight = Parameter(**STANDARD_PARAMETERS["cont_weight"])
+# q = Parameter(**STANDARD_PARAMETERS.q)
+# inner_temp = Parameter(**STANDARD_PARAMETERS.inner_temp)
+pa = Parameter(**STANDARD_PARAMETERS.pa)
+elong = Parameter(**STANDARD_PARAMETERS.elong)
+cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 
 # q.value = 0.5
 # inner_temp.value = 1500

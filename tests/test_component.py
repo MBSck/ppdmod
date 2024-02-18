@@ -34,26 +34,25 @@ def fits_files() -> Path:
 
 def test_component(component: Component) -> None:
     """Tests if the initialization of the component works."""
-    assert not component.params["pa"].free and\
-            not component.params["elong"].free
+    assert not component.pa.free and\
+            not component.elong.free
     component.elliptic = True
-    assert component.params["pa"].free and\
-            component.params["elong"].free
-    assert len(component.params) == 6
-    assert component.params["x"]() == 0*u.mas
-    assert component.params["y"]() == 0*u.mas
-    assert component.params["dim"]() == 128
+    assert component.pa.free and\
+            component.elong.free
+    assert component.x() == 0*u.mas
+    assert component.y() == 0*u.mas
+    assert component.dim() == 128
 
 
 def test_eval(component: Component) -> None:
     """Tests if the evaulation of the parameters works."""
-    x = Parameter(**STANDARD_PARAMETERS["fov"])
+    x = Parameter(**STANDARD_PARAMETERS.fov)
     params = {"x": x, "y": 10, "dim": 512}
-    component._eval(**params)
+    component.eval(**params)
 
-    assert component.params["x"] == Parameter(**STANDARD_PARAMETERS["fov"])
-    assert component.params["y"]() == 10*u.mas
-    assert component.params["dim"]() == 512
+    assert component.x == Parameter(**STANDARD_PARAMETERS.fov)
+    assert component.y() == 10*u.mas
+    assert component.dim() == 512
 
 
 # TODO: Needs better test
