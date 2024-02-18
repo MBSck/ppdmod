@@ -832,8 +832,7 @@ def plot_observables(target: str,
 
     effective_baselines, baseline_angles = compute_effective_baselines(
             vis_data.ucoord, vis_data.vcoord,
-            components[1].params["elong"](),
-            components[1].params["pa"]())
+            components[1].elong(), components[1].pa())
 
     for index, (baseline, baseline_angle) in enumerate(
             zip(effective_baselines, baseline_angles)):
@@ -854,8 +853,7 @@ def plot_observables(target: str,
     if "t3" in OPTIONS.fit.data:
         effective_baselines, baseline_angles = compute_effective_baselines(
                 OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord,
-                components[1].params["elong"](),
-                components[1].params["pa"](), longest=True)
+                components[1].elong(), components[1].pa(), longest=True)
 
         for index, (baseline, baseline_angle) in enumerate(
                 zip(effective_baselines, baseline_angles)):
