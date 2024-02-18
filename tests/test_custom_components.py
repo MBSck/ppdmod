@@ -86,9 +86,9 @@ def test_get_component() -> Component:
 
 def test_star_init(star: Star) -> None:
     """Tests the star's initialization."""
-    assert "dist" in star.params
-    assert "eff_temp" in star.params
-    assert "eff_radius" in star.params
+    assert "dist" in vars(star).keys()
+    assert "eff_temp" in vars(star).keys()
+    assert "eff_radius" in vars(star).keys()
 
 
 def test_star_stellar_radius_angular(star: Star) -> None:
@@ -142,8 +142,8 @@ def test_temp_gradient_compute_grid(
     radius = temp_gradient.compute_internal_grid(512)
     assert radius.unit == u.mas
     assert radius.shape == (512, )
-    assert radius[0].value == temp_gradient.params["rin"].value\
-        and radius[-1].value == temp_gradient.params["rout"].value
+    assert radius[0].value == temp_gradient.rin.value\
+        and radius[-1].value == temp_gradient.rout.value
 
     OPTIONS.model.gridtype = "logarithmic"
 
@@ -272,21 +272,20 @@ def test_assemble_components() -> None:
     shared_params = {"p": params["p"]}
     del params["p"]
 
-    components_and_params = [["Star", params],
-                             ["GreyBody", params]]
+    components_and_params = [["Star", params], ["GreyBody", params]]
     components = assemble_components(components_and_params, shared_params)
     assert isinstance(components[0], Star)
     assert isinstance(components[1], GreyBody)
-    assert all(param not in components[0].params
+    assert all(not hasattr(components[0], param)
                for param in param_names if param not in ["pa", "elong"])
-    assert all(param in components[1].params for param in param_names)
-    assert all(components[1].params[name].value == value
+    assert all(hasattr(components[1], param) for param in param_names)
+    assert all(getattr(components[1], name).value == value
                for name, value in zip(["pa", "elong"], values[-2:]))
-    assert all(components[1].params[name].value == value
+    assert all(getattr(components[1], name).value == value
                for name, value in zip(param_names, values))
-    assert all([components[0].params[name].min,
-                components[0].params[name].max] == limit
+    assert all([getattr(components[0], name).min,
+                getattr(components[0], name).max] == limit
                for name, limit in zip(["pa", "elong"], limits[-2:]))
-    assert all([components[1].params[name].min,
-                components[1].params[name].max] == limit
+    assert all([getattr(components[1], name).min,
+                getattr(components[1], name).max] == limit
                for name, limit in zip(param_names, limits))
