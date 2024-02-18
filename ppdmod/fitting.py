@@ -124,7 +124,7 @@ def compute_chi_sq(data: u.quantity, error: u.quantity,
     diff = np.angle(np.exp((data-model_data)*u.deg.to(u.rad)*1j), deg=False)
     return -0.5*(diff**2*inv_sigma_squared + np.log(1/inv_sigma_squared)).sum()
 
-
+# TODO: Why is there sometimes and invalid value in divide?
 def compute_observables(components: List[Component],
                         wavelength: Optional[np.ndarray] = None):
     """Calculates the observables from the model."""

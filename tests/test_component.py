@@ -56,10 +56,12 @@ def test_eval(component: Component) -> None:
     assert component.params["dim"]() == 512
 
 
+# TODO: Needs better test
 def test_translate_coordinates(component: Component) -> None:
     """Tests if the translation of the coordinates works."""
     assert component.translate_image_func(0, 0) == (0*u.mas, 0*u.mas)
     assert component.translate_image_func(25, 15) == (25*u.mas, 15*u.mas)
+
 
 # TODO: Think of better way to do this test. Right now kinda testing itself
 @pytest.mark.parametrize("positions_one, positions_two",

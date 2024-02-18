@@ -82,32 +82,33 @@ OPTIONS.model.constant_params = {
     "eff_radius": 1.75, "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont}
 
-x = Parameter(**STANDARD_PARAMETERS["x"])
-y = Parameter(**STANDARD_PARAMETERS["y"])
+# x = Parameter(**STANDARD_PARAMETERS["x"])
+# y = Parameter(**STANDARD_PARAMETERS["y"])
 rin = Parameter(**STANDARD_PARAMETERS["rin"])
 rout = Parameter(**STANDARD_PARAMETERS["rout"])
 p = Parameter(**STANDARD_PARAMETERS["p"])
 inner_sigma = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
 
-x.value = 1
-y.value = 0
+# x.value = 1
+# y.value = 0
 rin.value = 1.
 rout.value = 2.
 p.value = 0.5
 inner_sigma.value = 1e-3
 
-x.set(min=-10, max=10)
-y.set(min=-10, max=10)
+# x.set(min=-10, max=10)
+# y.set(min=-10, max=10)
 rin.set(min=0.5, max=5)
 rout.set(min=1.5, max=6)
 p.set(min=0., max=1.)
 inner_sigma.set(min=0, max=1e-2)
 
 rout.free = True
-x.free = y.free = True
+# x.free = y.free = True
 
-inner_ring = {"x": x, "y": y, "rin": rin,
-              "rout": rout, "inner_sigma": inner_sigma, "p": p}
+# inner_ring = {"x": x, "y": y, "rin": rin,
+#               "rout": rout, "inner_sigma": inner_sigma, "p": p}
+inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma, "p": p}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
 rin = Parameter(**STANDARD_PARAMETERS["rin"])
@@ -163,7 +164,7 @@ shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 
 OPTIONS.model.components_and_params = [
     ["Star", {}],
-    ["GreyBody", inner_ring],
+    # ["GreyBody", inner_ring],
     ["GreyBody", outer_ring],
 ]
 
@@ -177,7 +178,7 @@ component_labels = ["Star", "Outer Ring"]
 
 OPTIONS.model.modulation = 1
 OPTIONS.model.gridtype = "logarithmic"
-OPTIONS.fit.method = "dynesty"
+OPTIONS.fit.method = "emcee"
 
 model_result_dir = Path("../model_results/")
 day_dir = model_result_dir / str(datetime.now().date())
