@@ -26,7 +26,7 @@ def save_fits(dim: int, pixel_size: u.mas,
               nwalkers: Optional[int] = None,
               nburnin: Optional[int] = None,
               nsteps: Optional[int] = None,
-              ncores: Optional[int] = None) -> None:
+              ncores: Optional[int] = None, **kwargs) -> None:
     """Saves a (.fits)-file of the model with all the information on the
     parameter space."""
     pixel_size = u.Quantity(pixel_size, u.mas)
