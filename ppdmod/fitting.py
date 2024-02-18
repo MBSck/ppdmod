@@ -270,7 +270,7 @@ def lnprob(theta: np.ndarray) -> float:
 
 
 def run_mcmc(nwalkers: int,
-             nsteps_burnin: Optional[int] = 0,
+             nburnin: Optional[int] = 0,
              nsteps: Optional[int] = 100,
              ncores: Optional[int] = 6,
              debug: Optional[bool] = False,
@@ -301,9 +301,9 @@ def run_mcmc(nwalkers: int,
     print(f"Executing MCMC.\n{'':-^50}")
     sampler = emcee.EnsembleSampler(
         nwalkers, theta.shape[1], lnprob, pool=pool)
-    if nsteps_burnin is not None:
+    if nburnin is not None:
         print("Running burn-in...")
-        sampler.run_mcmc(theta, nsteps_burnin, progress=True)
+        sampler.run_mcmc(theta, nburnin, progress=True)
 
     sampler.reset()
     print("Running production...")
