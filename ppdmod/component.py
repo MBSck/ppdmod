@@ -27,13 +27,13 @@ class Component:
     def __init__(self, **kwargs):
         """The class's constructor."""
         self.params = {}
-        self.params["x"] = Parameter(**STANDARD_PARAMETERS["x"])
-        self.params["y"] = Parameter(**STANDARD_PARAMETERS["y"])
-        self.params["dim"] = Parameter(**STANDARD_PARAMETERS["dim"])
+        self.params["x"] = Parameter(**STANDARD_PARAMETERS.x)
+        self.params["y"] = Parameter(**STANDARD_PARAMETERS.y)
+        self.params["dim"] = Parameter(**STANDARD_PARAMETERS.dim)
         self.params["pixel_size"] = Parameter(
-                **STANDARD_PARAMETERS["pixel_size"])
-        self.params["pa"] = Parameter(**STANDARD_PARAMETERS["pa"])
-        self.params["elong"] = Parameter(**STANDARD_PARAMETERS["elong"])
+                **STANDARD_PARAMETERS.pixel_size)
+        self.params["pa"] = Parameter(**STANDARD_PARAMETERS.pa)
+        self.params["elong"] = Parameter(**STANDARD_PARAMETERS.elong)
 
         if not self.elliptic:
             self.params["pa"].free = False

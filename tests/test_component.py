@@ -47,11 +47,11 @@ def test_component(component: Component) -> None:
 
 def test_eval(component: Component) -> None:
     """Tests if the evaulation of the parameters works."""
-    x = Parameter(**STANDARD_PARAMETERS["fov"])
+    x = Parameter(**STANDARD_PARAMETERS.fov)
     params = {"x": x, "y": 10, "dim": 512}
     component._eval(**params)
 
-    assert component.params["x"] == Parameter(**STANDARD_PARAMETERS["fov"])
+    assert component.params["x"] == Parameter(**STANDARD_PARAMETERS.fov)
     assert component.params["y"]() == 10*u.mas
     assert component.params["dim"]() == 512
 

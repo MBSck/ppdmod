@@ -47,10 +47,10 @@ class Star(Component):
         super().__init__(**kwargs)
         self._stellar_angular_radius = None
 
-        self.params["f"] = Parameter(**STANDARD_PARAMETERS["f"])
-        self.params["dist"] = Parameter(**STANDARD_PARAMETERS["dist"])
-        self.params["eff_temp"] = Parameter(**STANDARD_PARAMETERS["eff_temp"])
-        self.params["eff_radius"] = Parameter(**STANDARD_PARAMETERS["eff_radius"])
+        self.params["f"] = Parameter(**STANDARD_PARAMETERS.f)
+        self.params["dist"] = Parameter(**STANDARD_PARAMETERS.dist)
+        self.params["eff_temp"] = Parameter(**STANDARD_PARAMETERS.eff_temp)
+        self.params["eff_radius"] = Parameter(**STANDARD_PARAMETERS.eff_radius)
         self._eval(**kwargs)
 
     @property
@@ -136,25 +136,25 @@ class TempGradient(Component):
         super().__init__(**kwargs)
         self._stellar_angular_radius = None
 
-        self.params["dist"] = Parameter(**STANDARD_PARAMETERS["dist"])
-        self.params["eff_temp"] = Parameter(**STANDARD_PARAMETERS["eff_temp"])
-        self.params["eff_radius"] = Parameter(**STANDARD_PARAMETERS["eff_radius"])
+        self.params["dist"] = Parameter(**STANDARD_PARAMETERS.dist)
+        self.params["eff_temp"] = Parameter(**STANDARD_PARAMETERS.eff_temp)
+        self.params["eff_radius"] = Parameter(**STANDARD_PARAMETERS.eff_radius)
 
-        self.params["r0"] = Parameter(**STANDARD_PARAMETERS["r0"])
-        self.params["rin"] = Parameter(**STANDARD_PARAMETERS["rin"])
-        self.params["rout"] = Parameter(**STANDARD_PARAMETERS["rout"])
+        self.params["r0"] = Parameter(**STANDARD_PARAMETERS.r0)
+        self.params["rin"] = Parameter(**STANDARD_PARAMETERS.rin)
+        self.params["rout"] = Parameter(**STANDARD_PARAMETERS.rout)
 
-        self.params["a"] = Parameter(**STANDARD_PARAMETERS["a"])
-        self.params["phi"] = Parameter(**STANDARD_PARAMETERS["phi"])
+        self.params["a"] = Parameter(**STANDARD_PARAMETERS.a)
+        self.params["phi"] = Parameter(**STANDARD_PARAMETERS.phi)
 
-        self.params["q"] = Parameter(**STANDARD_PARAMETERS["q"])
-        self.params["inner_temp"] = Parameter(**STANDARD_PARAMETERS["inner_temp"])
+        self.params["q"] = Parameter(**STANDARD_PARAMETERS.q)
+        self.params["inner_temp"] = Parameter(**STANDARD_PARAMETERS.inner_temp)
 
-        self.params["p"] = Parameter(**STANDARD_PARAMETERS["p"])
-        self.params["inner_sigma"] = Parameter(**STANDARD_PARAMETERS["inner_sigma"])
-        self.params["kappa_abs"] = Parameter(**STANDARD_PARAMETERS["kappa_abs"])
-        self.params["cont_weight"] = Parameter(**STANDARD_PARAMETERS["cont_weight"])
-        self.params["kappa_cont"] = Parameter(**STANDARD_PARAMETERS["kappa_cont"])
+        self.params["p"] = Parameter(**STANDARD_PARAMETERS.p)
+        self.params["inner_sigma"] = Parameter(**STANDARD_PARAMETERS.inner_sigma)
+        self.params["kappa_abs"] = Parameter(**STANDARD_PARAMETERS.kappa_abs)
+        self.params["cont_weight"] = Parameter(**STANDARD_PARAMETERS.cont_weight)
+        self.params["kappa_cont"] = Parameter(**STANDARD_PARAMETERS.kappa_cont)
 
         if self.const_temperature:
             self.params["q"].free = False

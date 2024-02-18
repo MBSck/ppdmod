@@ -264,7 +264,7 @@ def test_assemble_components() -> None:
     values = [1.5, 0.5, 0.3, 33, 0.2, 45, 1.6]
     limits = [[0, 20], [0, 1], [0, 1],
               [0, 360], [0, 1], [0, 360], [1, 50]]
-    params = {name: Parameter(**STANDARD_PARAMETERS[name])
+    params = {name: Parameter(**getattr(STANDARD_PARAMETERS, name))
               for name in param_names}
     for value, limit, param in zip(values, limits, params.values()):
         param.set(*limit)
