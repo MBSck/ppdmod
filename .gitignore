@@ -11,7 +11,6 @@ build/
 *.html
 *.exe
 cython_src/*.c
-*.fits
 
 # Sensitive Data
 tests/data/fits

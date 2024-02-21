@@ -61,52 +61,47 @@ def test_translate_coordinates(component: Component) -> None:
     assert component.translate_image_func(0, 0) == (0*u.mas, 0*u.mas)
     assert component.translate_image_func(25, 15) == (25*u.mas, 15*u.mas)
 
-
-# TODO: Think of better way to do this test. Right now kinda testing itself
-@pytest.mark.parametrize("positions_one, positions_two",
-                         [[[0, -5]*u.mas, [0, 5]*u.mas],
-                          [[-5, 0]*u.mas, [5, 0]*u.mas],
-                          [[-5, -5]*u.mas, [5, 5]*u.mas],
-                          [[-5, -3.5]*u.mas, [5, 5]*u.mas]])
-def test_translate_fourier(fits_files: List[Path],
-                           positions_one: u.mas,
-                           positions_two: u.mas,
-                           wavelength: u.um) -> None:
+# TODO: Why is there a 90 degree turn in aspro? -> Check
+@pytest.mark.parametrize(
+        "fits_file, pos_angle",
+        [("bin_sep.fits", 0*u.deg),
+         ("bin_neg_sep.fits", -180*u.deg),
+         ("bin_sep_rot90.fits", 90*u.deg),
+         ("bin_neg_sep_rot90.fits", -90*u.deg),
+         ("bin_sep_rot45.fits", 45*u.deg),
+         ("bin_neg_sep_rot45.fits", -45*u.deg),
+         ("bin_sep_rot33.fits", 33*u.deg)])
+def test_translate_fourier(
+        fits_file: List[Path], 
+        pos_angle: u.mas, wavelength: u.um) -> None:
     """Tests if the translation of the fourier transform works."""
+    fits_file = Path("data/aspro") / fits_file
     set_fit_wavelengths(wavelength)
-    set_data([fits_files[1]], fit_data=["vis", "t3"])
-    atol, fluxes = 1e-6, [3, 9]*u.Jy
+    set_data([fits_file], fit_data=["vis", "t3"])
+    fluxes = [2, 8]*u.Jy
+
+    position = [5, 0]*u.mas
+    x = position[0]*np.cos(pos_angle) - position[1]*np.sin(pos_angle)
+    y = position[0]*np.sin(pos_angle) + position[1]*np.cos(pos_angle)
+    position = [x, y]*u.mas
 
     vis = OPTIONS.data.vis
-    component_one = Star(f=fluxes[0], x=positions_one[0], y=positions_one[1])
-    component_two = Star(f=fluxes[1], x=positions_two[0], y=positions_two[1])
+    component_one = Star(f=fluxes[0], x=0, y=0)
+    component_two = Star(f=fluxes[1], x=position[1], y=position[0])
     vis_one = component_one.compute_vis(vis.ucoord, vis.vcoord, wavelength)
     vis_two = component_two.compute_vis(vis.ucoord, vis.vcoord, wavelength)
-    vis_combined = vis_one + vis_two
-    vis_binary = binary_vis(
-            fluxes[0], fluxes[1], vis.ucoord, vis.vcoord,
-            positions_one, positions_two, wavelength=wavelength)
+    vis_combined = np.abs(vis_one + vis_two)/fluxes.value.sum()
 
-    assert np.allclose(vis_combined, vis_binary, atol=atol)
-    assert np.allclose(np.abs(vis_combined), np.abs(vis_binary), atol=atol)
-    assert np.allclose(np.angle(vis_combined), np.angle(vis_binary), atol=atol)
+    assert np.allclose(vis_combined, vis.value, atol=1e-3)
 
     t3 = OPTIONS.data.t3
     t3_one = component_one.compute_vis(t3.u123coord, t3.v123coord, wavelength)
     t3_two = component_two.compute_vis(t3.u123coord, t3.v123coord, wavelength)
-    t3_combined = t3_one + t3_two
-    t3_binary = binary_vis(
-            fluxes[0], fluxes[1], t3.u123coord, t3.v123coord,
-            position1=positions_one, position2=positions_two,
-            wavelength=wavelength)
+    t3_combined = np.angle(np.prod(t3_one + t3_two, axis=1), deg=True)
 
-    assert np.allclose(t3_combined, t3_binary, atol=atol)
-    assert np.allclose(np.abs(t3_combined), np.abs(t3_binary), atol=atol)
-    assert np.allclose(np.angle(t3_combined), np.angle(t3_binary), atol=atol)
+    assert np.allclose(t3_combined, t3.value, atol=1e-1)
 
 
-
-# TODO: Write test for compute_vis and compute_t3 and all compute functions
 def test_flux_func() -> None:
     ...
 
@@ -115,19 +110,11 @@ def test_vis_func() -> None:
     ...
 
 
-def test_t3_func() -> None:
-    ...
-
-
 def test_compute_flux() -> None:
     ...
 
 
 def test_compute_vis() -> None:
-    ...
-
-
-def test_compute_t3() -> None:
     ...
 
 
