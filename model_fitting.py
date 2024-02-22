@@ -16,16 +16,17 @@ from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 DATA_DIR = Path("tests/data")
 
-OPTIONS.fit.data = ["flux", "vis2", "t3"]
+OPTIONS.fit.data = ["flux"]
 # wavelengths = [1.6]*u.um
 # wavelengths = [2.25]*u.um
 # wavelengths = [1.6, 2.25]*u.um
-# wavelengths = [1.6, 2.25, 3.5]*u.um
+wavelengths = [1.6, 2.25, 3.5]*u.um
 # wavelengths = [3.5]*u.um
 # wavelengths = [1.6, 2.25, 3.5, 8., 9., 10., 11.3, 12.5]*u.um
-wavelengths = [8., 9., 10., 11.3, 12.5]*u.um
+# wavelengths = [8., 9., 10., 11.3, 12.5]*u.um
 data.set_fit_wavelengths(wavelengths)
-fits_files = list((DATA_DIR / "fits").glob("*04-23*AQU*fits"))
+# fits_files = list((DATA_DIR / "fits").glob("*04-23*AQU*fits"))
+fits_files = [DATA_DIR / "flux" / "10402847.ss"]
 data.set_data(fits_files)
 data.set_fit_weights()
 
@@ -62,6 +63,7 @@ wl_op, opacity = wl_grf, opacity_grf
 
 opacity = utils.linearly_combine_data(opacity, weights)
 opacity = np.interp(wavelength_axes.value, wl_op[0], opacity)
+breakpoint()
 
 # wl_cont, cont_opacity = utils.load_data(DATA_DIR / "qval" / "Q_amorph_c_rv0.1.dat",
 #                                         load_func=utils.qval_to_opacity)

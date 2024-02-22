@@ -11,7 +11,13 @@ from .options import OPTIONS
 
 
 class ReadoutFits:
-    """All functionality to work with (.fits)-files"""
+    """All functionality to work with (.fits) or flux files.
+
+    Parameters
+    ----------
+    fits_file : pathlib.Path
+        The path to the (.fits) or flux file.
+    """
 
     def __init__(self, fits_file: Path) -> None:
         """The class's constructor."""
@@ -20,7 +26,15 @@ class ReadoutFits:
 
     def read_file(self) -> None:
         """Reads the data of the (.fits)-files into vectors."""
-        with fits.open(Path(self.fits_file)) as hdul:
+        try:
+            hdul = fits.open(self.fits_file)
+        except OSError:
+            hdul = None
+            wl, flux, flux_err = np.loadtxt(self.fits_file, unpack=True)
+            self.wavelength = wl*u.um
+            self.flux = SimpleNamespace(value=flux, err=flux_err)
+
+        if hdul is not None:
             instrument = hdul[0].header["instrume"].lower()
             sci_index = OPTIONS.data.gravity.index\
                 if instrument == "gravity" else None
@@ -35,6 +49,7 @@ class ReadoutFits:
                     hdul, "vis", sci_index, wl_index)
             self.vis2 = self.read_into_namespace(
                     hdul, "vis2", sci_index, wl_index)
+            hdul.close()
 
     def read_into_namespace(self, hdul: fits.HDUList, key: str,
                             sci_index: Optional[int],
@@ -66,7 +81,7 @@ class ReadoutFits:
 
             # TODO: Check this!
             # NOTE: This should be positive as complex conjugation is applied
-            # later?
+            # later? Also positive for Jozsef and Anthony?
             u3coord, v3coord = -(u1coord+u2coord), -(v1coord+v2coord)
             u123coord = np.array([u1coord, u2coord, u3coord])
             v123coord = np.array([v1coord, v2coord, v3coord])
@@ -136,10 +151,13 @@ def set_fit_weights(weights: Optional[List[float]] = None) -> None:
     if weights is not None:
         wflux, wvis, wt3 = weights
     else:
-        if OPTIONS.data.vis2.value.size == 0:
-            nvis = OPTIONS.data.vis.value.shape[1]
+        vis = OPTIONS.data.vis if OPTIONS.data.vis2.value.size == 0\
+            else OPTIONS.data.vis2
+        
+        if vis.value.size != 0:
+            nvis = vis.value.shape[1]
         else:
-            nvis = OPTIONS.data.vis2.value.shape[1]
+            nvis = 1
 
         if "flux" in OPTIONS.fit.data:
             nflux = OPTIONS.data.flux.value.shape[1]
