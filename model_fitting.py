@@ -20,7 +20,8 @@ OPTIONS.fit.data = ["flux"]
 # wavelengths = [1.6]*u.um
 # wavelengths = [2.25]*u.um
 # wavelengths = [1.6, 2.25]*u.um
-wavelengths = [1.6, 2.25, 3.5]*u.um
+# wavelengths = [1.6, 2.25, 3.5]*u.um
+wavelengths = [2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 4.25, 4.5]*u.um
 # wavelengths = [3.5]*u.um
 # wavelengths = [1.6, 2.25, 3.5, 8., 9., 10., 11.3, 12.5]*u.um
 # wavelengths = [8., 9., 10., 11.3, 12.5]*u.um
@@ -63,7 +64,6 @@ wl_op, opacity = wl_grf, opacity_grf
 
 opacity = utils.linearly_combine_data(opacity, weights)
 opacity = np.interp(wavelength_axes.value, wl_op[0], opacity)
-breakpoint()
 
 # wl_cont, cont_opacity = utils.load_data(DATA_DIR / "qval" / "Q_amorph_c_rv0.1.dat",
 #                                         load_func=utils.qval_to_opacity)
@@ -148,7 +148,7 @@ cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 # inner_temp.value = 1500
 pa.value = 163
 elong.value = 0.5
-cont_weight.value = 0.54             # Relative contribution (adds to 1). Mass fractions
+cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass fractions
 
 # q.set(min=0., max=1.)
 # inner_temp.set(min=300, max=2000)
@@ -166,17 +166,17 @@ shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 
 OPTIONS.model.components_and_params = [
     ["Star", {}],
-    # ["GreyBody", inner_ring],
-    ["GreyBody", outer_ring],
+    ["GreyBody", inner_ring],
+    # ["AsymmetricGreyBody", outer_ring],
 ]
 
 # labels = inner_ring_labels + outer_ring_labels + shared_params_labels
-# labels = inner_ring_labels + shared_params_labels
-labels = outer_ring_labels + shared_params_labels
+labels = inner_ring_labels + shared_params_labels
+# labels = outer_ring_labels + shared_params_labels
 
 # component_labels = ["Star", "Inner Ring", "Outer Ring"]
-# component_labels = ["Star", "Inner Ring"]
-component_labels = ["Star", "Outer Ring"]
+component_labels = ["Star", "Inner Ring"]
+# component_labels = ["star", "outer ring"]
 
 OPTIONS.model.modulation = 1
 OPTIONS.model.gridtype = "logarithmic"
@@ -212,7 +212,7 @@ post_fit_dir.mkdir(parents=True, exist_ok=True)
 
 
 if __name__ == "__main__":
-    ncores = None
+    ncores = 6
     fit_params_emcee = {"nburnin": 200, "nsteps": 500, "nwalkers": 100}
     fit_params_dynesty = {"nlive": 1500, "sample": "rwalk", "bound": "multi"}
 

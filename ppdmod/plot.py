@@ -583,7 +583,8 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
     _, axarr = plt.subplots(1, nplots, figsize=figsize,
                             tight_layout=True,
                             facecolor=OPTIONS.plot.color.background)
-    axarr = dict(zip(data_types, axarr.flatten()))
+    axarr = axarr.flatten() if isinstance(axarr, np.ndarray) else [axarr]
+    axarr = dict(zip(data_types, axarr))
 
     colormap = get_colormap(colormap)
     hline_color = "gray" if OPTIONS.plot.color.background == "white"\
