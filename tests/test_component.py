@@ -9,7 +9,6 @@ from ppdmod.component import Component
 from ppdmod.custom_components import Star
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 from ppdmod.parameter import Parameter
-from ppdmod.utils import binary_vis
 from ppdmod.data import set_data, set_fit_wavelengths
 
 
@@ -55,11 +54,20 @@ def test_eval(component: Component) -> None:
     assert component.dim() == 512
 
 
+# TODO: Finish this test
+def test_get_params(component: Component):
+    """Tests the fetching of params from a component."""
+    params = component.get_params()
+    params_free = component.get_params(free=True)
+    assert params and not params_free
+
+
 # TODO: Needs better test
 def test_translate_coordinates(component: Component) -> None:
     """Tests if the translation of the coordinates works."""
     assert component.translate_image_func(0, 0) == (0*u.mas, 0*u.mas)
-    assert component.translate_image_func(25, 15) == (25*u.mas, 15*u.mas)
+    assert component.translate_image_func(25, 15) == (-25*u.mas, -15*u.mas)
+
 
 # TODO: Why is there a 90 degree turn in aspro? -> Check
 @pytest.mark.parametrize(

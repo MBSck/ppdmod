@@ -5,8 +5,8 @@ import astropy.units as u
 import numpy as np
 from numpy.typing import ArrayLike
 
-from .utils import get_closest_indices
 from .options import OPTIONS
+from .utils import get_closest_indices
 
 
 @dataclass()

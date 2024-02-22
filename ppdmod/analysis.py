@@ -34,6 +34,7 @@ def save_fits(dim: int, pixel_size: u.mas,
         else OPTIONS.fit.wavelengths
     distance = u.Quantity(distance, u.pc)
 
+    total_flux = np.empty(wavelength.size)*u.Jy
     image, tables = np.empty((wavelength.size, dim, dim))*u.Jy, []
     for index, component in enumerate(components):
         image += component.compute_image(dim, pixel_size, wavelength)
@@ -51,13 +52,19 @@ def save_fits(dim: int, pixel_size: u.mas,
             data["temperature"] = component.compute_temperature(radius)
             data["surface_density"] = component.compute_surface_density(radius)
 
-            data["flux"] = component.compute_flux(wavelength[:, np.newaxis])
             data["emissivity"] = component.compute_emissivity(
                     radius, wavelength[:, np.newaxis])
             data["brightness"] = component.compute_brightness(
                     radius, wavelength[:, np.newaxis])
 
-        for parameter in component.params.values():
+        data["flux"] = component.compute_flux(wavelength[:, np.newaxis])
+        data["flux_ratio"] = np.empty(data["flux"].shape)
+
+        total_flux += u.Quantity(data["flux"].squeeze(), unit=u.Jy)
+
+        for parameter in component.get_params().values():
+            if parameter.name == "flux":
+                continue
             if parameter.wavelength is None:
                 name = parameter.shortname.upper()
                 if name not in table_header:
@@ -66,17 +73,15 @@ def save_fits(dim: int, pixel_size: u.mas,
             else:
                 data[parameter.name] = parameter(wavelength[:, np.newaxis])
 
-        try:
-            table = fits.BinTableHDU(
-                    Table(data=data),
-                    name="_".join(component_labels[index].split(" ")).upper(),
-                    header=table_header)
-        except ValueError:
-            breakpoint()
+        table = fits.BinTableHDU(
+                Table(data=data),
+                name="_".join(component_labels[index].split(" ")).upper(),
+                header=table_header)
         tables.append(table)
 
     data = None
     for table in tables:
+        table.data["flux_ratio"] = (table.data["flux"].squeeze()*u.Jy/total_flux)[:, np.newaxis]*100
         if table.header["COMP"] == "Star":
             continue
         if data is None:

@@ -162,7 +162,7 @@ def set_fit_weights(weights: Optional[List[float]] = None) -> None:
 
 def set_data(fits_files: Optional[List[Path]] = None,
              wavelength: Optional[u.Quantity[u.um]] = None,
-             fit_data: Optional[List[str]] = None) -> None:
+             fit_data: Optional[List[str]] = None, **kwargs) -> None:
     """Sets the data as a global variable from the input files.
 
     If called without parameters or recalled, it will clear the data.
@@ -174,10 +174,7 @@ def set_data(fits_files: Optional[List[Path]] = None,
     wavelength : astropy.units.um
         The wavelengths to be fitted.
     fit_data : list of str, optional
-    set_weights : bool, optional
-        If True will set the weights of the fit parameters from the
-        sizes of the input grids.
-
+        The data to be fitted.
     """
     OPTIONS.data.readouts = []
     wavelength = OPTIONS.fit.wavelengths if wavelength\

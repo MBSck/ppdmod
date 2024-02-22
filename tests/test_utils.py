@@ -8,6 +8,7 @@ import pytest
 from scipy.special import j1
 
 from ppdmod import utils
+from ppdmod.custom_components import Star
 from ppdmod.data import ReadoutFits, set_fit_wavelengths, set_data
 from ppdmod.options import OPTIONS
 

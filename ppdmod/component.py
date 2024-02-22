@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Optional, Tuple
 
 import astropy.units as u
 import numpy as np
@@ -63,6 +63,30 @@ class Component:
                 else:
                     getattr(self, key).value = value
 
+
+    def get_params(self, free: Optional[bool] = False):
+        """Gets all the parameters of a component.
+
+        Parameters
+        ----------
+        component : Component
+            The component for which the parameters should be fetched.
+        only_free : bool, optional
+            If only the free parameters should be returned, by default False
+
+        Returns
+        -------
+        params : dict of Parameter
+        """
+        params = {}
+        for attribute in dir(self):
+            value = getattr(self, attribute)
+            if isinstance(value, Parameter):
+                if free and not value.free:
+                    continue
+                params[attribute] = value
+        return params
+
     def calculate_internal_grid(
             self, dim: int, pixel_size: u.mas
             ) -> Tuple[u.Quantity[u.mas], u.Quantity[u.mas]]:
@@ -87,7 +111,7 @@ class Component:
             ) -> Tuple[u.Quantity[u.mas], u.Quantity[u.mas]]:
         """Shifts the coordinates in image space according to an offset."""
         xx, yy = map(lambda x: u.Quantity(value=x, unit=u.mas), [xx, yy])
-        xx, yy =  xx-self.x(), yy-self.y()
+        xx, yy =  self.x()-xx, self.y()-yy
         return xx.astype(OPTIONS.data.dtype.real), yy.astype(OPTIONS.data.dtype.real)
 
     # TODO: Check if the positive factor in the exp here is correct?
@@ -144,3 +168,5 @@ class Component:
 
         image = self.image_func(xx, yy, pixel_size, wavelength)
         return image.astype(OPTIONS.data.dtype.real)
+
+
