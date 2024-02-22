@@ -819,8 +819,8 @@ def plot_observables(target: str,
     ax = plt.axes(facecolor=OPTIONS.plot.color.background)
     set_axes_color(ax, OPTIONS.plot.color.background)
     ax.plot(wavelength, flux)
-    plot_target(target, wavelength_range=wavelength_range,
-                ax=ax, show_legend=False)
+    # plot_target(target, wavelength_range=wavelength_range,
+    #             ax=ax, show_legend=False)
     ax.set_xlabel(r"$\lambda$ ($\mu$m)")
     ax.set_ylabel("Flux (Jy)")
     ax.set_ylim([0, None])

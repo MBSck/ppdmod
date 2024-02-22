@@ -366,6 +366,37 @@ def restrict_phase(phase: np.ndarray) -> np.ndarray:
     restricted_phase[restricted_phase > 180] -= 360
     return restricted_phase
 
+def get_opacity(source_dir: Path,weights: np.ndarray,
+                sizes: List[List[float]],
+                names: List[str], method: str,
+                wavelength_grid: np.ndarray,
+                fmaxs: Optional[List[float]] = None):
+    """Gets the opacity from input parameters."""
+    qval_dict = {"olivine": "Q_Am_Mgolivine_Jae_DHS",
+                 "pyroxene": "Q_Am_Mgpyroxene_Dor_DHS",
+                 "forsterite": "Q_Fo_Suto_DHS",
+                 "enstatite": "Q_En_Jaeger_DHS"}
+
+    grf_dict = {"olivine": "MgOlivine",
+                "pyroxene": "MgPyroxene",
+                "forsterite": "Forsterite",
+                "enstatite": "Enstatite"}
+
+    files = []
+    for index, (size, name) in enumerate(zip(sizes, names)):
+        for s in size:
+            if method == "qval":
+                file_name = f"{qval_dict[name]}_f{fmaxs[index]:.1f}_rv{s:.1f}.dat"
+            else:
+                file_name = f"{grf_dict[name]}{s:.1f}.Combined.Kappa"
+
+            files.append(source_dir / method / file_name)
+
+    load_func = qval_to_opacity if method == "qval" else None
+    wl, opacity = load_data(files, load_func=load_func)
+
+    opacity = linearly_combine_data(opacity, weights)
+    return np.interp(wavelength_grid, wl[0], opacity)
 
 def load_data(files: List[Path],
               wavelength_range: Optional[u.Quantity[u.um]] = [0.5, 50],

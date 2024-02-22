@@ -375,6 +375,11 @@ def test_restrict_phase(shape: Tuple[int, int]) -> None:
     assert ((new_phases < 180) | (new_phases > -180)).all()
 
 
+def test_get_opacity() -> None:
+    """Tests the retrieval of the opacity."""
+    ...
+
+
 def test_load_data(qval_files: List[Path],
                    grf_files: List[Path]) -> None:
     """Tests the loading of a data file."""

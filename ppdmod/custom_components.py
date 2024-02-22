@@ -153,6 +153,10 @@ class TempGradient(Component):
         self.p = Parameter(**STANDARD_PARAMETERS.p)
         self.inner_sigma = Parameter(**STANDARD_PARAMETERS.inner_sigma)
         self.kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
+
+        # TODO: Add opacity weights
+        # self.opacity_weights = Parameter()
+
         self.cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
         self.kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
 

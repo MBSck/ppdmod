@@ -40,30 +40,24 @@ flux = np.interp(wavelength_axes.value, wl_flux, flux)
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
 star_flux.value, star_flux.wavelength = flux, wavelength_axes
 
-weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
-qval_files = ["Q_Am_Mgolivine_Jae_DHS_f1.0_rv0.1.dat",
-              "Q_Am_Mgolivine_Jae_DHS_f1.0_rv1.5.dat",
-              "Q_Am_Mgpyroxene_Dor_DHS_f1.0_rv1.5.dat",
-              "Q_Fo_Suto_DHS_f1.0_rv0.1.dat",
-              "Q_Fo_Suto_DHS_f1.0_rv1.5.dat",
-              "Q_En_Jaeger_DHS_f1.0_rv1.5.dat"]
-qval_files = list(map(lambda x: DATA_DIR / "qval" / x, qval_files))
+weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100 
+names = ["olivine", "pyroxene", "forsterite", "enstatite"]
+fmaxs = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+sizes = [[0.1, 1.5], [1.5], [0.1, 1.5], [1.5]]
 
-grf_files = ["MgOlivine0.1.Combined.Kappa",
-             "MgOlivine2.0.Combined.Kappa",
-             "MgPyroxene2.0.Combined.Kappa",
-             "Forsterite0.1.Combined.Kappa",
-             "Forsterite2.0.Combined.Kappa",
-             "Enstatite2.0.Combined.Kappa"]
-grf_files = list(map(lambda x: DATA_DIR / "grf" / x, grf_files))
+roy_opacity = utils.get_opacity(DATA_DIR, weights, sizes, names, "qval",
+                                wavelength_axes.value, fmaxs)
+breakpoint()
 
-wl_dhs, opacity_dhs = utils.load_data(
-        qval_files, load_func=utils.qval_to_opacity)
-wl_grf, opacity_grf = utils.load_data(grf_files)
-wl_op, opacity = wl_grf, opacity_grf
+weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100 
+names = ["olivine", "pyroxene", "forsterite", "enstatite"]
+fmaxs = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+sizes = [[0.1, 1.5], [1.5], [0.1, 1.5], [1.5]]
 
-opacity = utils.linearly_combine_data(opacity, weights)
-opacity = np.interp(wavelength_axes.value, wl_op[0], opacity)
+juhasz_opacity = utils.get_opacity(DATA_DIR, weights, sizes, names, "qval",
+                                   wavelength_axes.value, fmaxs)
+
+opacity = roy_opacity
 
 # wl_cont, cont_opacity = utils.load_data(DATA_DIR / "qval" / "Q_amorph_c_rv0.1.dat",
 #                                         load_func=utils.qval_to_opacity)
