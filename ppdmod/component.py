@@ -111,7 +111,7 @@ class Component:
             ) -> Tuple[u.Quantity[u.mas], u.Quantity[u.mas]]:
         """Shifts the coordinates in image space according to an offset."""
         xx, yy = map(lambda x: u.Quantity(value=x, unit=u.mas), [xx, yy])
-        xx, yy =  self.x()-xx, self.y()-yy
+        xx, yy =  xx-self.x(), yy-self.y()
         return xx.astype(OPTIONS.data.dtype.real), yy.astype(OPTIONS.data.dtype.real)
 
     # TODO: Check if the positive factor in the exp here is correct?

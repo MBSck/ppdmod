@@ -65,13 +65,15 @@ def test_get_params(component: Component):
 # TODO: Needs better test
 def test_translate_coordinates(component: Component) -> None:
     """Tests if the translation of the coordinates works."""
-    assert component.translate_image_func(0, 0) == (0*u.mas, 0*u.mas)
-    assert component.translate_image_func(25, 15) == (-25*u.mas, -15*u.mas)
+    component.x.value = 10*u.mas
+    component.y.value = 10*u.mas
+    assert component.translate_image_func(10, 10) == (0*u.mas, 0*u.mas)
+    assert component.translate_image_func(0, 0) == (-10*u.mas, -10*u.mas)
 
 
 # TODO: Why is there a 90 degree turn in aspro? -> Check
 @pytest.mark.parametrize(
-        "fits_file, pos_angle",
+        "fits_file, rot_angle",
         [("bin_sep.fits", 0*u.deg),
          ("bin_neg_sep.fits", -180*u.deg),
          ("bin_sep_rot90.fits", 90*u.deg),
@@ -81,7 +83,7 @@ def test_translate_coordinates(component: Component) -> None:
          ("bin_sep_rot33.fits", 33*u.deg)])
 def test_translate_fourier(
         fits_file: List[Path], 
-        pos_angle: u.mas, wavelength: u.um) -> None:
+        rot_angle: u.mas, wavelength: u.um) -> None:
     """Tests if the translation of the fourier transform works."""
     fits_file = Path("data/aspro") / fits_file
     set_fit_wavelengths(wavelength)
@@ -89,8 +91,8 @@ def test_translate_fourier(
     fluxes = [2, 8]*u.Jy
 
     position = [5, 0]*u.mas
-    x = position[0]*np.cos(pos_angle) - position[1]*np.sin(pos_angle)
-    y = position[0]*np.sin(pos_angle) + position[1]*np.cos(pos_angle)
+    x = position[0]*np.cos(rot_angle) - position[1]*np.sin(rot_angle)
+    y = position[0]*np.sin(rot_angle) + position[1]*np.cos(rot_angle)
     position = [x, y]*u.mas
 
     vis = OPTIONS.data.vis
