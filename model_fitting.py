@@ -141,7 +141,8 @@ phi.set(min=0, max=360)
 
 rout.free = True
 
-outer_ring = {"rin": rin, "a": a, "phi": phi, "inner_sigma": inner_sigma, "p": p}
+# outer_ring = {"rin": rin, "a": a, "phi": phi, "inner_sigma": inner_sigma, "p": p}
+outer_ring = {"rin": rin, "inner_sigma": inner_sigma, "p": p}
 outer_ring_labels = [f"or_{label}" for label in outer_ring]
 
 # q = Parameter(**STANDARD_PARAMETERS.q)
