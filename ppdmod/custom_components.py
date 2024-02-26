@@ -11,15 +11,81 @@ from .options import STANDARD_PARAMETERS, OPTIONS
 from .utils import distance_to_angular, compute_effective_baselines
 
 
-class Star(Component):
-    """Star defined as an analytical component.
+class PointSource(Component):
+    """A point source that can contain a relative flux contribution.
 
     Parameters
     ----------
     x : int
-        x pos of the component [mas].
+        x pos of the component (mas).
     y : int
-        y pos of the component [mas].
+        y pos of the component (mas).
+    f : 
+        Relative flux contribution (percent).
+
+    Attributes
+    ----------
+    name : str
+        The component's name.
+    shortname : str
+        The component's short name.
+    description : str
+        The component's description.
+    """
+    name = "Point Source"
+    shortname = "Point"
+    description = "Point source with flux contribution."
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self.fr = Parameter(**STANDARD_PARAMETERS.fr)
+        self.eval(**kwargs)
+
+    def flux_func(self, wavelength: u.um) -> u.one:
+        """Returns the flux weight of the point source."""
+        return self.fr(wavelength).reshape((wavelength.size, 1))*u.Jy
+
+    def vis_func(self, ucoord: u.m, vcoord: u.m,
+                 wavelength: u.um, **kwargs) -> np.ndarray:
+        """Computes the correlated fluxes via the hankel transformation."""
+        vis = np.tile(self.flux_func(wavelength).value, ucoord.shape)
+        if ucoord.shape[0] == 1:
+            vis = vis.reshape(wavelength.size, -1)
+        else:
+            vis = vis.reshape(wavelength.size, 3, -1)
+        return vis.astype(OPTIONS.data.dtype.complex)
+
+    def image_func(self, xx: u.mas, yy: u.mas,
+                   pixel_size: u.mas, wavelength: u.m = None) -> u.Jy:
+        """Computes the image from a 2D grid.
+
+        Parameters
+        ----------
+        xx : u.mas
+        yy : u.mas
+        wavelength : u.m
+
+        Returns
+        -------
+        image : astropy.units.Jy
+        """
+        image = np.zeros((wavelength.size, *xx.shape))*u.Jy
+        centre = xx.shape[0]//2
+        star_flux = (self.compute_flux(wavelength)/4)[..., np.newaxis]
+        image[:, centre-1:centre+1, centre-1:centre+1] = star_flux
+        return image
+
+
+class Star(Component):
+    """Star defined as component.
+
+    Parameters
+    ----------
+    x : int
+        x pos of the component (mas).
+    y : int
+        y pos of the component (mas).
     dist : float
         Distance to the star.
     eff_temp : float
@@ -37,10 +103,9 @@ class Star(Component):
         The component's description.
      : dict of Parameter
     stellar_radius_angular : u.mas
-    _image : numpy.ndarray
     """
     name = "Star"
-    shortname = "St"
+    shortname = "Star"
     description = "The flux of a star."
 
     def __init__(self, **kwargs):

@@ -124,7 +124,7 @@ def compute_chi_sq(data: u.quantity, error: u.quantity,
     diff = np.angle(np.exp((data-model_data)*u.deg.to(u.rad)*1j), deg=False)
     return -0.5*(diff**2*inv_sigma_squared + np.log(1/inv_sigma_squared)).sum()
 
-# TODO: Why is there sometimes and invalid value in divide?
+
 def compute_observables(components: List[Component],
                         wavelength: Optional[np.ndarray] = None):
     """Calculates the observables from the model."""
@@ -136,8 +136,18 @@ def compute_observables(components: List[Component],
     v123coord = OPTIONS.data.t3.v123coord
 
     flux_model, vis_model, t3_model = None, None, None
-    stellar_flux = components[0].compute_flux(wavelength).value
-    for component in components[1:]:
+
+    component_names = [component.shortname for component in components]
+    stellar_flux, flux_ratio = 0, 0
+    for key in ["Star", "Point"]:
+        if key in component_names:
+            index = component_names.index(key)
+            value = components[index].compute_flux(wavelength).value
+            stellar_flux = value if key == "Star" else 0
+            flux_ratio = value if key == "Point" else 0
+    
+    components = [comp for comp in components if comp.name not in ["Star", "Point Source"]]
+    for component in components:
         tmp_flux = component.compute_flux(wavelength)
         tmp_vis = component.compute_vis(
                 ucoord, vcoord, wavelength)
@@ -150,6 +160,10 @@ def compute_observables(components: List[Component],
             flux_model += tmp_flux
             vis_model += tmp_vis
             t3_model += tmp_t3
+
+    # NOTE: Overwrites stellar flux as of right now
+    if np.any(flux_ratio != 0):
+        stellar_flux = (flux_model/(1-flux_ratio))*flux_ratio
 
     flux_model += stellar_flux
     vis_model += stellar_flux

@@ -382,6 +382,7 @@ def get_opacity(source_dir: Path,weights: np.ndarray,
                 "forsterite": "Forsterite",
                 "enstatite": "Enstatite"}
 
+    # TODO: Include averaging over the crystalline silicates for DHS 0.1
     files = []
     for index, (size, name) in enumerate(zip(sizes, names)):
         for s in size:

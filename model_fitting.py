@@ -16,18 +16,18 @@ from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 DATA_DIR = Path("tests/data")
 
-OPTIONS.fit.data = ["flux"]
+OPTIONS.fit.data = ["flux", "vis2", "t3"]
 # wavelengths = [1.6]*u.um
 # wavelengths = [2.25]*u.um
 # wavelengths = [1.6, 2.25]*u.um
 # wavelengths = [1.6, 2.25, 3.5]*u.um
-wavelengths = [2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 4.25, 4.5]*u.um
+# wavelengths = [2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 4.25, 4.5]*u.um
 # wavelengths = [3.5]*u.um
 # wavelengths = [1.6, 2.25, 3.5, 8., 9., 10., 11.3, 12.5]*u.um
-# wavelengths = [8., 9., 10., 11.3, 12.5]*u.um
+wavelengths = [8., 9., 10., 11.3, 12.5]*u.um
 data.set_fit_wavelengths(wavelengths)
-# fits_files = list((DATA_DIR / "fits").glob("*04-23*AQU*fits"))
-fits_files = [DATA_DIR / "flux" / "10402847.ss"]
+fits_files = list((DATA_DIR / "fits").glob("*04-23*AQU*fits"))
+# fits_files = [DATA_DIR / "flux" / "10402847.ss"]
 data.set_data(fits_files)
 data.set_fit_weights()
 
@@ -35,10 +35,16 @@ wavelength_axes = list(
     map(lambda x: x.wavelength, OPTIONS.data.readouts))
 wavelength_axes = np.sort(np.unique(np.concatenate(wavelength_axes)))
 
+# TODO: Check flux values -> gave nan for only N-band
 wl_flux, flux = utils.load_data(DATA_DIR / "flux/HD142666_stellar_model.txt.gz")
-flux = np.interp(wavelength_axes.value, wl_flux, flux)
+flux_interpn = np.interp(wavelength_axes.value, wl_flux, flux)
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
-star_flux.value, star_flux.wavelength = flux, wavelength_axes
+star_flux.value, star_flux.wavelength = flux_interpn, wavelength_axes
+
+wl_flux_ratio, flux_ratio = np.load(DATA_DIR / "flux" / "flux_ratio_inner_disk_hd142666.npy")
+flux_ratio_interpn = np.interp(wavelength_axes.value, wl_flux_ratio, flux_ratio)
+point_flux_ratio = Parameter(**STANDARD_PARAMETERS.fr)
+point_flux_ratio.value, point_flux_ratio.wavelength = flux_ratio_interpn, wavelength_axes
 
 weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100 
 names = ["olivine", "pyroxene", "forsterite", "enstatite"]
@@ -47,7 +53,7 @@ sizes = [[0.1, 1.5], [1.5], [0.1, 1.5], [1.5]]
 
 roy_opacity = utils.get_opacity(DATA_DIR, weights, sizes, names, "qval",
                                 wavelength_axes.value, fmaxs)
-breakpoint()
+# TODO: Finish this for the Juhasz opacities and also check Roy's paper again
 
 weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100 
 names = ["olivine", "pyroxene", "forsterite", "enstatite"]
@@ -59,10 +65,9 @@ juhasz_opacity = utils.get_opacity(DATA_DIR, weights, sizes, names, "qval",
 
 opacity = roy_opacity
 
-# wl_cont, cont_opacity = utils.load_data(DATA_DIR / "qval" / "Q_amorph_c_rv0.1.dat",
-#                                         load_func=utils.qval_to_opacity)
-wl_cont, cont_opacity = utils.load_data(DATA_DIR / "qval" / "Q_iron_0.10um_dhs_0.99.dat",
-                                        load_func=utils.qval_to_opacity)
+cont_opacity_file = DATA_DIR / "qval" / "Q_amorph_c_rv0.1.dat"
+# cont_opacity_file = DATA_DIR / "qval" / "Q_iron_0.10um_dhs_0.7.dat",
+wl_cont, cont_opacity = utils.load_data(cont_opacity_file, load_func=utils.qval_to_opacity)
 cont_opacity = np.interp(wavelength_axes.value, wl_cont, cont_opacity)
 
 kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
@@ -70,37 +75,44 @@ kappa_abs.value, kappa_abs.wavelength = opacity, wavelength_axes
 kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
 kappa_cont.value, kappa_cont.wavelength = cont_opacity, wavelength_axes
 
+# TODO: Think of a better way to assign f than through const_params
 dim, distance = 32, 148.3
 OPTIONS.model.constant_params = {
     "dim": dim, "dist": distance,
     "eff_temp": 7500, "f": star_flux,
+    "fr": point_flux_ratio,
     # "pa": 162, "elong": 0.56,
     "eff_radius": 1.75, "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont}
 
-# x = Parameter(**STANDARD_PARAMETERS.x)
-# y = Parameter(**STANDARD_PARAMETERS.y)
+
+x = Parameter(**STANDARD_PARAMETERS.x)
+y = Parameter(**STANDARD_PARAMETERS.y)
+x.value = 1
+y.value = 0
+x.set(min=-10, max=10)
+y.set(min=-10, max=10)
+x.free = y.free = True
+point_source = {"x": x, "y": y}
+point_source_labels = [f"pt_{label}" for label in point_source]
+
+
 rin = Parameter(**STANDARD_PARAMETERS.rin)
 rout = Parameter(**STANDARD_PARAMETERS.rout)
 p = Parameter(**STANDARD_PARAMETERS.p)
 inner_sigma = Parameter(**STANDARD_PARAMETERS.inner_sigma)
 
-# x.value = 1
-# y.value = 0
 rin.value = 1.
 rout.value = 2.
 p.value = 0.5
 inner_sigma.value = 1e-3
 
-# x.set(min=-10, max=10)
-# y.set(min=-10, max=10)
 rin.set(min=0.5, max=5)
 rout.set(min=1.5, max=6)
 p.set(min=0., max=1.)
 inner_sigma.set(min=0, max=1e-2)
 
 rout.free = True
-# x.free = y.free = True
 
 # inner_ring = {"x": x, "y": y, "rin": rin,
 #               "rout": rout, "inner_sigma": inner_sigma, "p": p}
@@ -159,22 +171,26 @@ OPTIONS.model.shared_params = {"pa": pa, "elong": elong,
 shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 
 OPTIONS.model.components_and_params = [
-    ["Star", {}],
-    ["GreyBody", inner_ring],
+    ["PointSource", point_source],
+    # ["Star", {}],
+    # ["GreyBody", inner_ring],
+    ["GreyBody", outer_ring],
     # ["AsymmetricGreyBody", outer_ring],
 ]
 
 # labels = inner_ring_labels + outer_ring_labels + shared_params_labels
-labels = inner_ring_labels + shared_params_labels
+# labels = inner_ring_labels + shared_params_labels
+labels = point_source_labels + outer_ring_labels + shared_params_labels
 # labels = outer_ring_labels + shared_params_labels
 
 # component_labels = ["Star", "Inner Ring", "Outer Ring"]
-component_labels = ["Star", "Inner Ring"]
-# component_labels = ["star", "outer ring"]
+# component_labels = ["Star", "Inner Ring"]
+component_labels = ["Point Source", "Outer Ring"]
+# component_labels = ["star", "Outer ring"]
 
 OPTIONS.model.modulation = 1
 OPTIONS.model.gridtype = "logarithmic"
-OPTIONS.fit.method = "emcee"
+OPTIONS.fit.method = "dynesty"
 
 model_result_dir = Path("../model_results/")
 day_dir = model_result_dir / str(datetime.now().date())
@@ -206,7 +222,7 @@ post_fit_dir.mkdir(parents=True, exist_ok=True)
 
 
 if __name__ == "__main__":
-    ncores = 6
+    ncores = None
     fit_params_emcee = {"nburnin": 200, "nsteps": 500, "nwalkers": 100}
     fit_params_dynesty = {"nlive": 1500, "sample": "rwalk", "bound": "multi"}
 

@@ -40,12 +40,12 @@ def save_fits(dim: int, pixel_size: u.mas,
         image += component.compute_image(dim, pixel_size, wavelength)
 
         table_header = fits.Header()
-        table_header["COMP"] = component.name
+        table_header["COMP"] = component.shortname
         table_header["GRIDTYPE"] = (OPTIONS.model.gridtype,
                                     "The type of the model grid")
 
         data = {"wavelength": wavelength}
-        if component.name != "Star":
+        if component.shortname not in ["Star", "Point"]:
             radius = np.tile(component.compute_internal_grid(dim), (wavelength.size, 1))
 
             data["radius"] = radius
@@ -82,7 +82,7 @@ def save_fits(dim: int, pixel_size: u.mas,
     data = None
     for table in tables:
         table.data["flux_ratio"] = (table.data["flux"].squeeze()*u.Jy/total_flux)[:, np.newaxis]*100
-        if table.header["COMP"] == "Star":
+        if table.header["COMP"] in ["Star", "Point"]:
             continue
         if data is None:
             data = {col.name: table.data[col.name] for col in table.columns}

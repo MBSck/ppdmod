@@ -87,7 +87,7 @@ class Component:
                 params[attribute] = value
         return params
 
-    def calculate_internal_grid(
+    def compute_internal_grid(
             self, dim: int, pixel_size: u.mas
             ) -> Tuple[u.Quantity[u.mas], u.Quantity[u.mas]]:
         """Calculates the model grid.
