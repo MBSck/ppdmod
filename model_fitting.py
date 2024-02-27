@@ -46,7 +46,7 @@ flux_ratio_interpn = np.interp(wavelength_axes.value, wl_flux_ratio, flux_ratio)
 point_flux_ratio = Parameter(**STANDARD_PARAMETERS.fr)
 point_flux_ratio.value, point_flux_ratio.wavelength = flux_ratio_interpn, wavelength_axes
 
-weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100 
+weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
 names = ["olivine", "pyroxene", "forsterite", "enstatite"]
 fmaxs = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 sizes = [[0.1, 1.5], [1.5], [0.1, 1.5], [1.5]]
@@ -55,7 +55,7 @@ roy_opacity = utils.get_opacity(DATA_DIR, weights, sizes, names, "qval",
                                 wavelength_axes.value, fmaxs)
 # TODO: Finish this for the Juhasz opacities and also check Roy's paper again
 
-weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100 
+weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
 names = ["olivine", "pyroxene", "forsterite", "enstatite"]
 fmaxs = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 sizes = [[0.1, 1.5], [1.5], [0.1, 1.5], [1.5]]
@@ -141,8 +141,8 @@ phi.set(min=0, max=360)
 
 rout.free = True
 
-# outer_ring = {"rin": rin, "a": a, "phi": phi, "inner_sigma": inner_sigma, "p": p}
-outer_ring = {"rin": rin, "inner_sigma": inner_sigma, "p": p}
+outer_ring = {"rin": rin, "a": a, "phi": phi, "inner_sigma": inner_sigma, "p": p}
+# outer_ring = {"rin": rin, "inner_sigma": inner_sigma, "p": p}
 outer_ring_labels = [f"or_{label}" for label in outer_ring]
 
 # q = Parameter(**STANDARD_PARAMETERS.q)
@@ -160,7 +160,7 @@ cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass f
 # q.set(min=0., max=1.)
 # inner_temp.set(min=300, max=2000)
 pa.set(min=0, max=360)
-elong.set(min=0, max=1)
+elong.set(min=0.3, max=0.95)
 cont_weight.set(min=0.3, max=0.8)
 
 # OPTIONS.model.shared_params = {"q": q, "inner_temp": inner_temp,
@@ -175,8 +175,8 @@ OPTIONS.model.components_and_params = [
     ["PointSource", point_source],
     # ["Star", {}],
     # ["GreyBody", inner_ring],
-    ["GreyBody", outer_ring],
-    # ["AsymmetricGreyBody", outer_ring],
+    # ["GreyBody", outer_ring],
+    ["AsymmetricGreyBody", outer_ring],
 ]
 
 # labels = inner_ring_labels + outer_ring_labels + shared_params_labels
