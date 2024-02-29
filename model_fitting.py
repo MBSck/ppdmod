@@ -18,15 +18,16 @@ DATA_DIR = Path("tests/data")
 
 OPTIONS.fit.data = ["flux", "vis2", "t3"]
 # wavelengths = [1.6]*u.um
-# wavelengths = [2.25]*u.um
+wavelengths = [2.25]*u.um
 # wavelengths = [1.6, 2.25]*u.um
 # wavelengths = [1.6, 2.25, 3.5]*u.um
 # wavelengths = [2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 4.25, 4.5]*u.um
 # wavelengths = [3.5]*u.um
 # wavelengths = [1.6, 2.25, 3.5, 8., 9., 10., 11.3, 12.5]*u.um
-wavelengths = [8., 9., 10., 11.3, 12.5]*u.um
+# wavelengths = [8., 9., 10., 11.3, 12.5]*u.um
 data.set_fit_wavelengths(wavelengths)
-fits_files = list((DATA_DIR / "fits").glob("*04-23*AQU*fits"))
+# fits_files = list((DATA_DIR / "fits").glob("*04-23*AQU*fits"))
+fits_files = list((DATA_DIR / "fits").glob("*GRAV*fits"))
 # fits_files = [DATA_DIR / "flux" / "10402847.ss"]
 data.set_data(fits_files)
 data.set_fit_weights()
@@ -43,6 +44,7 @@ star_flux.value, star_flux.wavelength = flux_interpn, wavelength_axes
 
 wl_flux_ratio, flux_ratio = np.load(DATA_DIR / "flux" / "flux_ratio_inner_disk_hd142666.npy")
 flux_ratio_interpn = np.interp(wavelength_axes.value, wl_flux_ratio, flux_ratio)
+flux_ratio_interpn += 0.2
 point_flux_ratio = Parameter(**STANDARD_PARAMETERS.fr)
 point_flux_ratio.value, point_flux_ratio.wavelength = flux_ratio_interpn, wavelength_axes
 
@@ -121,23 +123,23 @@ inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
 rout = Parameter(**STANDARD_PARAMETERS.rout)
-a = Parameter(**STANDARD_PARAMETERS.a)
-phi = Parameter(**STANDARD_PARAMETERS.phi)
 p = Parameter(**STANDARD_PARAMETERS.p)
 inner_sigma = Parameter(**STANDARD_PARAMETERS.inner_sigma)
+a = Parameter(**STANDARD_PARAMETERS.a)
+phi = Parameter(**STANDARD_PARAMETERS.phi)
 
 rin.value = 13
-a.value = 0.5
-phi.value = 130
 p.value = 0.5
 inner_sigma.value = 1e-3
+a.value = 0.5
+phi.value = 130
 
 # NOTE: Set outer radius to be constant and calculate flux once?
 rin.set(min=1, max=40)
 p.set(min=0., max=1.)
 inner_sigma.set(min=0, max=1e-2)
 a.set(min=0., max=1.)
-phi.set(min=0, max=360)
+phi.set(min=0, max=180)
 
 rout.free = True
 
@@ -159,7 +161,7 @@ cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass f
 
 # q.set(min=0., max=1.)
 # inner_temp.set(min=300, max=2000)
-pa.set(min=0, max=360)
+pa.set(min=0, max=180)
 elong.set(min=0.3, max=0.95)
 cont_weight.set(min=0.3, max=0.8)
 
@@ -172,21 +174,21 @@ OPTIONS.model.shared_params = {"pa": pa, "elong": elong,
 shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 
 OPTIONS.model.components_and_params = [
-    ["PointSource", point_source],
-    # ["Star", {}],
-    # ["GreyBody", inner_ring],
+    # ["PointSource", point_source],
+    ["Star", {}],
+    ["GreyBody", inner_ring],
     # ["GreyBody", outer_ring],
-    ["AsymmetricGreyBody", outer_ring],
+    # ["AsymmetricGreyBody", outer_ring],
 ]
 
 # labels = inner_ring_labels + outer_ring_labels + shared_params_labels
-# labels = inner_ring_labels + shared_params_labels
-labels = point_source_labels + outer_ring_labels + shared_params_labels
+labels = inner_ring_labels + shared_params_labels
+# labels = point_source_labels + outer_ring_labels + shared_params_labels
 # labels = outer_ring_labels + shared_params_labels
 
 # component_labels = ["Star", "Inner Ring", "Outer Ring"]
-# component_labels = ["Star", "Inner Ring"]
-component_labels = ["Point Source", "Outer Ring"]
+component_labels = ["Star", "Inner Ring"]
+# component_labels = ["Point Source", "Outer Ring"]
 # component_labels = ["star", "Outer ring"]
 
 OPTIONS.model.modulation = 1
