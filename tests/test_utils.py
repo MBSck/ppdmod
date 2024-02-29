@@ -8,9 +8,11 @@ import pytest
 from scipy.special import j1
 
 from ppdmod import utils
-from ppdmod.custom_components import Star
+from ppdmod.component import Component
 from ppdmod.data import ReadoutFits, set_fit_wavelengths, set_data
-from ppdmod.options import OPTIONS
+from ppdmod.parameter import Parameter
+from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
+from ppdmod.custom_components import PointSource, Star, Gaussian, TempGradient
 
 
 @pytest.fixture
@@ -57,7 +59,7 @@ def all_wavelength_grid() -> Path:
 @pytest.fixture
 def wavelengths() -> u.um:
     """A wavelength grid."""
-    return [3.520375, 8.502626, 10.001093]*u.um
+    return [3.5, 8.5, 10]*u.um
 
 
 @pytest.fixture
@@ -255,8 +257,7 @@ def test_compare_effective_baselines(
     set_data([fits_file], fit_data=fit_data)
 
     baseline_dir = Path("baselines")
-    if not baseline_dir.exists():
-        baseline_dir.mkdir()
+    baseline_dir.mkdir(exist_ok=True, parents=True)
 
     vis = OPTIONS.data.vis
     calc_func = [utils.compute_effective_baselines,
@@ -498,3 +499,91 @@ def test_linearly_combine_data(
     bx.legend()
     plt.savefig(opacity_dir / "combined_opacities2.pdf", format="pdf")
     plt.close()
+
+
+@pytest.mark.parametrize(
+        "wavelength", [[10]*u.um, [10, 12.5]*u.um])
+def test_broadcast_baselines(fits_files: List[Path], wavelength: u.um) -> None:
+    """Tests the broadcasting of the baselines."""
+    set_fit_wavelengths(wavelength)
+    set_data(fits_files, fit_data=["vis2", "t3"])
+
+    vis, t3 = OPTIONS.data.vis2, OPTIONS.data.t3
+    baselines, baseline_angles = utils.compute_effective_baselines(
+            vis.ucoord, vis.vcoord, None, None)
+    wavelengths_vis, baselines_vis, baseline_angles_vis = utils.broadcast_baselines(
+            wavelength, baselines, baseline_angles, vis.ucoord)
+
+    assert wavelengths_vis.shape == (wavelength.size, 1)
+    assert baselines_vis.shape == (wavelength.size, vis.ucoord.shape[1], 1)
+    assert baseline_angles_vis.shape == (1, vis.ucoord.shape[1], 1)
+
+    baselines, baseline_angles = utils.compute_effective_baselines(
+            t3.u123coord, t3.v123coord, None, None)
+    wavelengths_cp, baselines_cp, baseline_angles_cp = utils.broadcast_baselines(
+            wavelength, baselines, baseline_angles, t3.u123coord)
+
+    assert wavelengths_cp.shape == (wavelength.size, 1, 1)
+    assert baselines_cp.shape == (wavelength.size, *t3.u123coord.shape, 1)
+    assert baseline_angles_cp.shape == (1, *t3.u123coord.shape, 1)
+
+    set_fit_wavelengths()
+    set_data(fit_data=["vis2", "t3"])
+
+
+@pytest.mark.parametrize(
+        "component, wavelength",
+        [(comp, wl) for wl in [[10]*u.um, [10, 12.5]*u.um]
+         for comp in [PointSource, Star, Gaussian, TempGradient]])
+def test_compute_t3(fits_files: List[Path],
+                    wavelength: u.um, component: Component) -> None:
+    """Tests the calculation of the closure phase."""
+    set_fit_wavelengths(wavelength)
+    set_data(fits_files, fit_data=["t3"])
+    fr = Parameter(**STANDARD_PARAMETERS.fr)
+    fr.value, fr.wavelength = np.array([0.2]*wavelength.size), wavelength
+
+    params = {"dim": 512, "fwhm": 0.5, "fr": fr,
+              "rin": 0.5, "q": 0.5, "inner_temp": 1500,
+              "dim": 512, "dist": 145, "eff_temp": 7800, "eff_radius": 1.8,
+              "inner_sigma": 2000, "pixel_size": 0.1, "p": 0.5}
+
+    t3 = OPTIONS.data.t3
+    component = component(**params)
+    component_vis = component.compute_vis(t3.u123coord, t3.v123coord, wavelength) 
+    component_t3 = utils.compute_t3(component_vis)
+
+    assert component_vis.shape == (wavelength.size, *t3.u123coord.shape)
+    assert component_t3.shape == (wavelength.size, t3.u123coord.shape[1])
+
+    set_fit_wavelengths()
+    set_data(fit_data=["t3"])
+
+
+@pytest.mark.parametrize(
+        "component, wavelength",
+        [(comp, wl) for wl in [[10]*u.um, [10, 12.5]*u.um]
+         for comp in [PointSource, Star, Gaussian, TempGradient]])
+def test_compute_vis(fits_files: List[Path],
+                     wavelength: u.um, component: Component) -> None:
+    """Tests the calculation of the visibility."""
+    set_fit_wavelengths(wavelength)
+    set_data(fits_files, fit_data=["vis2"])
+    fr = Parameter(**STANDARD_PARAMETERS.fr)
+    fr.value, fr.wavelength = np.array([0.2]*wavelength.size), wavelength
+
+    params = {"dim": 512, "fwhm": 0.5, "fr": fr,
+              "rin": 0.5, "q": 0.5, "inner_temp": 1500,
+              "dim": 512, "dist": 145, "eff_temp": 7800, "eff_radius": 1.8,
+              "inner_sigma": 2000, "pixel_size": 0.1, "p": 0.5}
+
+    vis = OPTIONS.data.vis2
+    component = component(**params)
+    component_complex_vis = component.compute_vis(vis.ucoord, vis.vcoord, wavelength) 
+    component_vis = utils.compute_vis(component_complex_vis)
+
+    assert component_complex_vis.shape == (wavelength.size, vis.ucoord.shape[1])
+    assert component_vis.shape == (wavelength.size, vis.ucoord.shape[1])
+
+    set_fit_wavelengths()
+    set_data(fit_data=["vis2"])

@@ -168,5 +168,3 @@ class Component:
 
         image = self.image_func(xx, yy, pixel_size, wavelength)
         return image.astype(OPTIONS.data.dtype.real)
-
-

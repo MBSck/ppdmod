@@ -10,6 +10,8 @@ from matplotlib.legend import Legend
 from openpyxl import Workbook, load_workbook
 from scipy.special import j1
 
+from .options import OPTIONS
+
 
 def take_time_average(func: Callable, *args,
                       nsteps: Optional[int] = 10) -> Tuple[Callable, float]:
@@ -484,3 +486,32 @@ def set_legend_color(legend: Legend, background_color: str) -> None:
     opposite_color = "white" if background_color == "black" else "black"
     plt.setp(legend.get_texts(), color=opposite_color)
     legend.get_frame().set_facecolor(background_color)
+
+
+def broadcast_baselines(
+        wavelength: u.um, baselines: u.m,
+        baseline_angles: u.rad, ucoord: u.m) -> Tuple[u.m, 1/u.rad, u.rad]:
+    """Broadcasts the baselines to the correct shape depending on
+    the input ucoord shape."""
+    wavelength = wavelength[:, np.newaxis].to(u.m)
+    if ucoord.shape[0] == 1:
+        baselines = (baselines/wavelength).value
+        baselines = baselines[..., np.newaxis]
+        baseline_angles = baseline_angles[np.newaxis, :, np.newaxis]
+    else:
+        wavelength = wavelength[..., np.newaxis]
+        baselines = (baselines[np.newaxis, ...]/wavelength).value
+        baselines = baselines[..., np.newaxis]
+        baseline_angles = baseline_angles[np.newaxis, ..., np.newaxis]
+    baseline_angles = u.Quantity(baseline_angles, unit=u.rad)
+    return wavelength, baselines/u.rad, baseline_angles
+
+
+def compute_t3(vis: np.ndarray) -> np.ndarray:
+    """Computes the closure phase from the visibility function."""
+    return np.angle(np.prod(vis, axis=1), deg=True).astype(OPTIONS.data.dtype.real)
+
+
+def compute_vis(vis: np.ndarray) -> np.ndarray:
+    """Computes the visibilities from the visibility function."""
+    return np.abs(vis).astype(OPTIONS.data.dtype.real)

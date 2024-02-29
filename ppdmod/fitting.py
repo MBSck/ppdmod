@@ -12,6 +12,7 @@ from .custom_components import assemble_components
 from .component import Component
 from .parameter import Parameter
 from .options import OPTIONS
+from .utils import compute_vis, compute_t3
 
 
 def get_priors() -> np.ndarray:
@@ -171,9 +172,7 @@ def compute_observables(components: List[Component],
         vis_model = vis_model/flux_model
 
     flux_model = np.tile(flux_model, (OPTIONS.data.flux.value.shape[1]))
-    vis_model = np.abs(vis_model).astype(OPTIONS.data.dtype.real)
-    t3_model = np.angle(
-        np.prod(t3_model, axis=1), deg=True).astype(OPTIONS.data.dtype.real)
+    vis_model, t3_model = compute_vis(vis_model), compute_t3(t3_model)
     return flux_model, vis_model, t3_model
 
 

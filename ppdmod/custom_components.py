@@ -3,12 +3,12 @@ from typing import Tuple, Optional, Dict, List
 import astropy.units as u
 import numpy as np
 from astropy.modeling.models import BlackBody
-from scipy.special import j0, jv
+from scipy.special import j0, j1, jv
 
 from .component import Component
 from .parameter import Parameter
 from .options import STANDARD_PARAMETERS, OPTIONS
-from .utils import distance_to_angular, compute_effective_baselines
+from .utils import distance_to_angular, compute_effective_baselines, broadcast_baselines
 
 
 class PointSource(Component):
@@ -142,6 +142,7 @@ class Star(Component):
                 u.erg/(u.cm**2*u.Hz*u.s*u.rad**2))
             stellar_flux = np.pi*(spectral_radiance
                                   * self.stellar_radius_angular**2).to(u.Jy)
+
         return stellar_flux.reshape((wavelength.size, 1))
 
     def vis_func(self, ucoord: u.m, vcoord: u.m,
@@ -173,6 +174,116 @@ class Star(Component):
         star_flux = (self.compute_flux(wavelength)/4)[..., np.newaxis]
         image[:, centre-1:centre+1, centre-1:centre+1] = star_flux
         return image
+
+
+class Ring(Component):
+    name = "Ring"
+    shortname = "Ring"
+    description = "A simple ring."
+
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.rin = Parameter(**STANDARD_PARAMETERS.rin)
+        self.width = Parameter(**STANDARD_PARAMETERS.diam)
+        self.eval(**kwargs)
+
+    def vis_func(self, ucoord: u.m, vcoord: u.m,
+                 wavelength: u.um, **kwargs) -> np.ndarray:
+        """Computes the correlated fluxes."""
+        baselines, baseline_angles = compute_effective_baselines(
+                ucoord, vcoord, self.elong(), self.pa())
+        wavelength, baselines, _ = broadcast_baselines(
+                wavelength, baselines, baseline_angles, ucoord)
+
+        if self.width() == 0:
+            vis = j0(2*np.pi*self.rin().to(u.rad)*baselines).value
+        else:
+            radius = np.linspace(self.rin(), self.rin()+self.width(), self.dim())
+            vis = np.trapz(j0(2*np.pi*radius.to(u.rad)*baselines), radius).value
+
+        if ucoord.shape[0] == 1:
+            vis = vis.reshape(wavelength.size, -1)
+        else:
+            vis = vis.reshape(wavelength.size, 3, -1)
+
+        return vis.astype(OPTIONS.data.dtype.complex)
+
+
+class UniformDisk(Component):
+    name = "Uniform Disk"
+    shortname = "UniformDisk"
+    description = "A uniform disk."
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.diam = Parameter(**STANDARD_PARAMETERS.diam)
+        self.eval(**kwargs)
+
+
+    def vis_func(self, ucoord: u.m, vcoord: u.m,
+                 wavelength: u.um, **kwargs) -> np.ndarray:
+        """Computes the correlated fluxes."""
+        baselines, baseline_angles = compute_effective_baselines(
+                ucoord, vcoord, self.elong(), self.pa())
+
+        wavelength, baselines, _ = broadcast_baselines(
+                wavelength, baselines, baseline_angles, ucoord)
+        vis = (2*j1(np.pi*self.diam().to(u.rad)*baselines)/(np.pi*self.diam().to(u.rad)*baselines)).value
+
+        if ucoord.shape[0] == 1:
+            vis = vis.reshape(wavelength.size, -1)
+        else:
+            vis = vis.reshape(wavelength.size, 3, -1)
+
+        return vis.astype(OPTIONS.data.dtype.complex)
+
+
+class Gaussian(Component):
+    name = "Gaussian"
+    shortname = "Gaussian"
+    description = "A simple 2D Gaussian."
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.fr = Parameter(**STANDARD_PARAMETERS.fr)
+        self.fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
+        self.eval(**kwargs)
+
+    def vis_func(self, ucoord: u.m, vcoord: u.m,
+                 wavelength: u.um, **kwargs) -> np.ndarray:
+        """Computes the correlated fluxes."""
+        baselines, baseline_angles = compute_effective_baselines(
+                ucoord, vcoord, self.elong(), self.pa())
+
+        wavelength, baselines, _ = broadcast_baselines(
+                wavelength, baselines, baseline_angles, ucoord)
+        vis = np.exp(-(np.pi*baselines*self.fwhm().to(u.rad))**2/(4*np.log(2))).value
+
+        if ucoord.shape[0] == 1:
+            vis = vis.reshape(wavelength.size, -1)
+        else:
+            vis = vis.reshape(wavelength.size, 3, -1)
+
+        return vis.astype(OPTIONS.data.dtype.complex)
+
+    def image_func(self, xx: u.mas, yy: u.mas,
+                   pixel_size: u.mas, wavelength: u.m = None) -> u.one:
+        """Computes the image from a 2D grid.
+
+        Parameters
+        ----------
+        xx : u.mas
+        yy : u.mas
+        wavelength : u.m
+
+        Returns
+        -------
+        image : astropy.units.Jy
+        """
+        radius = np.hypot(xx, yy)
+        factor = np.sqrt(np.pi/(4*np.log(2)))*self.fwhm()
+        return (1/factor)*np.exp(-4*np.log(2)*radius**2/self.fwhm()**2).value*u.one
 
 
 class TempGradient(Component):
@@ -421,23 +532,15 @@ class TempGradient(Component):
         baselines, baseline_angles = compute_effective_baselines(
                 ucoord, vcoord, self.elong(), self.pa())
 
-        wavelength = wavelength[:, np.newaxis]
-        brightness = self.compute_brightness(radius, wavelength)
-        radius = radius.to(u.rad)
-
-        wavelength = wavelength.to(u.m)
+        brightness = self.compute_brightness(radius, wavelength[:, np.newaxis])
         brightness = brightness[:, np.newaxis, :]
-        if ucoord.shape[0] == 1:
-            baselines = (baselines/wavelength).value*u.rad
-            baselines = baselines[..., np.newaxis]
-            baseline_angles = baseline_angles[np.newaxis, :, np.newaxis]
-        else:
-            wavelength = wavelength[..., np.newaxis]
-            baselines = (baselines[np.newaxis, ...]/wavelength).value*u.rad
-            baselines = baselines[..., np.newaxis]
-            baseline_angles = baseline_angles[np.newaxis, ..., np.newaxis]
+        if ucoord.shape[0] != 1:
             brightness = brightness[..., np.newaxis, :]
 
+        wavelength, baselines, baseline_angles = broadcast_baselines(
+                wavelength, baselines, baseline_angles, ucoord)
+
+        radius = radius.to(u.rad)
         visibility = 2*self.elong()*np.pi*np.trapz(radius*brightness*j0(
             2.*np.pi*radius.value*baselines.value), radius).to(u.Jy)
         modulation = self.compute_hankel_modulation(
@@ -509,6 +612,13 @@ class AsymmetricGreyBody(TempGradient):
     shortname = "AsymContinuumGreyBody"
     asymmetric = True
     const_temperature = True
+
+
+class Convolver(Component):
+    name = "Convolver"
+    shortname = "Conv"
+    description = "This a class enabling the convolution of multiple components."
+
 
 
 def assemble_components(
