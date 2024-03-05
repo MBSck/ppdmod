@@ -545,12 +545,12 @@ def test_compute_t3(fits_files: List[Path],
 
     params = {"dim": 512, "fwhm": 0.5, "fr": fr,
               "rin": 0.5, "q": 0.5, "inner_temp": 1500,
-              "dim": 512, "dist": 145, "eff_temp": 7800, "eff_radius": 1.8,
+              "dim": 512, "dist": 148.3, "eff_temp": 7800, "eff_radius": 1.8,
               "inner_sigma": 2000, "pixel_size": 0.1, "p": 0.5}
 
     t3 = OPTIONS.data.t3
     component = component(**params)
-    component_vis = component.compute_vis(t3.u123coord, t3.v123coord, wavelength) 
+    component_vis = component.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength) 
     component_t3 = utils.compute_t3(component_vis)
 
     assert component_vis.shape == (wavelength.size, *t3.u123coord.shape)
@@ -574,12 +574,12 @@ def test_compute_vis(fits_files: List[Path],
 
     params = {"dim": 512, "fwhm": 0.5, "fr": fr,
               "rin": 0.5, "q": 0.5, "inner_temp": 1500,
-              "dim": 512, "dist": 145, "eff_temp": 7800, "eff_radius": 1.8,
+              "dim": 512, "dist": 148.3, "eff_temp": 7800, "eff_radius": 1.8,
               "inner_sigma": 2000, "pixel_size": 0.1, "p": 0.5}
 
     vis = OPTIONS.data.vis2
     component = component(**params)
-    component_complex_vis = component.compute_vis(vis.ucoord, vis.vcoord, wavelength) 
+    component_complex_vis = component.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength) 
     component_vis = utils.compute_vis(component_complex_vis)
 
     assert component_complex_vis.shape == (wavelength.size, vis.ucoord.shape[1])

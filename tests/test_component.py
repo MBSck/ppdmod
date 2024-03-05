@@ -33,11 +33,10 @@ def fits_files() -> Path:
 
 def test_component(component: Component) -> None:
     """Tests if the initialization of the component works."""
-    assert not component.pa.free and\
-            not component.elong.free
+    assert not component.pa.free and not component.inc.free
+
     component.elliptic = True
-    assert component.pa.free and\
-            component.elong.free
+    assert component.pa.free and component.inc.free
     assert component.x() == 0*u.mas
     assert component.y() == 0*u.mas
     assert component.dim() == 128
@@ -71,9 +70,9 @@ def test_translate_coordinates(component: Component) -> None:
     assert component.translate_image_func(0, 0) == (-10*u.mas, -10*u.mas)
 
 
-# TODO: Why is there a 90 degree turn in aspro? -> Check
+# TODO: There is a weird 90 degree rotation here 
 @pytest.mark.parametrize(
-        "fits_file, rot_angle",
+        "fits_file, pos_angle",
         [("bin_sep.fits", 0*u.deg),
          ("bin_neg_sep.fits", -180*u.deg),
          ("bin_sep_rot90.fits", 90*u.deg),
@@ -83,30 +82,25 @@ def test_translate_coordinates(component: Component) -> None:
          ("bin_sep_rot33.fits", 33*u.deg)])
 def test_translate_fourier(
         fits_file: List[Path], 
-        rot_angle: u.mas, wavelength: u.um) -> None:
+        pos_angle: u.mas, wavelength: u.um) -> None:
     """Tests if the translation of the fourier transform works."""
     fits_file = Path("data/aspro") / fits_file
     set_fit_wavelengths(wavelength)
     set_data([fits_file], fit_data=["vis", "t3"])
-    fluxes = [2, 8]*u.Jy
-
-    position = [5, 0]*u.mas
-    x = position[0]*np.cos(rot_angle) - position[1]*np.sin(rot_angle)
-    y = position[0]*np.sin(rot_angle) + position[1]*np.cos(rot_angle)
-    position = [x, y]*u.mas
+    fluxes, position = [2, 8]*u.Jy, [5, 0]*u.mas
 
     vis = OPTIONS.data.vis
     component_one = Star(f=fluxes[0], x=0, y=0)
-    component_two = Star(f=fluxes[1], x=position[1], y=position[0])
-    vis_one = component_one.compute_vis(vis.ucoord, vis.vcoord, wavelength)
-    vis_two = component_two.compute_vis(vis.ucoord, vis.vcoord, wavelength)
+    component_two = Star(f=fluxes[1], x=position[1], y=position[0], pa=pos_angle)
+    vis_one = component_one.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
+    vis_two = component_two.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
     vis_combined = np.abs(vis_one + vis_two)/fluxes.value.sum()
 
     assert np.allclose(vis_combined, vis.value, atol=1e-3)
 
     t3 = OPTIONS.data.t3
-    t3_one = component_one.compute_vis(t3.u123coord, t3.v123coord, wavelength)
-    t3_two = component_two.compute_vis(t3.u123coord, t3.v123coord, wavelength)
+    t3_one = component_one.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength)
+    t3_two = component_two.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength)
     t3_combined = np.angle(np.prod(t3_one + t3_two, axis=1), deg=True)
 
     assert np.allclose(t3_combined, t3.value, atol=1e-1)

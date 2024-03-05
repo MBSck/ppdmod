@@ -125,17 +125,17 @@ def components_and_params() -> List[Dict[str, Parameter]]:
 def shared_params() -> Dict:
     """Shared parameters."""
     pa = Parameter(**STANDARD_PARAMETERS.pa)
-    elong = Parameter(**STANDARD_PARAMETERS.elong)
+    inc = Parameter(**STANDARD_PARAMETERS.inc)
     cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 
     pa.value = 145
-    elong.value = 0.5
+    inc.value = 0.5
     cont_weight.value = 0.4
 
     pa.set(min=0, max=360)
-    elong.set(min=0, max=1)
+    inc.set(min=0, max=1)
     cont_weight.set(min=0.3, max=0.8)
-    return {"pa": pa, "elong": elong, "cont_weight": cont_weight}
+    return {"pa": pa, "inc": inc, "cont_weight": cont_weight}
 
 
 def test_set_theta_from_params(
@@ -181,7 +181,7 @@ def test_init_randomly(nwalkers: int) -> None:
     """Tests the init_randomly function."""
     values = [1.5, 0.5, 0.3, 33, 0.2, 45, 1.6]
     param_names = ["rin", "p", "a", "phi",
-                   "cont_weight", "pa", "elong"]
+                   "cont_weight", "pa", "inc"]
     limits = [[0, 20], [0, 1], [0, 1],
               [0, 360], [0, 1], [0, 360], [1, 50]]
     params = {name: Parameter(**getattr(STANDARD_PARAMETERS, name))
@@ -301,7 +301,7 @@ def test_calculate_chi_sq(components_and_params: List[Tuple[str, Dict]],
 def test_lnprior(values: List[float], expected: float) -> None:
     """Tests the lnprior function."""
     param_names = ["rin", "p", "a", "phi",
-                   "cont_weight", "pa", "elong"]
+                   "cont_weight", "pa", "inc"]
     limits = [[0, 20], [0, 1], [0, 1],
               [0, 360], [0, 1], [0, 360], [1, 50]]
     params = {name: Parameter(**getattr(STANDARD_PARAMETERS, name))
@@ -342,7 +342,7 @@ def test_lnprob(fits_files: List[Path], wavelength: u.um) -> None:
                      "eff_temp": 7800, "eff_radius": 1.8,
                      "kappa_abs": 1000, "kappa_cont": 3000}
     param_names = ["rin", "p", "a", "phi",
-                   "inner_sigma", "cont_weight", "pa", "elong"]
+                   "inner_sigma", "cont_weight", "pa", "inc"]
     values = [1.5, 0.5, 0.3, 33, 2000, 0.5, 45, 1.6]
     limits = [[0, 20], [0, 1], [0, 1], [0, 360],
               [100, 10000], [0, 1], [0, 360], [1, 50]]
@@ -354,10 +354,10 @@ def test_lnprob(fits_files: List[Path], wavelength: u.um) -> None:
         param.value = value
 
     shared_params = {"p": params["p"], "pa": params["pa"],
-                     "elong": params["elong"]}
+                     "inc": params["inc"]}
     del params["p"]
     del params["pa"]
-    del params["elong"]
+    del params["inc"]
 
     components_and_params = [["Star", params],
                              ["AsymmetricGreyBody", params]]

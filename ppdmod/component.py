@@ -5,6 +5,7 @@ import numpy as np
 
 from .parameter import Parameter
 from .options import STANDARD_PARAMETERS, OPTIONS
+from .utils import compute_effective_baselines, broadcast_baselines
 
 
 class Component:
@@ -30,11 +31,10 @@ class Component:
         self.y = Parameter(**STANDARD_PARAMETERS.y)
         self.dim = Parameter(**STANDARD_PARAMETERS.dim)
         self.pa = Parameter(**STANDARD_PARAMETERS.pa)
-        self.elong = Parameter(**STANDARD_PARAMETERS.elong)
+        self.inc = Parameter(**STANDARD_PARAMETERS.inc)
 
         if not self.elliptic:
-            self.pa.free = False
-            self.elong.free = False
+            self.inc.free = self.pa.free = False
         self.eval(**kwargs)
 
     @property
@@ -47,11 +47,9 @@ class Component:
         """Sets the position angle and the parameters to free or false
         if elliptic is set."""
         if value:
-            self.pa.free = True
-            self.elong.free = True
+            self.inc.free = self.pa.free = True
         else:
-            self.pa.free = False
-            self.elong.free = False
+            self.inc.free = self.pa.free = False
         self._elliptic = value
 
     def eval(self, **kwargs):
@@ -115,24 +113,16 @@ class Component:
         return xx.astype(OPTIONS.data.dtype.real), yy.astype(OPTIONS.data.dtype.real)
 
     # TODO: Check if the positive factor in the exp here is correct?
-    def translate_vis_func(
-            self, ucoord: u.m, vcoord: u.m, wavelength: u.um) -> np.ndarray:
+    def translate_vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad) -> np.ndarray:
         """Translates a coordinate shift in image space to Fourier space."""
-        wavelength = wavelength[:, np.newaxis]
-        if ucoord.shape[0] != 1:
-            wavelength = wavelength[..., np.newaxis]
-
-        x, y = map(lambda x: getattr(self, x)().to(u.rad), ["x", "y"])
-        ucoord, vcoord = map(lambda x: u.Quantity(x, unit=u.m), [ucoord, vcoord])
-        ucoord, vcoord = map(lambda x: x/wavelength.to(u.m)/u.rad, [ucoord, vcoord])
-        translation = np.exp(2*1j*np.pi*(ucoord*x+vcoord*y)).value 
-        return translation.astype(OPTIONS.data.dtype.complex)
+        translation = np.exp(2*1j*np.pi*baselines*(self.x()*np.cos(baseline_angles)+self.y()*np.sin(baseline_angles)))
+        return translation.value.astype(OPTIONS.data.dtype.complex)
 
     def flux_func(self, wavelength: u.um) -> u.Jy:
         """Calculates the total flux from the hankel transformation."""
         return (np.array([])*u.Jy).astype(OPTIONS.data.dtype.real)
 
-    def vis_func(self, ucoord: u.m, vcoord: u.m,
+    def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
         """Computes the correlated fluxes."""
         return np.array([]).astype(OPTIONS.data.dtype.complex)
@@ -141,12 +131,18 @@ class Component:
         """Computes the total fluxes."""
         return np.abs(self.flux_func(wavelength)).astype(OPTIONS.data.dtype.real)
 
-    def compute_vis(self, ucoord: u.m, vcoord: u.m,
-                    wavelength: u.um, **kwargs):
+    def compute_complex_vis(self, ucoord: u.m, vcoord: u.m,
+                            wavelength: u.um, **kwargs):
         """Computes the correlated fluxes."""
-        vis = self.vis_func(ucoord, vcoord, wavelength, **kwargs)
-        vis *= self.translate_vis_func(ucoord, vcoord, wavelength)
-        return vis.astype(OPTIONS.data.dtype.complex)
+        baselines, baseline_angles = compute_effective_baselines(
+                ucoord, vcoord, self.inc(), self.pa())
+        wavelength, baselines, baseline_angles = broadcast_baselines(
+                wavelength, baselines, baseline_angles, ucoord)
+        vis = self.vis_func(baselines, baseline_angles, wavelength, **kwargs)
+        vis = vis.squeeze(-1) if vis.shape[-1] == 1 else vis
+        shift = self.translate_vis_func(baselines, baseline_angles)
+        shift = shift.squeeze(-1) if shift.shape[-1] == 1 else shift
+        return (vis*shift).astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas,
                    pixel_size: u.mas, wavelength: u.um) -> u.Jy:
@@ -162,9 +158,8 @@ class Component:
         xx, yy = self.translate_image_func(*np.meshgrid(xx, xx))
 
         if self.elliptic:
-            pa, elong = self.pa(), self.elong()
-            xx = xx*np.cos(pa)-yy*np.sin(pa)
-            yy = (xx*np.sin(pa)+yy*np.cos(pa))*elong
+            xx = xx*np.cos(self.pa())-yy*np.sin(self.pa())*self.inc()
+            yy = xx*np.sin(self.pa())+yy*np.cos(self.pa())
 
         image = self.image_func(xx, yy, pixel_size, wavelength)
         return image.astype(OPTIONS.data.dtype.real)

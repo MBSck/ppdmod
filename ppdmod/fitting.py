@@ -150,9 +150,9 @@ def compute_observables(components: List[Component],
     components = [comp for comp in components if comp.name not in ["Star", "Point Source"]]
     for component in components:
         tmp_flux = component.compute_flux(wavelength)
-        tmp_vis = component.compute_vis(
+        tmp_vis = component.compute_complex_vis(
                 ucoord, vcoord, wavelength)
-        tmp_t3 = component.compute_vis(
+        tmp_t3 = component.compute_complex_vis(
                 u123coord, v123coord, wavelength)
 
         if flux_model is None:

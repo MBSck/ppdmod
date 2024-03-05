@@ -8,7 +8,7 @@ from scipy.special import j0, j1, jv
 from .component import Component
 from .parameter import Parameter
 from .options import STANDARD_PARAMETERS, OPTIONS
-from .utils import distance_to_angular, compute_effective_baselines, broadcast_baselines
+from .utils import distance_to_angular
 
 
 class PointSource(Component):
@@ -20,7 +20,7 @@ class PointSource(Component):
         x pos of the component (mas).
     y : int
         y pos of the component (mas).
-    f : 
+    f : float
         Relative flux contribution (percent).
 
     Attributes
@@ -38,7 +38,6 @@ class PointSource(Component):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
         self.fr = Parameter(**STANDARD_PARAMETERS.fr)
         self.eval(**kwargs)
 
@@ -46,15 +45,22 @@ class PointSource(Component):
         """Returns the flux weight of the point source."""
         return self.fr(wavelength).reshape((wavelength.size, 1))*u.Jy
 
-    def vis_func(self, ucoord: u.m, vcoord: u.m,
+    def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
-        """Computes the correlated fluxes via the hankel transformation."""
-        vis = np.tile(self.flux_func(wavelength).value, ucoord.shape)
-        if ucoord.shape[0] == 1:
-            vis = vis.reshape(wavelength.size, -1)
-        else:
-            vis = vis.reshape(wavelength.size, 3, -1)
-        return vis.astype(OPTIONS.data.dtype.complex)
+        """Computes the complex visibility
+
+        Parameters
+        ----------
+        baseline : 1/astropy.units.rad
+            The deprojected baselines.
+        baseline_angles : astropy.units.rad
+            The deprojected baseline angles.
+        wavelength : astropy.units.um
+            The wavelengths.
+        """
+        new_shape = (-1,) + (1,) * (len(baselines.shape)-1)
+        vis = np.tile(self.flux_func(wavelength).reshape(new_shape), baselines.shape[1:])
+        return vis.value.astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas,
                    pixel_size: u.mas, wavelength: u.m = None) -> u.Jy:
@@ -145,15 +151,22 @@ class Star(Component):
 
         return stellar_flux.reshape((wavelength.size, 1))
 
-    def vis_func(self, ucoord: u.m, vcoord: u.m,
+    def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
-        """Computes the correlated fluxes via the hankel transformation."""
-        vis = np.tile(self.flux_func(wavelength).value, ucoord.shape)
-        if ucoord.shape[0] == 1:
-            vis = vis.reshape(wavelength.size, -1)
-        else:
-            vis = vis.reshape(wavelength.size, 3, -1)
-        return vis.astype(OPTIONS.data.dtype.complex)
+        """Computes the complex visibility
+
+        Parameters
+        ----------
+        baseline : 1/astropy.units.rad
+            The deprojected baselines.
+        baseline_angles : astropy.units.rad
+            The deprojected baseline angles.
+        wavelength : astropy.units.um
+            The wavelengths.
+        """
+        new_shape = (-1,) + (1,) * (len(baselines.shape)-1)
+        vis = np.tile(self.flux_func(wavelength).reshape(new_shape), baselines.shape[1:])
+        return vis.value.astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas,
                    pixel_size: u.mas, wavelength: u.m = None) -> u.Jy:
@@ -181,33 +194,31 @@ class Ring(Component):
     shortname = "Ring"
     description = "A simple ring."
 
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.rin = Parameter(**STANDARD_PARAMETERS.rin)
         self.width = Parameter(**STANDARD_PARAMETERS.diam)
         self.eval(**kwargs)
 
-    def vis_func(self, ucoord: u.m, vcoord: u.m,
+    def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
-        """Computes the correlated fluxes."""
-        baselines, baseline_angles = compute_effective_baselines(
-                ucoord, vcoord, self.elong(), self.pa())
-        wavelength, baselines, _ = broadcast_baselines(
-                wavelength, baselines, baseline_angles, ucoord)
+        """Computes the complex visibility
 
+        Parameters
+        ----------
+        baseline : 1/astropy.units.rad
+            The deprojected baselines.
+        baseline_angles : astropy.units.rad
+            The deprojected baseline angles.
+        wavelength : astropy.units.um
+            The wavelengths.
+        """
         if self.width() == 0:
-            vis = j0(2*np.pi*self.rin().to(u.rad)*baselines).value
+            vis = j0(2*np.pi*self.rin().to(u.rad)*baselines)
         else:
             radius = np.linspace(self.rin(), self.rin()+self.width(), self.dim())
-            vis = np.trapz(j0(2*np.pi*radius.to(u.rad)*baselines), radius).value
-
-        if ucoord.shape[0] == 1:
-            vis = vis.reshape(wavelength.size, -1)
-        else:
-            vis = vis.reshape(wavelength.size, 3, -1)
-
-        return vis.astype(OPTIONS.data.dtype.complex)
+            vis = np.trapz(j0(2*np.pi*radius.to(u.rad)*baselines), radius)
+        return vis.value.astype(OPTIONS.data.dtype.complex)
 
 
 class UniformDisk(Component):
@@ -220,23 +231,21 @@ class UniformDisk(Component):
         self.diam = Parameter(**STANDARD_PARAMETERS.diam)
         self.eval(**kwargs)
 
-
-    def vis_func(self, ucoord: u.m, vcoord: u.m,
+    def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
-        """Computes the correlated fluxes."""
-        baselines, baseline_angles = compute_effective_baselines(
-                ucoord, vcoord, self.elong(), self.pa())
+        """Computes the complex visibility
 
-        wavelength, baselines, _ = broadcast_baselines(
-                wavelength, baselines, baseline_angles, ucoord)
-        vis = (2*j1(np.pi*self.diam().to(u.rad)*baselines)/(np.pi*self.diam().to(u.rad)*baselines)).value
-
-        if ucoord.shape[0] == 1:
-            vis = vis.reshape(wavelength.size, -1)
-        else:
-            vis = vis.reshape(wavelength.size, 3, -1)
-
-        return vis.astype(OPTIONS.data.dtype.complex)
+        Parameters
+        ----------
+        baseline : 1/astropy.units.rad
+            The deprojected baselines.
+        baseline_angles : astropy.units.rad
+            The deprojected baseline angles.
+        wavelength : astropy.units.um
+            The wavelengths.
+        """
+        vis = (2*j1(np.pi*self.diam().to(u.rad)*baselines)/(np.pi*self.diam().to(u.rad)*baselines))
+        return vis.value.astype(OPTIONS.data.dtype.complex)
 
 
 class Gaussian(Component):
@@ -250,22 +259,21 @@ class Gaussian(Component):
         self.fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
         self.eval(**kwargs)
 
-    def vis_func(self, ucoord: u.m, vcoord: u.m,
+    def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
-        """Computes the correlated fluxes."""
-        baselines, baseline_angles = compute_effective_baselines(
-                ucoord, vcoord, self.elong(), self.pa())
+        """Computes the complex visibility
 
-        wavelength, baselines, _ = broadcast_baselines(
-                wavelength, baselines, baseline_angles, ucoord)
-        vis = np.exp(-(np.pi*baselines*self.fwhm().to(u.rad))**2/(4*np.log(2))).value
-
-        if ucoord.shape[0] == 1:
-            vis = vis.reshape(wavelength.size, -1)
-        else:
-            vis = vis.reshape(wavelength.size, 3, -1)
-
-        return vis.astype(OPTIONS.data.dtype.complex)
+        Parameters
+        ----------
+        baseline : 1/astropy.units.rad
+            The deprojected baselines.
+        baseline_angles : astropy.units.rad
+            The deprojected baseline angles.
+        wavelength : astropy.units.um
+            The wavelengths.
+        """
+        vis = np.exp(-(np.pi*baselines*self.fwhm().to(u.rad))**2/(4*np.log(2)))
+        return vis.value.astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas,
                    pixel_size: u.mas, wavelength: u.m = None) -> u.one:
@@ -446,7 +454,7 @@ class TempGradient(Component):
 
         surface_density = self.compute_surface_density(radius)
         optical_depth = surface_density*self.get_opacity(wavelength)
-        emissivity = (1-np.exp(-optical_depth/self.elong()))
+        emissivity = (1-np.exp(-optical_depth/self.inc()))
         return emissivity.astype(OPTIONS.data.dtype.real)
 
     def compute_brightness(self, radius: u.mas, wavelength: u.um) -> u.Jy:
@@ -462,9 +470,6 @@ class TempGradient(Component):
         -------
         brightness_profile : astropy.units.Jy
         """
-        if wavelength.shape == ():
-            wavelength.reshape((wavelength.size,))
-
         temperature = self.compute_temperature(radius)
         brightness = BlackBody(temperature)(wavelength)
         emissivity = self.compute_emissivity(radius, wavelength)
@@ -473,8 +478,8 @@ class TempGradient(Component):
     # TODO: Think of a way to implement higher orders of modulation
     # TODO: Check all the broadcasting
     def compute_hankel_modulation(self, radius: u.mas,
-                                  brightness_profile: u.erg/(u.rad**2*u.s*u.Hz),
-                                  baselines: u.rad, baseline_angles: u.rad) -> u.Jy:
+                                  brightness: u.erg/(u.rad**2*u.s*u.Hz),
+                                  baselines: 1/u.rad, baseline_angles: u.rad) -> u.Jy:
         """The azimuthal modulation as it appears in the hankel transform.
 
         The results of the modulation is flux in Jansky.
@@ -485,30 +490,30 @@ class TempGradient(Component):
             The radius.
         brightness_profile : astropy.units.erg/(u.rad**2*u.s*u.Hz)
             The brightness profile.
-        baselines : astropy.units.rad
-            The baseline.
+        baselines : 1/astropy.units.rad
+            The deprojected baselines.
         baseline_angles : astropy.units.rad
-            The baseline angle.
+            The deprojected baseline angles.
         """
         if not self.asymmetric:
             return np.array([])
 
         angle_diff = baseline_angles-self.phi().to(u.rad)
         order = np.arange(1, OPTIONS.model.modulation+1)[np.newaxis, np.newaxis, :]
-        integrand = radius*brightness_profile[:, np.newaxis, ...]
+        integrand = radius*brightness[:, np.newaxis, ...]
         bessel_factor = radius.value*baselines.value[..., np.newaxis, :]
 
         if len(baseline_angles.shape) == 4:
             order = order[..., np.newaxis, :]
 
-        factor = (-1j)**order*self.a()*np.cos(order*(angle_diff))
+        factor = (-1j)**order*self.a()*np.cos(order*angle_diff)
         integration = 2*np.pi*np.trapz(integrand * jv(
                     order[..., np.newaxis], 2.*np.pi*bessel_factor), radius)
         return u.Quantity(factor*integration, unit=u.Jy)
 
     # TODO: Check all the broadcasting
-    def compute_hankel_transform(self, radius: u.mas, ucoord: u.m,
-                                 vcoord: u.m, wavelength: u.um) -> Tuple[u.Quantity, u.Quantity]:
+    def compute_hankel_transform(self, radius: u.mas, baselines: 1/u.rad,
+                                 baseline_angles: u.rad, wavelength: u.um) -> Tuple[u.Quantity, u.Quantity]:
         """Executes the hankel transform and returns the correlated fluxes
         and their modulations.
 
@@ -516,10 +521,10 @@ class TempGradient(Component):
         ----------
         radius : astropy.units.mas
             The radius.
-        ucoord : astropy.units.m
-            The u coordinates.
-        vcoord : astropy.units.m
-            The v coordinates.
+        baseline : 1/astropy.units.rad
+            The deprojected baselines.
+        baseline_angles : astropy.units.rad
+            The deprojected baseline angles.
         wavelength : astropy.units.um
             The wavelengths.
 
@@ -529,23 +534,15 @@ class TempGradient(Component):
             The visibilities.
         modulations : astropy.units.Jy
         """
-        baselines, baseline_angles = compute_effective_baselines(
-                ucoord, vcoord, self.elong(), self.pa())
-
-        brightness = self.compute_brightness(radius, wavelength[:, np.newaxis])
+        brightness = self.compute_brightness(radius, wavelength)
         brightness = brightness[:, np.newaxis, :]
-        if ucoord.shape[0] != 1:
-            brightness = brightness[..., np.newaxis, :]
-
-        wavelength, baselines, baseline_angles = broadcast_baselines(
-                wavelength, baselines, baseline_angles, ucoord)
 
         radius = radius.to(u.rad)
-        visibility = 2*self.elong()*np.pi*np.trapz(radius*brightness*j0(
+        visibility = 2*self.inc()*np.pi*np.trapz(radius*brightness*j0(
             2.*np.pi*radius.value*baselines.value), radius).to(u.Jy)
         modulation = self.compute_hankel_modulation(
                 radius, brightness, baselines, baseline_angles)
-
+    
         return visibility.astype(OPTIONS.data.dtype.complex), \
             modulation.astype(OPTIONS.data.dtype.complex)
 
@@ -554,25 +551,23 @@ class TempGradient(Component):
         radius = self.compute_internal_grid(self.dim())
         brightness_profile = self.compute_brightness(
                 radius, wavelength[:, np.newaxis])
-        flux = (2.*np.pi*self.elong()*np.trapz(
+        flux = (2.*np.pi*self.inc()*np.trapz(
             radius*brightness_profile, radius).to(u.Jy)).value
         return flux.reshape((flux.shape[0], 1)).astype(OPTIONS.data.dtype.real)
 
-    def vis_func(self, ucoord: u.m, vcoord: u.m,
+    def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
         """Computes the correlated fluxes via the hankel transformation."""
         radius = self.compute_internal_grid(self.dim())
         vis, vis_mod = self.compute_hankel_transform(
-                radius, ucoord, vcoord, wavelength, **kwargs)
+                radius, baselines, baseline_angles, wavelength, **kwargs)
 
         if vis_mod.size != 0:
-            if ucoord.shape[0] == 1:
+            if len(baselines.shape) <= 3:
                 vis += vis_mod.sum(-1)
-                vis = vis.reshape(wavelength.size, -1)
             else:
                 vis += np.concatenate(
                         (vis_mod[:, :2], np.conj(vis_mod[:, 2:])), axis=1).sum(-1)
-                vis = vis.reshape(wavelength.size, 3, -1)
 
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
@@ -615,10 +610,30 @@ class AsymmetricGreyBody(TempGradient):
 
 
 class Convolver(Component):
+    """A class that enables the convolution of multiple components.
+
+    Parameters
+    ----------
+    comp1 : Component
+        The first component.
+    comp2 : Component
+        The second component.
+    """
     name = "Convolver"
     shortname = "Conv"
     description = "This a class enabling the convolution of multiple components."
 
+    def __init__(self, comp1: Component, comp2: Component, **kwargs):
+        super().__init__(**kwargs)
+        self.comp1, self.comp2 = comp1, comp2
+        self.fr1 = Parameter(**STANDARD_PARAMETERS.fr)
+        self.fr2 = Parameter(**STANDARD_PARAMETERS.fr)
+        self.eval(**kwargs)
+
+    def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
+                 wavelength: u.um, **kwargs) -> np.ndarray:
+        """Computes the correlated fluxes via the hankel transformation."""
+        return vis.astype(OPTIONS.data.dtype.complex)
 
 
 def assemble_components(

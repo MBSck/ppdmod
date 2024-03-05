@@ -13,7 +13,7 @@ from ppdmod.custom_components import PointSource, Star, Ring, UniformDisk,\
 from ppdmod.data import ReadoutFits, set_data, set_fit_wavelengths
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 from ppdmod.parameter import Parameter
-from ppdmod.utils import compute_vis, compute_t3
+from ppdmod.utils import compute_vis, compute_t3, compute_effective_baselines, broadcast_baselines
 
 
 DIMENSION = [2**power for power in range(9, 13)]
@@ -82,7 +82,7 @@ def gaussian() -> Gaussian:
 def temp_gradient() -> TempGradient:
     """Initializes a numerical component."""
     temp_grad = TempGradient(**{
-        "rin": 0.5, "q": 0.5, "inner_temp": 1500,
+        "rin": 0.5, "q": 0.5, "inner_temp": 1500, "dist": 148.3,
         "inner_sigma": 2000, "pixel_size": 0.1, "p": 0.5})
     temp_grad.optically_thick = True
     temp_grad.asymmetric = True
@@ -100,9 +100,9 @@ def test_point_source_flux_func(point_source: PointSource, wavelength: u.um) -> 
     assert point_source.flux_func(wavelength).shape == (wavelength.size, 1)
 
 
-def test_point_source_vis_func(point_source: PointSource, wavelength: u.um) -> None:
-    """Tests the point source's vis_func method."""
-    vis = point_source.vis_func(READOUT.vis.ucoord, READOUT.vis.ucoord, wavelength)
+def test_point_source_compute_vis(point_source: PointSource, wavelength: u.um) -> None:
+    """tests the point source's compute_vis method."""
+    vis = point_source.compute_complex_vis(READOUT.vis.ucoord, READOUT.vis.vcoord, wavelength)
     assert vis.shape == (wavelength.size, READOUT.vis.ucoord.size)
 
 
@@ -144,9 +144,9 @@ def test_star_flux(star: Star, wavelength: u.um) -> None:
     assert star.flux_func(wavelength).shape == (wavelength.size, 1)
 
 
-def test_star_vis_func(star: Star, wavelength: u.um) -> None:
+def test_star_compute_vis(star: Star, wavelength: u.um) -> None:
     """Tests the calculation of the total flux."""
-    vis = star.vis_func(READOUT.vis.ucoord, READOUT.vis.vcoord, wavelength)
+    vis = star.compute_complex_vis(READOUT.vis.ucoord, READOUT.vis.vcoord, wavelength)
     assert vis.shape == (wavelength.size, READOUT.vis.ucoord.size)
 
 
@@ -189,7 +189,7 @@ def test_uniform_ring_init(ring: Ring) -> None:
          ("ring.fits", None, None, 1*u.mas),
          ("ring_inc.fits", 0.351*u.one, None, 1*u.mas),
          ("ring_inc_rot.fits", 0.351*u.one, 33*u.deg, 1*u.mas)])
-def test_ring_vis_func(
+def test_ring_compute_vis(
         ring: Ring, fits_file: Path,
         compression: float, pos_angle: u.deg, width: u.mas) -> None:
     """Tests the calculation of uniform disk's visibilities."""
@@ -204,11 +204,11 @@ def test_ring_vis_func(
     if compression is not None:
         ring.elliptic = True
 
-    ring.elong.value = compression if compression is not None else 1
+    ring.inc.value = compression if compression is not None else 1
     ring.pa.value = pos_angle if pos_angle is not None else 0
 
-    vis_ring = compute_vis(ring.vis_func(vis.ucoord, vis.vcoord, wavelength))
-    t3_ring = compute_t3(ring.vis_func(t3.u123coord, t3.v123coord, wavelength))
+    vis_ring = compute_vis(ring.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
+    t3_ring = compute_t3(ring.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
     
     assert vis_ring.shape == (wavelength.size, vis.ucoord.shape[1])
     assert np.allclose(vis.value, vis_ring, atol=1e-2)
@@ -230,7 +230,7 @@ def test_uniform_disk_init(uniform_disk: UniformDisk) -> None:
         [("ud.fits", None, None),
          ("ud_inc.fits", 0.351*u.one, None),
          ("ud_inc_rot.fits", 0.351*u.one, 33*u.deg)])
-def test_uniform_disk_vis_func(
+def test_uniform_disk_compute_vis(
         uniform_disk: UniformDisk, fits_file: Path,
         compression: float, pos_angle: u.deg) -> None:
     """Tests the calculation of uniform disk's visibilities."""
@@ -245,11 +245,11 @@ def test_uniform_disk_vis_func(
     if compression is not None:
         uniform_disk.elliptic = True
 
-    uniform_disk.elong.value = compression if compression is not None else 1
+    uniform_disk.inc.value = compression if compression is not None else 1
     uniform_disk.pa.value = pos_angle if pos_angle is not None else 0
 
-    vis_ud = compute_vis(uniform_disk.vis_func(vis.ucoord, vis.vcoord, wavelength))
-    t3_ud = compute_t3(uniform_disk.vis_func(t3.u123coord, t3.v123coord, wavelength))
+    vis_ud = compute_vis(uniform_disk.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
+    t3_ud = compute_t3(uniform_disk.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
     
     assert vis_ud.shape == (wavelength.size, vis.ucoord.shape[1])
     assert np.allclose(vis.value, vis_ud, atol=1e-2)
@@ -276,7 +276,7 @@ def test_gaussian_init(gaussian: Gaussian) -> None:
         [("gaussian.fits", None, None),
          ("gaussian_inc.fits", 0.351*u.one, None),
          ("gaussian_inc_rot.fits", 0.351*u.one, 33*u.deg)])
-def test_gaussian_vis_func(
+def test_gaussian_compute_vis(
         gaussian: Gaussian, fits_file: Path,
         compression: float, pos_angle: u.deg) -> None:
     """Tests the calculation of the total flux."""
@@ -291,11 +291,11 @@ def test_gaussian_vis_func(
     if compression is not None:
         gaussian.elliptic = True
 
-    gaussian.elong.value = compression if compression is not None else 1
+    gaussian.inc.value = compression if compression is not None else 1
     gaussian.pa.value = pos_angle if pos_angle is not None else 0
 
-    vis_gauss = compute_vis(gaussian.vis_func(vis.ucoord, vis.vcoord, wavelength))
-    t3_gauss = compute_t3(gaussian.vis_func(t3.u123coord, t3.v123coord, wavelength))
+    vis_gauss = compute_vis(gaussian.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
+    t3_gauss = compute_t3(gaussian.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
     
     assert vis_gauss.shape == (wavelength.size, vis.ucoord.shape[1])
     assert np.allclose(vis.value, vis_gauss, atol=1e-2)
@@ -359,8 +359,13 @@ def test_temp_gradient_hankel_transform(
 
     OPTIONS.model.modulation = order
 
+    baselines, baseline_angles = compute_effective_baselines(
+            READOUT.vis2.ucoord, READOUT.vis2.vcoord,
+            temp_gradient.inc(), temp_gradient.pa())
+    wavelength, baselines, baseline_angles = broadcast_baselines(
+            wavelength, baselines, baseline_angles, READOUT.vis2.ucoord)
     vis, vis_mod = temp_gradient.compute_hankel_transform(
-            radius, READOUT.vis2.ucoord, READOUT.vis2.vcoord, wavelength)
+            radius, baselines, baseline_angles, wavelength)
 
     assert vis.shape == (wavelength.size, 6)
     assert vis_mod.shape == (wavelength.size, 6, order)
@@ -368,23 +373,20 @@ def test_temp_gradient_hankel_transform(
 
     OPTIONS.model.modulation = 0
 
+
 # TODO: Add tests for the wavelength
 @pytest.mark.parametrize("order", [0, 1, 2, 3])
-def test_temp_gradient_vis_func(
+def test_temp_gradient_compute_vis(
         temp_gradient: TempGradient,
         order: int, wavelength: u.um) -> None:
     """Tests the hankel component's hankel transformation."""
     OPTIONS.model.modulation = order
 
-    vis = temp_gradient.vis_func(
-            READOUT.vis2.ucoord, READOUT.vis2.vcoord,
-            wavelength)
+    vis = temp_gradient.compute_complex_vis(READOUT.vis2.ucoord, READOUT.vis2.vcoord, wavelength)
     assert vis.shape == (wavelength.size, 6)
     assert isinstance(vis, np.ndarray)
 
-    t3 = temp_gradient.vis_func(
-            READOUT.t3.u123coord, READOUT.t3.v123coord, wavelength)
-
+    t3 = temp_gradient.compute_complex_vis(READOUT.t3.u123coord, READOUT.t3.v123coord, wavelength)
     assert t3.shape == (wavelength.size, 3, 4)
     assert isinstance(vis, np.ndarray)
 
@@ -394,23 +396,21 @@ def test_temp_gradient_vis_func(
 # TODO: Extend this test to account for multiple files (make files an input)
 @pytest.mark.parametrize(
         "dim", [4096, 2096, 1024, 512, 256, 128, 64, 32])
-def test_temp_gradient_resolution(dim: int, wavelength: u.um) -> None:
+def test_temp_gradient_resolution(temp_gradient: TempGradient,
+                                  dim: int, wavelength: u.um) -> None:
     """Tests the hankel component's resolution."""
-    temp_gradient = TempGradient(
-            rin=0.5, rout=3, pa=33,
-            elong=0.5, dim=dim, a=0.5, phi=33,
-            inner_temp=1500, q=0.5)
+    temp_gradient.dim.value = dim
     temp_gradient.optically_thick = True
     temp_gradient.asymmetric = True
 
     OPTIONS.model.modulation = 1
     start_time_vis = time.perf_counter()
-    _ = temp_gradient.vis_func(
+    _ = temp_gradient.compute_complex_vis(
             READOUT.vis2.ucoord, READOUT.vis2.vcoord, wavelength)
     end_time_vis = time.perf_counter()-start_time_vis
 
     start_time_cphase = time.perf_counter()
-    _ = temp_gradient.vis_func(
+    _ = temp_gradient.compute_complex_vis(
             READOUT.t3.u123coord, READOUT.t3.v123coord, wavelength)
     end_time_cphase = time.perf_counter()-start_time_cphase
 
@@ -443,12 +443,14 @@ def test_temp_gradient_resolution(dim: int, wavelength: u.um) -> None:
         df.to_excel(writer, sheet_name="T3", index=False)
 
     OPTIONS.model.modulation = 0
+    temp_gradient.optically_thick = False
+    temp_gradient.asymmetric = False
 
 
 def test_assemble_components() -> None:
     """Tests the model's assemble_model method."""
     param_names = ["rin", "p", "a", "phi",
-                   "cont_weight", "pa", "elong"]
+                   "cont_weight", "pa", "inc"]
     values = [1.5, 0.5, 0.3, 33, 0.2, 45, 1.6]
     limits = [[0, 20], [0, 1], [0, 1],
               [0, 360], [0, 1], [0, 360], [1, 50]]
@@ -465,15 +467,15 @@ def test_assemble_components() -> None:
     assert isinstance(components[0], Star)
     assert isinstance(components[1], GreyBody)
     assert all(not hasattr(components[0], param)
-               for param in param_names if param not in ["pa", "elong"])
+               for param in param_names if param not in ["pa", "inc"])
     assert all(hasattr(components[1], param) for param in param_names)
     assert all(getattr(components[1], name).value == value
-               for name, value in zip(["pa", "elong"], values[-2:]))
+               for name, value in zip(["pa", "inc"], values[-2:]))
     assert all(getattr(components[1], name).value == value
                for name, value in zip(param_names, values))
     assert all([getattr(components[0], name).min,
                 getattr(components[0], name).max] == limit
-               for name, limit in zip(["pa", "elong"], limits[-2:]))
+               for name, limit in zip(["pa", "inc"], limits[-2:]))
     assert all([getattr(components[1], name).min,
                 getattr(components[1], name).max] == limit
                for name, limit in zip(param_names, limits))

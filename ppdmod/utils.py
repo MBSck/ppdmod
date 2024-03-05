@@ -128,7 +128,7 @@ def distance_to_angular(diameter: u.mas, distance: u.pc) -> u.m:
 
 def compute_effective_baselines(
         ucoord: u.m, vcoord: u.m,
-        compression: Optional[u.Quantity[u.one]] = None,
+        inclination: Optional[u.Quantity[u.one]] = None,
         pos_angle: Optional[u.Quantity[u.deg]] = None,
         longest: Optional[bool] = False
         ) -> Tuple[u.Quantity[u.m], u.Quantity[u.one]]:
@@ -141,8 +141,8 @@ def compute_effective_baselines(
         The u coordinate.
     vcoord: astropy.units.m
         The v coordinate.
-    compression: astropy.units.one
-        The compression of the y-axis.
+    inclination: astropy.units.one
+        The inclinatin induced compression of the x-axis.
     pos_angle: astropy.units.deg
         The positional angle of the object
     longest : bool, optional
@@ -158,18 +158,18 @@ def compute_effective_baselines(
     ucoord, vcoord = map(lambda x: u.Quantity(x, u.m), [ucoord, vcoord])
     if pos_angle is not None:
         pos_angle = u.Quantity(pos_angle, u.deg)
-        compression = u.Quantity(compression, u.one)
+        inclination = u.Quantity(inclination, u.one)
 
         ucoord_eff = ucoord*np.cos(pos_angle) - vcoord*np.sin(pos_angle)
         vcoord_eff = ucoord*np.sin(pos_angle) + vcoord*np.cos(pos_angle)
     else:
         ucoord_eff, vcoord_eff = ucoord, vcoord
 
-    if compression is not None:
-        ucoord_eff *= compression
+    if inclination is not None:
+        ucoord_eff *= inclination
 
     baselines_eff = np.hypot(ucoord_eff, vcoord_eff)
-    baseline_angles_eff = np.arctan2(ucoord_eff, vcoord_eff)
+    baseline_angles_eff = np.arctan2(vcoord_eff, ucoord_eff)
 
     if longest:
         indices = baselines_eff.argmax(0)
@@ -488,19 +488,20 @@ def set_legend_color(legend: Legend, background_color: str) -> None:
     legend.get_frame().set_facecolor(background_color)
 
 
+# TODO: Remove the check for the ucoord here
 def broadcast_baselines(
         wavelength: u.um, baselines: u.m,
-        baseline_angles: u.rad, ucoord: u.m) -> Tuple[u.m, 1/u.rad, u.rad]:
+        baseline_angles: u.rad, ucoord: u.m) -> Tuple[u.um, 1/u.rad, u.rad]:
     """Broadcasts the baselines to the correct shape depending on
     the input ucoord shape."""
-    wavelength = wavelength[:, np.newaxis].to(u.m)
+    wavelength = wavelength[:, np.newaxis]
     if ucoord.shape[0] == 1:
-        baselines = (baselines/wavelength).value
+        baselines = (baselines/wavelength.to(u.m)).value
         baselines = baselines[..., np.newaxis]
         baseline_angles = baseline_angles[np.newaxis, :, np.newaxis]
     else:
         wavelength = wavelength[..., np.newaxis]
-        baselines = (baselines[np.newaxis, ...]/wavelength).value
+        baselines = (baselines[np.newaxis, ...]/wavelength.to(u.m)).value
         baselines = baselines[..., np.newaxis]
         baseline_angles = baseline_angles[np.newaxis, ..., np.newaxis]
     baseline_angles = u.Quantity(baseline_angles, unit=u.rad)
