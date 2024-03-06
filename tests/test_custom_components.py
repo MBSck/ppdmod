@@ -87,7 +87,7 @@ def temp_gradient() -> TempGradient:
     temp_grad.optically_thick = True
     temp_grad.asymmetric = True
     return temp_grad
-
+    
 
 # TODO: Add tests for fitting for point source as well
 def test_point_source_init(point_source: PointSource) -> None:

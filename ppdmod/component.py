@@ -163,3 +163,37 @@ class Component:
 
         image = self.image_func(xx, yy, pixel_size, wavelength)
         return image.astype(OPTIONS.data.dtype.real)
+
+
+class Convolver(Component):
+    """A class that enables the convolution of multiple components.
+
+    Parameters
+    ----------
+    comp1 : Component
+        The first component.
+    comp2 : Component
+        The second component.
+    """
+    name = "Convolver"
+    shortname = "Conv"
+    description = "This a class enabling the convolution of multiple components."
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.eval(**kwargs)
+
+    def eval(self, **kwargs):
+        """Sets the components from the keyword arguments."""
+        self.components = {}
+        for key, value in kwargs.items():
+            if isinstance(value, Component):
+                setattr(self, key, value)
+                self.components[key] = value
+
+    def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
+                 wavelength: u.um, **kwargs) -> np.ndarray:
+        """Computes the correlated fluxes via the hankel transformation."""
+        vis = [comp.vis_func(baselines, baseline_angles, wavelength, **kwargs) for comp in self.components.values()]
+        vis = [v.squeeze(-1) if v.shape[-1] == 1 else v for v in vis]
+        return np.prod(vis, axis=0).astype(OPTIONS.data.dtype.complex)

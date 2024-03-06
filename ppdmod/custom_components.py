@@ -609,33 +609,6 @@ class AsymmetricGreyBody(TempGradient):
     const_temperature = True
 
 
-class Convolver(Component):
-    """A class that enables the convolution of multiple components.
-
-    Parameters
-    ----------
-    comp1 : Component
-        The first component.
-    comp2 : Component
-        The second component.
-    """
-    name = "Convolver"
-    shortname = "Conv"
-    description = "This a class enabling the convolution of multiple components."
-
-    def __init__(self, comp1: Component, comp2: Component, **kwargs):
-        super().__init__(**kwargs)
-        self.comp1, self.comp2 = comp1, comp2
-        self.fr1 = Parameter(**STANDARD_PARAMETERS.fr)
-        self.fr2 = Parameter(**STANDARD_PARAMETERS.fr)
-        self.eval(**kwargs)
-
-    def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
-                 wavelength: u.um, **kwargs) -> np.ndarray:
-        """Computes the correlated fluxes via the hankel transformation."""
-        return vis.astype(OPTIONS.data.dtype.complex)
-
-
 def assemble_components(
         parameters: Dict[str, Dict],
         shared_params: Optional[Dict[str, Parameter]] = None
