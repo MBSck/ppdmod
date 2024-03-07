@@ -59,7 +59,7 @@ class PointSource(Component):
             The wavelengths.
         """
         new_shape = (-1,) + (1,) * (len(baselines.shape)-1)
-        vis = np.tile(self.flux_func(wavelength).reshape(new_shape), baselines.shape[1:])
+        vis = np.tile(1-self.flux_func(wavelength).reshape(new_shape), baselines.shape[1:])
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas,
@@ -275,23 +275,55 @@ class Gaussian(Component):
         vis = np.exp(-(np.pi*baselines*self.fwhm().to(u.rad))**2/(4*np.log(2)))
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
-    def image_func(self, xx: u.mas, yy: u.mas,
-                   pixel_size: u.mas, wavelength: u.m = None) -> u.one:
-        """Computes the image from a 2D grid.
+
+class Lorentzian(Component):
+    name = "Lorentzian"
+    shortname = "Lorentzian"
+    description = "A simple 2D Lorentzian."
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.fr = Parameter(**STANDARD_PARAMETERS.fr)
+        self.fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
+        self.eval(**kwargs)
+
+    def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
+                 wavelength: u.um, **kwargs) -> np.ndarray:
+        """Computes the complex visibility
 
         Parameters
         ----------
-        xx : u.mas
-        yy : u.mas
-        wavelength : u.m
-
-        Returns
-        -------
-        image : astropy.units.Jy
+        baseline : 1/astropy.units.rad
+            The deprojected baselines.
+        baseline_angles : astropy.units.rad
+            The deprojected baseline angles.
+        wavelength : astropy.units.um
+            The wavelengths.
         """
-        radius = np.hypot(xx, yy)
-        factor = np.sqrt(np.pi/(4*np.log(2)))*self.fwhm()
-        return (1/factor)*np.exp(-4*np.log(2)*radius**2/self.fwhm()**2).value*u.one
+        vis = np.exp(-2*np.pi*baselines*self.fwhm().to(u.rad)/(2*np.sqrt(3)))
+        return vis.value.astype(OPTIONS.data.dtype.complex)
+
+
+class GaussLorentzian(Component):
+    name = "Gauss-Lorentzian"
+    shortname = "GaussLorentzian"
+    description = "A simple 2D Gaussian combined with a Lorentzian."
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.fr = Parameter(**STANDARD_PARAMETERS.fr)
+        self.fr_lor = Parameter(**STANDARD_PARAMETERS.fr)
+        self.fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
+        self.eval(**kwargs)
+
+    def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
+                 wavelength: u.um, **kwargs) -> np.ndarray:
+        gauss = Gaussian(fwhm=self.fwhm, inc=self.inc, pa=self.pa)
+        lor = Lorentzian(fwhm=self.fwhm, inc=self.inc, pa=self.pa)
+        vis_gauss = gauss.vis_func(baselines, baseline_angles, wavelength, **kwargs)
+        vis_lor = lor.vis_func(baselines, baseline_angles, wavelength, **kwargs)
+        vis = (1-self.fr_lor())*vis_gauss + self.fr_lor()*vis_lor
+        return (self.fr()*vis).value.astype(OPTIONS.data.dtype.complex)
 
 
 class TempGradient(Component):

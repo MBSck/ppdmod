@@ -814,26 +814,28 @@ def plot_observables(target: str,
     wavelength = np.linspace(wavelength_range[0], wavelength_range[1])
     flux, vis, t3 = compute_observables(components, wavelength=wavelength)
 
-    _ = plt.figure(facecolor=OPTIONS.plot.color.background,
-                   tight_layout=True)
-    ax = plt.axes(facecolor=OPTIONS.plot.color.background)
-    set_axes_color(ax, OPTIONS.plot.color.background)
-    ax.plot(wavelength, flux)
-    # plot_target(target, wavelength_range=wavelength_range,
-    #             ax=ax, show_legend=False)
-    ax.set_xlabel(r"$\lambda$ ($\mu$m)")
-    ax.set_ylabel("Flux (Jy)")
-    ax.set_ylim([0, None])
-    ax.legend()
-    plt.savefig(save_dir / "sed.pdf", format="pdf")
-    plt.close()
+    if "flux" in OPTIONS.fit.data:
+        _ = plt.figure(facecolor=OPTIONS.plot.color.background,
+                       tight_layout=True)
+        ax = plt.axes(facecolor=OPTIONS.plot.color.background)
+        set_axes_color(ax, OPTIONS.plot.color.background)
+        ax.plot(wavelength, flux)
+        
+        # plot_target(target, wavelength_range=wavelength_range,
+        #             ax=ax, show_legend=False)
+        ax.set_xlabel(r"$\lambda$ ($\mu$m)")
+        ax.set_ylabel("Flux (Jy)")
+        ax.set_ylim([0, None])
+        ax.legend()
+        plt.savefig(save_dir / "sed.pdf", format="pdf")
+        plt.close()
 
     vis_data = OPTIONS.data.vis if "vis" in OPTIONS.fit.data\
         else OPTIONS.data.vis2
 
     effective_baselines, baseline_angles = compute_effective_baselines(
             vis_data.ucoord, vis_data.vcoord,
-            components[1].elong(), components[1].pa())
+            components[1].inc(), components[1].pa())
 
     for index, (baseline, baseline_angle) in enumerate(
             zip(effective_baselines, baseline_angles)):
@@ -854,7 +856,7 @@ def plot_observables(target: str,
     if "t3" in OPTIONS.fit.data:
         effective_baselines, baseline_angles = compute_effective_baselines(
                 OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord,
-                components[1].elong(), components[1].pa(), longest=True)
+                components[1].inc(), components[1].pa(), longest=True)
 
         for index, (baseline, baseline_angle) in enumerate(
                 zip(effective_baselines, baseline_angles)):

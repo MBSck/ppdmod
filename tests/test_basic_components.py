@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 
 from ppdmod import utils
-from ppdmod.custom_components import PointSource, Star, Ring, UniformDisk,\
+from ppdmod.basic_components import PointSource, Star, Ring, UniformDisk,\
         Gaussian, TempGradient, GreyBody, assemble_components
 from ppdmod.data import ReadoutFits, set_data, set_fit_wavelengths
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS

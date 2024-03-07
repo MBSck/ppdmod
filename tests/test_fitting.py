@@ -8,7 +8,7 @@ import pytest
 
 from ppdmod import data
 from ppdmod import fitting
-from ppdmod.custom_components import assemble_components
+from ppdmod.basic_components import assemble_components
 from ppdmod.parameter import Parameter
 from ppdmod.options import OPTIONS, STANDARD_PARAMETERS
 

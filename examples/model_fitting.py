@@ -5,7 +5,7 @@ import astropy.units as u
 import numpy as np
 
 from ppdmod import analysis
-from ppdmod import custom_components
+from ppdmod import basic_components
 from ppdmod import data
 from ppdmod import fitting
 from ppdmod import plot
@@ -204,7 +204,7 @@ result_dir.mkdir(parents=True, exist_ok=True)
 pre_fit_dir = result_dir / "pre_fit"
 pre_fit_dir.mkdir(parents=True, exist_ok=True)
 
-components = custom_components.assemble_components(
+components = basic_components.assemble_components(
         OPTIONS.model.components_and_params,
         OPTIONS.model.shared_params)
 
@@ -251,7 +251,7 @@ if __name__ == "__main__":
     new_params = dict(zip(labels, theta))
 
     components_and_params, shared_params = fitting.set_params_from_theta(theta)
-    components = custom_components.assemble_components(
+    components = basic_components.assemble_components(
             components_and_params, shared_params)
 
     plot.plot_observables("hd142666", [3, 12]*u.um, components,

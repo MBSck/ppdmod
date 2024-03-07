@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from ppdmod.component import Component, Convolver
-from ppdmod.custom_components import Star, Ring, Gaussian
+from ppdmod.basic_components import Star, Ring, Gaussian
 from ppdmod.data import ReadoutFits
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 from ppdmod.parameter import Parameter

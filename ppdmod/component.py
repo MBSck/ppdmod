@@ -165,6 +165,7 @@ class Component:
         return image.astype(OPTIONS.data.dtype.real)
 
 
+# TODO: Think about the inclination and elongation for this component
 class Convolver(Component):
     """A class that enables the convolution of multiple components.
 

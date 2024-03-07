@@ -12,7 +12,7 @@ from ppdmod.component import Component
 from ppdmod.data import ReadoutFits, set_fit_wavelengths, set_data
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
-from ppdmod.custom_components import PointSource, Star, Gaussian, TempGradient
+from ppdmod.basic_components import PointSource, Star, Gaussian, TempGradient
 
 
 @pytest.fixture

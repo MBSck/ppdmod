@@ -8,7 +8,7 @@ import numpy as np
 from dynesty import NestedSampler
 from scipy.stats import gaussian_kde
 
-from .custom_components import assemble_components
+from .basic_components import assemble_components
 from .component import Component
 from .parameter import Parameter
 from .options import OPTIONS
@@ -130,26 +130,14 @@ def compute_observables(components: List[Component],
                         wavelength: Optional[np.ndarray] = None):
     """Calculates the observables from the model."""
     wavelength = OPTIONS.fit.wavelengths if wavelength is None else wavelength
-    corr_flux = "vis2" not in OPTIONS.fit.data
-    vis = OPTIONS.data.vis if corr_flux else OPTIONS.data.vis2
+    vis = OPTIONS.data.vis2 if "vis2" in OPTIONS.fit.data else OPTIONS.data.vis
     ucoord, vcoord = vis.ucoord, vis.vcoord
-    u123coord = OPTIONS.data.t3.u123coord
-    v123coord = OPTIONS.data.t3.v123coord
+    u123coord, v123coord = OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord
 
     flux_model, vis_model, t3_model = None, None, None
-
-    component_names = [component.shortname for component in components]
-    stellar_flux, flux_ratio = 0, 0
-    for key in ["Star", "Point"]:
-        if key in component_names:
-            index = component_names.index(key)
-            value = components[index].compute_flux(wavelength).value
-            stellar_flux = value if key == "Star" else 0
-            flux_ratio = value if key == "Point" else 0
-    
-    components = [comp for comp in components if comp.name not in ["Star", "Point Source"]]
+    components = [comp for comp in components if comp.name != "Point Source"]
     for component in components:
-        tmp_flux = component.compute_flux(wavelength)
+        tmp_flux = component.compute_flux(wavelength).value
         tmp_vis = component.compute_complex_vis(
                 ucoord, vcoord, wavelength)
         tmp_t3 = component.compute_complex_vis(
@@ -162,16 +150,29 @@ def compute_observables(components: List[Component],
             vis_model += tmp_vis
             t3_model += tmp_t3
 
-    # NOTE: Overwrites stellar flux as of right now
-    if np.any(flux_ratio != 0):
-        stellar_flux = (flux_model/(1-flux_ratio))*flux_ratio
+    flux_ratio, index = None, None
+    component_names = [component.shortname for component in components]
+    if "Point" in component_names:
+        index = component_names.index("Point")
+        flux_ratio = components[index].compute_flux(wavelength).value
 
-    flux_model += stellar_flux
-    vis_model += stellar_flux
-    if not corr_flux:
+    if flux_ratio is not None:
+        stellar_flux = (flux_model/(1-flux_ratio))*flux_ratio
+        flux_model += stellar_flux
+        if OPTIONS.model.output == "physial":
+            vis_model += stellar_flux
+            t3_model += stellar_flux
+        else:
+            vis_model += components[index].compute_complex_vis(
+                    ucoord, vcoord, wavelength)
+            t3_model += components[index].compute_complex_vis(
+                    u123coord, v123coord, wavelength)
+
+    if OPTIONS.model.output == "physical":
         vis_model = vis_model/flux_model
 
-    flux_model = np.tile(flux_model, (OPTIONS.data.flux.value.shape[1]))
+    if flux_model.size > 0:
+        flux_model = np.tile(flux_model, (OPTIONS.data.flux.value.shape[1]))
     vis_model, t3_model = compute_vis(vis_model), compute_t3(t3_model)
     return flux_model, vis_model, t3_model
 
