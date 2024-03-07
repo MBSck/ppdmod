@@ -5,7 +5,7 @@ from pathlib import Path
 import astropy.units as u
 import emcee
 import numpy as np
-from dynesty import NestedSampler
+from dynesty import DynamicNestedSampler, NestedSampler
 from scipy.stats import gaussian_kde
 
 from .basic_components import assemble_components
@@ -113,16 +113,14 @@ def compute_chi_sq(data: u.quantity, error: u.quantity,
     chi_sq : float
     """
     if lnf is None:
-        inv_sigma_squared = 1./np.sum(error**2)
+        inv_sigma_squared = 1./error**2
     else:
-        inv_sigma_squared = 1./np.sum(
-            error**2 + model_data**2*np.exp(2*lnf))
+        inv_sigma_squared = 1./(error**2 + model_data**2*np.exp(2*lnf))
 
-    if method == "linear":
-        return -0.5*((data-model_data)**2*inv_sigma_squared
-                     + np.log(1/inv_sigma_squared)).sum()
+    diff = data-model_data
+    if method != "linear":
+        diff = np.angle(np.exp(diff*u.deg.to(u.rad)*1j), deg=False)
 
-    diff = np.angle(np.exp((data-model_data)*u.deg.to(u.rad)*1j), deg=False)
     return -0.5*(diff**2*inv_sigma_squared + np.log(1/inv_sigma_squared)).sum()
 
 
@@ -135,9 +133,8 @@ def compute_observables(components: List[Component],
     u123coord, v123coord = OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord
 
     flux_model, vis_model, t3_model = None, None, None
-    components = [comp for comp in components if comp.name != "Point Source"]
-    for component in components:
-        tmp_flux = component.compute_flux(wavelength).value
+    for component in [comp for comp in components if comp.name != "Point Source"]:
+        tmp_flux = component.compute_flux(wavelength)
         tmp_vis = component.compute_complex_vis(
                 ucoord, vcoord, wavelength)
         tmp_t3 = component.compute_complex_vis(
@@ -154,12 +151,12 @@ def compute_observables(components: List[Component],
     component_names = [component.shortname for component in components]
     if "Point" in component_names:
         index = component_names.index("Point")
-        flux_ratio = components[index].compute_flux(wavelength).value
+        flux_ratio = components[index].compute_flux(wavelength)
 
     if flux_ratio is not None:
-        stellar_flux = (flux_model/(1-flux_ratio))*flux_ratio
-        flux_model += stellar_flux
         if OPTIONS.model.output == "physial":
+            stellar_flux = (flux_model/(1-flux_ratio))*flux_ratio
+            flux_model += stellar_flux
             vis_model += stellar_flux
             t3_model += stellar_flux
         else:
@@ -338,6 +335,7 @@ def run_dynesty(nlive: Optional[int] = 1000,
                 ncores: Optional[int] = 6,
                 debug: Optional[bool] = False,
                 save_dir: Optional[Path] = None,
+                method: Optional[str] = "static",
                 **kwargs) -> np.ndarray:
     """Runs the dynesty nested sampler.
 
@@ -355,6 +353,9 @@ def run_dynesty(nlive: Optional[int] = 1000,
     else:
         checkpoint_file = None
 
+    # TODO: Implement this properly
+    samplers = {"dynamic": DynamicNestedSampler, "static": NestedSampler}
+
     ndim = init_randomly().shape[0]
     pool = Pool(processes=ncores) if not debug else None
     queue_size = ncores if not debug else None
@@ -363,8 +364,9 @@ def run_dynesty(nlive: Optional[int] = 1000,
                       "pool": pool, "update_interval": ndim}
 
     print(f"Executing Dynesty.\n{'':-^50}")
-    sampler = NestedSampler(lnprob, transform_uniform_prior,
-                            ndim, **sampler_kwargs)
+    
+    sampler = samplers[method](lnprob, transform_uniform_prior,
+                               ndim, **sampler_kwargs)
     sampler.run_nested(dlogz=0.01, print_progress=True,
                        checkpoint_file=str(checkpoint_file))
 

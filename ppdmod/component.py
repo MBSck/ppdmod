@@ -118,21 +118,21 @@ class Component:
         translation = np.exp(2*1j*np.pi*baselines*(self.x()*np.cos(baseline_angles)+self.y()*np.sin(baseline_angles)))
         return translation.value.astype(OPTIONS.data.dtype.complex)
 
-    def flux_func(self, wavelength: u.um) -> u.Jy:
+    def flux_func(self, wavelength: u.um) -> np.ndarray:
         """Calculates the total flux from the hankel transformation."""
-        return (np.array([])*u.Jy).astype(OPTIONS.data.dtype.real)
+        return np.array([]).astype(OPTIONS.data.dtype.real)
 
     def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
         """Computes the correlated fluxes."""
         return np.array([]).astype(OPTIONS.data.dtype.complex)
 
-    def compute_flux(self, wavelength: u.um) -> u.Jy:
+    def compute_flux(self, wavelength: u.um) -> np.ndarray:
         """Computes the total fluxes."""
         return np.abs(self.flux_func(wavelength)).astype(OPTIONS.data.dtype.real)
 
     def compute_complex_vis(self, ucoord: u.m, vcoord: u.m,
-                            wavelength: u.um, **kwargs):
+                            wavelength: u.um, **kwargs) -> np.ndarray:
         """Computes the correlated fluxes."""
         baselines, baseline_angles = compute_effective_baselines(
                 ucoord, vcoord, self.inc(), self.pa())
@@ -144,12 +144,12 @@ class Component:
         shift = shift.squeeze(-1) if shift.shape[-1] == 1 else shift
         return (vis*shift).astype(OPTIONS.data.dtype.complex)
 
-    def image_func(self, xx: u.mas, yy: u.mas,
-                   pixel_size: u.mas, wavelength: u.um) -> u.Jy:
+    def image_func(self, xx: u.mas, yy: u.mas, wavelength: u.um) -> np.ndarray:
         """Calculates the image."""
-        return (np.array([])*u.Jy).astype(OPTIONS.data.dtype.real)
+        return np.array([]).astype(OPTIONS.data.dtype.real)
 
-    def compute_image(self, dim: int, pixel_size: u.mas, wavelength: u.um) -> u.Jy:
+    def compute_image(self, dim: int, pixel_size: u.mas,
+                      wavelength: u.um) -> np.ndarray:
         """Computes the image."""
         wavelength = wavelength[:, np.newaxis, np.newaxis]
         pixel_size = pixel_size if isinstance(pixel_size, u.Quantity)\
@@ -161,7 +161,7 @@ class Component:
             xx = xx*np.cos(self.pa())-yy*np.sin(self.pa())*self.inc()
             yy = xx*np.sin(self.pa())+yy*np.cos(self.pa())
 
-        image = self.image_func(xx, yy, pixel_size, wavelength)
+        image = self.image_func(xx, yy, wavelength)
         return image.astype(OPTIONS.data.dtype.real)
 
 

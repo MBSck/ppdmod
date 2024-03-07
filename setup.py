@@ -1,10 +1,5 @@
 from setuptools import setup, Extension
 
-import numpy as np
-
-extensions = [Extension("ppdmod._spectral_cy", ["cython_src/spectral.pyx"],
-                        extra_compile_args=["-O3", "-march=native", "-fno-math-errno"])]
-
 setup(
     name="ppdmod",
     version="0.9.0",
@@ -39,6 +34,4 @@ setup(
         "scipy >=1.9.1",
         # "dynesty >=2.1.3",
     ],
-    include_dirs=[np.get_include()],
-    ext_modules=extensions,
 )

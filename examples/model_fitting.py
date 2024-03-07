@@ -83,7 +83,7 @@ OPTIONS.model.constant_params = {
     "dim": dim, "dist": distance,
     "eff_temp": 7500, "f": star_flux,
     "fr": point_flux_ratio,
-    # "pa": 162, "elong": 0.56,
+    # "pa": 162, "inc": 0.56,
     "eff_radius": 1.75, "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont}
 
@@ -150,25 +150,25 @@ outer_ring_labels = [f"or_{label}" for label in outer_ring]
 # q = Parameter(**STANDARD_PARAMETERS.q)
 # inner_temp = Parameter(**STANDARD_PARAMETERS.inner_temp)
 pa = Parameter(**STANDARD_PARAMETERS.pa)
-elong = Parameter(**STANDARD_PARAMETERS.elong)
+inc = Parameter(**STANDARD_PARAMETERS.inc)
 cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 
 # q.value = 0.5
 # inner_temp.value = 1500
 pa.value = 163
-elong.value = 0.5
+inc.value = 0.5
 cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass fractions
 
 # q.set(min=0., max=1.)
 # inner_temp.set(min=300, max=2000)
 pa.set(min=0, max=180)
-elong.set(min=0.3, max=0.95)
+inc.set(min=0.3, max=0.95)
 cont_weight.set(min=0.3, max=0.8)
 
 # OPTIONS.model.shared_params = {"q": q, "inner_temp": inner_temp,
-#                                "pa": pa, "elong": elong,
+#                                "pa": pa, "inc": inc,
 #                                "cont_weight": cont_weight}
-OPTIONS.model.shared_params = {"pa": pa, "elong": elong,
+OPTIONS.model.shared_params = {"pa": pa, "inc": inc,
                                "cont_weight": cont_weight}
 # OPTIONS.model.shared_params = {"cont_weight": cont_weight}
 shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
@@ -264,12 +264,12 @@ if __name__ == "__main__":
             savefits=post_fit_dir / "model.fits",
             object_name="HD 142666", **fit_params, ncores=ncores)
 
-    # axis_ratio = OPTIONS.model.constant_params["elong"]
+    # axis_ratio = OPTIONS.model.constant_params["inc"]
     # pos_angle = OPTIONS.model.constant_params["pa"]
-    axis_ratio = shared_params["elong"]
-    compression = shared_params["pa"]
+    inclination = shared_params["inc"]
+    pos_angle = shared_params["pa"]
 
     plot.plot_fit(
-            axis_ratio, compression,
+            inclination, pos_angle,
             components=components,
             savefig=post_fit_dir / "fit_results.pdf")

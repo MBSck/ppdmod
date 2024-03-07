@@ -115,15 +115,14 @@ def test_point_source_image(point_source: Star, dim: int, wl: u.um) -> None:
     point_source_dir = Path("images/point_source")
     point_source_dir.mkdir(exist_ok=True, parents=True)
     centre = dim//2
-    plt.imshow(image.value[0])
+    plt.imshow(image[0])
     plt.xlim(centre-20, centre+20)
     plt.ylim(centre-20, centre+20)
     plt.savefig(point_source_dir / f"dim{dim}_wl{wl.value}_point_source_image.pdf")
     plt.close()
     assert len(image[image != 0]) == 4
     assert image.shape == (1, dim, dim)
-    assert image.unit == u.Jy
-    assert np.max(image.value) < 0.1
+    assert np.max(image) < 0.1
 
 
 def test_star_init(star: Star) -> None:
@@ -163,7 +162,7 @@ def test_star_image(star: Star, dim: int, wl: u.um) -> None:
 
     centre = dim//2
 
-    plt.imshow(image.value[0])
+    plt.imshow(image[0])
     plt.xlim(centre-20, centre+20)
     plt.ylim(centre-20, centre+20)
     plt.savefig(star_dir / f"dim{dim}_wl{wl.value}_star_image.pdf")
@@ -171,8 +170,7 @@ def test_star_image(star: Star, dim: int, wl: u.um) -> None:
 
     assert len(image[image != 0]) == 4
     assert image.shape == (1, dim, dim)
-    assert image.unit == u.Jy
-    assert np.max(image.value) < 0.1
+    assert np.max(image) < 0.1
 
 
 def test_uniform_ring_init(ring: Ring) -> None:
@@ -369,8 +367,6 @@ def test_temp_gradient_hankel_transform(
 
     assert vis.shape == (wavelength.size, 6)
     assert vis_mod.shape == (wavelength.size, 6, order)
-    assert vis.unit == u.Jy and vis_mod.unit == u.Jy
-
     OPTIONS.model.modulation = 0
 
 

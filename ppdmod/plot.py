@@ -263,7 +263,7 @@ def plot_all(model_file: Path,
 
 
 def plot_datapoints(
-        axarr, axis_ratio: u.one,
+        axarr, inclination: u.one,
         pos_angle: u.deg, wavelengths: u.um,
         components: Optional[List] = None,
         data_to_plot: Optional[List[str]] = OPTIONS.fit.data,
@@ -276,7 +276,7 @@ def plot_datapoints(
 
     Parameters
     ----------
-    axis_ratio : astropy.units.one
+    inclination : astropy.units.one
         The axis ratio.
     pos_angle : astropy.units.deg
         The position angle.
@@ -298,11 +298,11 @@ def plot_datapoints(
     flux_model, vis_model, t3_model = compute_observables(components)
 
     effective_baselines, _ = compute_effective_baselines(
-        vis.ucoord, vis.vcoord, axis_ratio, pos_angle)
+        vis.ucoord, vis.vcoord, inclination, pos_angle)
 
     if "t3" in data_to_plot:
         longest_baselines, _ = compute_effective_baselines(
-            t3.u123coord, t3.v123coord, axis_ratio, pos_angle, longest=True)
+            t3.u123coord, t3.v123coord, inclination, pos_angle, longest=True)
 
     errorbar_params = OPTIONS.plot.errorbar
     scatter_params = OPTIONS.plot.scatter
@@ -397,7 +397,7 @@ def plot_datapoints(
     errorbar_params.color = None
 
 
-def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
+def plot_fit(inclination: u.one, pos_angle: u.deg,
              components: Optional[List] = None,
              data_to_plot: Optional[List[str]] = None,
              colormap: Optional[str] = OPTIONS.plot.color.colormap,
@@ -411,7 +411,7 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
 
     Parameters
     ----------
-    axis_ratio : astropy.units.one
+    inclination : astropy.units.one
         The axis ratio.
     pos_angle : astropy.units.deg
         The position angle.
@@ -449,7 +449,7 @@ def plot_fit(axis_ratio: u.one, pos_angle: u.deg,
         data_types, [[fig.add_subplot(gs[j, i], facecolor=OPTIONS.plot.color.background)
                       for j in range(2)] for i in range(nplots)])}
 
-    plot_datapoints(axarr, axis_ratio, pos_angle,
+    plot_datapoints(axarr, inclination, pos_angle,
                     wavelengths, components=components,
                     wavelength_range=wavelength_range,
                     norm=norm, data_to_plot=data_to_plot,

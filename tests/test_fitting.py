@@ -237,7 +237,7 @@ def test_calculate_observables(components_and_params: List[Tuple[str, Dict]],
     OPTIONS.model.modulation = 1
 
     flux_model, vis_model, t3_model = fitting.compute_observables(
-        assemble_components(components_and_params, shared_params))
+        assemble_components(components_and_params, shared_params), wavelength)
 
     assert flux_model is not None
     assert vis_model is not None
@@ -383,13 +383,6 @@ def test_lnprob(fits_files: List[Path], wavelength: u.um) -> None:
     OPTIONS.model.shared_params = {}
     OPTIONS.model.constant_params = {}
     OPTIONS.model.modulation = 0
-
-
-# # TODO: Finish test.
-# def test_run_fit() -> None:
-#     """Tests the run_fitting function."""
-#     ...
-
 
 # def test_get_best_fit() -> None:
 #     """Tests the get_best_fit function."""

@@ -105,7 +105,7 @@ if __name__ == "__main__":
 
     sampler = fitting.run_fit(
             **fit_params, ncores=ncores,
-            save_dir=post_fit_dir, debug=False)
+            save_dir=post_fit_dir, debug=True)
 
     theta, uncertainties = fitting.get_best_fit(
             sampler, **fit_params, method="quantile")
