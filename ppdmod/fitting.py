@@ -177,7 +177,8 @@ def compute_observables(components: List[Component],
 def compute_observable_chi_sq(
         flux_model: np.ndarray,
         vis_model: np.ndarray,
-        t3_model: np.ndarray) -> float:
+        t3_model: np.ndarray,
+        reduced: Optional[bool] = False) -> float:
     """Calculates the model's observables.
 
     Parameters
@@ -189,6 +190,8 @@ def compute_observable_chi_sq(
         visibilities (depends on the OPTIONS.fit.data).
     t3_model : numpy.ndarray
         The model's closure phase.
+    reduced : bool, optional
+        Whether to return the reduced chi square.
 
     Returns
     -------
@@ -198,9 +201,10 @@ def compute_observable_chi_sq(
     params = {"flux": flux_model,
               "vis": vis_model, "t3": t3_model}
 
-    chi_sq = 0.
+    chi_sq, ndata = 0., 0
     for key in OPTIONS.fit.data:
         data = getattr(OPTIONS.data, key)
+        ndata += data.value.size
         key = key if key != "vis2" else "vis"
         weight = getattr(OPTIONS.fit.weights, key)
         nan_indices = np.isnan(data.value)
@@ -210,7 +214,10 @@ def compute_observable_chi_sq(
                 data.err[~nan_indices],
                 params[key][~nan_indices],
                 method=method) * weight
-    return float(chi_sq)
+    chi_sq = float(chi_sq)
+    if reduced:
+        chi_sq /= ndata + get_priors().shape[0]
+    return chi_sq
 
 
 # NOTE: In nested fitting priors can depend on each other

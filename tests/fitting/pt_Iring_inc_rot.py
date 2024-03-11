@@ -11,6 +11,7 @@ from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 
 OPTIONS.fit.data = ["vis"]
+OPTIONS.model.output = "non-physical"
 fits_file = Path("../data/aspro") / "model_pt_Iring_inc_rot.fits"
 wavelength = [10] * u.um
 data.set_fit_wavelengths(wavelength)
@@ -25,7 +26,9 @@ vis_model = np.abs(np.sum([comp.compute_complex_vis(vis.ucoord, vis.vcoord, wave
 assert np.allclose(vis.value, vis_model, rtol=1e-1)
 
 chi_sq = fitting.compute_chi_sq(vis.value, vis.err, vis_model)
-print(f"chi_sq: {chi_sq}")
+rchi_sq = fitting.compute_observable_chi_sq(
+        *fitting.compute_observables(components, wavelength), reduced=True)
+print(f"chi_sq: {chi_sq}", f"rchi_sq: {rchi_sq}")
 
 fr = Parameter(**STANDARD_PARAMETERS.fr)
 fr.value = 0.1
@@ -50,7 +53,6 @@ ring = {"rin": rin}
 ring_labels = [f"r_{label}" for label in ring]
 
 OPTIONS.model.components_and_params = [["PointSource", {}], ["Ring", ring]]
-OPTIONS.model.output = "non-physical"
 OPTIONS.fit.method = "dynesty"
 
 labels = ring_labels + shared_params_labels
@@ -72,6 +74,9 @@ if __name__ == "__main__":
 
     components_and_params, shared_params = fitting.set_params_from_theta(theta)
     components = assemble_components(components_and_params, shared_params)
+    rchi_sq = fitting.compute_observable_chi_sq(
+            *fitting.compute_observables(components, wavelength), reduced=True)
+    print(f"rchi_sq: {chi_sq}")
 
     plot.plot_chains(sampler, labels, **fit_params,
                      savefig=result_dir / f"{model_name}_chains.pdf")
