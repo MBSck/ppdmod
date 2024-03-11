@@ -68,7 +68,7 @@ if __name__ == "__main__":
     components = assemble_components(components_and_params, shared_params)
     rchi_sq = fitting.compute_observable_chi_sq(
             *fitting.compute_observables(components, wavelength), reduced=True)
-    print(f"rchi_sq: {chi_sq}")
+    print(f"rchi_sq: {rchi_sq}")
 
     plot.plot_chains(sampler, labels, **fit_params,
                      savefig=result_dir / f"{model_name}_chains.pdf")

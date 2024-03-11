@@ -318,7 +318,7 @@ class Lorentzian(Component):
         wavelength : astropy.units.um
             The wavelengths.
         """
-        vis = np.exp(-2*np.pi*baselines*self.fwhm().to(u.rad)/(2*np.sqrt(3)))
+        vis = np.exp(-np.pi*baselines*self.fwhm().to(u.rad)/np.sqrt(3))
         return (self.fr()*vis).value.astype(OPTIONS.data.dtype.complex)
 
 

@@ -75,7 +75,7 @@ ring_labels = [f"r_{label}" for label in ring]
 OPTIONS.model.components_and_params = [["PointSource", point_source], ["Ring", ring]]
 OPTIONS.fit.method = "dynesty"
 
-labels = point_source_labels + ring_labels + shared_params_labels
+labels = ring_labels + shared_params_labels
 result_dir = Path("results/ring")
 model_name = "pt_ring_inc_rot_xy"
 
@@ -97,19 +97,19 @@ if __name__ == "__main__":
     components = assemble_components(components_and_params, shared_params)
     rchi_sq = fitting.compute_observable_chi_sq(
             *fitting.compute_observables(components, wavelength), reduced=True)
-    print(f"rchi_sq: {chi_sq}")
+    print(f"rchi_sq: {rchi_sq}")
 
     plot.plot_chains(sampler, labels, **fit_params,
                      savefig=result_dir / f"{model_name}_chains.pdf")
     plot.plot_corner(sampler, labels, **fit_params,
                      savefig=result_dir / f"{model_name}_corner.pdf")
-    plot.plot_fit(theta[2], 0*u.deg, components=components,
+    plot.plot_fit(theta[-2], theta[-1], components=components,
                   savefig=result_dir / f"{model_name}_fit_results.pdf")
 
     assert np.isclose(theta[0], x, rtol=0.3)
     assert np.isclose(theta[1], y, rtol=0.3)
     assert np.isclose(theta[2], diameter/2, rtol=0.3)
     assert np.isclose(theta[3], width, rtol=0.3)
-    assert np.isclose(theta[4], fr_ring, rtol=0.1)
-    assert np.isclose(theta[5], inclination, rtol=0.1)
-    assert np.isclose(theta[6], pos_angle, rtol=0.1)
+    assert np.isclose(theta[-3], fr_ring, rtol=0.1)
+    assert np.isclose(theta[-2], inclination, rtol=0.1)
+    assert np.isclose(theta[-1], pos_angle, rtol=0.1)

@@ -4,7 +4,6 @@ from pathlib import Path
 import astropy.units as u
 import numpy as np
 
-# from ppdmod import analysis
 from ppdmod import basic_components
 from ppdmod import data
 from ppdmod import fitting
@@ -22,10 +21,6 @@ fits_files = list((DATA_DIR / "fits").glob("*PION*fits"))
 data.set_data(fits_files)
 data.set_fit_weights()
 
-wavelength_axes = list(
-    map(lambda x: x.wavelength, OPTIONS.data.readouts))
-wavelength_axes = np.sort(np.unique(np.concatenate(wavelength_axes)))
-
 pa = Parameter(**STANDARD_PARAMETERS.pa)
 pa.value = 162
 
@@ -41,7 +36,7 @@ shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 
 fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
 fwhm.value = 1
-fwhm.set(min=0.1, max=3)
+fwhm.set(min=0.1, max=32)
 
 fr_lor = Parameter(**STANDARD_PARAMETERS.fr)
 fr_lor.value = 0.4
@@ -55,39 +50,19 @@ OPTIONS.model.components_and_params = [
     ["GaussLorentzian", gauss_lor],
 ]
 
-labels = gauss_lor_labels + shared_params_labels
-
 component_labels = ["Star", "Disk"]
 OPTIONS.model.gridtype = "logarithmic"
 OPTIONS.fit.method = "dynesty"
 
-model_result_dir = Path("../model_results/")
-day_dir = model_result_dir / str(datetime.now().date())
-dir_name = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
-result_dir = day_dir / dir_name
-result_dir.mkdir(parents=True, exist_ok=True)
-
-pre_fit_dir = result_dir / "pre_fit"
-pre_fit_dir.mkdir(parents=True, exist_ok=True)
+labels = gauss_lor_labels + shared_params_labels
+result_dir = Path("results/pionier")
+model_name = "lor_gauss"
 
 components = basic_components.assemble_components(
         OPTIONS.model.components_and_params,
         OPTIONS.model.shared_params)
 
-
-plot.plot_overview(savefig=pre_fit_dir / "data_overview.pdf")
-plot.plot_observables("hd142666", [3, 12]*u.um, components,
-                      save_dir=pre_fit_dir)
-
-# analysis.save_fits(
-#         4096, 0.1, distance,
-#         components, component_labels,
-#         opacities=[kappa_abs, kappa_cont],
-#         savefits=pre_fit_dir / "model.fits",
-#         object_name="HD 142666")
-
-post_fit_dir = result_dir / "post_fit"
-post_fit_dir.mkdir(parents=True, exist_ok=True)
+plot.plot_overview(savefig=result_dir / f"{model_name}_data_overview.pdf")
 
 
 if __name__ == "__main__":
@@ -110,30 +85,15 @@ if __name__ == "__main__":
     theta, uncertainties = fitting.get_best_fit(
             sampler, **fit_params, method="quantile")
 
-    plot.plot_chains(sampler, labels, **fit_params,
-                     savefig=post_fit_dir / "chains.pdf")
-    plot.plot_corner(sampler, labels, **fit_params,
-                     savefig=post_fit_dir / "corner.pdf")
-    new_params = dict(zip(labels, theta))
-
     components_and_params, shared_params = fitting.set_params_from_theta(theta)
-    components = basic_components.assemble_components(
-            components_and_params, shared_params)
+    components = assemble_components(components_and_params, shared_params)
+    rchi_sq = fitting.compute_observable_chi_sq(
+            *fitting.compute_observables(components, wavelength), reduced=True)
+    print(f"rchi_sq: {rchi_sq}")
 
-    plot.plot_observables("hd142666", [3, 12]*u.um, components,
-                          save_dir=post_fit_dir)
-
-    # analysis.save_fits(
-    #         4096, 0.1, distance,
-    #         components, component_labels,
-    #         opacities=[kappa_abs, kappa_cont],
-    #         savefits=post_fit_dir / "model.fits",
-    #         object_name="HD 142666", **fit_params, ncores=ncores)
-
-    axis_ratio = shared_params["elong"]
-    compression = shared_params["pa"]
-
-    plot.plot_fit(
-            axis_ratio, compression,
-            components=components,
-            savefig=post_fit_dir / "fit_results.pdf")
+    plot.plot_chains(sampler, labels, **fit_params,
+                     savefig=result_dir / f"{model_name}_chains.pdf")
+    plot.plot_corner(sampler, labels, **fit_params,
+                     savefig=result_dir / f"{model_name}_corner.pdf")
+    plot.plot_fit(theta[-2], theta[-1], components=components,
+                  savefig=result_dir / f"{model_name}_fit_results.pdf")
