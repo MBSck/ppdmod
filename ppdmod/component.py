@@ -46,16 +46,14 @@ class Component:
     def elliptic(self, value: bool) -> None:
         """Sets the position angle and the parameters to free or false
         if elliptic is set."""
-        if value:
-            self.inc.free = self.pa.free = True
-        else:
-            self.inc.free = self.pa.free = False
-        self._elliptic = value
+        self._elliptic = self.inc.free = self.pa.free = value
 
     def eval(self, **kwargs):
         """Sets the parameters (values) from the keyword arguments."""
         for key, value in kwargs.items():
             if hasattr(self, key):
+                if key in ["inc", "pa"]:
+                    self.elliptic = True
                 if isinstance(value, Parameter):
                     setattr(self, key, value)
                 else:

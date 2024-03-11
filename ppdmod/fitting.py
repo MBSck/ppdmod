@@ -171,6 +171,10 @@ def compute_observables(components: List[Component],
     if flux_model.size > 0:
         flux_model = np.tile(flux_model, (OPTIONS.data.flux.value.shape[1]))
     vis_model, t3_model = compute_vis(vis_model), compute_t3(t3_model)
+
+    if "vis2" in OPTIONS.fit.data:
+        vis_model = vis_model**2
+
     return flux_model, vis_model, t3_model
 
 

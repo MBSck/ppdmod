@@ -1,31 +1,31 @@
-from datetime import datetime
 from pathlib import Path
 
 import astropy.units as u
-import numpy as np
 
-from ppdmod import basic_components
 from ppdmod import data
 from ppdmod import fitting
 from ppdmod import plot
+from ppdmod.basic_components import assemble_components
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 
-DATA_DIR = Path("../tests/data")
-OPTIONS.fit.data = ["vis2", "t3"]
+DATA_DIR = Path("../data/pionier/nChannels3")
+OPTIONS.fit.data = ["vis2"]
 OPTIONS.model.output = "non-physical"
-wavelengths = [1.6]*u.um
-data.set_fit_wavelengths(wavelengths)
-fits_files = list((DATA_DIR / "fits").glob("*PION*fits"))
+wavelength = [1.6]*u.um
+data.set_fit_wavelengths(wavelength)
+fits_files = list((DATA_DIR).glob("*fits"))
 data.set_data(fits_files)
 data.set_fit_weights()
 
 pa = Parameter(**STANDARD_PARAMETERS.pa)
 pa.value = 162
+pa.free = True
 
 inc = Parameter(**STANDARD_PARAMETERS.inc)
 inc.value = 0.5
+inc.free = True
 
 fr = Parameter(**STANDARD_PARAMETERS.fr)
 fr.value = 0.4
@@ -58,10 +58,6 @@ labels = gauss_lor_labels + shared_params_labels
 result_dir = Path("results/pionier")
 model_name = "lor_gauss"
 
-components = basic_components.assemble_components(
-        OPTIONS.model.components_and_params,
-        OPTIONS.model.shared_params)
-
 plot.plot_overview(savefig=result_dir / f"{model_name}_data_overview.pdf")
 
 
@@ -78,9 +74,8 @@ if __name__ == "__main__":
         ncores = 30 if ncores is None else ncores
         fit_params = fit_params_dynesty
 
-    sampler = fitting.run_fit(
-            **fit_params, ncores=ncores,
-            save_dir=post_fit_dir, debug=True)
+    sampler = fitting.run_fit(**fit_params, ncores=ncores,
+                              save_dir=result_dir, debug=True)
 
     theta, uncertainties = fitting.get_best_fit(
             sampler, **fit_params, method="quantile")

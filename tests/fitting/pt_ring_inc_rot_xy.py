@@ -11,6 +11,7 @@ from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 from ppdmod.utils import compute_vis, compute_t3
 
 
+# TODO: Change the errors and do this test again.
 OPTIONS.fit.data = ["vis", "t3"]
 OPTIONS.model.output = "non-physical"
 fits_file = Path("../data/aspro") / "model_pt_ring_inc_rot_xy.fits"
@@ -75,7 +76,7 @@ ring_labels = [f"r_{label}" for label in ring]
 OPTIONS.model.components_and_params = [["PointSource", point_source], ["Ring", ring]]
 OPTIONS.fit.method = "dynesty"
 
-labels = ring_labels + shared_params_labels
+labels = point_source_labels + ring_labels + shared_params_labels
 result_dir = Path("results/ring")
 model_name = "pt_ring_inc_rot_xy"
 

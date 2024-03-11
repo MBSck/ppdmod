@@ -35,7 +35,9 @@ class ReadoutFits:
             self.flux = SimpleNamespace(value=flux, err=flux_err)
 
         if hdul is not None:
-            instrument = hdul[0].header["instrume"].lower()
+            instrument = None
+            if "instrume" in hdul[0].header:
+                instrument = hdul[0].header["instrume"].lower()
             sci_index = OPTIONS.data.gravity.index\
                 if instrument == "gravity" else None
             wl_index = 1 if instrument == "gravity" else None

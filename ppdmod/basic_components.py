@@ -194,13 +194,40 @@ class Ring(Component):
     name = "Ring"
     shortname = "Ring"
     description = "A simple ring."
+    _thin = True
+    _asymmetric = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.fr = Parameter(**STANDARD_PARAMETERS.fr)
         self.rin = Parameter(**STANDARD_PARAMETERS.rin)
         self.width = Parameter(**STANDARD_PARAMETERS.width)
+        self.a = Parameter(**STANDARD_PARAMETERS.a)
+        self.phi = Parameter(**STANDARD_PARAMETERS.phi)
         self.eval(**kwargs)
+
+    @property
+    def thin(self) -> bool:
+        """Gets if the component is elliptic."""
+        return self._thin
+
+    @thin.setter
+    def thin(self, value: bool) -> None:
+        """Sets the position angle and the parameters to free or false
+        if elliptic is set."""
+        self.width.free = not value
+        self._thin = value
+
+    @property
+    def asymmetric(self) -> bool:
+        """Gets if the component is elliptic."""
+        return self._elliptic
+
+    @asymmetric.setter
+    def asymmetric(self, value: bool) -> None:
+        """Sets the position angle and the parameters to free or false
+        if elliptic is set."""
+        self._asymmtric = self.a.free = self.phi.free = value
 
     def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
@@ -215,11 +242,17 @@ class Ring(Component):
         wavelength : astropy.units.um
             The wavelengths.
         """
-        if self.width() == 0:
+        if self.thin:
             vis = j0(2*np.pi*self.rin().to(u.rad)*baselines)
+            if self.asymmetric:
+                vis += -1j*self.a()*np.cos(1j*(baseline_angles-self.phi()))\
+                    * j1(2*np.pi*self.rin().to(u.rad)*baselines)
         else:
             radius = np.linspace(self.rin(), self.rin()+self.width(), self.dim())
             vis = np.trapz(j0(2*np.pi*radius.to(u.rad)*baselines), radius)/self.width()
+            if self.asymmetric:
+                vis += -1j*self.a()*np.cos(1j*(baseline_angles-self.phi()))\
+                    * np.trapz(j1(2*np.pi*radius.to(u.rad)*baselines), radius)/self.width()
         return (self.fr()*vis).value.astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas, wavelength: u.um) -> np.ndarray:
