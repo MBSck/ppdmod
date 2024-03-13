@@ -148,22 +148,28 @@ def test_make_workbook() -> None:
     ...
 
 
-def test_get_closest_indices(wavelengths: u.um,
-                             wavelength_solutions: u.um) -> None:
+def test_get_indices(wavelengths: u.um,
+                     wavelength_solutions: u.um) -> None:
     """Tests the get_closest_indices function."""
-    index = utils.get_closest_indices(
-            wavelengths[0], array=wavelength_solutions[0])
-    assert len(index) == 1
+    index = utils.get_indices(wavelengths[0], array=wavelength_solutions[0],
+                              window=OPTIONS.data.binning)
+    assert index[0].size >= 1
 
     for window in [None, 0.1]:
-        indices_l_band = utils.get_closest_indices(
+        indices_l_band = utils.get_indices(
             wavelengths, array=wavelength_solutions[0], window=window)
-        indices_n_band = utils.get_closest_indices(
+        indices_n_band = utils.get_indices(
                 wavelengths, array=wavelength_solutions[1], window=window)
         assert len(indices_l_band) == 3
         assert len(indices_n_band) == 3
-        assert len([i for i in indices_l_band if i.size != 0]) == 1
-        assert len([i for i in indices_n_band if i.size != 0]) == 2
+        len_nband = len([i for i in indices_l_band if i.size != 0])
+        len_lband = len([i for i in indices_n_band if i.size != 0])
+        if window is None:
+            assert len_nband == 0
+            assert len_lband == 0
+        else:
+            assert len_nband == 1
+            assert len_lband == 2
 
 
 
@@ -196,9 +202,8 @@ def test_calculate_effective_baselines(
         fits_files: Path, wavelengths: u.um) -> None:
     """Tests the calculation of the effective baselines."""
     axis_ratio, pos_angle = 2.85*u.one, 33*u.deg
-    fit_data = ["flux", "vis", "vis2", "t3"]
-    set_fit_wavelengths(wavelengths)
-    set_data(fits_files, fit_data=fit_data)
+    set_data(fits_files, wavelengths=wavelengths,
+             fit_data=["flux", "vis", "vis2", "t3"])
 
     nfiles = len(fits_files)
     baseline_dir = Path("baselines")
@@ -236,8 +241,7 @@ def test_calculate_effective_baselines(
     plt.savefig(baseline_dir / "effective_baselines.pdf", format="pdf")
 
     plt.close()
-    set_data()
-    set_fit_wavelengths()
+    set_data(fit_data=["flux", "vis", "vis2", "t3"])
 
 
 # TODO: Test this also for the angles, but it seems promising
@@ -252,9 +256,7 @@ def test_compare_effective_baselines(
     baseline calculation."""
     fits_file = Path("data/aspro") / fits_file
     diameter, wavelength = 20*u.mas, [10]*u.um
-    fit_data = ["vis", "t3"]
-    set_fit_wavelengths(wavelength)
-    set_data([fits_file], fit_data=fit_data)
+    set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
 
     baseline_dir = Path("baselines")
     baseline_dir.mkdir(exist_ok=True, parents=True)
@@ -302,8 +304,7 @@ def test_compare_effective_baselines(
                 format="pdf")
     plt.close()
 
-    set_data()
-    set_fit_wavelengths()
+    set_data(fit_data=["vis", "t3"])
 
 
 def test_binary() -> None:
@@ -505,8 +506,7 @@ def test_linearly_combine_data(
         "wavelength", [[10]*u.um, [10, 12.5]*u.um])
 def test_broadcast_baselines(fits_files: List[Path], wavelength: u.um) -> None:
     """Tests the broadcasting of the baselines."""
-    set_fit_wavelengths(wavelength)
-    set_data(fits_files, fit_data=["vis2", "t3"])
+    set_data(fits_files, wavelengths=wavelength, fit_data=["vis2", "t3"])
 
     vis, t3 = OPTIONS.data.vis2, OPTIONS.data.t3
     baselines, baseline_angles = utils.compute_effective_baselines(
@@ -527,7 +527,6 @@ def test_broadcast_baselines(fits_files: List[Path], wavelength: u.um) -> None:
     assert baselines_cp.shape == (wavelength.size, *t3.u123coord.shape, 1)
     assert baseline_angles_cp.shape == (1, *t3.u123coord.shape, 1)
 
-    set_fit_wavelengths()
     set_data(fit_data=["vis2", "t3"])
 
 
@@ -538,25 +537,25 @@ def test_broadcast_baselines(fits_files: List[Path], wavelength: u.um) -> None:
 def test_compute_t3(fits_files: List[Path],
                     wavelength: u.um, component: Component) -> None:
     """Tests the calculation of the closure phase."""
-    set_fit_wavelengths(wavelength)
-    set_data(fits_files, fit_data=["t3"])
+    set_data(fits_files, wavelengths=wavelength, fit_data=["t3"])
     fr = Parameter(**STANDARD_PARAMETERS.fr)
     fr.value, fr.wavelength = np.array([0.2]*wavelength.size), wavelength
 
-    params = {"dim": 512, "fwhm": 0.5, "fr": fr,
+    params = {"dim": 512, "fwhm": 0.5,
               "rin": 0.5, "q": 0.5, "inner_temp": 1500,
               "dim": 512, "dist": 148.3, "eff_temp": 7800, "eff_radius": 1.8,
               "inner_sigma": 2000, "pixel_size": 0.1, "p": 0.5}
 
     t3 = OPTIONS.data.t3
     component = component(**params)
+    if component.shortname == "Point":
+        component.fr = fr
     component_vis = component.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength) 
     component_t3 = utils.compute_t3(component_vis)
 
     assert component_vis.shape == (wavelength.size, *t3.u123coord.shape)
     assert component_t3.shape == (wavelength.size, t3.u123coord.shape[1])
 
-    set_fit_wavelengths()
     set_data(fit_data=["t3"])
 
 
@@ -567,23 +566,23 @@ def test_compute_t3(fits_files: List[Path],
 def test_compute_vis(fits_files: List[Path],
                      wavelength: u.um, component: Component) -> None:
     """Tests the calculation of the visibility."""
-    set_fit_wavelengths(wavelength)
-    set_data(fits_files, fit_data=["vis2"])
+    set_data(fits_files, wavelengths=wavelength, fit_data=["vis2"])
     fr = Parameter(**STANDARD_PARAMETERS.fr)
     fr.value, fr.wavelength = np.array([0.2]*wavelength.size), wavelength
 
-    params = {"dim": 512, "fwhm": 0.5, "fr": fr,
+    params = {"dim": 512, "fwhm": 0.5,
               "rin": 0.5, "q": 0.5, "inner_temp": 1500,
               "dim": 512, "dist": 148.3, "eff_temp": 7800, "eff_radius": 1.8,
               "inner_sigma": 2000, "pixel_size": 0.1, "p": 0.5}
 
     vis = OPTIONS.data.vis2
     component = component(**params)
+    if component.shortname == "Point":
+        component.fr = fr
     component_complex_vis = component.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength) 
     component_vis = utils.compute_vis(component_complex_vis)
 
     assert component_complex_vis.shape == (wavelength.size, vis.ucoord.shape[1])
     assert component_vis.shape == (wavelength.size, vis.ucoord.shape[1])
 
-    set_fit_wavelengths()
     set_data(fit_data=["vis2"])

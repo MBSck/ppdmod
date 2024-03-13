@@ -163,7 +163,6 @@ class Component:
         return image.astype(OPTIONS.data.dtype.real)
 
 
-# TODO: Think about the inclination and elongation for this component
 class Convolver(Component):
     """A class that enables the convolution of multiple components.
 
@@ -193,6 +192,7 @@ class Convolver(Component):
     def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
         """Computes the correlated fluxes via the hankel transformation."""
-        vis = [comp.vis_func(baselines, baseline_angles, wavelength, **kwargs) for comp in self.components.values()]
+        vis = [comp.vis_func(baselines, baseline_angles, wavelength, **kwargs)
+               for comp in self.components.values()]
         vis = [v.squeeze(-1) if v.shape[-1] == 1 else v for v in vis]
         return np.prod(vis, axis=0).astype(OPTIONS.data.dtype.complex)

@@ -10,7 +10,7 @@ from ppdmod.basic_components import Star, Ring, Gaussian
 from ppdmod.data import ReadoutFits
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 from ppdmod.parameter import Parameter
-from ppdmod.data import set_data, set_fit_wavelengths
+from ppdmod.data import set_data
 
 
 @pytest.fixture
@@ -109,8 +109,7 @@ def test_translate_fourier(
         pos_angle: u.mas, wavelength: u.um) -> None:
     """Tests if the translation of the fourier transform works."""
     fits_file = Path("data/aspro") / fits_file
-    set_fit_wavelengths(wavelength)
-    set_data([fits_file], fit_data=["vis", "t3"])
+    set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
     fluxes, position = [2, 8]*u.Jy, [5, 0]*u.mas
 
     vis = OPTIONS.data.vis
@@ -128,6 +127,7 @@ def test_translate_fourier(
     t3_combined = np.angle(np.prod(t3_one + t3_two, axis=1), deg=True)
 
     assert np.allclose(t3_combined, t3.value, atol=1e-1)
+    set_data(fit_data=["vis", "t3"])
 
 
 def test_flux_func() -> None:

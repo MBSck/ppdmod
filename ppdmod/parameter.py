@@ -6,7 +6,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from .options import OPTIONS
-from .utils import get_closest_indices
+from .utils import get_indices
 
 
 @dataclass()
@@ -45,9 +45,8 @@ class Parameter:
             if self.interpolate:
                 value = np.interp(wavelength, self.wavelength*u.um, self.value)
             else:
-                indices = get_closest_indices(
-                        wavelength, array=self.wavelength,
-                        window=OPTIONS.data.binning.window)
+                indices = get_indices(wavelength, array=self.wavelength,
+                                      window=OPTIONS.data.binning)
 
                 value = [self.value[index].mean() for index in indices]
         return u.Quantity(value, unit=self.unit, dtype=self.dtype)

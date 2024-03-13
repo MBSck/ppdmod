@@ -92,7 +92,7 @@ def test_read_into_namespace(fits_files: List[Path],
 
 
 @pytest.mark.parametrize(
-        "wavelength", [8, [8, 10], [3, 8, 10]])
+        "wavelength", [[8], [8, 10], [3, 8, 10]])
 def test_set_fit_wavelenghts(wavelength: u.um) -> None:
     """Tests the set fit wavelenghts function."""
     set_fit_wavelengths(wavelength)
@@ -141,15 +141,14 @@ def test_wavelength_retrieval(readouts: List[ReadoutFits], wavelength: u.um) -> 
         assert vis2.shape == (wl_len, 6) and vis2_err.shape == (wl_len, 6)
 
 
+# TODO: Add tests for setting the wavelengths and the binning as well
 @pytest.mark.parametrize(
         "wavelength", [[3.5]*u.um, [8]*u.um,
                        [3.5, 8]*u.um, [3.5, 8, 10]*u.um])
 def test_set_data(fits_files: List[Path], wavelength: u.um) -> None:
     """Tests the automatic data procurrment from one
     or multiple (.fits)-files."""
-    fit_data = ["flux", "vis", "vis2", "t3"]
-    set_fit_wavelengths(wavelength)
-    set_data(fits_files, fit_data=fit_data)
+    set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis", "vis2", "t3"])
     nwl, nfiles = wavelength.size, len(fits_files)
 
     flux = OPTIONS.data.flux
@@ -169,8 +168,7 @@ def test_set_data(fits_files: List[Path], wavelength: u.um) -> None:
     assert t3.value.shape == (nwl, 4*nfiles)
     assert t3.err.shape == (nwl, 4*nfiles)
 
-    set_data(fit_data=fit_data)
-    set_fit_wavelengths()
+    set_data(fit_data=["flux", "vis", "vis2", "t3"])
 
     assert flux.value.size == 0 and flux.err.size == 0
     assert vis.value.size == 0 and vis.err.size == 0
@@ -181,8 +179,7 @@ def test_set_data(fits_files: List[Path], wavelength: u.um) -> None:
         "fit_data", [["flux", "vis", "t3"], ["flux", "vis2", "t3"]])
 def test_set_weights(fits_files: List[Path], fit_data: List[str]) -> None:
     """Tests the setting of the weights"""
-    set_fit_wavelengths([3.5]*u.um)
-    set_data(fits_files, fit_data=fit_data)
+    set_data(fits_files, wavelengths=[3.5]*u.um, fit_data=fit_data)
     set_fit_weights()
 
     assert OPTIONS.fit.weights.flux != 1

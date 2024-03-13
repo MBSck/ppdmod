@@ -128,19 +128,17 @@ vis2 = SimpleNamespace(value=np.array([]), err=np.array([]),
 t3 = SimpleNamespace(value=np.array([]), err=np.array([]),
                      u123coord=np.array([]), v123coord=np.array([]))
 flux = SimpleNamespace(value=np.array([]), err=np.array([]))
-binning = SimpleNamespace(window=0.1*u.um)
 gravity = SimpleNamespace(index=20)
 dtype = SimpleNamespace(complex=np.complex64, real=np.float32)
 data = SimpleNamespace(readouts=[], flux=flux, vis=vis,
                        vis2=vis2, t3=t3, gravity=gravity,
-                       binning=binning, dtype=dtype)
+                       binning=0.1*u.um, dtype=dtype)
 
 # NOTE: Model
 model = SimpleNamespace(components_and_params={},
                         constant_params={}, shared_params={},
                         output="physical", reference_radius=1*u.au,
                         gridtype="linear", modulation=0)
-
 
 # NOTE: Plot
 color = SimpleNamespace(background="white",
@@ -161,7 +159,7 @@ weights = SimpleNamespace(flux=1, t3=1, vis=1)
 fit = SimpleNamespace(weights=weights,
                       data=["flux", "vis", "t3"],
                       method="emcee",
-                      wavelengths=[],
+                      wavelengths=None,
                       quantiles=[16, 50, 84])
 
 # NOTE: All options

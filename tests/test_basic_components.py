@@ -192,10 +192,8 @@ def test_ring_compute_vis(
         compression: float, pos_angle: u.deg, width: u.mas) -> None:
     """Tests the calculation of uniform disk's visibilities."""
     radius, wavelength = 5*u.mas, [10]*u.um
-    fit_data = ["vis", "t3"]
     fits_file = Path("data/aspro") / fits_file
-    set_fit_wavelengths(wavelength)
-    set_data([fits_file], fit_data=fit_data)
+    set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
 
     if width is not None:
         ring.thin = False
@@ -218,8 +216,7 @@ def test_ring_compute_vis(
     assert t3_ring.shape == (wavelength.size, t3.u123coord.shape[1])
     assert np.allclose(t3.value, t3_ring, atol=1e-2)
 
-    set_fit_wavelengths()
-    set_data(fit_data=fit_data)
+    set_data(fit_data=["vis", "t3"])
 
 
 def test_uniform_disk_init(uniform_disk: UniformDisk) -> None:
@@ -237,10 +234,8 @@ def test_uniform_disk_compute_vis(
         compression: float, pos_angle: u.deg) -> None:
     """Tests the calculation of uniform disk's visibilities."""
     diameter, wavelength = 20*u.mas, [10]*u.um
-    fit_data = ["vis", "t3"]
     fits_file = Path("data/aspro") / fits_file
-    set_fit_wavelengths(wavelength)
-    set_data([fits_file], fit_data=fit_data)
+    set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
 
     uniform_disk.diam.value = diameter
     vis, t3 = OPTIONS.data.vis, OPTIONS.data.t3
@@ -259,8 +254,7 @@ def test_uniform_disk_compute_vis(
     assert t3_ud.shape == (wavelength.size, t3.u123coord.shape[1])
     assert np.allclose(t3.value, t3_ud, atol=1e-2)
 
-    set_fit_wavelengths()
-    set_data(fit_data=fit_data)
+    set_data(fit_data=["vis", "t3"])
 
 
 def test_uniform_disk_image_func() -> None:
@@ -283,10 +277,8 @@ def test_gaussian_compute_vis(
         compression: float, pos_angle: u.deg) -> None:
     """Tests the calculation of the total flux."""
     fwhm, wavelength = 10*u.mas, [10]*u.um
-    fit_data = ["vis", "t3"]
     fits_file = Path("data/aspro") / fits_file
-    set_fit_wavelengths(wavelength)
-    set_data([fits_file], fit_data=fit_data)
+    set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
 
     gaussian.fwhm.value = fwhm
     vis, t3 = OPTIONS.data.vis, OPTIONS.data.t3
@@ -305,8 +297,7 @@ def test_gaussian_compute_vis(
     assert t3_gauss.shape == (wavelength.size, t3.u123coord.shape[1])
     assert np.allclose(t3.value, t3_gauss, atol=1e-2)
 
-    set_fit_wavelengths()
-    set_data(fit_data=fit_data)
+    set_data(fit_data=["vis", "t3"])
 
 
 # @pytest.mark.parametrize(

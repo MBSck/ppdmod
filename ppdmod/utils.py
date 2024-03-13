@@ -34,11 +34,9 @@ def execution_time(func: Callable) -> Callable:
     return wrapper
 
 
-def get_closest_indices(
-        values, array: np.ndarray,
-        window: Optional[float] = None,
-        atol: Optional[float] = 1e-2) -> List[np.ndarray]:
-    """Gets the closest indices of values occurring in a numpy array
+def get_indices(values, array: np.ndarray,
+                window: Optional[float] = None) -> List[np.ndarray]:
+    """Gets the indices of values occurring in a numpy array
     and returns it in a list corresponding to the input values.
 
     Parameters
@@ -59,13 +57,10 @@ def get_closest_indices(
     indices = []
     for value in values:
         if window is not None:
-            index = np.where(((value-window) < array)
-                             & ((value+window) > array))[0]
+            index = np.where(((value-window) < array) & ((value+window) > array))[0]
         else:
             index = np.where(array == value)[0]
 
-        if index.size == 0:
-            index = np.where(np.abs(array - value) <= atol)[0]
         indices.append(index.astype(int).squeeze())
     return indices
 

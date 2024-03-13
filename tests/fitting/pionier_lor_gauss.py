@@ -13,7 +13,7 @@ from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 DATA_DIR = Path("../data/pionier/nChannels3")
 OPTIONS.fit.data = ["vis2"]
 OPTIONS.model.output = "non-physical"
-wavelength = [1.6]*u.um
+wavelength = [1.7]*u.um
 data.set_fit_wavelengths(wavelength)
 fits_files = list((DATA_DIR).glob("*fits"))
 data.set_data(fits_files)

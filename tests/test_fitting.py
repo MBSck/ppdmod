@@ -227,8 +227,7 @@ def test_calculate_observables(components_and_params: List[Tuple[str, Dict]],
                                constant_params: Dict[str, Parameter],
                                fits_files: List[Path], wavelength: u.um) -> None:
     """Tests the calculate_observables function."""
-    data.set_fit_wavelengths(wavelength)
-    data.set_data(fits_files)
+    data.set_data(fits_files, wavelengths=wavelength)
     nwl, nfile = wavelength.size, len(fits_files)
 
     OPTIONS.model.components_and_params = components_and_params
@@ -251,7 +250,6 @@ def test_calculate_observables(components_and_params: List[Tuple[str, Dict]],
     assert vis_model.shape == (nwl, nfile*6)
     assert t3_model.shape == (nwl, nfile*4)
 
-    data.set_fit_wavelengths()
     data.set_data()
 
     OPTIONS.model.components_and_params = []
@@ -268,8 +266,7 @@ def test_calculate_chi_sq(components_and_params: List[Tuple[str, Dict]],
                           constant_params: Dict[str, Parameter],
                           fits_files: List[Path], wavelength: u.um) -> None:
     """Tests the calculate_observables chi sq function."""
-    data.set_fit_wavelengths(wavelength)
-    data.set_data(fits_files)
+    data.set_data(fits_files, wavelengths=wavelength)
 
     OPTIONS.model.components_and_params = components_and_params
     OPTIONS.model.shared_params = shared_params
@@ -283,7 +280,6 @@ def test_calculate_chi_sq(components_and_params: List[Tuple[str, Dict]],
     assert chi_sq != 0
     assert isinstance(chi_sq, float)
 
-    data.set_fit_wavelengths()
     data.set_data()
 
     OPTIONS.model.components_and_params = []
@@ -362,8 +358,7 @@ def test_lnprob(fits_files: List[Path], wavelength: u.um) -> None:
     components_and_params = [["Star", params],
                              ["AsymmetricGreyBody", params]]
 
-    data.set_fit_wavelengths(wavelength)
-    data.set_data(fits_files)
+    data.set_data(fits_files, wavelengths=wavelength)
     OPTIONS.model.constant_params = static_params
     OPTIONS.model.components_and_params = components_and_params
     OPTIONS.model.shared_params = shared_params
@@ -376,7 +371,6 @@ def test_lnprob(fits_files: List[Path], wavelength: u.um) -> None:
     assert isinstance(chi_sq, float)
     assert chi_sq != 0
 
-    data.set_fit_wavelengths()
     data.set_data()
 
     OPTIONS.model.components_and_params = []

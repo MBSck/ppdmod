@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Union
 from types import SimpleNamespace
 from pathlib import Path
 
@@ -6,7 +6,7 @@ import astropy.units as u
 import numpy as np
 from astropy.io import fits
 
-from .utils import get_closest_indices
+from .utils import get_indices
 from .options import OPTIONS
 
 
@@ -60,8 +60,9 @@ class ReadoutFits:
         try:
             data = hdul[f"oi_{key}", sci_index]
         except KeyError:
-            return SimpleNamespace(value=None, err=None,
-                                   ucoord=None, vcoord=None)
+            return SimpleNamespace(value=np.array([]), err=np.array([]),
+                                   ucoord=np.array([]).reshape(1, -1),
+                                   vcoord=np.array([]).reshape(1, -1))
 
         if key == "flux":
             return SimpleNamespace(value=data.data["fluxdata"],
@@ -113,9 +114,10 @@ class ReadoutFits:
         numpy.ndarray
             The data for the given wavelengths.
         """
-        indices = get_closest_indices(
-                wavelength, array=self.wavelength,
-                window=OPTIONS.data.binning.window)
+        # TODO: Check that the binning works proplerly for all input files
+        # test it with the pionier data (for three channels)
+        indices = get_indices(wavelength, array=self.wavelength,
+                              window=OPTIONS.data.binning)
 
         data = getattr(getattr(self, key), subkey)
         if all(index.size == 0 for index in indices):
@@ -124,32 +126,60 @@ class ReadoutFits:
             return np.full((wavelength.size, data.shape[0]), np.nan)
 
         if key == "flux":
-            data = [[data.squeeze()[index].mean()] for index in indices]
+            if OPTIONS.data.binning is None:
+                wl_data = [data.squeeze()[index] if index.size != 0
+                           else np.full((data.shape[0],), np.nan) for index in indices]
+            else:
+                wl_data = [[data.squeeze()[index].mean()] for index in indices]
         else:
-            data = [data[:, index].mean(1) for index in indices]
-        return np.array(data).astype(OPTIONS.data.dtype.real)
+            if OPTIONS.data.binning is None:
+                wl_data = [data[:, index] if index.size != 0
+                           else np.full((data.shape[0],), np.nan) for index in indices]
+            else:
+                wl_data = [data[:, index].mean(1) for index in indices]
+        return np.array(wl_data).astype(OPTIONS.data.dtype.real)
 
 
-def set_fit_wavelengths(
-        wavelength: Optional[u.Quantity[u.um]] = None) -> None:
+def get_all_wavelengths(readouts: Optional[List[ReadoutFits]] = None) -> np.ndarray:
+    """Gets all wavelengths from the readouts."""
+    readouts = OPTIONS.data.readouts if readouts is None else readouts
+    wavelengths = list(map(lambda x: x.wavelength, readouts))
+    return np.sort(np.unique(np.concatenate(wavelengths)))
+
+
+def set_fit_wavelengths(wavelengths: Optional[u.Quantity[u.um]] = None) -> Union[str, np.ndarray]:
     """Sets the wavelengths to be fitted for as a global option.
 
-    If called without parameters or recalled, it will clear the
-    fit wavelengths.
+    If called without a wavelength and all set to False, it will clear
+    the fit wavelengths.
+
+    Parameters
+    ----------
+    wavelengts : numpy.ndarray
+        The wavelengths to be fitted.
+
+    Returns
+    -------
+    str or numpy.ndarray
+        The wavelengths to be fitted as a numpy array or "all" if all are to be
+        fitted.
     """
-    OPTIONS.fit.wavelengths = []
-    if wavelength is None:
+    OPTIONS.fit.wavelengths = None
+    if wavelengths is None:
         return
 
-    wavelength = u.Quantity(wavelength, u.um)
-    if wavelength.shape == ():
-        wavelength = wavelength.reshape((wavelength.size,))
-    OPTIONS.fit.wavelengths = wavelength.flatten()
+    wavelengths = u.Quantity(wavelengths, u.um)
+    if wavelengths.shape == ():
+        wavelengths = wavelengths.reshape((wavelengths.size,))
+    OPTIONS.fit.wavelengths = wavelengths.flatten()
+    return OPTIONS.fit.wavelengths
 
 
-def set_fit_weights(weights: Optional[List[float]] = None) -> None:
+def set_fit_weights(weights: Optional[List[float]] = None, 
+                    fit_data: Optional[List[str]] = None) -> None:
     """Sets the weights of the fit parameters
     from the observed data"""
+    fit_data = OPTIONS.fit.data if fit_data is None else fit_data
     if weights is not None:
         wflux, wvis, wt3 = weights
     else:
@@ -161,13 +191,13 @@ def set_fit_weights(weights: Optional[List[float]] = None) -> None:
         else:
             nvis = 1
 
-        if "flux" in OPTIONS.fit.data:
+        if "flux" in fit_data:
             nflux = OPTIONS.data.flux.value.shape[1]
             wflux = nvis/nflux
         else:
             wflux = 1
 
-        if "t3" in OPTIONS.fit.data:
+        if "t3" in fit_data:
             nt3 = OPTIONS.data.t3.value.shape[1]
             wt3 = nvis/nt3
         else:
@@ -181,8 +211,9 @@ def set_fit_weights(weights: Optional[List[float]] = None) -> None:
 
 
 def set_data(fits_files: Optional[List[Path]] = None,
-             wavelength: Optional[u.Quantity[u.um]] = None,
-             fit_data: Optional[List[str]] = None, **kwargs) -> None:
+             wavelengths: Optional[Union[str, u.Quantity[u.um]]] = None,
+             fit_data: Optional[List[str]] = None,
+             weights: Optional[List[float]] = None, **kwargs) -> None:
     """Sets the data as a global variable from the input files.
 
     If called without parameters or recalled, it will clear the data.
@@ -191,16 +222,18 @@ def set_data(fits_files: Optional[List[Path]] = None,
     ----------
     fits_files : list of Path
         The paths to the MATISSE (.fits)-files.
-    wavelength : astropy.units.um
-        The wavelengths to be fitted.
+    wavelengts : str or numpy.ndarray
+        The wavelengths to be fitted as a numpy array or "all" if all are to be
+        fitted.
     fit_data : list of str, optional
         The data to be fitted.
+    weights : list of float, optional
+        The weights of the fit parameters from the observed data.
     """
     OPTIONS.data.readouts = []
-    wavelength = OPTIONS.fit.wavelengths if wavelength\
-        is None else wavelength
-    fit_data = OPTIONS.fit.data if fit_data is None\
-        else fit_data
+
+    fit_data = OPTIONS.fit.data if fit_data is None else fit_data
+    OPTIONS.fit.data = fit_data
 
     for key in ["flux", "vis", "vis2", "t3"]:
         data = getattr(OPTIONS.data, key)
@@ -210,18 +243,22 @@ def set_data(fits_files: Optional[List[Path]] = None,
         elif key in "t3":
             data.u123coord, data.v123coord =[np.array([]) for _ in range(2)]
 
+    OPTIONS.fit.wavelengths = None
     if fits_files is None:
         return
 
     OPTIONS.data.readouts = list(map(ReadoutFits, fits_files))
-    for readout in OPTIONS.data.readouts:
+    if wavelengths == "all":
+        wavelengths = get_all_wavelengths(OPTIONS.data.readouts)
+        OPTIONS.data.binning = None
+
+    wavelengths = set_fit_wavelengths(wavelengths)
+    for index, readout in enumerate(OPTIONS.data.readouts):
         for key in fit_data:
             data = getattr(OPTIONS.data, key)
             data_readout = getattr(readout, key)
-            value = readout.get_data_for_wavelength(
-                    wavelength, key, "value")
-            err = readout.get_data_for_wavelength(
-                    wavelength, key, "err")
+            value = readout.get_data_for_wavelength(wavelengths, key, "value")
+            err = readout.get_data_for_wavelength(wavelengths, key, "err")
 
             if data.value.size == 0:
                 data.value, data.err = value, err
@@ -244,3 +281,4 @@ def set_data(fits_files: Optional[List[Path]] = None,
                             (data.u123coord, data_readout.u123coord))
                     data.v123coord = np.hstack(
                             (data.v123coord, data_readout.v123coord))
+    set_fit_weights(weights, fit_data)
