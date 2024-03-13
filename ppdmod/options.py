@@ -31,7 +31,6 @@ def get_colorlist(colormap: str, ncolors: Optional[int] = 10) -> List[str]:
 
 
 # NOTE: A list of standard parameters to be used when defining new components.
-# TODO: Make this into a simple namespace as well
 STANDARD_PARAMETERS = SimpleNamespace(
         x={"name": "x", "shortname": "x",
            "value": 0, "description": "The x position",
@@ -56,8 +55,11 @@ STANDARD_PARAMETERS = SimpleNamespace(
         dim={"name": "dim", "shortname": "dim",
              "value": 128, "description": "The pixel dimension",
              "unit": u.one, "dtype": int, "free": False},
+        exp={"name": "exponent", "shortname": "exp",
+             "value": 1, "min": 0, "max": 1, "unit": u.one,
+             "description": "An exponent", "free": True},
         wl={"name": "wl", "shortname": "wl",
-            "value": 0, "description": "The wavelength", "unit": u.m},
+            "value": 0, "description": "The wavelength", "unit": u.um},
         fov={"name": "fov", "shortname": "fov",
              "value": 0, "description": "The field of view",
              "unit": u.mas, "free": False},
@@ -135,8 +137,8 @@ data = SimpleNamespace(readouts=[], flux=flux, vis=vis,
                        binning=0.1*u.um, dtype=dtype)
 
 # NOTE: Model
-model = SimpleNamespace(components_and_params={},
-                        constant_params={}, shared_params={},
+model = SimpleNamespace(components_and_params=None,
+                        constant_params=None, shared_params=None,
                         output="physical", reference_radius=1*u.au,
                         gridtype="linear", modulation=0)
 

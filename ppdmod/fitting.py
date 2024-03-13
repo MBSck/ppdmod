@@ -1,5 +1,5 @@
 from multiprocessing import Pool
-from typing import Optional, List, Dict, Tuple, Union
+from typing import Optional, List, Dict, Tuple, Union, Callable
 from pathlib import Path
 
 import astropy.units as u
@@ -81,7 +81,10 @@ def init_randomly(nwalkers: Optional[int] = None) -> np.ndarray:
     params = []
     for (_, param) in OPTIONS.model.components_and_params:
         params.extend(param.values())
-    params.extend(OPTIONS.model.shared_params.values())
+
+    if OPTIONS.model.shared_params is not None:
+        params.extend(OPTIONS.model.shared_params.values())
+
     if nwalkers is None:
         return np.array([np.random.uniform(param.min, param.max)
                          for param in params])
@@ -89,8 +92,8 @@ def init_randomly(nwalkers: Optional[int] = None) -> np.ndarray:
                       for param in params] for _ in range(nwalkers)])
 
 
-def compute_chi_sq(data: u.quantity, error: u.quantity,
-                   model_data: u.quantity,
+def compute_chi_sq(data: u.Quantity, error: u.Quantity,
+                   model_data: u.Quantity,
                    method: Optional[str] = "linear",
                    lnf: Optional[float] = None) -> float:
     """the chi square minimisation.
@@ -202,8 +205,7 @@ def compute_observable_chi_sq(
     chi_sq : float
         The chi square.
     """
-    params = {"flux": flux_model,
-              "vis": vis_model, "t3": t3_model}
+    params = {"flux": flux_model, "vis": vis_model, "t3": t3_model}
 
     chi_sq, ndata = 0., 0
     for key in OPTIONS.fit.data:
@@ -224,8 +226,6 @@ def compute_observable_chi_sq(
     return chi_sq
 
 
-# NOTE: In nested fitting priors can depend on each other
-# use that in the future
 def transform_uniform_prior(theta: List[float]) -> float:
     """Prior transform for uniform priors."""
     priors = get_priors()
@@ -347,6 +347,7 @@ def run_dynesty(nlive: Optional[int] = 1000,
                 debug: Optional[bool] = False,
                 save_dir: Optional[Path] = None,
                 method: Optional[str] = "static",
+                ptform: Optional[Callable] = None,
                 **kwargs) -> np.ndarray:
     """Runs the dynesty nested sampler.
 
@@ -375,9 +376,8 @@ def run_dynesty(nlive: Optional[int] = 1000,
                       "pool": pool, "update_interval": ndim}
 
     print(f"Executing Dynesty.\n{'':-^50}")
-    
-    sampler = samplers[method](lnprob, transform_uniform_prior,
-                               ndim, **sampler_kwargs)
+    ptform = transform_uniform_prior if ptform is None else ptform
+    sampler = samplers[method](lnprob, ptform, ndim, **sampler_kwargs)
     sampler.run_nested(dlogz=0.01, print_progress=True,
                        checkpoint_file=str(checkpoint_file))
 

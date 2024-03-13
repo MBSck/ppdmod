@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict, List
 
 import astropy.units as u
 import numpy as np
@@ -24,6 +24,7 @@ class Component:
     shortname = "GenComp"
     description = "This is the class from which all components are derived."
     _elliptic = False
+    _asymmetric = False
 
     def __init__(self, **kwargs):
         """The class's constructor."""
@@ -32,10 +33,14 @@ class Component:
         self.dim = Parameter(**STANDARD_PARAMETERS.dim)
         self.pa = Parameter(**STANDARD_PARAMETERS.pa)
         self.inc = Parameter(**STANDARD_PARAMETERS.inc)
+        self.a = Parameter(**STANDARD_PARAMETERS.a)
+        self.phi = Parameter(**STANDARD_PARAMETERS.phi)
 
         if not self.elliptic:
             self.inc.free = self.pa.free = False
-        self.eval(**kwargs)
+
+        if not self.asymmetric:
+            self.a.free = self.phi.free = False
 
     @property
     def elliptic(self) -> bool:
@@ -48,16 +53,28 @@ class Component:
         if elliptic is set."""
         self._elliptic = self.inc.free = self.pa.free = value
 
-    def eval(self, **kwargs):
+    @property
+    def asymmetric(self) -> bool:
+        """Gets if the component is elliptic."""
+        return self._asymmetric
+
+    @asymmetric.setter
+    def asymmetric(self, value: bool) -> None:
+        """Sets the position angle and the parameters to free or false
+        if elliptic is set."""
+        self._asymmetric = self.a.free = self.phi.free = value
+
+    def eval(self, **kwargs) -> None:
         """Sets the parameters (values) from the keyword arguments."""
         for key, value in kwargs.items():
             if hasattr(self, key):
-                if key in ["inc", "pa"]:
-                    self.elliptic = True
                 if isinstance(value, Parameter):
                     setattr(self, key, value)
                 else:
-                    getattr(self, key).value = value
+                    if isinstance(getattr(self, key), Parameter):
+                        getattr(self, key).value = value
+                    else:
+                        setattr(self, key, value)
 
 
     def get_params(self, free: Optional[bool] = False):

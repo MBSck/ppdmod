@@ -61,7 +61,7 @@ class PointSource(Component):
         """
         new_shape = (-1,) + (1,) * (len(baselines.shape)-1)
         vis = np.tile(self.flux_func(wavelength).reshape(new_shape), baselines.shape[1:])
-        return (1-vis).astype(OPTIONS.data.dtype.complex)
+        return vis.astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas,
                    pixel_size: u.mas, wavelength: u.m = None) -> np.ndarray:
@@ -195,7 +195,6 @@ class Ring(Component):
     shortname = "Ring"
     description = "A simple ring."
     _thin = True
-    _asymmetric = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -217,17 +216,6 @@ class Ring(Component):
         if elliptic is set."""
         self.width.free = not value
         self._thin = value
-
-    @property
-    def asymmetric(self) -> bool:
-        """Gets if the component is elliptic."""
-        return self._asymmetric
-
-    @asymmetric.setter
-    def asymmetric(self, value: bool) -> None:
-        """Sets the position angle and the parameters to free or false
-        if elliptic is set."""
-        self._asymmetric = self.a.free = self.phi.free = value
 
     def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
@@ -363,7 +351,8 @@ class GaussLorentzian(Component):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.fr = Parameter(**STANDARD_PARAMETERS.fr)
-        self.fr_lor = Parameter(**STANDARD_PARAMETERS.fr)
+        self.flor = Parameter(**STANDARD_PARAMETERS.fr)
+        self.flor.free = True
         self.fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
         self.eval(**kwargs)
 
@@ -373,7 +362,7 @@ class GaussLorentzian(Component):
         lor = Lorentzian(fwhm=self.fwhm, inc=self.inc, pa=self.pa)
         vis_gauss = gauss.vis_func(baselines, baseline_angles, wavelength, **kwargs)
         vis_lor = lor.vis_func(baselines, baseline_angles, wavelength, **kwargs)
-        vis = (1-self.fr_lor())*vis_gauss + self.fr_lor()*vis_lor
+        vis = (1-self.flor())*vis_gauss + self.flor()*vis_lor
         return (self.fr()*vis).value.astype(OPTIONS.data.dtype.complex)
 
 
@@ -393,10 +382,9 @@ class TempGradient(Component):
     shortname = "HankComp"
     description = "This defines the analytical hankel transformation."
     elliptic = True
-    asymmetric = False
-    optically_thick = False
-    const_temperature = False
-    continuum_contribution = True
+    _optically_thick = False
+    _const_temperature = False
+    _continuum_contribution = True
 
     def __init__(self, **kwargs):
         """The class's constructor."""
@@ -410,9 +398,6 @@ class TempGradient(Component):
         self.r0 = Parameter(**STANDARD_PARAMETERS.r0)
         self.rin = Parameter(**STANDARD_PARAMETERS.rin)
         self.rout = Parameter(**STANDARD_PARAMETERS.rout)
-
-        self.a = Parameter(**STANDARD_PARAMETERS.a)
-        self.phi = Parameter(**STANDARD_PARAMETERS.phi)
 
         self.q = Parameter(**STANDARD_PARAMETERS.q)
         self.inner_temp = Parameter(**STANDARD_PARAMETERS.inner_temp)
@@ -430,10 +415,6 @@ class TempGradient(Component):
         if self.const_temperature:
             self.q.free = False
             self.inner_temp.free = False
-
-        if not self.asymmetric:
-            self.a.free = False
-            self.phi.free = False
 
         if not self.continuum_contribution:
             self.cont_weight.free = False
@@ -692,6 +673,52 @@ class AsymmetricGreyBody(TempGradient):
     const_temperature = True
 
 
+# class PointRing(Component):
+#     name = "PointDisk"
+#     shortname = "PointDisk"
+
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
+#         self.fs = Parameter(**STANDARD_PARAMETERS.fr)
+#         self.fc = Parameter(**STANDARD_PARAMETERS.fr)
+#         self.flor = Parameter(**STANDARD_PARAMETERS.fr)
+#         self.fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
+#         self.wl0 = Parameter(**STANDARD_PARAMETERS.wl)
+#         self.ks = Parameter(**STANDARD_PARAMETERS.exp)
+#         self.ks.free = False
+#         self.kc = Parameter(**STANDARD_PARAMETERS.exp)
+
+
+class StarHaloDisk(Component):
+    """A star, a disk and a halo model as seen in Lazareff+2017."""
+    name = "StarDiskHalo"
+    shortname = "StarDiskHalo"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.fs = Parameter(**STANDARD_PARAMETERS.fr)
+        self.fc = Parameter(**STANDARD_PARAMETERS.fr)
+        self.flor = Parameter(**STANDARD_PARAMETERS.fr)
+        self.fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
+        self.wl0 = Parameter(**STANDARD_PARAMETERS.wl)
+        self.ks = Parameter(**STANDARD_PARAMETERS.exp)
+        self.ks.free = False
+        self.kc = Parameter(**STANDARD_PARAMETERS.exp)
+        self.eval(**kwargs)
+
+    def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
+                 wavelength: u.um, **kwargs) -> np.ndarray:
+        fh = 1 - self.fs() - self.fc()
+        gl = GaussLorentzian(flor=self.flor, fwhm=self.fwhm, inc=self.inc, pa=self.pa)
+        ks = self.ks(wavelength)[:, np.newaxis, np.newaxis]
+        vis_disk = gl.vis_func(baselines, baseline_angles, wavelength, **kwargs)
+        wavelength_ratio = self.wl0()/wavelength[..., np.newaxis]
+        vis_star = self.fs()*wavelength_ratio**ks
+        vis_comp = self.fc()*vis_disk*wavelength_ratio**self.kc()
+        divisor = (fh+self.fs())*wavelength_ratio**ks + self.fc()*wavelength_ratio**self.kc
+        return (vis_star+vis_comp)/divisor
+
+
 def assemble_components(
         parameters: Dict[str, Dict],
         shared_params: Optional[Dict[str, Parameter]] = None
@@ -703,3 +730,5 @@ def assemble_components(
         components.append(comp(**params, **shared_params,
                                **OPTIONS.model.constant_params))
     return components
+
+

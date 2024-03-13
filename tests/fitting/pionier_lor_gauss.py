@@ -1,7 +1,9 @@
 from pathlib import Path
 
 import astropy.units as u
-
+import astropy.constants as const
+import numpy as np
+from astropy.modeling.models import BlackBody
 from ppdmod import data
 from ppdmod import fitting
 from ppdmod import plot
@@ -11,13 +13,9 @@ from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 
 DATA_DIR = Path("../data/pionier/nChannels3")
-OPTIONS.fit.data = ["vis2"]
 OPTIONS.model.output = "non-physical"
-wavelength = [1.7]*u.um
-data.set_fit_wavelengths(wavelength)
 fits_files = list((DATA_DIR).glob("*fits"))
-data.set_data(fits_files)
-data.set_fit_weights()
+data.set_data(fits_files, wavelengths="all", fit_data=["vis2"])
 
 pa = Parameter(**STANDARD_PARAMETERS.pa)
 pa.value = 162
@@ -27,36 +25,43 @@ inc = Parameter(**STANDARD_PARAMETERS.inc)
 inc.value = 0.5
 inc.free = True
 
-fr = Parameter(**STANDARD_PARAMETERS.fr)
-fr.value = 0.4
-fr.free = True
+fc = Parameter(**STANDARD_PARAMETERS.fr)
+fc.value = 0.5
+fc.free = True
 
-OPTIONS.model.shared_params = {"fr": fr, "pa": pa, "inc": inc}
-shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
+fs = Parameter(**STANDARD_PARAMETERS.fr)
+fs.value = 0.4
+fs.free = True
+
+wavelength = data.get_all_wavelengths()
+bb = BlackBody(temperature=7500*u.K)(wavelength)
+freq = (const.c / wavelength.to(u.m)).to(u.Hz)
+ks = Parameter(**STANDARD_PARAMETERS.exp)
+ks.value = np.log(bb.value)/np.log(freq.value)
+ks.wavelength = wavelength
+ks.free = False
+
+kc = Parameter(**STANDARD_PARAMETERS.exp)
+kc.set(min=-10, max=10)
 
 fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
 fwhm.value = 1
 fwhm.set(min=0.1, max=32)
 
-fr_lor = Parameter(**STANDARD_PARAMETERS.fr)
-fr_lor.value = 0.4
-fr_lor.free = True
+flor = Parameter(**STANDARD_PARAMETERS.fr)
+flor.value = 0.4
+flor.free = True
 
-gauss_lor = {"fr_lor": fr_lor, "fwhm": fwhm}
-gauss_lor_labels = [f"gl_{label}" for label in gauss_lor]
+params = {"fs": fs, "fc": fc, "flor": flor, "fwhm": fwhm, "kc": kc, "inc": inc, "pa": pa}
+labels = [label for label in params]
 
-OPTIONS.model.components_and_params = [
-    ["PointSource", {}],
-    ["GaussLorentzian", gauss_lor],
-]
-
-component_labels = ["Star", "Disk"]
+OPTIONS.model.constant_params = {"wl0": 1.68, "ks": ks}
+OPTIONS.model.components_and_params = [["StarHaloDisk", params]]
 OPTIONS.model.gridtype = "logarithmic"
 OPTIONS.fit.method = "dynesty"
 
-labels = gauss_lor_labels + shared_params_labels
 result_dir = Path("results/pionier")
-model_name = "lor_gauss"
+model_name = "starHaloDiskGaussLor"
 
 plot.plot_overview(savefig=result_dir / f"{model_name}_data_overview.pdf")
 
@@ -75,7 +80,7 @@ if __name__ == "__main__":
         fit_params = fit_params_dynesty
 
     sampler = fitting.run_fit(**fit_params, ncores=ncores,
-                              save_dir=result_dir, debug=True)
+                              save_dir=result_dir, debug=False)
 
     theta, uncertainties = fitting.get_best_fit(
             sampler, **fit_params, method="quantile")

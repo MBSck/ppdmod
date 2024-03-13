@@ -10,17 +10,15 @@ from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 
-OPTIONS.fit.data = ["vis"]
 OPTIONS.model.output = "non-physical"
 fits_file = Path("../data/aspro") / "model_pt_ring_inc_rot.fits"
 wavelength = [10] * u.um
-data.set_fit_wavelengths(wavelength)
-data.set_data([fits_file])
-data.set_fit_weights()
+data.set_data([fits_file], wavelengths=wavelength, fit_data=["vis"])
 
 vis = OPTIONS.data.vis
-fr_pt, fr_ring, diameter, width, inclination, pos_angle = 0.4, 0.6, 10, 2, 0.351, 33
-components = [PointSource(fr=fr_ring), Ring(fr=fr_ring, rin=diameter/2, width=width, inc=inclination, pa=pos_angle)]
+fr_point, fr_ring, diameter, width, inclination, pos_angle = 0.4, 0.6, 10, 2, 0.351, 33
+components = [PointSource(fr=fr_point),
+              Ring(fr=fr_ring, rin=diameter/2, width=width, inc=inclination, pa=pos_angle, thin=False)]
 vis_model = np.abs(np.sum([comp.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength) for comp in components], axis=0))
 
 assert np.allclose(vis.value, vis_model, rtol=1e-1)
@@ -30,20 +28,16 @@ rchi_sq = fitting.compute_observable_chi_sq(
         *fitting.compute_observables(components, wavelength), reduced=True)
 print(f"chi_sq: {chi_sq}", f"rchi_sq: {rchi_sq}")
 
-fr = Parameter(**STANDARD_PARAMETERS.fr)
-fr.value = 0.1
-fr.free = True
+fr_pt = Parameter(**STANDARD_PARAMETERS.fr)
+fr_pt.value = 0.1
+fr_pt.free = True
 
-inc = Parameter(**STANDARD_PARAMETERS.inc)
-inc.value = 0
-inc.free = True
+point = {"fr": fr_pt}
+point_labels = [f"pt_{label}" for label in point]
 
-pa = Parameter(**STANDARD_PARAMETERS.pa)
-pa.value = 0
-pa.free = True
-
-OPTIONS.model.shared_params = {"fr": fr, "inc": inc, "pa": pa}
-shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
+fr_r = Parameter(**STANDARD_PARAMETERS.fr)
+fr_r.value = 0.1
+fr_r.free = True
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
 rin.value = 0.8
@@ -53,13 +47,21 @@ w = Parameter(**STANDARD_PARAMETERS.width)
 w.value = 4
 w.set(min=0, max=5)
 
-ring = {"rin": rin, "width": w}
+inc = Parameter(**STANDARD_PARAMETERS.inc)
+inc.value = 0
+inc.free = True
+
+pa = Parameter(**STANDARD_PARAMETERS.pa)
+pa.value = 0
+pa.free = True
+
+ring = {"fr": fr_r, "rin": rin, "width": w, "inc": inc, "pa": pa}
 ring_labels = [f"r_{label}" for label in ring]
 
-OPTIONS.model.components_and_params = [["PointSource", {}], ["Ring", ring]]
+OPTIONS.model.components_and_params = [["PointSource", point], ["Ring", ring]]
 OPTIONS.fit.method = "dynesty"
 
-labels = ring_labels + shared_params_labels
+labels = point_labels + ring_labels
 result_dir = Path("results/ring")
 model_name = "pt_ring_inc_rot"
 
@@ -89,8 +91,9 @@ if __name__ == "__main__":
     plot.plot_fit(theta[-2], theta[-1], components=components,
                   savefig=result_dir / f"{model_name}_fit_results.pdf")
 
-    assert np.isclose(theta[0], diameter/2, rtol=0.3)
-    assert np.isclose(theta[1], width, rtol=0.3)
-    assert np.isclose(theta[-3], fr_ring, rtol=0.1)
+    assert np.isclose(theta[0], fr_point, rtol=0.1)
+    assert np.isclose(theta[1], fr_ring, rtol=0.1)
+    assert np.isclose(theta[2], diameter/2, rtol=0.3)
+    assert np.isclose(theta[3], width, rtol=0.3)
     assert np.isclose(theta[-2], inclination, rtol=0.1)
     assert np.isclose(theta[-1], pos_angle, rtol=0.1)

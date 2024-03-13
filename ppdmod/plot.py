@@ -604,8 +604,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
             if not (wavelength_range[0] <= wavelength <= wavelength_range[1]):
                 continue
 
-        effective_baselines, _ = compute_effective_baselines(
-                vis.ucoord, vis.vcoord)
+        effective_baselines, _ = compute_effective_baselines(vis.ucoord, vis.vcoord)
         effective_baselines_mlambda = effective_baselines/wavelength.value
 
         if "t3" in data_to_plot:
