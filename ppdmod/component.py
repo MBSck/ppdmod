@@ -142,7 +142,7 @@ class Component:
         shift = shift.squeeze(-1) if shift.shape[-1] == 1 else shift
         return (vis*shift).astype(OPTIONS.data.dtype.complex)
 
-    def image_func(self, xx: u.mas, yy: u.mas, wavelength: u.um) -> np.ndarray:
+    def image_func(self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
         """Calculates the image."""
         return np.array([]).astype(OPTIONS.data.dtype.real)
 
@@ -159,7 +159,7 @@ class Component:
             xx = xx*np.cos(self.pa())-yy*np.sin(self.pa())*self.inc()
             yy = xx*np.sin(self.pa())+yy*np.cos(self.pa())
 
-        image = self.image_func(xx, yy, wavelength)
+        image = self.image_func(xx, yy, pixel_size, wavelength)
         return image.astype(OPTIONS.data.dtype.real)
 
 

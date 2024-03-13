@@ -181,9 +181,9 @@ def test_uniform_ring_init(ring: Ring) -> None:
 
 @pytest.mark.parametrize(
         "fits_file, compression, pos_angle, width",
-        [("Iring.fits", None, None, 0*u.mas),
-         ("Iring_inc.fits", 0.351*u.one, None, 0*u.mas),
-         ("Iring_inc_rot.fits", 0.351*u.one, 33*u.deg, 0*u.mas),
+        [("Iring.fits", None, None, None),
+         ("Iring_inc.fits", 0.351*u.one, None, None),
+         ("Iring_inc_rot.fits", 0.351*u.one, 33*u.deg, None),
          ("ring.fits", None, None, 1*u.mas),
          ("ring_inc.fits", 0.351*u.one, None, 1*u.mas),
          ("ring_inc_rot.fits", 0.351*u.one, 33*u.deg, 1*u.mas)])
@@ -197,7 +197,11 @@ def test_ring_compute_vis(
     set_fit_wavelengths(wavelength)
     set_data([fits_file], fit_data=fit_data)
 
-    ring.rin.value, ring.width.value = radius, width
+    if width is not None:
+        ring.thin = False
+        ring.width.value = width
+
+    ring.rin.value = radius
     vis, t3 = OPTIONS.data.vis, OPTIONS.data.t3
     if compression is not None:
         ring.elliptic = True
@@ -207,7 +211,7 @@ def test_ring_compute_vis(
 
     vis_ring = compute_vis(ring.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
     t3_ring = compute_t3(ring.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
-    
+
     assert vis_ring.shape == (wavelength.size, vis.ucoord.shape[1])
     assert np.allclose(vis.value, vis_ring, atol=1e-2)
 

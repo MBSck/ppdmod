@@ -221,13 +221,13 @@ class Ring(Component):
     @property
     def asymmetric(self) -> bool:
         """Gets if the component is elliptic."""
-        return self._elliptic
+        return self._asymmetric
 
     @asymmetric.setter
     def asymmetric(self, value: bool) -> None:
         """Sets the position angle and the parameters to free or false
         if elliptic is set."""
-        self._asymmtric = self.a.free = self.phi.free = value
+        self._asymmetric = self.a.free = self.phi.free = value
 
     def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
