@@ -17,6 +17,7 @@ tests/data/fits
 tests/data/flux
 tests/data/grf
 tests/data/qval
+tests/data/gravity
 
 # Results of tests
 fluxes/

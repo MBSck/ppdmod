@@ -28,6 +28,7 @@ class Component:
 
     def __init__(self, **kwargs):
         """The class's constructor."""
+        self.fr = Parameter(**STANDARD_PARAMETERS.fr)
         self.x = Parameter(**STANDARD_PARAMETERS.x)
         self.y = Parameter(**STANDARD_PARAMETERS.y)
         self.dim = Parameter(**STANDARD_PARAMETERS.dim)
@@ -211,5 +212,4 @@ class Convolver(Component):
         """Computes the correlated fluxes via the hankel transformation."""
         vis = [comp.vis_func(baselines, baseline_angles, wavelength, **kwargs)
                for comp in self.components.values()]
-        vis = [v.squeeze(-1) if v.shape[-1] == 1 else v for v in vis]
         return np.prod(vis, axis=0).astype(OPTIONS.data.dtype.complex)

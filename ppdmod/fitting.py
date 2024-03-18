@@ -1,3 +1,4 @@
+from math import e
 from multiprocessing import Pool
 from typing import Optional, List, Dict, Tuple, Union, Callable
 from pathlib import Path
@@ -126,7 +127,7 @@ def compute_chi_sq(data: u.Quantity, error: u.Quantity,
 
     return -0.5*(diff**2*inv_sigma_squared + np.log(1/inv_sigma_squared)).sum()
 
-
+# TODO: Make it so that both point source and star can be used at the same time
 def compute_observables(components: List[Component],
                         wavelength: Optional[np.ndarray] = None):
     """Calculates the observables from the model."""

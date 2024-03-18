@@ -5,7 +5,7 @@ import numpy as np
 from astropy.modeling.models import BlackBody
 from scipy.special import j0, j1, jv
 
-from .component import Component
+from .component import Component, Convolver
 from .parameter import Parameter
 from .options import STANDARD_PARAMETERS, OPTIONS
 from .utils import distance_to_angular
@@ -38,7 +38,6 @@ class PointSource(Component):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.fr = Parameter(**STANDARD_PARAMETERS.fr)
         self.elliptic = False
         self.eval(**kwargs)
 
@@ -198,11 +197,8 @@ class Ring(Component):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.fr = Parameter(**STANDARD_PARAMETERS.fr)
         self.rin = Parameter(**STANDARD_PARAMETERS.rin)
         self.width = Parameter(**STANDARD_PARAMETERS.width)
-        self.a = Parameter(**STANDARD_PARAMETERS.a)
-        self.phi = Parameter(**STANDARD_PARAMETERS.phi)
         self.eval(**kwargs)
 
     @property
@@ -231,19 +227,19 @@ class Ring(Component):
             The wavelengths.
         """
         if self.thin:
-            vis = j0(2*np.pi*self.rin().to(u.rad)*baselines)
+            vis = j0(2*np.pi*self.rin().to(u.rad)*baselines).astype(complex)
             if self.asymmetric:
-                vis += -1j*self.a()*np.cos(1j*(baseline_angles-self.phi()))\
+                vis += -1j*self.a()*np.cos(1j*(baseline_angles-self.phi().to(u.rad)))\
                     * j1(2*np.pi*self.rin().to(u.rad)*baselines)
         else:
             radius = np.linspace(self.rin(), self.rin()+self.width(), self.dim())
-            vis = np.trapz(j0(2*np.pi*radius.to(u.rad)*baselines), radius)/self.width()
+            vis = (np.trapz(j0(2*np.pi*radius.to(u.rad)*baselines), radius)/self.width()).astype(complex)
             if self.asymmetric:
-                vis += -1j*self.a()*np.cos(1j*(baseline_angles-self.phi()))\
+                vis += -1j*self.a()*np.cos(1j*(baseline_angles-self.phi().to(u.rad)))\
                     * np.trapz(j1(2*np.pi*radius.to(u.rad)*baselines), radius)/self.width()
         return (self.fr()*vis).value.astype(OPTIONS.data.dtype.complex)
 
-    def image_func(self, xx: u.mas, yy: u.mas, wavelength: u.um) -> np.ndarray:
+    def image_func(self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
         """Computes the image from a 2D grid.
         Parameters
         ----------
@@ -254,7 +250,7 @@ class Ring(Component):
         -------
         image : astropy.units.Jy
         """
-        radius = np.hypot(xx, yy)
+        radius = np.hypot(xx, yy)[np.newaxis, ...]
         radial_profile = np.logical_and(
                 radius >= self.rin(), radius <= self.rin()+self.width())
         return radial_profile.astype(OPTIONS.data.dtype.real)
@@ -294,7 +290,6 @@ class Gaussian(Component):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.fr = Parameter(**STANDARD_PARAMETERS.fr)
         self.fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
         self.eval(**kwargs)
 
@@ -322,7 +317,6 @@ class Lorentzian(Component):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.fr = Parameter(**STANDARD_PARAMETERS.fr)
         self.fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
         self.eval(**kwargs)
 
@@ -350,7 +344,6 @@ class GaussLorentzian(Component):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.fr = Parameter(**STANDARD_PARAMETERS.fr)
         self.flor = Parameter(**STANDARD_PARAMETERS.fr)
         self.flor.free = True
         self.fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
@@ -688,17 +681,18 @@ class AsymmetricGreyBody(TempGradient):
 #         self.ks.free = False
 #         self.kc = Parameter(**STANDARD_PARAMETERS.exp)
 
-
-class StarHaloDisk(Component):
+class StarHaloGaussLor(Component):
     """A star, a disk and a halo model as seen in Lazareff+2017."""
     name = "StarDiskHalo"
     shortname = "StarDiskHalo"
+    ring = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.fs = Parameter(**STANDARD_PARAMETERS.fr)
         self.fc = Parameter(**STANDARD_PARAMETERS.fr)
         self.flor = Parameter(**STANDARD_PARAMETERS.fr)
+        self.rin = Parameter(**STANDARD_PARAMETERS.rin)
         self.fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
         self.wl0 = Parameter(**STANDARD_PARAMETERS.wl)
         self.ks = Parameter(**STANDARD_PARAMETERS.exp)
@@ -709,14 +703,33 @@ class StarHaloDisk(Component):
     def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
         fh = 1 - self.fs() - self.fc()
-        gl = GaussLorentzian(flor=self.flor, fwhm=self.fwhm, inc=self.inc, pa=self.pa)
         ks = self.ks(wavelength)[:, np.newaxis, np.newaxis]
-        vis_disk = gl.vis_func(baselines, baseline_angles, wavelength, **kwargs)
+        if len(baselines.shape) == 4:
+            ks = ks[..., np.newaxis]
         wavelength_ratio = self.wl0()/wavelength[..., np.newaxis]
         vis_star = self.fs()*wavelength_ratio**ks
+        divisor = (fh+self.fs())*wavelength_ratio**ks \
+            + self.fc()*wavelength_ratio**self.kc
+
+        gl = GaussLorentzian(flor=self.flor, fwhm=self.fwhm,
+                             inc=self.inc, pa=self.pa)
+        if self.ring:
+            ring = Ring(rin=self.rin, a=self.a, inc=self.inc,
+                        pa=self.pa, phi=self.phi, asymmetric=True)
+            conv = Convolver(gl=gl, ring=ring)
+            vis_disk = conv.vis_func(baselines, baseline_angles, wavelength, **kwargs)
+        else:
+            vis_disk = gl.vis_func(baselines, baseline_angles, wavelength, **kwargs)
+
         vis_comp = self.fc()*vis_disk*wavelength_ratio**self.kc()
-        divisor = (fh+self.fs())*wavelength_ratio**ks + self.fc()*wavelength_ratio**self.kc
-        return (vis_star+vis_comp)/divisor
+        return ((vis_star+vis_comp)/divisor).value.astype(OPTIONS.data.dtype.complex)
+
+
+class StarHaloRing(StarHaloGaussLor):
+    """A star, a disk and a halo model as seen in Lazareff+2017."""
+    name = "StarDiskHalo"
+    shortname = "StarDiskHalo"
+    ring = True
 
 
 def assemble_components(

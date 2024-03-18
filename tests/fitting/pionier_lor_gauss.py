@@ -56,12 +56,12 @@ params = {"fs": fs, "fc": fc, "flor": flor, "fwhm": fwhm, "kc": kc, "inc": inc, 
 labels = [label for label in params]
 
 OPTIONS.model.constant_params = {"wl0": 1.68, "ks": ks}
-OPTIONS.model.components_and_params = [["StarHaloDisk", params]]
+OPTIONS.model.components_and_params = [["StarHaloGaussLor", params]]
 OPTIONS.model.gridtype = "logarithmic"
 OPTIONS.fit.method = "dynesty"
 
 result_dir = Path("results/pionier")
-model_name = "starHaloDiskGaussLor"
+model_name = "starHaloGaussLor"
 
 plot.plot_overview(savefig=result_dir / f"{model_name}_data_overview.pdf")
 
