@@ -35,7 +35,7 @@ fs.free = True
 
 # TODO: Check the rate of increase 0.05 again
 wavelength = data.get_all_wavelengths()
-wavelength = np.append(wavelength.copy(), (wavelength[-1].value+0.05104995)*u.um)
+wavelength = np.append(wavelength.copy(), (wavelength[-1].value+0.087283134)*u.um)
 bb = np.log(BlackBody(temperature=7500*u.K)(wavelength).value)
 freq = np.log((const.c / wavelength.to(u.m)).to(u.Hz).value)
 dbb, dfreq = np.diff(bb), np.diff(freq)
