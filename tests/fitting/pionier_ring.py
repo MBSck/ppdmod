@@ -34,11 +34,13 @@ fs.value = 0.4
 fs.free = True
 
 wavelength = data.get_all_wavelengths()
-bb = BlackBody(temperature=7500*u.K)(wavelength)
-freq = (const.c / wavelength.to(u.m)).to(u.Hz)
+wavelength = np.append(wavelength.copy(), (wavelength[-1].value+0.05104995)*u.um)
+bb = np.log(BlackBody(temperature=7500*u.K)(wavelength).value)
+freq = np.log((const.c / wavelength.to(u.m)).to(u.Hz).value)
+dbb, dfreq = np.diff(bb), np.diff(freq)
 ks = Parameter(**STANDARD_PARAMETERS.exp)
-ks.value = np.log(bb.value)/np.log(freq.value)
-ks.wavelength = wavelength
+ks.value = dbb/dfreq
+ks.wavelength = wavelength[:-1]
 ks.free = False
 
 kc = Parameter(**STANDARD_PARAMETERS.exp)
@@ -91,7 +93,7 @@ if __name__ == "__main__":
         fit_params = fit_params_dynesty
 
     sampler = fitting.run_fit(**fit_params, ncores=ncores,
-                              save_dir=result_dir, debug=False)
+                              save_dir=result_dir, debug=True)
 
     theta, uncertainties = fitting.get_best_fit(
             sampler, **fit_params, method="quantile")
@@ -99,7 +101,7 @@ if __name__ == "__main__":
     components_and_params, shared_params = fitting.set_params_from_theta(theta)
     components = assemble_components(components_and_params, shared_params)
     rchi_sq = fitting.compute_observable_chi_sq(
-            *fitting.compute_observables(components, wavelength), reduced=True)
+            *fitting.compute_observables(components, OPTIONS.fit.wavelengths), reduced=True)
     print(f"rchi_sq: {rchi_sq}")
 
     plot.plot_chains(sampler, labels, **fit_params,

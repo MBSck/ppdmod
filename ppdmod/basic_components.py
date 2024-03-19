@@ -147,8 +147,7 @@ class Star(Component):
             plancks_law = BlackBody(temperature=self.eff_temp())
             spectral_radiance = plancks_law(wavelength).to(
                 u.erg/(u.cm**2*u.Hz*u.s*u.rad**2))
-            stellar_flux = np.pi*(spectral_radiance
-                                  * self.stellar_radius_angular**2).to(u.Jy)
+            stellar_flux = np.pi*(spectral_radiance * self.stellar_radius_angular**2).to(u.Jy)
         return stellar_flux.value.reshape((wavelength.size, 1))
 
     def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
