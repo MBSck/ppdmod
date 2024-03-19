@@ -520,10 +520,13 @@ def plot_fit(inclination: u.one, pos_angle: u.deg,
                 else:
                     upper_ax.set_ylim([0, 1])
 
+            upper_ax.set_xlim([0, None])
+            lower_ax.set_xlim([0, None])
             lower_ax.set_ylabel(residual_label)
             upper_ax.set_ylabel(y_label)
             upper_ax.tick_params(**tick_settings)
             upper_ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
+
             if not len(axarr) > 1:
                 legend = upper_ax.legend(handles=[dot_label, x_label])
                 set_legend_color(legend, OPTIONS.plot.color.background)
@@ -543,6 +546,9 @@ def plot_fit(inclination: u.one, pos_angle: u.deg,
                 upper_ax.set_ylim(ylimits["t3"])
             else:
                 upper_ax.set_ylim([lower_bound, upper_bound])
+
+            upper_ax.set_xlim([0, None])
+            lower_ax.set_xlim([0, None])
             legend = upper_ax.legend(handles=[dot_label, x_label])
             set_legend_color(legend, OPTIONS.plot.color.background)
 
@@ -689,15 +695,17 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
             ax.set_ylabel(label)
             if "vis" in ylimits:
                 ax.set_ylim(ylimits["vis"])
+            ax.set_xlim([0, None])
             ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
 
         if key == "vis2":
             ax.set_xlabel(r"$\mathrm{B}$ (M$\lambda$)")
-            ax.set_ylabel("Visibilities Squared (Normalized)")
+            ax.set_ylabel("Visibilities (Normalized)")
             if "vis2" in ylimits:
                 ax.set_ylim(ylimits["vis2"])
             else:
                 ax.set_ylim([0, 1])
+            ax.set_xlim([0, None])
             ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
 
         if key == "t3":
@@ -712,6 +720,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
                 ax.set_ylim(ylimits["t3"])
             else:
                 ax.set_ylim([lower_bound, upper_bound])
+            ax.set_xlim([0, None])
 
     if title is not None:
         plt.title(title)
