@@ -93,7 +93,7 @@ if __name__ == "__main__":
         fit_params = fit_params_dynesty
 
     sampler = fitting.run_fit(**fit_params, ncores=ncores,
-                              save_dir=result_dir, debug=True)
+                              save_dir=result_dir, debug=False)
 
     theta, uncertainties = fitting.get_best_fit(
             sampler, **fit_params, method="quantile")
