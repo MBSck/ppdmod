@@ -486,7 +486,8 @@ def set_legend_color(legend: Legend, background_color: str) -> None:
 # TODO: Remove the check for the ucoord here
 def broadcast_baselines(
         wavelength: u.um, baselines: u.m,
-        baseline_angles: u.rad, ucoord: u.m) -> Tuple[u.um, 1/u.rad, u.rad]:
+        baseline_angles: u.rad, ucoord: u.m
+    ) -> Tuple[u.Quantity[u.um], u.Quantity[1/u.rad], u.Quantity[u.rad]]:
     """Broadcasts the baselines to the correct shape depending on
     the input ucoord shape."""
     wavelength = wavelength[:, np.newaxis]
