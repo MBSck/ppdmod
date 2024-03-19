@@ -234,8 +234,9 @@ class Ring(Component):
             radius = np.linspace(self.rin(), self.rin()+self.width(), self.dim())
             vis = (np.trapz(j0(2*np.pi*radius.to(u.rad)*baselines), radius)/self.width()).astype(complex)
             if self.asymmetric:
-                vis += -1j*self.a()*np.cos(1j*(baseline_angles-self.phi().to(u.rad)))\
-                    * np.trapz(j1(2*np.pi*radius.to(u.rad)*baselines), radius)/self.width()
+                factor = (-1j*self.a()*np.cos(1j*(baseline_angles-self.phi().to(u.rad)))).reshape(1, -1)
+                vis += (factor*np.trapz(j1(2*np.pi*radius.to(u.rad)*baselines), radius))/self.width()
+            vis = vis[..., np.newaxis]
         return (self.fr()*vis).value.astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
@@ -715,7 +716,7 @@ class StarHaloGaussLor(Component):
         if self.ring:
             width = self.fwhm()/np.hypot(self.fwhm(), self.rin())
             ring = Ring(rin=self.rin, width=width, a=self.a, inc=self.inc,
-                        pa=self.pa, phi=self.phi, asymmetric=True, thin=False)
+                        pa=self.pa, phi=self.phi, asymmetric=True, thin=True)
             conv = Convolver(gl=gl, ring=ring)
             vis_disk = conv.vis_func(baselines, baseline_angles, wavelength, **kwargs)
         else:
