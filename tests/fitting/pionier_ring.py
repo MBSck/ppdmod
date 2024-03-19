@@ -108,5 +108,5 @@ if __name__ == "__main__":
                      savefig=result_dir / f"{model_name}_chains.pdf")
     plot.plot_corner(sampler, labels, **fit_params,
                      savefig=result_dir / f"{model_name}_corner.pdf")
-    plot.plot_fit(theta[-2], theta[-1], components=components,
+    plot.plot_fit(components[0].inc, components[0].pa, components=components,
                   savefig=result_dir / f"{model_name}_fit_results.pdf")
