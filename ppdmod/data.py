@@ -256,7 +256,7 @@ def set_data(fits_files: Optional[List[Path]] = None,
         OPTIONS.data.binning = None
 
     wavelengths = set_fit_wavelengths(wavelengths)
-    for index, readout in enumerate(OPTIONS.data.readouts):
+    for readout in OPTIONS.data.readouts:
         for key in fit_data:
             data = getattr(OPTIONS.data, key)
             data_readout = getattr(readout, key)
