@@ -74,13 +74,14 @@ OPTIONS.model.gridtype = "logarithmic"
 OPTIONS.fit.method = "dynesty"
 
 result_dir = Path("results/pionier")
+result_dir.mkdir(exist_ok=True, parents=True)
 model_name = "starHaloGaussLorRingAsym"
 
 plot.plot_overview(savefig=result_dir / f"{model_name}_data_overview.pdf")
 
 
 if __name__ == "__main__":
-    ncores = 6
+    ncores = None
     fit_params_emcee = {"nburnin": 200, "nsteps": 500, "nwalkers": 100}
     fit_params_dynesty = {"nlive": 1500, "sample": "rwalk", "bound": "multi"}
 
@@ -89,7 +90,7 @@ if __name__ == "__main__":
         ncores = fit_params["nwalkers"]//2 if ncores is None else ncores
         fit_params["discard"] = fit_params["nburnin"]
     else:
-        ncores = 30 if ncores is None else ncores
+        ncores = 50 if ncores is None else ncores
         fit_params = fit_params_dynesty
 
     sampler = fitting.run_fit(**fit_params, ncores=ncores,

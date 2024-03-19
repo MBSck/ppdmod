@@ -79,7 +79,7 @@ if __name__ == "__main__":
         ncores = fit_params["nwalkers"]//2 if ncores is None else ncores
         fit_params["discard"] = fit_params["nburnin"]
     else:
-        ncores = 30 if ncores is None else ncores
+        ncores = 50 if ncores is None else ncores
         fit_params = fit_params_dynesty
 
     sampler = fitting.run_fit(**fit_params, ncores=ncores,
