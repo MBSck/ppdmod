@@ -234,7 +234,7 @@ class Ring(Component):
             radius = np.linspace(self.rin(), self.rin()+self.width(), self.dim())
             vis = (np.trapz(j0(2*np.pi*radius.to(u.rad)*baselines), radius)/self.width()).astype(complex)
             if self.asymmetric:
-                factor = (-1j*self.a()*np.cos(1j*(baseline_angles-self.phi().to(u.rad)))).reshape(1, -1)
+                factor = (-1j*self.a()*np.cos(1j*(baseline_angles-self.phi().to(u.rad)))).reshape(1, *vis.shape[1:])
                 vis += (factor*np.trapz(j1(2*np.pi*radius.to(u.rad)*baselines), radius))/self.width()
             vis = vis[..., np.newaxis]
         return (self.fr()*vis).value.astype(OPTIONS.data.dtype.complex)
