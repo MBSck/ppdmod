@@ -33,12 +33,15 @@ fs = Parameter(**STANDARD_PARAMETERS.fr)
 fs.value = 0.4
 fs.free = True
 
+# TODO: Check the rate of increase 0.05 again
 wavelength = data.get_all_wavelengths()
-bb = BlackBody(temperature=7500*u.K)(wavelength)
-freq = (const.c / wavelength.to(u.m)).to(u.Hz)
+wavelength = np.append(wavelength.copy(), (wavelength[-1].value+0.05104995)*u.um)
+bb = np.log(BlackBody(temperature=7500*u.K)(wavelength).value)
+freq = np.log((const.c / wavelength.to(u.m)).to(u.Hz).value)
+dbb, dfreq = np.diff(bb), np.diff(freq)
 ks = Parameter(**STANDARD_PARAMETERS.exp)
-ks.value = np.log(bb.value)/np.log(freq.value)
-ks.wavelength = wavelength
+ks.value = dbb/dfreq
+ks.wavelength = wavelength[:-1]
 ks.free = False
 
 kc = Parameter(**STANDARD_PARAMETERS.exp)
@@ -106,5 +109,5 @@ if __name__ == "__main__":
                      savefig=result_dir / f"{model_name}_chains.pdf")
     plot.plot_corner(sampler, labels, **fit_params,
                      savefig=result_dir / f"{model_name}_corner.pdf")
-    plot.plot_fit(components[0].inc, components[0].pa, components=components,
+    plot.plot_fit(components[0].inc(), components[0].pa(), components=components,
                   savefig=result_dir / f"{model_name}_fit_results.pdf")
