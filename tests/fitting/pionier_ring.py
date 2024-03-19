@@ -75,7 +75,7 @@ OPTIONS.fit.method = "dynesty"
 
 result_dir = Path("results/pionier")
 result_dir.mkdir(exist_ok=True, parents=True)
-model_name = "starHaloGaussLorRingAsym"
+model_name = "starHaloGaussLorRing"
 
 plot.plot_overview(savefig=result_dir / f"{model_name}_data_overview.pdf")
 
@@ -94,7 +94,7 @@ if __name__ == "__main__":
         fit_params = fit_params_dynesty
 
     sampler = fitting.run_fit(**fit_params, ncores=ncores,
-                              save_dir=result_dir, debug=True)
+                              save_dir=result_dir, debug=False)
 
     theta, uncertainties = fitting.get_best_fit(
             sampler, **fit_params, method="quantile")
@@ -102,7 +102,7 @@ if __name__ == "__main__":
     components_and_params, shared_params = fitting.set_params_from_theta(theta)
     components = assemble_components(components_and_params, shared_params)
     rchi_sq = fitting.compute_observable_chi_sq(
-            *fitting.compute_observables(components, OPTIONS.fit.wavelengths), reduced=True)
+            *fitting.compute_observables(components), reduced=True)
     print(f"rchi_sq: {rchi_sq}")
 
     plot.plot_chains(sampler, labels, **fit_params,

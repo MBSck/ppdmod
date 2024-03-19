@@ -91,7 +91,7 @@ if __name__ == "__main__":
     components_and_params, shared_params = fitting.set_params_from_theta(theta)
     components = assemble_components(components_and_params, shared_params)
     rchi_sq = fitting.compute_observable_chi_sq(
-            *fitting.compute_observables(components, OPTIONS.fit.wavelengths), reduced=True)
+            *fitting.compute_observables(components), reduced=True)
     print(f"rchi_sq: {rchi_sq}")
 
     plot.plot_chains(sampler, labels, **fit_params,

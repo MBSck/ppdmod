@@ -502,17 +502,24 @@ def plot_fit(inclination: u.one, pos_angle: u.deg,
             lower_ax.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}$ (M$\lambda$)")
 
             if key == "vis":
-                residual_label = "Residuals (Jy)"
-                y_label = "Correlated fluxes (Jy)"
+                if OPTIONS.model.output == "physical":
+                    y_label = "Correlated fluxes (Jy)"
+                    unit = "Jy"
+                else:
+                    y_label = "Visibilities (Normalized)"
+                    unit = "Normalized"
+
+                residual_label = f"Residuals ({unit})"
                 if "vis" in ylimits:
                     upper_ax.set_ylim(ylimits["vis"])
             else:
                 residual_label = "Residuals (Normalized)"
-                y_label = "Visibilities (Normalized)"
+                y_label = "Visibilities Squared (Normalized)"
                 if "vis2" in ylimits:
                     upper_ax.set_ylim(ylimits["vis2"])
                 else:
                     upper_ax.set_ylim([0, 1])
+
             lower_ax.set_ylabel(residual_label)
             upper_ax.set_ylabel(y_label)
             upper_ax.tick_params(**tick_settings)
@@ -674,14 +681,19 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
 
         if key == "vis":
             ax.set_xlabel(r"$\mathrm{B}$ (M$\lambda$)")
-            ax.set_ylabel("Correlated fluxes (Jy)")
+            if OPTIONS.model.output == "physical":
+                label = "Correlated fluxes (Jy)"
+            else:
+                label = "Visibilities (Normalized)"
+
+            ax.set_ylabel(label)
             if "vis" in ylimits:
                 ax.set_ylim(ylimits["vis"])
             ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
 
         if key == "vis2":
             ax.set_xlabel(r"$\mathrm{B}$ (M$\lambda$)")
-            ax.set_ylabel("Visibilities (Normalized)")
+            ax.set_ylabel("Visibilities Squared (Normalized)")
             if "vis2" in ylimits:
                 ax.set_ylim(ylimits["vis2"])
             else:
