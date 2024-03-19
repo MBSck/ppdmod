@@ -1,3 +1,4 @@
+from typing import List
 from pathlib import Path
 
 import astropy.units as u
@@ -10,6 +11,14 @@ from ppdmod import plot
 from ppdmod.basic_components import assemble_components
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
+
+
+def ptform(theta: List[float]) -> np.ndarray:
+    """Transform that constrains the first two parameters to 1."""
+    pt = fitting.transform_uniform_prior(theta)
+    params = pt.copy()
+    params[1] = params[1]*(1-params[0])
+    return params
 
 
 DATA_DIR = Path("../data/gravity")
@@ -84,7 +93,8 @@ plot.plot_overview(savefig=result_dir / f"{model_name}_data_overview.pdf")
 if __name__ == "__main__":
     ncores = None
     fit_params_emcee = {"nburnin": 200, "nsteps": 500, "nwalkers": 100}
-    fit_params_dynesty = {"nlive": 1500, "sample": "rwalk", "bound": "multi"}
+    fit_params_dynesty = {"nlive": 1500, "sample": "rwalk",
+                          "bound": "multi", "ptform": ptform}
 
     if OPTIONS.fit.method == "emcee":
         fit_params = fit_params_emcee
@@ -95,7 +105,7 @@ if __name__ == "__main__":
         fit_params = fit_params_dynesty
 
     sampler = fitting.run_fit(**fit_params, ncores=ncores,
-                              save_dir=result_dir, debug=False)
+                              save_dir=result_dir, debug=True)
 
     theta, uncertainties = fitting.get_best_fit(
             sampler, **fit_params, method="quantile")

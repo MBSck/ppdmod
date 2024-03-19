@@ -1,4 +1,3 @@
-from math import e
 from multiprocessing import Pool
 from typing import Optional, List, Dict, Tuple, Union, Callable
 from pathlib import Path
