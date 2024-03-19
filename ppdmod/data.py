@@ -65,8 +65,11 @@ class ReadoutFits:
                                    vcoord=np.array([]).reshape(1, -1))
 
         if key == "flux":
-            return SimpleNamespace(value=data.data["fluxdata"],
-                                   err=data.data["fluxerr"])
+            try:
+                return SimpleNamespace(value=data.data["fluxdata"],
+                                       err=data.data["fluxerr"])
+            except KeyError:
+                return SimpleNamespace(value=np.array([]), err=np.array([]))
         elif key in ["vis", "vis2"]:
             if key == "vis":
                 value_key, err_key = "visamp", "visamperr"
