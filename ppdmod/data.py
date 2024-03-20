@@ -88,7 +88,7 @@ class ReadoutFits:
             # TODO: Check this!
             # NOTE: This should be positive as complex conjugation is applied
             # later? Also positive for Jozsef and Anthony?
-            u3coord, v3coord = -(u1coord+u2coord), -(v1coord+v2coord)
+            u3coord, v3coord = u1coord+u2coord, v1coord+v2coord
             u123coord = np.array([u1coord, u2coord, u3coord])
             v123coord = np.array([v1coord, v2coord, v3coord])
             return SimpleNamespace(value=value, err=err,
