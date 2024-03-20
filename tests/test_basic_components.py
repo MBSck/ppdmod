@@ -458,7 +458,8 @@ def test_assemble_components() -> None:
     assert isinstance(components[0], Star)
     assert isinstance(components[1], GreyBody)
     assert all(not hasattr(components[0], param)
-               for param in param_names if param not in ["pa", "inc"])
+               for param in param_names if param
+               not in ["a", "phi", "pa", "inc"])
     assert all(hasattr(components[1], param) for param in param_names)
     assert all(getattr(components[1], name).value == value
                for name, value in zip(["pa", "inc"], values[-2:]))

@@ -375,9 +375,9 @@ class TempGradient(Component):
     shortname = "HankComp"
     description = "This defines the analytical hankel transformation."
     elliptic = True
-    _optically_thick = False
-    _const_temperature = False
-    _continuum_contribution = True
+    optically_thick = False
+    const_temperature = False
+    continuum_contribution = True
 
     def __init__(self, **kwargs):
         """The class's constructor."""
@@ -739,11 +739,16 @@ def assemble_components(
         shared_params: Optional[Dict[str, Parameter]] = None
         ) -> List[Component]:
     """Assembles a model from a dictionary of parameters."""
+    shared_params = shared_params if shared_params is not None else {}
+    if OPTIONS.model.constant_params is None:
+        constant_params = {}
+    else:
+        constant_params = OPTIONS.model.constant_params
+
     components = []
     for (component, params) in parameters:
         comp = getattr(sys.modules[__name__], component)
-        components.append(comp(**params, **shared_params,
-                               **OPTIONS.model.constant_params))
+        components.append(comp(**params, **shared_params, **constant_params))
     return components
 
 
