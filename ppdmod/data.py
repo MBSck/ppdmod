@@ -130,8 +130,8 @@ class ReadoutFits:
 
         if key == "flux":
             if OPTIONS.data.binning is None:
-                wl_data = [data.squeeze()[index] if index.size != 0
-                           else np.full((data.shape[0],), np.nan) for index in indices]
+                wl_data = [[data.squeeze()[index] if index.size != 0
+                           else np.full((data.shape[0],), np.nan)] for index in indices]
             else:
                 wl_data = [[data.squeeze()[index].mean()] for index in indices]
         else:
@@ -216,7 +216,7 @@ def set_fit_weights(weights: Optional[List[float]] = None,
 def set_data(fits_files: Optional[List[Path]] = None,
              wavelengths: Optional[Union[str, u.Quantity[u.um]]] = None,
              fit_data: Optional[List[str]] = None,
-             weights: Optional[List[float]] = None, **kwargs) -> None:
+             weights: Optional[List[float]] = None, **kwargs) -> SimpleNamespace:
     """Sets the data as a global variable from the input files.
 
     If called without parameters or recalled, it will clear the data.
@@ -254,6 +254,8 @@ def set_data(fits_files: Optional[List[Path]] = None,
     if wavelengths == "all":
         wavelengths = get_all_wavelengths(OPTIONS.data.readouts)
         OPTIONS.data.binning = None
+    elif wavelengths is None:
+        raise ValueError("No wavelengths given and/or not 'all' specified!")
 
     wavelengths = set_fit_wavelengths(wavelengths)
     for readout in OPTIONS.data.readouts:
@@ -285,3 +287,4 @@ def set_data(fits_files: Optional[List[Path]] = None,
                     data.v123coord = np.hstack(
                             (data.v123coord, data_readout.v123coord))
     set_fit_weights(weights, fit_data)
+    return OPTIONS.data

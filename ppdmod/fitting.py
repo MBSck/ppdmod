@@ -157,7 +157,7 @@ def compute_observables(components: List[Component],
         flux_ratio = components[index].compute_flux(wavelength)
 
     if flux_ratio is not None:
-        if OPTIONS.model.output == "physial":
+        if OPTIONS.model.output == "physical":
             stellar_flux = (flux_model/(1-flux_ratio))*flux_ratio
             flux_model += stellar_flux
             vis_model += stellar_flux
@@ -172,7 +172,8 @@ def compute_observables(components: List[Component],
         vis_model = vis_model/flux_model
 
     if flux_model.size > 0:
-        flux_model = np.tile(flux_model, (OPTIONS.data.flux.value.shape[1]))
+        flux_model = np.tile(flux_model, (len(OPTIONS.data.readouts)))
+
     vis_model, t3_model = compute_vis(vis_model), compute_t3(t3_model)
 
     if "vis2" in OPTIONS.fit.data:

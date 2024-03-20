@@ -371,9 +371,8 @@ class TempGradient(Component):
     dim : float
         The dimension [px].
     """
-    name = "Hankel Component"
-    shortname = "HankComp"
-    description = "This defines the analytical hankel transformation."
+    name = "Temperature Gradient"
+    shortname = "TempGrad"
     elliptic = True
     optically_thick = False
     const_temperature = False
@@ -652,8 +651,8 @@ class AsymmetricTempGradient(TempGradient):
 class GreyBody(TempGradient):
     """An analytical implementation of an asymmetric temperature
     gradient."""
-    name = "Asymmetric Continuum Grey Body"
-    shortname = "AsymContinuumGreyBody"
+    name = "Symmetric Continuum Grey Body"
+    shortname = "ContinuumGreyBody"
     const_temperature = True
 
 

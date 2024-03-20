@@ -4,49 +4,37 @@ from pathlib import Path
 import astropy.units as u
 import numpy as np
 
-from ppdmod import analysis
+# from ppdmod import analysis
 from ppdmod import basic_components
-from ppdmod import data
 from ppdmod import fitting
 from ppdmod import plot
 from ppdmod import utils
+from ppdmod.data import set_data, get_all_wavelengths
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 
-DATA_DIR = Path("tests/data")
+DATA_DIR = Path("../tests/data")
+wavelengths = {"hband": [1.6]*u.um,
+               "kband": [2.25]*u.um,
+               "lband": [3.2]*u.um,
+               "nband": [8., 9., 10., 11.3, 12.5]*u.um}
 
-OPTIONS.fit.data = ["flux", "vis2", "t3"]
-# wavelengths = [1.6]*u.um
-wavelengths = [2.25]*u.um
-# wavelengths = [1.6, 2.25]*u.um
-# wavelengths = [1.6, 2.25, 3.5]*u.um
-# wavelengths = [2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 4.25, 4.5]*u.um
-# wavelengths = [3.5]*u.um
-# wavelengths = [1.6, 2.25, 3.5, 8., 9., 10., 11.3, 12.5]*u.um
-# wavelengths = [8., 9., 10., 11.3, 12.5]*u.um
-data.set_fit_wavelengths(wavelengths)
-# fits_files = list((DATA_DIR / "fits").glob("*04-23*AQU*fits"))
-fits_files = list((DATA_DIR / "fits").glob("*GRAV*fits"))
-# fits_files = [DATA_DIR / "flux" / "10402847.ss"]
-data.set_data(fits_files)
-data.set_fit_weights()
-
-wavelength_axes = list(
-    map(lambda x: x.wavelength, OPTIONS.data.readouts))
-wavelength_axes = np.sort(np.unique(np.concatenate(wavelength_axes)))
+fits_files = list((DATA_DIR / "fits").glob("*AQU*fits"))
+data = set_data(fits_files, wavelengths="all", fit_data=["flux", "vis2"])
+wavelengths = get_all_wavelengths()
 
 # TODO: Check flux values -> gave nan for only N-band
 wl_flux, flux = utils.load_data(DATA_DIR / "flux/HD142666_stellar_model.txt.gz")
-flux_interpn = np.interp(wavelength_axes.value, wl_flux, flux)
+flux_interpn = np.interp(wavelengths.value, wl_flux, flux)
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
-star_flux.value, star_flux.wavelength = flux_interpn, wavelength_axes
+star_flux.value, star_flux.wavelength = flux_interpn, wavelengths
 
 wl_flux_ratio, flux_ratio = np.load(DATA_DIR / "flux" / "flux_ratio_inner_disk_hd142666.npy")
-flux_ratio_interpn = np.interp(wavelength_axes.value, wl_flux_ratio, flux_ratio)
+flux_ratio_interpn = np.interp(wavelengths.value, wl_flux_ratio, flux_ratio)
 flux_ratio_interpn += 0.2
 point_flux_ratio = Parameter(**STANDARD_PARAMETERS.fr)
-point_flux_ratio.value, point_flux_ratio.wavelength = flux_ratio_interpn, wavelength_axes
+point_flux_ratio.value, point_flux_ratio.wavelength = flux_ratio_interpn, wavelengths
 
 weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
 names = ["olivine", "pyroxene", "forsterite", "enstatite"]
@@ -54,39 +42,38 @@ fmaxs = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 sizes = [[0.1, 1.5], [1.5], [0.1, 1.5], [1.5]]
 
 roy_opacity = utils.get_opacity(DATA_DIR, weights, sizes, names, "qval",
-                                wavelength_axes.value, fmaxs)
-# TODO: Finish this for the Juhasz opacities and also check Roy's paper again
+                                wavelengths.value, fmaxs)
 
+# TODO: Finish this for the Juhasz opacities and also check Roy's paper again
 weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
 names = ["olivine", "pyroxene", "forsterite", "enstatite"]
 fmaxs = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 sizes = [[0.1, 1.5], [1.5], [0.1, 1.5], [1.5]]
 
 juhasz_opacity = utils.get_opacity(DATA_DIR, weights, sizes, names, "qval",
-                                   wavelength_axes.value, fmaxs)
+                                   wavelengths.value, fmaxs)
 
 opacity = roy_opacity
 
 cont_opacity_file = DATA_DIR / "qval" / "Q_amorph_c_rv0.1.dat"
 # cont_opacity_file = DATA_DIR / "qval" / "Q_iron_0.10um_dhs_0.7.dat",
 wl_cont, cont_opacity = utils.load_data(cont_opacity_file, load_func=utils.qval_to_opacity)
-cont_opacity = np.interp(wavelength_axes.value, wl_cont, cont_opacity)
+cont_opacity = np.interp(wavelengths.value, wl_cont, cont_opacity)
 
 kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
-kappa_abs.value, kappa_abs.wavelength = opacity, wavelength_axes
+kappa_abs.value, kappa_abs.wavelength = opacity, wavelengths
 kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
-kappa_cont.value, kappa_cont.wavelength = cont_opacity, wavelength_axes
+kappa_cont.value, kappa_cont.wavelength = cont_opacity, wavelengths
 
 # TODO: Think of a better way to assign f than through const_params
 dim, distance = 32, 148.3
 OPTIONS.model.constant_params = {
     "dim": dim, "dist": distance,
     "eff_temp": 7500, "f": star_flux,
-    "fr": point_flux_ratio,
+    # "fr": point_flux_ratio,
     # "pa": 162, "inc": 0.56,
     "eff_radius": 1.75, "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont}
-
 
 x = Parameter(**STANDARD_PARAMETERS.x)
 y = Parameter(**STANDARD_PARAMETERS.y)
@@ -97,7 +84,6 @@ y.set(min=-10, max=10)
 x.free = y.free = True
 point_source = {"x": x, "y": y}
 point_source_labels = [f"pt_{label}" for label in point_source]
-
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
 rout = Parameter(**STANDARD_PARAMETERS.rout)
@@ -187,7 +173,7 @@ labels = inner_ring_labels + shared_params_labels
 # labels = outer_ring_labels + shared_params_labels
 
 # component_labels = ["Star", "Inner Ring", "Outer Ring"]
-component_labels = ["Star", "Inner Ring"]
+# component_labels = ["Star", "Inner Ring"]
 # component_labels = ["Point Source", "Outer Ring"]
 # component_labels = ["star", "Outer ring"]
 
@@ -208,24 +194,23 @@ components = basic_components.assemble_components(
         OPTIONS.model.components_and_params,
         OPTIONS.model.shared_params)
 
-
 plot.plot_overview(savefig=pre_fit_dir / "data_overview.pdf")
-plot.plot_observables("hd142666", [3, 12]*u.um, components,
-                      save_dir=pre_fit_dir)
+# plot.plot_observables("hd142666", [1, 12]*u.um, components,
+#                       save_dir=pre_fit_dir)
 
-analysis.save_fits(
-        4096, 0.1, distance,
-        components, component_labels,
-        opacities=[kappa_abs, kappa_cont],
-        savefits=pre_fit_dir / "model.fits",
-        object_name="HD 142666")
+# analysis.save_fits(
+#         4096, 0.1, distance,
+#         components, component_labels,
+#         opacities=[kappa_abs, kappa_cont],
+#         savefits=pre_fit_dir / "model.fits",
+#         object_name="HD 142666")
 
 post_fit_dir = result_dir / "post_fit"
 post_fit_dir.mkdir(parents=True, exist_ok=True)
 
 
 if __name__ == "__main__":
-    ncores = None
+    ncores = 6
     fit_params_emcee = {"nburnin": 200, "nsteps": 500, "nwalkers": 100}
     fit_params_dynesty = {"nlive": 1500, "sample": "rwalk", "bound": "multi"}
 
@@ -239,7 +224,7 @@ if __name__ == "__main__":
 
     sampler = fitting.run_fit(
             **fit_params, ncores=ncores,
-            save_dir=post_fit_dir, debug=False)
+            save_dir=post_fit_dir, debug=True)
 
     theta, uncertainties = fitting.get_best_fit(
             sampler, **fit_params, method="quantile")
@@ -254,15 +239,15 @@ if __name__ == "__main__":
     components = basic_components.assemble_components(
             components_and_params, shared_params)
 
-    plot.plot_observables("hd142666", [3, 12]*u.um, components,
-                          save_dir=post_fit_dir)
+    # plot.plot_observables("hd142666", [1, 12]*u.um, components,
+    #                       save_dir=post_fit_dir)
 
-    analysis.save_fits(
-            4096, 0.1, distance,
-            components, component_labels,
-            opacities=[kappa_abs, kappa_cont],
-            savefits=post_fit_dir / "model.fits",
-            object_name="HD 142666", **fit_params, ncores=ncores)
+    # analysis.save_fits(
+    #         4096, 0.1, distance,
+    #         components, component_labels,
+    #         opacities=[kappa_abs, kappa_cont],
+    #         savefits=post_fit_dir / "model.fits",
+    #         object_name="HD 142666", **fit_params, ncores=ncores)
 
     # axis_ratio = OPTIONS.model.constant_params["inc"]
     # pos_angle = OPTIONS.model.constant_params["pa"]
