@@ -619,11 +619,7 @@ class TempGradient(Component):
                 radius, baselines, baseline_angles, wavelength, **kwargs)
 
         if vis_mod.size != 0:
-            if len(baselines.shape) <= 3:
-                vis += vis_mod.sum(-1)
-            else:
-                vis += np.concatenate(
-                        (vis_mod[:, :2], np.conj(vis_mod[:, 2:])), axis=1).sum(-1)
+            vis += vis_mod.sum(-1)
 
         return vis.value.astype(OPTIONS.data.dtype.complex)
 

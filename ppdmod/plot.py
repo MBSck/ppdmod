@@ -700,7 +700,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
 
         if key == "vis2":
             ax.set_xlabel(r"$\mathrm{B}$ (M$\lambda$)")
-            ax.set_ylabel("Visibilities (Normalized)")
+            ax.set_ylabel("Squared Visibilities (Normalized)")
             if "vis2" in ylimits:
                 ax.set_ylim(ylimits["vis2"])
             else:

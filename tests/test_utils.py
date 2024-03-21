@@ -529,7 +529,7 @@ def test_broadcast_baselines(fits_files: List[Path], wavelength: u.um) -> None:
 
     set_data(fit_data=["vis2", "t3"])
 
-
+# TODO: This test doesn't test much
 @pytest.mark.parametrize(
         "component, wavelength",
         [(comp, wl) for wl in [[10]*u.um, [10, 12.5]*u.um]

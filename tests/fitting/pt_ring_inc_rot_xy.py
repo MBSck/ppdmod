@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List
 
 import astropy.units as u
 import numpy as np
