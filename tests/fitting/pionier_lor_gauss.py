@@ -35,9 +35,11 @@ fs.free = True
 
 wavelength = data.get_all_wavelengths()
 wavelength = np.append(wavelength.copy(), (wavelength[-1].value+0.05104995)*u.um)
-bb = np.log(BlackBody(temperature=7500*u.K)(wavelength).value)
-freq = np.log((const.c / wavelength.to(u.m)).to(u.Hz).value)
-dbb, dfreq = np.diff(bb), np.diff(freq)
+stellar_radius_ang = distance_to_angular(1.75*u.Rsun, 148.3*u.pc)
+bb = BlackBody(temperature=7500*u.K)(wavelength).to(u.erg/(u.s*u.Hz*u.mas**2*u.cm**2))
+logbb = np.log(np.pi*(bb*stellar_radius_ang**2).to(u.Jy).value)
+logfreq = np.log((const.c / wavelength.to(u.m)).to(u.Hz).value)
+dbb, dfreq = np.diff(logbb), np.diff(logfreq)
 ks = Parameter(**STANDARD_PARAMETERS.exp)
 ks.value = dbb/dfreq
 ks.wavelength = wavelength[:-1]

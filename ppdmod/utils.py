@@ -65,6 +65,11 @@ def get_indices(values, array: np.ndarray,
     return indices
 
 
+def stellar_radius(luminosity: u.Lsun, temperature: u.K) -> u.Rsun:
+    """Calculates the stellar radius from the luminosity and temperature."""
+    return np.sqrt(luminosity.to(u.W)/(4*np.pi*const.sigma_sb*temperature**4)).to(u.Rsun)
+
+
 def angular_to_distance(angular_diameter: u.mas, distance: u.pc) -> u.m:
     """Converts an angular diameter of an object at a certain distance
     from the observer from mas to meters.
