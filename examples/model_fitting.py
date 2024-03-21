@@ -20,8 +20,8 @@ wavelengths = {"hband": [1.6]*u.um,
                "lband": [3.2]*u.um,
                "nband": [8., 9., 10., 11.3, 12.5]*u.um}
 
-fits_files = list((DATA_DIR / "fits").glob("*AQU*fits"))
-data = set_data(fits_files, wavelengths="all", fit_data=["flux", "vis2"])
+fits_files = list((DATA_DIR / "fits").glob("PION*fits"))
+data = set_data(fits_files, wavelengths="all", fit_data=["vis2"])
 wavelengths = get_all_wavelengths()
 
 # TODO: Check flux values -> gave nan for only N-band
