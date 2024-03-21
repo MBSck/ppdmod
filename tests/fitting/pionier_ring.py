@@ -1,3 +1,4 @@
+from typing import List
 from pathlib import Path
 
 import astropy.units as u
