@@ -13,6 +13,14 @@ from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 from ppdmod.utils import distance_to_angular
 
 
+def ptform(theta: List[float]) -> np.ndarray:
+    """Transform that constrains the first two parameters to 1."""
+    params = fitting.transform_uniform_prior(theta)
+    params[1] = params[1]*(1-params[0])
+    params[2] = params[2]*(1-params[0]-params[1])
+    return params
+
+
 DATA_DIR = Path("../data/pionier/nChannels3")
 OPTIONS.model.output = "non-physical"
 fits_files = list((DATA_DIR).glob("*fits"))
@@ -33,6 +41,10 @@ fc.free = True
 fs = Parameter(**STANDARD_PARAMETERS.fr)
 fs.value = 0.4
 fs.free = True
+
+fh = Parameter(**STANDARD_PARAMETERS.fr)
+fh.value = 0.4
+fh.free = True
 
 wavelength = data.get_all_wavelengths()
 wavelength = np.append(wavelength.copy(), (wavelength[-1].value+0.05104995)*u.um)
@@ -67,7 +79,7 @@ a.value = 0.5
 phi = Parameter(**STANDARD_PARAMETERS.phi)
 phi.value = 50
 
-params = {"fs": fs, "fc": fc, "flor": flor, "fwhm": fwhm,
+params = {"fs": fs, "fc": fc, "fh": fh, "flor": flor, "fwhm": fwhm,
           "rin": rin, "kc": kc, "inc": inc, "pa": pa, "a": a, "phi": phi}
 labels = [label for label in params]
 
@@ -86,7 +98,8 @@ plot.plot_overview(savefig=result_dir / f"{model_name}_data_overview.pdf")
 if __name__ == "__main__":
     ncores = None
     fit_params_emcee = {"nburnin": 200, "nsteps": 500, "nwalkers": 100}
-    fit_params_dynesty = {"nlive": 1500, "sample": "rwalk", "bound": "multi"}
+    fit_params_dynesty = {"nlive": 1500, "sample": "rwalk",
+                          "bound": "multi", "ptform": ptform}
 
     if OPTIONS.fit.method == "emcee":
         fit_params = fit_params_emcee
