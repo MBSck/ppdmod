@@ -686,7 +686,6 @@ class StarHaloGaussLor(Component):
         super().__init__(**kwargs)
         self.fs = Parameter(**STANDARD_PARAMETERS.fr)
         self.fc = Parameter(**STANDARD_PARAMETERS.fr)
-        self.fh = Parameter(**STANDARD_PARAMETERS.fr)
         self.flor = Parameter(**STANDARD_PARAMETERS.fr)
         self.rin = Parameter(**STANDARD_PARAMETERS.rin)
         self.fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
@@ -698,13 +697,14 @@ class StarHaloGaussLor(Component):
 
     def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
+        fh = 1-(self.fs()+self.fc())
         ks = self.ks(wavelength)[:, np.newaxis, np.newaxis]
         if len(baselines.shape) == 4:
             ks = ks[..., np.newaxis]
 
         wavelength_ratio = self.wl0()/wavelength[..., np.newaxis]
         vis_star = self.fs()*wavelength_ratio**ks
-        divisor = (self.fh()+self.fs())*wavelength_ratio**ks \
+        divisor = (fh+self.fs())*wavelength_ratio**ks \
             + self.fc()*wavelength_ratio**self.kc
 
         gl = GaussLorentzian(flor=self.flor, fwhm=self.fwhm,

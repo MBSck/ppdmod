@@ -18,7 +18,6 @@ def ptform(theta: List[float]) -> np.ndarray:
     """Transform that constrains the first two parameters to 1."""
     params = fitting.transform_uniform_prior(theta)
     params[1] = params[1]*(1-params[0])
-    params[2] = params[2]*(1-params[0]-params[1])
     return params
 
 
@@ -42,10 +41,6 @@ fc.free = True
 fs = Parameter(**STANDARD_PARAMETERS.fr)
 fs.value = 0.4
 fs.free = True
-
-fh = Parameter(**STANDARD_PARAMETERS.fr)
-fh.value = 0.4
-fh.free = True
 
 wavelength = data.get_all_wavelengths()
 wavelength = np.append(wavelength.copy(), (wavelength[-1].value+0.05104995)*u.um)
@@ -80,7 +75,7 @@ a.value = 0.5
 phi = Parameter(**STANDARD_PARAMETERS.phi)
 phi.value = 50
 
-params = {"fs": fs, "fc": fc, "fh": fh, "flor": flor, "fwhm": fwhm,
+params = {"fs": fs, "fc": fc, "flor": flor, "fwhm": fwhm,
           "rin": rin, "kc": kc, "inc": inc, "pa": pa, "a": a, "phi": phi}
 labels = [label for label in params]
 
