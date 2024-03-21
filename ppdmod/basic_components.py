@@ -705,13 +705,12 @@ class StarHaloGaussLor(Component):
         wavelength_ratio = self.wl0()/wavelength[..., np.newaxis]
         vis_star = self.fs()*wavelength_ratio**ks
         divisor = (fh+self.fs())*wavelength_ratio**ks \
-            + self.fc()*wavelength_ratio**self.kc
+            + self.fc()*wavelength_ratio**self.kc()
 
         gl = GaussLorentzian(flor=self.flor, fwhm=self.fwhm,
                              inc=self.inc, pa=self.pa)
         if self.ring:
-            width = self.fwhm()/np.hypot(self.fwhm(), self.rin())
-            ring = Ring(rin=self.rin, width=width, a=self.a, inc=self.inc,
+            ring = Ring(rin=self.rin, a=self.a, inc=self.inc,
                         pa=self.pa, phi=self.phi, asymmetric=True, thin=False)
             conv = Convolver(gl=gl, ring=ring)
             vis_disk = conv.vis_func(baselines, baseline_angles, wavelength, **kwargs)
