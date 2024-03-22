@@ -95,7 +95,7 @@ STANDARD_PARAMETERS = SimpleNamespace(
            "min": 0, "max": 1, "unit": u.one,
            "description": "The azimuthal modulation amplitude", "free": True},
         phi={"name": "phi", "shortname": "phi",
-             "value": 0, "min": 0, "max": 360, "unit": u.deg,
+             "value": 0, "min": 0, "max": 180, "unit": u.deg,
              "description": "The azimuthal modulation angle", "free": True},
         inner_temp={"name": "inner_temp", "shortname": "rimtemp",
                     "value": 0, "unit": u.K, "free": True,
