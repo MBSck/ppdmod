@@ -711,7 +711,7 @@ class StarHaloGaussLor(Component):
                              inc=self.inc, pa=self.pa)
         if self.ring:
             ring = Ring(rin=self.rin, a=self.a, inc=self.inc,
-                        pa=self.pa, phi=self.phi, asymmetric=True, thin=False)
+                        pa=self.pa, phi=self.phi, asymmetric=True)
             conv = Convolver(gl=gl, ring=ring)
             vis_disk = conv.vis_func(baselines, baseline_angles, wavelength, **kwargs)
         else:
