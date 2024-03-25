@@ -25,7 +25,7 @@ data = set_data(fits_files, wavelengths=wavelengths["nband"], fit_data=["vis2"])
 wavelengths = get_all_wavelengths()
 
 # TODO: Check flux values -> gave nan for only N-band
-wl_flux, flux = utils.load_data(DATA_DIR / "flux/HD142666_stellar_model.txt.gz")
+wl_flux, flux = utils.load_data(DATA_DIR / "flux" / "HD142666_stellar_model.txt.gz")
 flux_interpn = np.interp(wavelengths.value, wl_flux, flux)
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
 star_flux.value, star_flux.wavelength = flux_interpn, wavelengths
