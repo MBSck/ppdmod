@@ -92,7 +92,7 @@ STANDARD_PARAMETERS = SimpleNamespace(
               "value": 300, "unit": u.mas,
               "description": "The outer radius", "free": False},
         a={"name": "a", "shortname": "a", "value": 0,
-           "min": 0, "max": 1, "unit": u.one,
+           "min": -1, "max": 1, "unit": u.one,
            "description": "The azimuthal modulation amplitude", "free": True},
         phi={"name": "phi", "shortname": "phi",
              "value": 0, "min": 0, "max": 180, "unit": u.deg,

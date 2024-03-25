@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Dict, List
+from typing import Optional, Tuple
 
 import astropy.units as u
 import numpy as np
@@ -174,11 +174,20 @@ class Component:
         xx, yy = self.translate_image_func(*np.meshgrid(xx, xx))
 
         if self.elliptic:
-            xx = xx*np.cos(self.pa())-yy*np.sin(self.pa())*self.inc()
-            yy = xx*np.sin(self.pa())+yy*np.cos(self.pa())
+            xr = xx*np.cos(self.pa())-yy*np.sin(self.pa())
+            yr = (xx*np.sin(self.pa())+yy*np.cos(self.pa()))*self.inc()
+        else:
+            xr, yr = xx, yy
 
-        image = self.image_func(xx, yy, pixel_size, wavelength)
-        return image.astype(OPTIONS.data.dtype.real)
+        image = self.image_func(xr, yr, pixel_size, wavelength)
+
+        if self.asymmetric:
+            c, s = self.a()*np.cos(self.phi()), self.a()*np.sin(self.phi())
+            polar_angle = np.arctan2(yr, xr)
+            image *= 1 + c*np.cos(polar_angle) + s*np.sin(polar_angle)
+
+        image /= image.max()
+        return self.fr()*image.astype(OPTIONS.data.dtype.real)
 
 
 class Convolver(Component):
