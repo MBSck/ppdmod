@@ -25,12 +25,12 @@ data = set_data(fits_files, wavelengths=wavelengths["nband"], fit_data=["vis2"])
 wavelengths = get_all_wavelengths()
 
 # TODO: Check flux values -> gave nan for only N-band
-wl_flux, flux = utils.load_data(DATA_DIR / "flux" / "HD142666_stellar_model.txt.gz")
+wl_flux, flux = utils.load_data(DATA_DIR / "flux" / "hd142666" / "HD142666_stellar_model.txt.gz")
 flux_interpn = np.interp(wavelengths.value, wl_flux, flux)
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
 star_flux.value, star_flux.wavelength = flux_interpn, wavelengths
 
-wl_flux_ratio, flux_ratio = np.load(DATA_DIR / "flux" / "flux_ratio_inner_disk_hd142666.npy")
+wl_flux_ratio, flux_ratio = np.load(DATA_DIR / "flux" / "hd142666" / "flux_ratio_inner_disk_hd142666.npy")
 flux_ratio_interpn = np.interp(wavelengths.value, wl_flux_ratio, flux_ratio)
 flux_ratio_interpn += 0.2
 point_flux_ratio = Parameter(**STANDARD_PARAMETERS.fr)
@@ -66,13 +66,14 @@ kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
 kappa_cont.value, kappa_cont.wavelength = cont_opacity, wavelengths
 
 # TODO: Think of a better way to assign f than through const_params
-dim, distance = 32, 148.3
+dim, distance, eff_temp = 32, 148.3, 7500
+eff_radius = utils.compute_stellar_radius(10**0.94, eff_temp).value
 OPTIONS.model.constant_params = {
     "dim": dim, "dist": distance,
-    "eff_temp": 7500, "f": star_flux,
+    "eff_temp": eff_temp, "f": star_flux,
     # "fr": point_flux_ratio,
     # "pa": 162, "inc": 0.56,
-    "eff_radius": 1.75, "kappa_abs": kappa_abs,
+    "eff_radius": eff_radius, "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont}
 
 x = Parameter(**STANDARD_PARAMETERS.x)
