@@ -377,7 +377,8 @@ def get_opacity(source_dir: Path,weights: np.ndarray,
     qval_dict = {"olivine": "Q_Am_Mgolivine_Jae_DHS",
                  "pyroxene": "Q_Am_Mgpyroxene_Dor_DHS",
                  "forsterite": "Q_Fo_Suto_DHS",
-                 "enstatite": "Q_En_Jaeger_DHS"}
+                 "enstatite": "Q_En_Jaeger_DHS",
+                 "silica": "Q_Silica_MH_DHS"}
 
     grf_dict = {"olivine": "MgOlivine",
                 "pyroxene": "MgPyroxene",
@@ -401,8 +402,9 @@ def get_opacity(source_dir: Path,weights: np.ndarray,
     opacity = linearly_combine_data(opacity, weights)
     return np.interp(wavelength_grid, wl[0], opacity)
 
+
 def load_data(files: List[Path],
-              wavelength_range: Optional[u.Quantity[u.um]] = [0.5, 50],
+              wavelength_range: Optional[u.Quantity[u.um]] = [0.5, 15],
               load_func: Optional[Callable] = None,
               comments: Optional[str] = "#",
               skiprows: Optional[int] = 1,
@@ -446,6 +448,18 @@ def load_data(files: List[Path],
 
         wavelength_grids.append(wavelengths)
         data.append(content)
+
+    if len(files) > 1:
+        min_shape = min(map(lambda x: x.shape[0], data))
+        wl_ind = np.where(map(lambda x: x.shape[0] == min_shape, wavelength_grids))
+        min_wl = wavelength_grids[wl_ind[0][0]]
+        for index, (wl, d) in enumerate(zip(wavelength_grids, data)):
+            if wl.shape[0] == min_shape:
+                continue
+
+            wavelength_grids[index] = min_wl
+            data[index] = np.interp(min_wl, wl, d)
+
     return tuple(map(lambda x: np.array(x).squeeze(),
                      (wavelength_grids, data)))
 
