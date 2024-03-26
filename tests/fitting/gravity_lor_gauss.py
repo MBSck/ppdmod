@@ -5,7 +5,7 @@ import astropy.units as u
 import astropy.constants as const
 import numpy as np
 from astropy.modeling.models import BlackBody
-from ppdmod import data
+from ppdmod.data import set_data, get_all_wavelengths
 from ppdmod import fitting
 from ppdmod import plot
 from ppdmod.basic_components import assemble_components
@@ -24,7 +24,7 @@ def ptform(theta: List[float]) -> np.ndarray:
 DATA_DIR = Path("../data/gravity")
 OPTIONS.model.output = "non-physical"
 fits_files = list((DATA_DIR).glob("*fits"))
-data.set_data(fits_files, wavelengths="all", fit_data=["vis2"])
+data = set_data(fits_files, wavelengths="all", fit_data=["vis2"])
 
 pa = Parameter(**STANDARD_PARAMETERS.pa)
 pa.value = 162
@@ -42,7 +42,7 @@ fs = Parameter(**STANDARD_PARAMETERS.fr)
 fs.value = 0.4
 fs.free = True
 
-wavelength = data.get_all_wavelengths()
+wavelength = get_all_wavelengths()
 wavelength = np.append(wavelength.copy(), (wavelength[-1].value+0.05104995)*u.um)
 stellar_radius_ang = distance_to_angular(1.75*u.Rsun, 148.3*u.pc)
 bb = BlackBody(temperature=7500*u.K)(wavelength).to(u.erg/(u.s*u.Hz*u.mas**2*u.cm**2))
@@ -55,7 +55,7 @@ ks.wavelength = wavelength[:-1]
 ks.free = False
 
 kc = Parameter(**STANDARD_PARAMETERS.exp)
-kc.set(min=0, max=3000)
+kc.set(min=-20, max=20)
 
 fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
 fwhm.value = 1
@@ -71,7 +71,6 @@ labels = [label for label in params]
 
 OPTIONS.model.constant_params = {"wl0": 2.15, "ks": ks}
 OPTIONS.model.components_and_params = [["StarHaloGaussLor", params]]
-OPTIONS.model.gridtype = "logarithmic"
 OPTIONS.fit.method = "dynesty"
 
 result_dir = Path("results/gravity")
@@ -82,7 +81,7 @@ plot.plot_overview(savefig=result_dir / f"{model_name}_data_overview.pdf")
 
 
 if __name__ == "__main__":
-    ncores = None
+    ncores = 6
     fit_params_emcee = {"nburnin": 200, "nsteps": 500, "nwalkers": 100}
     fit_params_dynesty = {"nlive": 1500, "sample": "rwalk",
                           "bound": "multi", "ptform": ptform}

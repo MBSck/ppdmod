@@ -249,12 +249,13 @@ def lnprior(components_and_params: List[List[Dict]],
     float
         The log of the prior.
     """
-    if shared_params is not None:
+    if shared_params not in [{}, None]:
         for value, param in zip(shared_params.values(),
                                 OPTIONS.model.shared_params.values()):
             if param.free:
                 if not param.min < value < param.max:
                     return -np.inf
+
     for (_, values), (_, params) in zip(
             components_and_params, OPTIONS.model.components_and_params):
         for value, param in zip(values.values(), params.values()):

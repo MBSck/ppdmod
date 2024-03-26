@@ -212,6 +212,25 @@ class Ring(Component):
         self.width.free = not value
         self._thin = value
 
+    def compute_internal_grid(self, dim: int) -> u.mas:
+        """Computes the model grid.
+
+        Parameters
+        ----------
+        dim : float
+
+        Returns
+        -------
+        radial_grid : astropy.units.mas
+            A one dimensional linear or logarithmic grid.
+        """
+        rin, rout = self.rin(), self.rin()+self.width()
+        if OPTIONS.model.gridtype == "linear":
+            radius = np.linspace(rin, rout, dim)
+        else:
+            radius = np.logspace(np.log10(rin), np.log10(rout), dim)
+        return radius.astype(OPTIONS.data.dtype.real)
+
     def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
         """Computes the complex visibility
@@ -231,7 +250,7 @@ class Ring(Component):
                 vis += -1j*self.a()*np.cos(baseline_angles-self.phi().to(u.rad))\
                     * j1(2*np.pi*self.rin().to(u.rad)*baselines)
         else:
-            radius = np.linspace(self.rin(), self.rin()+self.width(), self.dim())
+            radius = self.compute_internal_grid(self.dim())
             vis = (np.trapz(j0(2*np.pi*radius.to(u.rad)*baselines), radius)/self.width()).astype(complex)
             if self.asymmetric:
                 factor = (-1j*self.a()*np.cos(baseline_angles-self.phi().to(u.rad))).reshape(1, *vis.shape[1:])
@@ -440,10 +459,9 @@ class TempGradient(Component):
         """
         rin, rout = self.rin(), self.rout()
         if OPTIONS.model.gridtype == "linear":
-            radius = np.linspace(rin.value, rout.value, dim)*self.rin.unit
+            radius = np.linspace(rin, rout, dim)
         else:
-            radius = np.logspace(np.log10(rin.value),
-                                 np.log10(rout.value), dim)*self.rin.unit
+            radius = np.logspace(np.log10(rin), np.log10(rout), dim)
         return radius.astype(OPTIONS.data.dtype.real)
 
     def get_opacity(self, wavelength: u.um) -> u.cm**2/u.g:
