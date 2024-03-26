@@ -21,7 +21,7 @@ wavelengths = {"hband": [1.6]*u.um,
                "nband": [8., 9., 10., 11.3, 12.5]*u.um}
 
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
-data = set_data(fits_files, wavelengths=wavelengths["nband"], fit_data=["vis2"])
+data = set_data(fits_files, wavelengths=wavelengths["nband"], fit_data=["flux", "vis2", "t3"])
 wavelengths = get_all_wavelengths()
 
 # TODO: Check flux values -> gave nan for only N-band
@@ -66,10 +66,12 @@ kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
 kappa_cont.value, kappa_cont.wavelength = cont_opacity, wavelengths
 
 # TODO: Think of a better way to assign f than through const_params
-dim, distance = 32, 157.3
+dim, distance, eff_temp = 32, 157.3, 7500
+eff_radius = utils.compute_stellar_radius(10**0.96, eff_temp).value
 OPTIONS.model.constant_params = {
     "dim": dim, "dist": distance,
     "f": star_flux, "kappa_abs": kappa_abs,
+    "eff_temp": eff_temp, "eff_radius": eff_radius,
     "kappa_cont": kappa_cont}
 
 x = Parameter(**STANDARD_PARAMETERS.x)
@@ -105,7 +107,6 @@ inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma, "p": p}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
-rout = Parameter(**STANDARD_PARAMETERS.rout)
 p = Parameter(**STANDARD_PARAMETERS.p)
 inner_sigma = Parameter(**STANDARD_PARAMETERS.inner_sigma)
 a = Parameter(**STANDARD_PARAMETERS.a)
@@ -123,8 +124,6 @@ p.set(min=0., max=1.)
 inner_sigma.set(min=0, max=1e-2)
 a.set(min=0., max=1.)
 phi.set(min=0, max=180)
-
-rout.free = True
 
 outer_ring = {"rin": rin, "a": a, "phi": phi, "inner_sigma": inner_sigma, "p": p}
 # outer_ring = {"rin": rin, "inner_sigma": inner_sigma, "p": p}
@@ -161,15 +160,15 @@ OPTIONS.model.components_and_params = [
     ["Star", {}],
     ["GreyBody", inner_ring],
     # ["GreyBody", outer_ring],
-    # ["AsymmetricGreyBody", outer_ring],
+    ["AsymmetricGreyBody", outer_ring],
 ]
 
-# labels = inner_ring_labels + outer_ring_labels + shared_params_labels
-labels = inner_ring_labels + shared_params_labels
+labels = inner_ring_labels + outer_ring_labels + shared_params_labels
+# labels = inner_ring_labels + shared_params_labels
 # labels = point_source_labels + outer_ring_labels + shared_params_labels
 # labels = outer_ring_labels + shared_params_labels
 
-# component_labels = ["Star", "Inner Ring", "Outer Ring"]
+component_labels = ["Star", "Inner Ring", "Outer Ring"]
 # component_labels = ["Star", "Inner Ring"]
 # component_labels = ["Point Source", "Outer Ring"]
 # component_labels = ["star", "Outer ring"]

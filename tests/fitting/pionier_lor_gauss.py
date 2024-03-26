@@ -71,7 +71,6 @@ labels = [label for label in params]
 
 OPTIONS.model.constant_params = {"wl0": 1.68, "ks": ks}
 OPTIONS.model.components_and_params = [["StarHaloGaussLor", params]]
-OPTIONS.model.gridtype = "logarithmic"
 OPTIONS.fit.method = "dynesty"
 
 result_dir = Path("results/pionier")

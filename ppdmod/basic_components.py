@@ -224,11 +224,13 @@ class Ring(Component):
         radial_grid : astropy.units.mas
             A one dimensional linear or logarithmic grid.
         """
-        rin, rout = self.rin(), self.rin()+self.width()
+        rin, rout = self.rin().value, self.rout().value
+        unit = self.rin().unit
         if OPTIONS.model.gridtype == "linear":
             radius = np.linspace(rin, rout, dim)
         else:
             radius = np.logspace(np.log10(rin), np.log10(rout), dim)
+        radius *= unit
         return radius.astype(OPTIONS.data.dtype.real)
 
     def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
@@ -457,11 +459,13 @@ class TempGradient(Component):
         radial_grid : astropy.units.mas
             A one dimensional linear or logarithmic grid.
         """
-        rin, rout = self.rin(), self.rout()
+        rin, rout = self.rin().value, self.rout().value
+        unit = self.rin().unit
         if OPTIONS.model.gridtype == "linear":
             radius = np.linspace(rin, rout, dim)
         else:
             radius = np.logspace(np.log10(rin), np.log10(rout), dim)
+        radius *= unit
         return radius.astype(OPTIONS.data.dtype.real)
 
     def get_opacity(self, wavelength: u.um) -> u.cm**2/u.g:

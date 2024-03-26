@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Callable, Optional, Dict, Tuple, List
 
 import astropy.units as u
+import astropy.constants as const
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
@@ -65,8 +66,9 @@ def get_indices(values, array: np.ndarray,
     return indices
 
 
-def stellar_radius(luminosity: u.Lsun, temperature: u.K) -> u.Rsun:
+def compute_stellar_radius(luminosity: u.Lsun, temperature: u.K) -> u.Rsun:
     """Calculates the stellar radius from the luminosity and temperature."""
+    luminosity, temperature = u.Quantity(luminosity, u.Lsun), u.Quantity(temperature, u.K)
     return np.sqrt(luminosity.to(u.W)/(4*np.pi*const.sigma_sb*temperature**4)).to(u.Rsun)
 
 

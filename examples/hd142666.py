@@ -108,7 +108,6 @@ inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma, "p": p}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
-rout = Parameter(**STANDARD_PARAMETERS.rout)
 p = Parameter(**STANDARD_PARAMETERS.p)
 inner_sigma = Parameter(**STANDARD_PARAMETERS.inner_sigma)
 a = Parameter(**STANDARD_PARAMETERS.a)
@@ -126,8 +125,6 @@ p.set(min=0., max=1.)
 inner_sigma.set(min=0, max=1e-2)
 a.set(min=0., max=1.)
 phi.set(min=0, max=180)
-
-rout.free = True
 
 outer_ring = {"rin": rin, "a": a, "phi": phi, "inner_sigma": inner_sigma, "p": p}
 # outer_ring = {"rin": rin, "inner_sigma": inner_sigma, "p": p}
@@ -164,11 +161,11 @@ OPTIONS.model.components_and_params = [
     ["Star", {}],
     ["GreyBody", inner_ring],
     # ["GreyBody", outer_ring],
-    # ["AsymmetricGreyBody", outer_ring],
+    ["AsymmetricGreyBody", outer_ring],
 ]
 
-# labels = inner_ring_labels + outer_ring_labels + shared_params_labels
-labels = inner_ring_labels + shared_params_labels
+labels = inner_ring_labels + outer_ring_labels + shared_params_labels
+# labels = inner_ring_labels + shared_params_labels
 # labels = point_source_labels + outer_ring_labels + shared_params_labels
 # labels = outer_ring_labels + shared_params_labels
 

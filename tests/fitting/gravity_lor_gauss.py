@@ -82,7 +82,7 @@ plot.plot_overview(savefig=result_dir / f"{model_name}_data_overview.pdf")
 
 if __name__ == "__main__":
     ncores = 6
-    fit_params_emcee = {"nburnin": 200, "nsteps": 500, "nwalkers": 100}
+    fit_params_emcee = {"nburnin": 1500, "nsteps": 3000, "nwalkers": 100}
     fit_params_dynesty = {"nlive": 1500, "sample": "rwalk",
                           "bound": "multi", "ptform": ptform}
 
