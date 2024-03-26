@@ -74,7 +74,7 @@ OPTIONS.model.components_and_params = [["StarHaloGaussLor", params]]
 OPTIONS.model.gridtype = "logarithmic"
 OPTIONS.fit.method = "dynesty"
 
-result_dir = Path("results/pionier")
+result_dir = Path("results/gravity")
 result_dir.mkdir(exist_ok=True, parents=True)
 model_name = "starHaloGaussLor"
 
