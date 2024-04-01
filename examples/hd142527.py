@@ -21,7 +21,8 @@ wavelengths = {"hband": [1.6]*u.um,
                "nband": [8., 9., 10., 11.3, 12.5]*u.um}
 
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
-data = set_data(fits_files, wavelengths=wavelengths["nband"], fit_data=["flux", "vis2", "t3"])
+wavelength = np.concatenate((wavelengths["lband"], wavelengths["nband"]))
+data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis2"])
 wavelengths = get_all_wavelengths()
 
 # TODO: Check flux values -> gave nan for only N-band
@@ -74,25 +75,28 @@ OPTIONS.model.constant_params = {
     "eff_temp": eff_temp, "eff_radius": eff_radius,
     "kappa_cont": kappa_cont}
 
-x = Parameter(**STANDARD_PARAMETERS.x)
-y = Parameter(**STANDARD_PARAMETERS.y)
-x.value = 1
-y.value = 0
-x.set(min=-10, max=10)
-y.set(min=-10, max=10)
-x.free = y.free = True
-point_source = {"x": x, "y": y}
-point_source_labels = [f"pt_{label}" for label in point_source]
+# x = Parameter(**STANDARD_PARAMETERS.x)
+# y = Parameter(**STANDARD_PARAMETERS.y)
+# x.value, y.value = 1,x 0
+# x.set(min=-10, max=10)
+# y.set(min=-10, max=10)
+# x.free = y.free = True
+# point_source = {"x": x, "y": y}
+# point_source_labels = [f"pt_{label}" for label in point_source]
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
 rout = Parameter(**STANDARD_PARAMETERS.rout)
 p = Parameter(**STANDARD_PARAMETERS.p)
 inner_sigma = Parameter(**STANDARD_PARAMETERS.inner_sigma)
+a = Parameter(**STANDARD_PARAMETERS.a)
+phi = Parameter(**STANDARD_PARAMETERS.phi)
 
 rin.value = 1.
 rout.value = 2.
 p.value = 0.5
 inner_sigma.value = 1e-3
+a.value = 0.5
+phi.value = 130
 
 rin.set(min=0.5, max=5)
 rout.set(min=1.5, max=6)
@@ -103,7 +107,7 @@ rout.free = True
 
 # inner_ring = {"x": x, "y": y, "rin": rin,
 #               "rout": rout, "inner_sigma": inner_sigma, "p": p}
-inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma, "p": p}
+inner_ring = {"rin": rin, "rout": rout, "a": a, "phi": phi, "inner_sigma": inner_sigma, "p": p}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
@@ -122,8 +126,6 @@ phi.value = 130
 rin.set(min=1, max=40)
 p.set(min=0., max=1.)
 inner_sigma.set(min=0, max=1e-2)
-a.set(min=0., max=1.)
-phi.set(min=0, max=180)
 
 outer_ring = {"rin": rin, "a": a, "phi": phi, "inner_sigma": inner_sigma, "p": p}
 # outer_ring = {"rin": rin, "inner_sigma": inner_sigma, "p": p}
@@ -158,7 +160,8 @@ shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 OPTIONS.model.components_and_params = [
     # ["PointSource", point_source],
     ["Star", {}],
-    ["GreyBody", inner_ring],
+    # ["GreyBody", inner_ring],
+    ["AsymmetricGreyBody", inner_ring],
     # ["GreyBody", outer_ring],
     ["AsymmetricGreyBody", outer_ring],
 ]
@@ -208,7 +211,7 @@ post_fit_dir.mkdir(parents=True, exist_ok=True)
 if __name__ == "__main__":
     ncores = 6
     fit_params_emcee = {"nburnin": 200, "nsteps": 500, "nwalkers": 100}
-    fit_params_dynesty = {"nlive": 1500, "sample": "rwalk", "bound": "multi"}
+    fit_params_dynesty = {"nlive": 2000, "sample": "rwalk", "bound": "multi"}
 
     if OPTIONS.fit.method == "emcee":
         fit_params = fit_params_emcee

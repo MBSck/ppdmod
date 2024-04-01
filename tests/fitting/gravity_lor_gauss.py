@@ -35,11 +35,11 @@ inc.value = 0.5
 inc.free = True
 
 fc = Parameter(**STANDARD_PARAMETERS.fr)
-fc.value = 0.5
+fc.value = 0.54
 fc.free = True
 
 fs = Parameter(**STANDARD_PARAMETERS.fr)
-fs.value = 0.4
+fs.value = 0.44
 fs.free = True
 
 wavelength = get_all_wavelengths()
@@ -53,16 +53,18 @@ ks = Parameter(**STANDARD_PARAMETERS.exp)
 ks.value = dbb/dfreq
 ks.wavelength = wavelength[:-1]
 ks.free = False
+breakpoint()
 
 kc = Parameter(**STANDARD_PARAMETERS.exp)
+kc.value = -3.64
 kc.set(min=-20, max=20)
 
 fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
-fwhm.value = 1
+fwhm.value = 2.14
 fwhm.set(min=0.1, max=32)
 
 flor = Parameter(**STANDARD_PARAMETERS.fr)
-flor.value = 0.4
+flor.value = 0.41
 flor.free = True
 
 params = {"fs": fs, "fc": fc, "flor": flor,

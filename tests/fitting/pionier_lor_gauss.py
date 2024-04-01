@@ -42,6 +42,7 @@ fs = Parameter(**STANDARD_PARAMETERS.fr)
 fs.value = 0.4
 fs.free = True
 
+
 wavelength = data.get_all_wavelengths()
 wavelength = np.append(wavelength.copy(), (wavelength[-1].value+0.05104995)*u.um)
 stellar_radius_ang = distance_to_angular(1.75*u.Rsun, 148.3*u.pc)
@@ -55,14 +56,15 @@ ks.wavelength = wavelength[:-1]
 ks.free = False
 
 kc = Parameter(**STANDARD_PARAMETERS.exp)
-kc.set(min=-10, max=10)
+kc.value = -3.64
+kc.set(min=-20, max=20)
 
 fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
-fwhm.value = 1
+fwhm.value = 2.14
 fwhm.set(min=0.1, max=32)
 
 flor = Parameter(**STANDARD_PARAMETERS.fr)
-flor.value = 0.4
+flor.value = 0.41
 flor.free = True
 
 params = {"fs": fs, "fc": fc, "flor": flor,
@@ -77,13 +79,22 @@ result_dir = Path("results/pionier")
 result_dir.mkdir(exist_ok=True, parents=True)
 model_name = "starHaloGaussLor"
 
-plot.plot_overview(savefig=result_dir / f"{model_name}_data_overview.pdf")
+components = assemble_components(
+        OPTIONS.model.components_and_params,
+        OPTIONS.model.shared_params)
 
+rchi_sq = fitting.compute_observable_chi_sq(
+        *fitting.compute_observables(components), reduced=True)
+print(f"rchi_sq: {rchi_sq}")
+
+plot.plot_overview(savefig=result_dir / f"{model_name}_data_overview.pdf")
+plot.plot_fit(components[0].inc(), components[0].pa(), components=components,
+              savefig=result_dir / f"{model_name}_pre_fit_results.pdf")
 
 if __name__ == "__main__":
     ncores = None
     fit_params_emcee = {"nburnin": 200, "nsteps": 500, "nwalkers": 100}
-    fit_params_dynesty = {"nlive": 1500, "sample": "rwalk",
+    fit_params_dynesty = {"nlive": 2000, "sample": "rwalk",
                           "bound": "multi", "ptform": ptform}
 
     if OPTIONS.fit.method == "emcee":

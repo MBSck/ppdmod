@@ -441,6 +441,6 @@ def get_best_fit(
     else:
         if method == "quantile":
             samples = sampler.results.samples
-            quantiles = np.percentile( samples, OPTIONS.fit.quantiles, axis=0)
+            quantiles = np.percentile(samples, OPTIONS.fit.quantiles, axis=0)
             uncertainties = np.diff(quantiles, axis=0).T
         return quantiles[1], uncertainties

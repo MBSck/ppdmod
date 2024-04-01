@@ -27,7 +27,7 @@ fits_files = list((DATA_DIR).glob("*fits"))
 data.set_data(fits_files, wavelengths="all", fit_data=["vis2", "t3"])
 
 pa = Parameter(**STANDARD_PARAMETERS.pa)
-pa.value = 162
+pa.value = 2.84*u.rad.to(u.deg)
 pa.free = True
 
 inc = Parameter(**STANDARD_PARAMETERS.inc)
@@ -35,11 +35,11 @@ inc.value = 0.5
 inc.free = True
 
 fc = Parameter(**STANDARD_PARAMETERS.fr)
-fc.value = 0.5
+fc.value = 0.53
 fc.free = True
 
 fs = Parameter(**STANDARD_PARAMETERS.fr)
-fs.value = 0.4
+fs.value = 0.45
 fs.free = True
 
 wavelength = data.get_all_wavelengths()
@@ -55,25 +55,26 @@ ks.wavelength = wavelength[:-1]
 ks.free = False
 
 kc = Parameter(**STANDARD_PARAMETERS.exp)
+kc.value = -4.18
 kc.set(min=-10, max=10)
 
 fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
-fwhm.value = 1
+fwhm.value = 2*0.8607925145549679
 fwhm.set(min=0.1, max=32)
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
-rin.value = 1
+rin.value = 0.6381143066747668
 rin.set(min=0.1, max=32)
 
 flor = Parameter(**STANDARD_PARAMETERS.fr)
-flor.value = 0.4
+flor.value = 0.58
 flor.free = True
 
 a = Parameter(**STANDARD_PARAMETERS.a)
-a.value = 0.5
+a.value = 0.04
 
 phi = Parameter(**STANDARD_PARAMETERS.phi)
-phi.value = 50
+phi.value = 180
 
 params = {"fs": fs, "fc": fc, "flor": flor, "fwhm": fwhm,
           "rin": rin, "kc": kc, "inc": inc, "pa": pa, "a": a, "phi": phi}
@@ -88,7 +89,18 @@ result_dir = Path("results/pionier")
 result_dir.mkdir(exist_ok=True, parents=True)
 model_name = "starHaloGaussLorRing"
 
+components = assemble_components(
+        OPTIONS.model.components_and_params,
+        OPTIONS.model.shared_params)
+
+rchi_sq = fitting.compute_observable_chi_sq(
+        *fitting.compute_observables(components), reduced=True)
+print(f"rchi_sq: {rchi_sq}")
+
 plot.plot_overview(savefig=result_dir / f"{model_name}_data_overview.pdf")
+plot.plot_fit(components[0].inc(), components[0].pa(), components=components,
+              savefig=result_dir / f"{model_name}_pre_fit_results.pdf")
+breakpoint()
 
 
 if __name__ == "__main__":

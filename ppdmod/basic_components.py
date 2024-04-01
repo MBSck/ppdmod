@@ -224,7 +224,7 @@ class Ring(Component):
         radial_grid : astropy.units.mas
             A one dimensional linear or logarithmic grid.
         """
-        rin, rout = self.rin().value, self.rout().value
+        rin, rout = self.rin().value, (self.rin()+self.width()).value
         unit = self.rin().unit
         if OPTIONS.model.gridtype == "linear":
             radius = np.linspace(rin, rout, dim)
