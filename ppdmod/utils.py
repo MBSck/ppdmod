@@ -350,7 +350,8 @@ def qval_to_opacity(qval_file: Path) -> u.cm**2/u.g:
     """
     with open(qval_file, "r+", encoding="utf8") as file:
         _, grain_size, density = map(float, file.readline().strip().split())
-    wavelength_grid, qval = np.loadtxt(qval_file, skiprows=1, unpack=True)
+    wavelength_grid, qval = np.loadtxt(qval_file, skiprows=1,
+                                       unpack=True, usecols=(0, 1))
     return wavelength_grid*u.um, \
         3*qval/(4*(grain_size*u.um).to(u.cm)*(density*u.g/u.cm**3))
 
@@ -436,8 +437,8 @@ def load_data(files: List[Path],
         if load_func is not None:
             wavelengths, content = load_func(file)
         else:
-            wavelengths, content, *_ = np.loadtxt(
-                file, skiprows=skiprows,
+            wavelengths, content = np.loadtxt(
+                file, skiprows=skiprows, usecols=(0, 1),
                 comments=comments, unpack=True)
 
         if isinstance(wavelengths, u.Quantity):
