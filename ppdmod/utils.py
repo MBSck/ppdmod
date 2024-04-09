@@ -371,11 +371,13 @@ def restrict_phase(phase: np.ndarray) -> np.ndarray:
     restricted_phase[restricted_phase > 180] -= 360
     return restricted_phase
 
+
 def get_opacity(source_dir: Path,weights: np.ndarray,
                 sizes: List[List[float]],
                 names: List[str], method: str,
-                wavelength_grid: np.ndarray,
-                fmaxs: Optional[List[float]] = None):
+                wavelength_grid: Optional[np.ndarray] = None,
+                fmaxs: Optional[List[float]] = None,
+                individual: Optional[bool] = False) -> Tuple[np.ndarray]:
     """Gets the opacity from input parameters."""
     qval_dict = {"olivine": "Q_Am_Mgolivine_Jae_DHS",
                  "pyroxene": "Q_Am_Mgpyroxene_Dor_DHS",
@@ -402,8 +404,13 @@ def get_opacity(source_dir: Path,weights: np.ndarray,
     load_func = qval_to_opacity if method == "qval" else None
     wl, opacity = load_data(files, load_func=load_func)
 
+    if individual:
+        return wl, opacity
+
     opacity = linearly_combine_data(opacity, weights)
-    return np.interp(wavelength_grid, wl[0], opacity)
+    if wavelength_grid is not None:
+        return wavelength_grid, np.interp(wavelength_grid, wl[0], opacity)
+    return wl, opacity
 
 
 def load_data(files: List[Path],
