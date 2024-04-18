@@ -45,6 +45,7 @@ class PointSource(Component):
         """Returns the flux weight of the point source."""
         return self.fr(wavelength).value.reshape((wavelength.size, 1))
 
+    # TODO: Check with component that the calculation here is correct (self.fr)
     def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
         """Computes the complex visibility
@@ -259,7 +260,7 @@ class Ring(Component):
                 factor = (-1j*self.a()*np.cos(baseline_angles-self.phi().to(u.rad))).reshape(1, *vis.shape[1:])
                 vis += (factor*np.trapz(j1(2*np.pi*radius.to(u.rad)*baselines), radius))/self.width()
             vis = vis[..., np.newaxis]
-        return (self.fr()*vis).value.astype(OPTIONS.data.dtype.complex)
+        return vis.value.astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
         """Computes the image from a 2D grid.
@@ -304,7 +305,7 @@ class UniformDisk(Component):
             The wavelengths.
         """
         vis = (2*j1(np.pi*self.diam().to(u.rad)*baselines)/(np.pi*self.diam().to(u.rad)*baselines))
-        return (self.fr()*vis).value.astype(OPTIONS.data.dtype.complex)
+        return vis.value.astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
         """Computes the image from a 2D grid.
@@ -320,7 +321,7 @@ class UniformDisk(Component):
         image : astropy.units.Jy
         """
         radius = np.hypot(xx, yy)[np.newaxis, ...]
-        return (self.fr()*(radius <= self.diam()/2)).astype(OPTIONS.data.dtype.real)
+        return (radius <= self.diam()/2).astype(OPTIONS.data.dtype.real)
 
 
 class Gaussian(Component):
@@ -347,7 +348,7 @@ class Gaussian(Component):
             The wavelengths.
         """
         vis = np.exp(-(np.pi*baselines*self.fwhm().to(u.rad))**2/(4*np.log(2)))
-        return (self.fr()*vis).value.astype(OPTIONS.data.dtype.complex)
+        return vis.value.astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
         """Computes the image from a 2D grid.
@@ -364,7 +365,7 @@ class Gaussian(Component):
         """
         radius = np.hypot(xx, yy)[np.newaxis, ...]
         factor = 1/(np.sqrt(np.pi/(4*np.log(2)))*self.fwhm())
-        return (self.fr()*factor*np.exp(-(4*np.log(2)*radius**2)/self.fwhm()**2)).astype(OPTIONS.data.dtype.real)
+        return (factor*np.exp(-(4*np.log(2)*radius**2)/self.fwhm()**2)).astype(OPTIONS.data.dtype.real)
 
 
 class Lorentzian(Component):
@@ -391,7 +392,7 @@ class Lorentzian(Component):
             The wavelengths.
         """
         vis = np.exp(-np.pi*baselines*self.fwhm().to(u.rad)/np.sqrt(3))
-        return (self.fr()*vis).value.astype(OPTIONS.data.dtype.complex)
+        return vis.value.astype(OPTIONS.data.dtype.complex)
 
 
 class GaussLorentzian(Component):
@@ -413,7 +414,7 @@ class GaussLorentzian(Component):
         vis_gauss = gauss.vis_func(baselines, baseline_angles, wavelength, **kwargs)
         vis_lor = lor.vis_func(baselines, baseline_angles, wavelength, **kwargs)
         vis = (1-self.flor())*vis_gauss + self.flor()*vis_lor
-        return (self.fr()*vis).value.astype(OPTIONS.data.dtype.complex)
+        return vis.value.astype(OPTIONS.data.dtype.complex)
 
 
 class TempGradient(Component):

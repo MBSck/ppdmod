@@ -158,7 +158,7 @@ class Component:
         vis = vis.squeeze(-1) if vis.shape[-1] == 1 else vis
         shift = self.translate_vis_func(baselines, baseline_angles)
         shift = shift.squeeze(-1) if shift.shape[-1] == 1 else shift
-        return (vis*shift).astype(OPTIONS.data.dtype.complex)
+        return (self.fr()*vis*shift).astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
         """Calculates the image."""
