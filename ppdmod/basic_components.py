@@ -62,6 +62,7 @@ class PointSource(Component):
         vis = np.tile(self.flux_func(wavelength).reshape(new_shape), baselines.shape[1:])
         return vis.astype(OPTIONS.data.dtype.complex)
 
+    # TODO: Change the way that is implemented, as it is always in the centre right now
     def image_func(self, xx: u.mas, yy: u.mas,
                    pixel_size: u.mas, wavelength: u.m = None) -> np.ndarray:
         """Computes the image from a 2D grid.
@@ -262,11 +263,13 @@ class Ring(Component):
 
     def image_func(self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
         """Computes the image from a 2D grid.
+
         Parameters
         ----------
         xx : u.mas
         yy : u.mas
         wavelength : u.um
+
         Returns
         -------
         image : astropy.units.Jy
@@ -301,7 +304,23 @@ class UniformDisk(Component):
             The wavelengths.
         """
         vis = (2*j1(np.pi*self.diam().to(u.rad)*baselines)/(np.pi*self.diam().to(u.rad)*baselines))
-        return vis.value.astype(OPTIONS.data.dtype.complex)
+        return (self.fr()*vis).value.astype(OPTIONS.data.dtype.complex)
+
+    def image_func(self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
+        """Computes the image from a 2D grid.
+
+        Parameters
+        ----------
+        xx : u.mas
+        yy : u.mas
+        wavelength : u.um
+
+        Returns
+        -------
+        image : astropy.units.Jy
+        """
+        radius = np.hypot(xx, yy)[np.newaxis, ...]
+        return (self.fr()*(radius <= self.diam()/2)).astype(OPTIONS.data.dtype.real)
 
 
 class Gaussian(Component):
@@ -329,6 +348,23 @@ class Gaussian(Component):
         """
         vis = np.exp(-(np.pi*baselines*self.fwhm().to(u.rad))**2/(4*np.log(2)))
         return (self.fr()*vis).value.astype(OPTIONS.data.dtype.complex)
+
+    def image_func(self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
+        """Computes the image from a 2D grid.
+
+        Parameters
+        ----------
+        xx : u.mas
+        yy : u.mas
+        wavelength : u.um
+
+        Returns
+        -------
+        image : astropy.units.Jy
+        """
+        radius = np.hypot(xx, yy)[np.newaxis, ...]
+        factor = 1/(np.sqrt(np.pi/(4*np.log(2)))*self.fwhm())
+        return (self.fr()*factor*np.exp(-(4*np.log(2)*radius**2)/self.fwhm()**2)).astype(OPTIONS.data.dtype.real)
 
 
 class Lorentzian(Component):

@@ -34,11 +34,11 @@ def get_colorlist(colormap: str, ncolors: Optional[int] = 10) -> List[str]:
 STANDARD_PARAMETERS = SimpleNamespace(
         x={"name": "x", "shortname": "x",
            "value": 0, "description": "The x position",
-           "min": -10, "max": 10,
+           "min": -30, "max": 30,
            "unit": u.mas, "free": False},
         y={"name": "y", "shortname": "y",
            "value": 0, "description": "The y position",
-           "min": -10, "max": 10,
+           "min": -30, "max": 30,
            "unit": u.mas, "free": False},
         f={"name": "flux", "shortname": "f",
            "value": None, "description": "The flux",

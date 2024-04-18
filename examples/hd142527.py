@@ -1,5 +1,12 @@
+import os
 from datetime import datetime
 from pathlib import Path
+
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
 import astropy.units as u
 import numpy as np
@@ -42,8 +49,8 @@ names = ["pyroxene", "forsterite", "enstatite", "silica"]
 fmaxs = [1.0, 1.0, 1.0, 0.7]
 sizes = [[1.5], [0.1], [0.1, 1.5], [0.1, 1.5]]
 
-roy_opacity = utils.get_opacity(DATA_DIR, weights, sizes, names,
-                                "qval", wavelengths.value, fmaxs)
+_, roy_opacity = utils.get_opacity(DATA_DIR, weights, sizes, names,
+                                   "qval", wavelengths.value, fmaxs)
 
 # # TODO: Finish this for the Juhasz opacities and also check Roy's paper again
 # weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
@@ -51,8 +58,8 @@ roy_opacity = utils.get_opacity(DATA_DIR, weights, sizes, names,
 # fmaxs = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 # sizes = [[0.1, 1.5], [1.5], [0.1, 1.5], [1.5]]
 
-# juhasz_opacity = utils.get_opacity(DATA_DIR, weights, sizes, names, "qval",
-#                                    wavelengths.value, fmaxs)
+# _, juhasz_opacity = utils.get_opacity(DATA_DIR, weights, sizes, names, "qval",
+#                                       wavelengths.value, fmaxs)
 
 opacity = roy_opacity
 
