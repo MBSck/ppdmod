@@ -186,7 +186,6 @@ class Component:
             polar_angle = np.arctan2(yr, xr)
             image *= 1 + c*np.cos(polar_angle) + s*np.sin(polar_angle)
 
-        image /= image.max()
         return self.fr()*image.astype(OPTIONS.data.dtype.real)
 
 
