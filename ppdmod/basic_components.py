@@ -45,7 +45,6 @@ class PointSource(Component):
         """Returns the flux weight of the point source."""
         return self.fr(wavelength).value.reshape((wavelength.size, 1))
 
-    # TODO: Check with component that the calculation here is correct (self.fr)
     def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
         """Computes the complex visibility
@@ -365,7 +364,7 @@ class Gaussian(Component):
         """
         radius = np.hypot(xx, yy)[np.newaxis, ...]
         factor = 1/(np.sqrt(np.pi/(4*np.log(2)))*self.fwhm())
-        return (factor*np.exp(-(4*np.log(2)*radius**2)/self.fwhm()**2)).astype(OPTIONS.data.dtype.real)
+        return (factor*np.exp(-(4*np.log(2)*radius**2)/self.fwhm()**2)).value.astype(OPTIONS.data.dtype.real)
 
 
 class Lorentzian(Component):
@@ -391,8 +390,25 @@ class Lorentzian(Component):
         wavelength : astropy.units.um
             The wavelengths.
         """
-        vis = np.exp(-np.pi*baselines*self.fwhm().to(u.rad)/np.sqrt(3))
+        vis = np.exp(-np.pi*baselines*self.fwhm().to(u.rad)/(2*np.sqrt(3)))
         return vis.value.astype(OPTIONS.data.dtype.complex)
+
+    def image_func(self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
+        """Computes the image from a 2D grid.
+
+        Parameters
+        ----------
+        xx : u.mas
+        yy : u.mas
+        wavelength : u.um
+
+        Returns
+        -------
+        image : astropy.units.Jy
+        """
+        radius = np.hypot(xx, yy)[np.newaxis, ...]
+        factor = self.fwhm()/(4*np.pi*np.sqrt(3))
+        return (factor*(self.fwhm()**2/12+radius**2)**(-3/2)).value.astype(OPTIONS.data.dtype.real)
 
 
 class GaussLorentzian(Component):
@@ -403,18 +419,48 @@ class GaussLorentzian(Component):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.flor = Parameter(**STANDARD_PARAMETERS.fr)
+        self.flor.name = self.flor.shortname = "flor"
         self.flor.free = True
         self.fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
+        self.gauss = Gaussian(fwhm=self.fwhm, inc=self.inc, pa=self.pa)
+        self.lor = Lorentzian(fwhm=self.fwhm, inc=self.inc, pa=self.pa)
         self.eval(**kwargs)
 
     def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
-        gauss = Gaussian(fwhm=self.fwhm, inc=self.inc, pa=self.pa)
-        lor = Lorentzian(fwhm=self.fwhm, inc=self.inc, pa=self.pa)
-        vis_gauss = gauss.vis_func(baselines, baseline_angles, wavelength, **kwargs)
-        vis_lor = lor.vis_func(baselines, baseline_angles, wavelength, **kwargs)
+        """Computes the complex visibility
+
+        Parameters
+        ----------
+        baseline : 1/astropy.units.rad
+            The deprojected baselines.
+        baseline_angles : astropy.units.rad
+            The deprojected baseline angles.
+        wavelength : astropy.units.um
+            The wavelengths.
+        """
+        vis_gauss = self.gauss.vis_func(baselines, baseline_angles, wavelength, **kwargs)
+        vis_lor = self.lor.vis_func(baselines, baseline_angles, wavelength, **kwargs)
         vis = (1-self.flor())*vis_gauss + self.flor()*vis_lor
         return vis.value.astype(OPTIONS.data.dtype.complex)
+
+    def image_func(self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
+        """Computes the image from a 2D grid.
+
+        Parameters
+        ----------
+        xx : u.mas
+        yy : u.mas
+        wavelength : u.um
+
+        Returns
+        -------
+        image : astropy.units.Jy
+        """
+        image_gauss = self.gauss.image_func(xx, yy, pixel_size, wavelength)
+        image_lor = self.lor.image_func(xx, yy, pixel_size, wavelength)
+        image = (1-self.flor())*image_gauss + self.flor()*image_lor
+        return image.astype(OPTIONS.data.dtype.real)
 
 
 class TempGradient(Component):
@@ -720,46 +766,45 @@ class AsymmetricGreyBody(TempGradient):
     const_temperature = True
 
 
-# class PointRing(Component):
-#     name = "PointDisk"
-#     shortname = "PointDisk"
-
-#     def __init__(self, **kwargs):
-#         super().__init__(**kwargs)
-#         self.fs = Parameter(**STANDARD_PARAMETERS.fr)
-#         self.fc = Parameter(**STANDARD_PARAMETERS.fr)
-#         self.flor = Parameter(**STANDARD_PARAMETERS.fr)
-#         self.fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
-#         self.wl0 = Parameter(**STANDARD_PARAMETERS.wl)
-#         self.ks = Parameter(**STANDARD_PARAMETERS.exp)
-#         self.ks.free = False
-#         self.kc = Parameter(**STANDARD_PARAMETERS.exp)
-
 class StarHaloGaussLor(Component):
     """A star, a disk and a halo model as seen in Lazareff+2017."""
-    name = "StarDiskHalo"
-    shortname = "StarDiskHalo"
+    name = "StarHaloGaussLor"
+    shortname = "StarHaloGaussLor"
     ring = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.fs = Parameter(**STANDARD_PARAMETERS.fr)
+        self.fs.name = self.fs.shortname = "fs"
         self.fc = Parameter(**STANDARD_PARAMETERS.fr)
+        self.fc.name = self.fc.shortname = "fc"
         self.flor = Parameter(**STANDARD_PARAMETERS.fr)
+        self.flor.name = self.flor.shortname = "flor"
+        self.fs.free = self.fc.free = self.flor.free = True
         self.rin = Parameter(**STANDARD_PARAMETERS.rin)
         self.fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
         self.wl0 = Parameter(**STANDARD_PARAMETERS.wl)
+        self.wl0.name = self.wl0.shortname = "wl0"
         self.ks = Parameter(**STANDARD_PARAMETERS.exp)
+        self.ks.name = self.ks.shortname = "ks"
         self.ks.free = False
         self.kc = Parameter(**STANDARD_PARAMETERS.exp)
+        self.kc.name = self.kc.shortname = "kc"
         self.eval(**kwargs)
 
     def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
         fh = 1-(self.fs()+self.fc())
-        ks = self.ks(wavelength)[:, np.newaxis, np.newaxis]
+        try:
+            ks = self.ks(wavelength)[:, np.newaxis, np.newaxis]
+        except TypeError:
+            ks = self.ks(wavelength)[np.newaxis, np.newaxis]
+
         if len(baselines.shape) == 4:
             ks = ks[..., np.newaxis]
+
+        if self.wl0() == 0:
+            self.wl0.value = wavelength[0]
 
         wavelength_ratio = self.wl0()/wavelength[..., np.newaxis]
         vis_star = self.fs()*wavelength_ratio**ks
@@ -779,11 +824,29 @@ class StarHaloGaussLor(Component):
         vis_comp = self.fc()*vis_disk*wavelength_ratio**self.kc()
         return ((vis_star+vis_comp)/divisor).value.astype(OPTIONS.data.dtype.complex)
 
+    def image_func(self, xx: u.mas, yy: u.mas,
+                   pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
+        """Computes the image."""
+        fh = 1-(self.fs()+self.fc())
+        gl = GaussLorentzian(flor=self.flor, fwhm=self.fwhm,
+                             inc=self.inc, pa=self.pa)
+        if self.ring:
+            ring = Ring(rin=self.rin, a=self.a, inc=self.inc,
+                        pa=self.pa, phi=self.phi, asymmetric=True)
+            conv = Convolver(gl=gl, ring=ring)
+            image = conv.image_func(xx, yy, pixel_size, wavelength)
+        else:
+            image = gl.image_func(xx, yy, pixel_size, wavelength)
+        image *= self.fc()
+        pt = PointSource(dim=self.dim, inc=self.inc, pa=self.pa)
+        image += self.fs()*pt.image_func(xx, yy, pixel_size, wavelength)
+        return (fh+image).astype(OPTIONS.data.dtype.real)
+
 
 class StarHaloRing(StarHaloGaussLor):
     """A star, a disk and a halo model as seen in Lazareff+2017."""
-    name = "StarDiskHalo"
-    shortname = "StarDiskHalo"
+    name = "StarHaloRing"
+    shortname = "StarHaloRing"
     ring = True
 
 
@@ -803,5 +866,3 @@ def assemble_components(
         comp = getattr(sys.modules[__name__], component)
         components.append(comp(**params, **shared_params, **constant_params))
     return components
-
-

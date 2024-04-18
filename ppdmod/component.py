@@ -2,6 +2,7 @@ from typing import Optional, Tuple
 
 import astropy.units as u
 import numpy as np
+from scipy.signal import fftconvolve
 
 from .parameter import Parameter
 from .options import STANDARD_PARAMETERS, OPTIONS
@@ -154,11 +155,15 @@ class Component:
                 ucoord, vcoord, self.inc(), self.pa())
         wavelength, baselines, baseline_angles = broadcast_baselines(
                 wavelength, baselines, baseline_angles, ucoord)
+
         vis = self.vis_func(baselines, baseline_angles, wavelength, **kwargs)
         vis = vis.squeeze(-1) if vis.shape[-1] == 1 else vis
         shift = self.translate_vis_func(baselines, baseline_angles)
         shift = shift.squeeze(-1) if shift.shape[-1] == 1 else shift
-        return (self.fr()*vis*shift).astype(OPTIONS.data.dtype.complex)
+
+        if self.shortname != "Point":
+            vis *= self.fr()
+        return (vis*shift).astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
         """Calculates the image."""
@@ -222,3 +227,10 @@ class Convolver(Component):
         vis = [comp.vis_func(baselines, baseline_angles, wavelength, **kwargs)
                for comp in self.components.values()]
         return np.prod(vis, axis=0).astype(OPTIONS.data.dtype.complex)
+
+    def image_func(self, xx: u.mas, yy: u.mas,
+                   pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
+        """Computes the image."""
+        image = [comp.image_func(xx, yy, pixel_size, wavelength)
+                 for comp in self.components.values()]
+        return fftconvolve(*image).astype(OPTIONS.data.dtype.real)
