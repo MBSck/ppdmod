@@ -1,5 +1,5 @@
 import sys
-from typing import Tuple, Optional, Dict, List
+from typing import Optional, Dict, List
 import astropy.units as u
 import numpy as np
 from astropy.modeling.models import BlackBody
@@ -193,27 +193,22 @@ class Ring(Component):
     name = "Ring"
     shortname = "Ring"
     description = "A simple ring."
-    _thin = True
+    thin = True
+    has_outer_radius = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.rin = Parameter(**STANDARD_PARAMETERS.rin)
-        self.width = Parameter(**STANDARD_PARAMETERS.width)
+
+        if not self.thin:
+            if self.has_outer_radius:
+                self.rout = Parameter(**STANDARD_PARAMETERS.rout)
+            else:
+                self.width = Parameter(**STANDARD_PARAMETERS.width)
+
         self.eval(**kwargs)
 
-    @property
-    def thin(self) -> bool:
-        """Gets if the component is elliptic."""
-        return self._thin
-
-    @thin.setter
-    def thin(self, value: bool) -> None:
-        """Sets the position angle and the parameters to free or false
-        if elliptic is set."""
-        self.width.free = not value
-        self._thin = value
-
-    def compute_internal_grid(self, dim: int) -> u.mas:
+    def compute_internal_grid(self) -> u.mas:
         """Computes the model grid.
 
         Parameters
@@ -225,14 +220,18 @@ class Ring(Component):
         radial_grid : astropy.units.mas
             A one dimensional linear or logarithmic grid.
         """
-        rin, rout = self.rin().value, (self.rin()+self.width()).value
-        unit = self.rin().unit
-        if OPTIONS.model.gridtype == "linear":
-            radius = np.linspace(rin, rout, dim)
+        if self.thin:
+            dx = np.max([np.abs(xx[0, 1]-xx[0, 0]).value,
+                         np.abs(yy[1, 0]-yy[0, 0]).value])*u.mas
         else:
-            radius = np.logspace(np.log10(rin), np.log10(rout), dim)
-        radius *= unit
-        return radius.astype(OPTIONS.data.dtype.real)
+            dx = self.rout()-self.rin() if self.has_outer_radius else self.width()
+
+        rin, rout = self.rin().value, (self.rin()+dx).value
+        if OPTIONS.model.gridtype == "linear":
+            radius = np.linspace(rin, rout, self.dim())
+        else:
+            radius = np.logspace(np.log10(rin), np.log10(rout), self.dim())
+        return radius.astype(OPTIONS.data.dtype.real)*u.mas
 
     def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
@@ -247,17 +246,26 @@ class Ring(Component):
         wavelength : astropy.units.um
             The wavelengths.
         """
+        factor = -1j*self.a()*np.cos(baseline_angles-self.phi().to(u.rad))
+
         if self.thin:
-            vis = j0(2*np.pi*self.rin().to(u.rad)*baselines).astype(complex)
+            xx = 2*np.pi*self.rin().to(u.rad)*baselines
+            vis = j0(xx).astype(complex)
             if self.asymmetric:
-                vis += -1j*self.a()*np.cos(baseline_angles-self.phi().to(u.rad))\
-                    * j1(2*np.pi*self.rin().to(u.rad)*baselines)
+                vis += factor*j1(xx)
         else:
-            radius = self.compute_internal_grid(self.dim())
-            vis = (np.trapz(j0(2*np.pi*radius.to(u.rad)*baselines), radius)/self.width()).astype(complex)
+            # TODO: Finish this here and use it for the temperature gradient
+            radius = self.compute_internal_grid()
+            factor = kwargs.pop("factor", 1)
+            xx = 2*np.pi*radius.to(u.rad)*baselines
+
+            vis = (np.trapz(factor*j0(xx), radius)).astype(complex)
             if self.asymmetric:
-                factor = (-1j*self.a()*np.cos(baseline_angles-self.phi().to(u.rad))).reshape(1, *vis.shape[1:])
-                vis += (factor*np.trapz(j1(2*np.pi*radius.to(u.rad)*baselines), radius))/self.width()
+                vis += (factor.reshape(1, *vis.shape[1:])*np.trapz(j1(xx), radius))
+
+            if not self.has_outer_radius:
+                vis /= self.width()
+
             vis = vis[..., np.newaxis]
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
@@ -275,9 +283,21 @@ class Ring(Component):
         image : astropy.units.Jy
         """
         radius = np.hypot(xx, yy)[np.newaxis, ...]
-        radial_profile = np.logical_and(
-                radius >= self.rin(), radius <= self.rin()+self.width())
-        return radial_profile.astype(OPTIONS.data.dtype.real)
+        if self.thin:
+            dx = np.max([np.abs(xx[0, 1]-xx[0, 0]).value,
+                         np.abs(yy[1, 0]-yy[0, 0]).value])*u.mas
+        else:
+            dx = self.rout()-self.rin() if self.has_outer_radius else self.width()
+        
+        radial_profile = np.logical_and(radius >= self.rin(), radius <= self.rin()+dx)
+        image = (1/(2*np.pi))*radius*radial_profile
+
+        if self.asymmetric:
+            c, s = self.a()*np.cos(self.phi()), self.a()*np.sin(self.phi())
+            polar_angle = np.arctan2(yy, xx)
+            image *= 1 + c*np.cos(polar_angle) + s*np.sin(polar_angle)
+
+        return image.astype(OPTIONS.data.dtype.real)
 
 
 class UniformDisk(Component):
@@ -465,6 +485,7 @@ class GaussLorentzian(Component):
         return image.astype(OPTIONS.data.dtype.real)
 
 
+# TODO: Use the Ring as a base for the temperature gradient
 class TempGradient(Component):
     """The base class for the component.
 
@@ -532,7 +553,7 @@ class TempGradient(Component):
             self.eff_radius(), self.dist())
         return self._stellar_angular_radius
 
-    def compute_internal_grid(self, dim: int) -> u.mas:
+    def compute_internal_grid(self) -> u.mas:
         """Computes the model grid.
 
         Parameters
@@ -569,7 +590,6 @@ class TempGradient(Component):
         shape = tuple(np.newaxis for _ in range(len(wavelength.shape)-1))
         return opacity[(slice(None), *shape)]
 
-    # TODO: Maybe to move to component
     def compute_azimuthal_modulation(self, xx: u.mas, yy: u.mas) -> u.one:
         """Computes the azimuthal modulation."""
         if not self.asymmetric:
@@ -639,8 +659,7 @@ class TempGradient(Component):
         return (brightness*emissivity).astype(OPTIONS.data.dtype.real)
 
     # TODO: Think of a way to implement higher orders of modulation
-    # TODO: Check all the broadcasting
-    def compute_hankel_modulation(self, radius: u.mas,
+    def compute_modulation(self, radius: u.mas,
                                   brightness: u.erg/(u.rad**2*u.s*u.Hz),
                                   baselines: 1/u.rad, baseline_angles: u.rad) -> u.Jy:
         """The azimuthal modulation as it appears in the hankel transform.
@@ -664,21 +683,28 @@ class TempGradient(Component):
         angle_diff = baseline_angles-self.phi().to(u.rad)
         order = np.arange(1, OPTIONS.model.modulation+1)[np.newaxis, np.newaxis, :]
         integrand = radius*brightness[:, np.newaxis, ...]
-        bessel_factor = radius.value*baselines.value[..., np.newaxis, :]
+        bessel_factor = 2*np.pi*radius.value*baselines.value[..., np.newaxis, :]
 
         if len(baseline_angles.shape) == 4:
             order = order[..., np.newaxis, :]
 
         factor = (-1j)**order*self.a()*np.cos(order*angle_diff)
         integration = 2*np.pi*np.trapz(integrand * jv(
-                    order[..., np.newaxis], 2.*np.pi*bessel_factor), radius)
-        return u.Quantity(factor*integration, unit=u.Jy)
+                    order[..., np.newaxis], bessel_factor), radius)
+        return u.Quantity(factor*integration, unit=u.Jy).astype(OPTIONS.data.dtype.complex)
 
-    # TODO: Check all the broadcasting
-    def compute_hankel_transform(self, radius: u.mas, baselines: 1/u.rad,
-                                 baseline_angles: u.rad, wavelength: u.um) -> Tuple[u.Quantity, u.Quantity]:
-        """Executes the hankel transform and returns the correlated fluxes
-        and their modulations.
+    def flux_func(self, wavelength: u.um) -> np.ndarray:
+        """Computes the total flux from the hankel transformation."""
+        radius = self.compute_internal_grid(self.dim())
+        brightness_profile = self.compute_brightness(radius, wavelength[:, np.newaxis])
+        # TODO: Check if a factor of 2*np.pi is required in front of the integration
+        integrand = 2*np.pi*radius*brightness_profile
+        flux = self.inc()*np.trapz(integrand, radius).to(u.Jy)
+        return flux.value.reshape((flux.shape[0], 1)).astype(OPTIONS.data.dtype.real)
+
+    def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
+                 wavelength: u.um, **kwargs) -> np.ndarray:
+        """Computes the correlated fluxes via the hankel transformation.
 
         Parameters
         ----------
@@ -693,40 +719,22 @@ class TempGradient(Component):
 
         Returns
         -------
-        correlated_fluxes : astropy.units.Jy
-            The visibilities.
-        modulations : astropy.units.Jy
+        vis : numpy.ndarray
+            The correlated fluxes.
         """
+        radius = self.compute_internal_grid()
         brightness = self.compute_brightness(radius, wavelength)
         brightness = brightness[:, np.newaxis, :]
 
         radius = radius.to(u.rad)
-        visibility = 2*self.inc()*np.pi*np.trapz(radius*brightness*j0(
-            2.*np.pi*radius.value*baselines.value), radius).to(u.Jy)
-        modulation = self.compute_hankel_modulation(
-                radius, brightness, baselines, baseline_angles)
-    
-        return visibility.astype(OPTIONS.data.dtype.complex), \
-            modulation.astype(OPTIONS.data.dtype.complex)
+        bessel_factor = 2*np.pi*radius*baselines
 
-    def flux_func(self, wavelength: u.um) -> np.ndarray:
-        """Computes the total flux from the hankel transformation."""
-        radius = self.compute_internal_grid(self.dim())
-        brightness_profile = self.compute_brightness(
-                radius, wavelength[:, np.newaxis])
-        flux = (2.*np.pi*self.inc()*np.trapz(
-            radius*brightness_profile, radius).to(u.Jy))
-        return flux.value.reshape((flux.shape[0], 1)).astype(OPTIONS.data.dtype.real)
-
-    def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
-                 wavelength: u.um, **kwargs) -> np.ndarray:
-        """Computes the correlated fluxes via the hankel transformation."""
-        radius = self.compute_internal_grid(self.dim())
-        vis, vis_mod = self.compute_hankel_transform(
-                radius, baselines, baseline_angles, wavelength, **kwargs)
+        # TODO: Check if a factor of 2*np.pi is required in front of the integration
+        vis = self.inc()*np.trapz(radius*brightness*j0(bessel_factor), radius).to(u.Jy)
+        vis_mod = self.compute_modulation(radius, brightness, baselines, baseline_angles)
 
         if vis_mod.size != 0:
-            vis += vis_mod.sum(-1)
+            vis = vis.astype(OPTIONS.data.dtype.complex) + vis_mod.sum(-1)
 
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
@@ -804,7 +812,7 @@ class StarHaloGaussLor(Component):
         if self.has_ring:
             self.ring = Ring(rin=self.rin, a=self.a, inc=self.inc,
                              pa=self.pa, phi=self.phi, asymmetric=True)
-            self.conv = Convolver(gl=self.gl, ring=self.has_ring)
+            self.conv = Convolver(gl=self.gl, ring=self.ring)
 
     def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:

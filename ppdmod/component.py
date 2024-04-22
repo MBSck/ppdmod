@@ -169,12 +169,16 @@ class Component:
         """Calculates the image."""
         return np.array([]).astype(OPTIONS.data.dtype.real)
 
-    def compute_image(self, dim: int, pixel_size: u.mas,
-                      wavelength: u.um) -> np.ndarray:
+    def compute_image(self, dim: int, pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
         """Computes the image."""
-        wavelength = wavelength[:, np.newaxis, np.newaxis]
+        wavelength = wavelength if isinstance(wavelength, u.Quantity)\
+            else u.Quantity(wavelength, u.um)
+        try:
+            wavelength = wavelength[:, np.newaxis, np.newaxis]
+        except TypeError:
+            wavelength = wavelength[np.newaxis, np.newaxis]
         pixel_size = pixel_size if isinstance(pixel_size, u.Quantity)\
-                else pixel_size*u.mas
+            else u.Quantity(pixel_size, u.mas)
         xx = np.linspace(-0.5, 0.5, dim)*dim*pixel_size
         xx, yy = self.translate_image_func(*np.meshgrid(xx, xx))
 
@@ -185,14 +189,8 @@ class Component:
             xr, yr = xx, yy
 
         image = self.image_func(xr, yr, pixel_size, wavelength)
-
-        if self.asymmetric:
-            c, s = self.a()*np.cos(self.phi()), self.a()*np.sin(self.phi())
-            polar_angle = np.arctan2(yr, xr)
-            image *= 1 + c*np.cos(polar_angle) + s*np.sin(polar_angle)
-
         image /= image.max()
-        return (self.fr()*image).astype(OPTIONS.data.dtype.real)
+        return (self.fr()*image).value.astype(OPTIONS.data.dtype.real)
 
 
 class Convolver(Component):
@@ -231,6 +229,12 @@ class Convolver(Component):
     def image_func(self, xx: u.mas, yy: u.mas,
                    pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
         """Computes the image."""
-        image = [comp.image_func(xx, yy, pixel_size, wavelength)
-                 for comp in self.components.values()]
-        return fftconvolve(*image).astype(OPTIONS.data.dtype.real)
+        convolved_image = None
+        images = [comp.image_func(xx, yy, pixel_size, wavelength)
+                  for comp in self.components.values()]
+        for image in images:
+            if convolved_image is None:
+                convolved_image = image
+            else:
+                convolved_image = fftconvolve(convolved_image, image, mode="same")
+        return convolved_image.astype(OPTIONS.data.dtype.real)
