@@ -1,4 +1,5 @@
 import os
+from typing import List
 from pathlib import Path
 
 os.environ["OMP_NUM_THREADS"] = "1"
@@ -12,18 +13,19 @@ import numpy as np
 from ppdmod import data
 from ppdmod import plot
 from ppdmod.basic_components import assemble_components
-from ppdmod.fitting import compute_observable_chi_sq, compute_observables, set_params_from_theta, \
-    lnprior, run_fit, get_best_fit
+from ppdmod.fitting import compute_observable_chi_sq, compute_observables, \
+    set_params_from_theta, lnprior, run_fit, get_best_fit, transform_uniform_prior
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 from ppdmod.utils import compute_photometric_slope
 
 
-# def ptform(theta: List[float]) -> np.ndarray:
-#     """Transform that constrains the first two parameters to 1 for dynesty."""
-#     params = transform_uniform_prior(theta)
-#     params[1] = params[1]*(1-params[0])
-#     return params
+def ptform(theta: List[float]) -> np.ndarray:
+    """Transform that constrains the first two parameters to 1 for dynesty."""
+    params = transform_uniform_prior(theta)
+    params[1] = params[1]*(1-params[0])
+    return params
+
 
 def lnprob(theta: np.ndarray) -> float:
     """Takes theta vector and the x, y and the yerr of the theta.
@@ -101,7 +103,7 @@ labels = [label for label in params]
 
 OPTIONS.model.constant_params = {"wl0": 1.68, "ks": ks}
 OPTIONS.model.components_and_params = [["StarHaloGaussLor", params]]
-OPTIONS.fit.method = "emcee"
+OPTIONS.fit.method = "dynesty"
 
 result_dir = Path("results/pionier")
 result_dir.mkdir(exist_ok=True, parents=True)
@@ -120,10 +122,11 @@ plot.plot_fit(components[0].inc(), components[0].pa(), components=components,
               savefig=result_dir / f"{model_name}_pre_fit_results.pdf")
 
 if __name__ == "__main__":
-    ncores = 6
+    ncores = None
     fit_params_emcee = {"nburnin": 2000, "nsteps": 8000, "nwalkers": 100,
                         "lnprob": lnprob}
-    fit_params_dynesty = {"nlive": 2000, "sample": "rwalk", "bound": "multi"}
+    fit_params_dynesty = {"nlive": 1500, "sample": "rwalk", "bound": "multi",
+                          "ptform": ptform}
 
     if OPTIONS.fit.method == "emcee":
         fit_params = fit_params_emcee
