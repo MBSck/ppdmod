@@ -294,7 +294,7 @@ class Ring(Component):
 
         if self.asymmetric:
             c, s = self.a()*np.cos(self.phi()), self.a()*np.sin(self.phi())
-            polar_angle = np.arctan2(yy, xx)
+            polar_angle = np.arctan2(xx, yy)
             image *= 1 + c*np.cos(polar_angle) + s*np.sin(polar_angle)
 
         return image.astype(OPTIONS.data.dtype.real)
@@ -767,19 +767,19 @@ class GreyBody(TempGradient):
     const_temperature = True
 
 
-class AsymmetricGreyBody(TempGradient):
+class AsymmetricGreyBody(GreyBody):
     """An analytical implementation of an asymmetric temperature
     gradient."""
     name = "Asymmetric Continuum Grey Body"
     shortname = "AsymContinuumGreyBody"
     asymmetric = True
-    const_temperature = True
 
 
 class StarHaloGaussLor(Component):
     """A star, a disk and a halo model as seen in Lazareff+2017."""
     name = "StarHaloGaussLor"
     shortname = "StarHaloGaussLor"
+    elliptic = True
     has_ring = False
 
     def __init__(self, **kwargs):
