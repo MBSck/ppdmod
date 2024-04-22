@@ -13,7 +13,7 @@ import numpy as np
 from ppdmod import data
 from ppdmod import plot
 from ppdmod.basic_components import assemble_components
-from ppdmod.import compute_observable_chi_sq, compute_observables, \
+from ppdmod.fitting import compute_observable_chi_sq, compute_observables, \
     set_params_from_theta, lnprior, run_fit, get_best_fit, transform_uniform_prior
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
@@ -149,7 +149,7 @@ if __name__ == "__main__":
         fit_params = fit_params_dynesty
 
     sampler = run_fit(**fit_params, ncores=ncores,
-                      save_dir=result_dir, debug=False)
+                      save_dir=result_dir, debug=True)
 
     theta, uncertainties = get_best_fit(
             sampler, **fit_params, method="quantile")
