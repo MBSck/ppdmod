@@ -58,7 +58,7 @@ def lnprob(theta: np.ndarray) -> float:
     return compute_observable_chi_sq(*compute_observables(components))
 
 
-DATA_DIR = Path("../data/pionier/nChannels3")
+DATA_DIR = Path("../data/pionier/HD142527")
 OPTIONS.model.output = "non-physical"
 fits_files = list((DATA_DIR).glob("*fits"))
 data.set_data(fits_files, wavelengths="all", fit_data=["vis2"])
