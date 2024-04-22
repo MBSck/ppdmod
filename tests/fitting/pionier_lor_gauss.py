@@ -149,8 +149,9 @@ if __name__ == "__main__":
     print(f"rchi_sq: {rchi_sq}")
 
     plot.plot_chains(sampler, labels, **fit_params,
-                     savefig=result_dir / f"{model_name}_chains.pdf")
+                     savefig=result_dir / f"{model_name}_{OPTIONS.fit.method}_chains.pdf")
     plot.plot_corner(sampler, labels, **fit_params,
-                     savefig=result_dir / f"{model_name}_corner.pdf")
+                     savefig=result_dir / f"{model_name}_{OPTIONS.fit.method}_corner.pdf")
+
     plot.plot_fit(components[0].inc(), components[0].pa(), components=components,
-                  savefig=result_dir / f"{model_name}_fit_results.pdf")
+                  savefig=result_dir / f"{model_name}_{OPTIONS.fit.method}_fit_results.pdf")
