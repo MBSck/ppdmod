@@ -1,80 +1,111 @@
+import os
 from typing import List
 from pathlib import Path
 
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
 import astropy.units as u
-import astropy.constants as const
 import numpy as np
-from astropy.modeling.models import BlackBody
 from ppdmod import data
-from ppdmod import fitting
 from ppdmod import plot
 from ppdmod.basic_components import assemble_components
+from ppdmod.import compute_observable_chi_sq, compute_observables, \
+    set_params_from_theta, lnprior, run_fit, get_best_fit, transform_uniform_prior
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
-from ppdmod.utils import distance_to_angular
+from ppdmod.utils import compute_photometric_slope
 
 
 def ptform(theta: List[float]) -> np.ndarray:
-    """Transform that constrains the first two parameters to 1."""
-    params = fitting.transform_uniform_prior(theta)
+    """Transform that constrains the first two parameters to 1 for dynesty."""
+    params = transform_uniform_prior(theta)
     params[1] = params[1]*(1-params[0])
     return params
 
 
-DATA_DIR = Path("../data/pionier/nChannels3")
+def lnprob(theta: np.ndarray) -> float:
+    """Takes theta vector and the x, y and the yerr of the theta.
+    Returns a number corresponding to how good of a fit the model is to your
+    data for a given set of parameters, weighted by the data points.
+
+    This is the analytical 1D implementation.
+
+    Constraints the parameters to 1 for emcee.
+
+    Parameters
+    ----------
+    theta: np.ndarray
+        The parameters that ought to be fitted.
+
+    Returns
+    -------
+    float
+        The log of the probability.
+    """
+    parameters, shared_params = set_params_from_theta(theta)
+    if parameters[0][1]["fs"] + parameters[0][1]["fc"] > 1:
+        return -np.inf
+
+    if OPTIONS.fit.method == "emcee":
+        if np.isinf(lnprior(parameters, shared_params)):
+            return -np.inf
+
+    components = assemble_components(parameters, shared_params)
+    return compute_observable_chi_sq(*compute_observables(components))
+
+
+DATA_DIR = Path("../data/pionier/HD142527")
 OPTIONS.model.output = "non-physical"
 fits_files = list((DATA_DIR).glob("*fits"))
 data.set_data(fits_files, wavelengths="all", fit_data=["vis2", "t3"])
 
 pa = Parameter(**STANDARD_PARAMETERS.pa)
-pa.value = 2.84*u.rad.to(u.deg)
+pa.value = 0.09*u.rad.to(u.deg)
 pa.free = True
 
 inc = Parameter(**STANDARD_PARAMETERS.inc)
-inc.value = 0.5
+inc.value = 0.84
 inc.free = True
 
 fc = Parameter(**STANDARD_PARAMETERS.fr)
-fc.value = 0.53
+fc.value = 0.55
 fc.free = True
 
 fs = Parameter(**STANDARD_PARAMETERS.fr)
-fs.value = 0.45
+fs.value = 0.42
 fs.free = True
 
 wavelength = data.get_all_wavelengths()
-wavelength = np.append(wavelength.copy(), (wavelength[-1].value+0.05104995)*u.um)
-stellar_radius_ang = distance_to_angular(1.75*u.Rsun, 148.3*u.pc)
-bb = BlackBody(temperature=7500*u.K)(wavelength).to(u.erg/(u.s*u.Hz*u.mas**2*u.cm**2))
-logbb = np.log(np.pi*(bb*stellar_radius_ang**2).to(u.Jy).value)
-logfreq = np.log((const.c / wavelength.to(u.m)).to(u.Hz).value)
-dbb, dfreq = np.diff(logbb), np.diff(logfreq)
 ks = Parameter(**STANDARD_PARAMETERS.exp)
-ks.value = dbb/dfreq
-ks.wavelength = wavelength[:-1]
+ks.value = compute_photometric_slope(wavelength, 7500*u.K)
+ks.wavelength = wavelength
 ks.free = False
 
 kc = Parameter(**STANDARD_PARAMETERS.exp)
-kc.value = -4.18
+kc.value = -3.67
 kc.set(min=-10, max=10)
 
 fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
-fwhm.value = 2*0.8607925145549679
+fwhm.value = 2.404528869234826
 fwhm.set(min=0.1, max=32)
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
-rin.value = 0.6381143066747668
+rin.value = 0.33315812560811464
 rin.set(min=0.1, max=32)
 
 flor = Parameter(**STANDARD_PARAMETERS.fr)
-flor.value = 0.58
+flor.value = 0.42
 flor.free = True
 
 a = Parameter(**STANDARD_PARAMETERS.a)
-a.value = 0.04
+a.value = 0.8275868534480233
 
 phi = Parameter(**STANDARD_PARAMETERS.phi)
-phi.value = 180
+phi.value = -136.46880071438582
 
 params = {"fs": fs, "fc": fc, "flor": flor, "fwhm": fwhm,
           "rin": rin, "kc": kc, "inc": inc, "pa": pa, "a": a, "phi": phi}
@@ -93,21 +124,21 @@ components = assemble_components(
         OPTIONS.model.components_and_params,
         OPTIONS.model.shared_params)
 
-rchi_sq = fitting.compute_observable_chi_sq(
-        *fitting.compute_observables(components), reduced=True)
+rchi_sq = compute_observable_chi_sq(
+        *compute_observables(components), reduced=True)
 print(f"rchi_sq: {rchi_sq}")
 
 plot.plot_overview(savefig=result_dir / f"{model_name}_data_overview.pdf")
 plot.plot_fit(components[0].inc(), components[0].pa(), components=components,
               savefig=result_dir / f"{model_name}_pre_fit_results.pdf")
-breakpoint()
 
 
 if __name__ == "__main__":
     ncores = None
-    fit_params_emcee = {"nburnin": 200, "nsteps": 500, "nwalkers": 100}
-    fit_params_dynesty = {"nlive": 1500, "sample": "rwalk",
-                          "bound": "multi", "ptform": ptform}
+    fit_params_emcee = {"nburnin": 2000, "nsteps": 8000, "nwalkers": 100,
+                        "lnprob": lnprob}
+    fit_params_dynesty = {"nlive": 1500, "sample": "rwalk", "bound": "multi",
+                          "ptform": ptform}
 
     if OPTIONS.fit.method == "emcee":
         fit_params = fit_params_emcee
@@ -117,21 +148,22 @@ if __name__ == "__main__":
         ncores = 50 if ncores is None else ncores
         fit_params = fit_params_dynesty
 
-    sampler = fitting.run_fit(**fit_params, ncores=ncores,
-                              save_dir=result_dir, debug=False)
+    sampler = run_fit(**fit_params, ncores=ncores,
+                      save_dir=result_dir, debug=False)
 
-    theta, uncertainties = fitting.get_best_fit(
+    theta, uncertainties = get_best_fit(
             sampler, **fit_params, method="quantile")
 
-    components_and_params, shared_params = fitting.set_params_from_theta(theta)
+    components_and_params, shared_params = set_params_from_theta(theta)
     components = assemble_components(components_and_params, shared_params)
-    rchi_sq = fitting.compute_observable_chi_sq(
-            *fitting.compute_observables(components), reduced=True)
+    rchi_sq = compute_observable_chi_sq(
+            *compute_observables(components), reduced=True)
     print(f"rchi_sq: {rchi_sq}")
 
     plot.plot_chains(sampler, labels, **fit_params,
-                     savefig=result_dir / f"{model_name}_chains.pdf")
+                     savefig=result_dir / f"{model_name}_{OPTIONS.fit.method}_chains.pdf")
     plot.plot_corner(sampler, labels, **fit_params,
-                     savefig=result_dir / f"{model_name}_corner.pdf")
+                     savefig=result_dir / f"{model_name}_{OPTIONS.fit.method}_corner.pdf")
+
     plot.plot_fit(components[0].inc(), components[0].pa(), components=components,
-                  savefig=result_dir / f"{model_name}_fit_results.pdf")
+                  savefig=result_dir / f"{model_name}_{OPTIONS.fit.method}_fit_results.pdf")

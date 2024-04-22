@@ -64,19 +64,19 @@ fits_files = list((DATA_DIR).glob("*fits"))
 data.set_data(fits_files, wavelengths="all", fit_data=["vis2"])
 
 pa = Parameter(**STANDARD_PARAMETERS.pa)
-pa.value = 162
+pa.value = 0.12*u.rad.to(u.deg)
 pa.free = True
 
 inc = Parameter(**STANDARD_PARAMETERS.inc)
-inc.value = 0.5
+inc.value = 0.83
 inc.free = True
 
 fc = Parameter(**STANDARD_PARAMETERS.fr)
-fc.value = 0.54
+fc.value = 0.56
 fc.free = True
 
 fs = Parameter(**STANDARD_PARAMETERS.fr)
-fs.value = 0.44
+fs.value = 0.41
 fs.free = True
 
 wavelength = data.get_all_wavelengths()
@@ -86,15 +86,15 @@ ks.wavelength = wavelength
 ks.free = False
 
 kc = Parameter(**STANDARD_PARAMETERS.exp)
-kc.value = -3.64
+kc.value = -3.9
 kc.set(min=-20, max=20)
 
 fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
-fwhm.value = 2.14
+fwhm.value = 2.143038610475213
 fwhm.set(min=0.1, max=32)
 
 flor = Parameter(**STANDARD_PARAMETERS.fr)
-flor.value = 0.41
+flor.value = 0.43
 flor.free = True
 
 params = {"fs": fs, "fc": fc, "flor": flor,
@@ -120,6 +120,7 @@ print(f"rchi_sq: {rchi_sq}")
 plot.plot_overview(savefig=result_dir / f"{model_name}_data_overview.pdf")
 plot.plot_fit(components[0].inc(), components[0].pa(), components=components,
               savefig=result_dir / f"{model_name}_pre_fit_results.pdf")
+
 
 if __name__ == "__main__":
     ncores = None
