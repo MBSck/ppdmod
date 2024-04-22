@@ -6,6 +6,7 @@ import astropy.units as u
 import astropy.constants as const
 import matplotlib.pyplot as plt
 import numpy as np
+from astropy.modeling.models import BlackBody
 from matplotlib.axes import Axes
 from matplotlib.legend import Legend
 from openpyxl import Workbook, load_workbook
@@ -64,6 +65,34 @@ def get_indices(values, array: np.ndarray,
 
         indices.append(index.astype(int).squeeze())
     return indices
+
+
+def compute_photometric_slope(
+        wavelengths: u.um, temperature: u.K) -> np.ndarray:
+    """Computes the photometric slope of the data from
+    the effective temperature of the star.
+
+    Parameters
+    ----------
+    wavelengths : astropy.units.um
+        The wavelengths of the data.
+    temperature : astropy.units.K
+        The effective temperature of the star.
+
+    Returns
+    -------
+    photometric_slope : numpy.ndarray
+    """
+    temperature = u.Quantity(temperature, u.K)
+    wavelengths = u.Quantity(wavelengths, u.um)
+    nu = (const.c/wavelengths.to(u.m)).to(u.Hz)
+    blackbody = BlackBody(temperature)
+
+    delta_nu = (nu * 1e-5)
+    bb_upper, bb_lower = map(lambda x: blackbody(x), (nu+delta_nu, nu-delta_nu))
+    bb_diff = (bb_upper-bb_lower) / (2 * delta_nu)
+    photometric_slope = (nu / blackbody(nu)) * bb_diff
+    return photometric_slope.value
 
 
 def compute_stellar_radius(luminosity: u.Lsun, temperature: u.K) -> u.Rsun:

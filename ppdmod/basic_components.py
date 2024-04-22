@@ -390,7 +390,7 @@ class Lorentzian(Component):
         wavelength : astropy.units.um
             The wavelengths.
         """
-        vis = np.exp(-np.pi*baselines*self.fwhm().to(u.rad)/(2*np.sqrt(3)))
+        vis = np.exp(-np.pi*baselines*self.fwhm().to(u.rad)/np.sqrt(3))
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
@@ -422,9 +422,11 @@ class GaussLorentzian(Component):
         self.flor.name = self.flor.shortname = "flor"
         self.flor.free = True
         self.fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
+
+        self.eval(**kwargs)
+
         self.gauss = Gaussian(fwhm=self.fwhm, inc=self.inc, pa=self.pa)
         self.lor = Lorentzian(fwhm=self.fwhm, inc=self.inc, pa=self.pa)
-        self.eval(**kwargs)
 
     def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
@@ -770,7 +772,7 @@ class StarHaloGaussLor(Component):
     """A star, a disk and a halo model as seen in Lazareff+2017."""
     name = "StarHaloGaussLor"
     shortname = "StarHaloGaussLor"
-    ring = False
+    has_ring = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -784,13 +786,25 @@ class StarHaloGaussLor(Component):
         self.rin = Parameter(**STANDARD_PARAMETERS.rin)
         self.fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
         self.wl0 = Parameter(**STANDARD_PARAMETERS.wl)
-        self.wl0.name = self.wl0.shortname = "wl0"
         self.ks = Parameter(**STANDARD_PARAMETERS.exp)
         self.ks.name = self.ks.shortname = "ks"
+        self.ks.value = 1
+        self.ks.min, self.ks.max = -10, 10
         self.ks.free = False
         self.kc = Parameter(**STANDARD_PARAMETERS.exp)
         self.kc.name = self.kc.shortname = "kc"
+        self.kc.min, self.kc.max = -10, 10
+        self.kc.value = 1
+
         self.eval(**kwargs)
+
+        self.gl = GaussLorentzian(flor=self.flor, fwhm=self.fwhm,
+                                  inc=self.inc, pa=self.pa)
+
+        if self.has_ring:
+            self.ring = Ring(rin=self.rin, a=self.a, inc=self.inc,
+                             pa=self.pa, phi=self.phi, asymmetric=True)
+            self.conv = Convolver(gl=self.gl, ring=self.has_ring)
 
     def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
@@ -811,15 +825,10 @@ class StarHaloGaussLor(Component):
         divisor = (fh+self.fs())*wavelength_ratio**ks \
             + self.fc()*wavelength_ratio**self.kc()
 
-        gl = GaussLorentzian(flor=self.flor, fwhm=self.fwhm,
-                             inc=self.inc, pa=self.pa)
-        if self.ring:
-            ring = Ring(rin=self.rin, a=self.a, inc=self.inc,
-                        pa=self.pa, phi=self.phi, asymmetric=True)
-            conv = Convolver(gl=gl, ring=ring)
-            vis_disk = conv.vis_func(baselines, baseline_angles, wavelength, **kwargs)
+        if self.has_ring:
+            vis_disk = self.conv.vis_func(baselines, baseline_angles, wavelength, **kwargs)
         else:
-            vis_disk = gl.vis_func(baselines, baseline_angles, wavelength, **kwargs)
+            vis_disk = self.gl.vis_func(baselines, baseline_angles, wavelength, **kwargs)
 
         vis_comp = self.fc()*vis_disk*wavelength_ratio**self.kc()
         return ((vis_star+vis_comp)/divisor).value.astype(OPTIONS.data.dtype.complex)
@@ -828,26 +837,21 @@ class StarHaloGaussLor(Component):
                    pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
         """Computes the image."""
         fh = 1-(self.fs()+self.fc())
-        gl = GaussLorentzian(flor=self.flor, fwhm=self.fwhm,
-                             inc=self.inc, pa=self.pa)
-        if self.ring:
-            ring = Ring(rin=self.rin, a=self.a, inc=self.inc,
-                        pa=self.pa, phi=self.phi, asymmetric=True)
-            conv = Convolver(gl=gl, ring=ring)
-            image = conv.image_func(xx, yy, pixel_size, wavelength)
+        if self.has_ring:
+            image = self.conv.image_func(xx, yy, pixel_size, wavelength)
         else:
-            image = gl.image_func(xx, yy, pixel_size, wavelength)
+            image = self.gl.image_func(xx, yy, pixel_size, wavelength)
         image *= self.fc()
         pt = PointSource(dim=self.dim, inc=self.inc, pa=self.pa)
-        image += self.fs()*pt.image_func(xx, yy, pixel_size, wavelength)
-        return (fh+image).astype(OPTIONS.data.dtype.real)
+        image += pt.image_func(xx, yy, pixel_size, wavelength)*(self.fs() + fh)
+        return image.astype(OPTIONS.data.dtype.real)
 
 
 class StarHaloRing(StarHaloGaussLor):
     """A star, a disk and a halo model as seen in Lazareff+2017."""
     name = "StarHaloRing"
     shortname = "StarHaloRing"
-    ring = True
+    has_ring = True
 
 
 def assemble_components(

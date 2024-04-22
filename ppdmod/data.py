@@ -139,7 +139,7 @@ class ReadoutFits:
                 wl_data = [data[:, index] if index.size != 0
                            else np.full((data.shape[0],), np.nan) for index in indices]
             else:
-                wl_data = [data[:, index].mean(1) for index in indices]
+                wl_data = [data[:, index].mean(-1) for index in indices]
         return np.array(wl_data).astype(OPTIONS.data.dtype.real)
 
 

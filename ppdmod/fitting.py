@@ -1,5 +1,5 @@
 from multiprocessing import Pool
-from typing import Optional, List, Dict, Tuple, Union, Callable
+from typing import Optional, List, Dict, Tuple, Union
 from pathlib import Path
 
 import astropy.units as u
@@ -285,8 +285,7 @@ def lnprob(theta: np.ndarray) -> float:
     parameters, shared_params = set_params_from_theta(theta)
 
     if OPTIONS.fit.method == "emcee":
-        lnp = lnprior(parameters, shared_params)
-        if np.isinf(lnp):
+        if np.isinf(lnprior(parameters, shared_params)):
             return -np.inf
 
     components = assemble_components(parameters, shared_params)
@@ -324,7 +323,8 @@ def run_mcmc(nwalkers: int,
 
     print(f"Executing MCMC.\n{'':-^50}")
     sampler = emcee.EnsembleSampler(
-        nwalkers, theta.shape[1], lnprob, pool=pool)
+        nwalkers, theta.shape[1], kwargs.pop("lnprob", lnprob), pool=pool)
+
     if nburnin is not None:
         print("Running burn-in...")
         sampler.run_mcmc(theta, nburnin, progress=True)
@@ -349,7 +349,6 @@ def run_dynesty(nlive: Optional[int] = 1000,
                 debug: Optional[bool] = False,
                 save_dir: Optional[Path] = None,
                 method: Optional[str] = "static",
-                ptform: Optional[Callable] = None,
                 **kwargs) -> np.ndarray:
     """Runs the dynesty nested sampler.
 
@@ -378,7 +377,7 @@ def run_dynesty(nlive: Optional[int] = 1000,
                       "pool": pool, "update_interval": ndim}
 
     print(f"Executing Dynesty.\n{'':-^50}")
-    ptform = transform_uniform_prior if ptform is None else ptform
+    ptform = kwargs.pop("ptform", transform_uniform_prior)
     sampler = samplers[method](lnprob, ptform, ndim, **sampler_kwargs)
     sampler.run_nested(dlogz=0.01, print_progress=True,
                        checkpoint_file=str(checkpoint_file))
