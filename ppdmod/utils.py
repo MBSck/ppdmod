@@ -188,7 +188,7 @@ def compute_effective_baselines(
     """
     ucoord, vcoord = map(lambda x: u.Quantity(x, u.m), [ucoord, vcoord])
     if pos_angle is not None:
-        pos_angle = 90-u.Quantity(pos_angle, u.deg)
+        pos_angle = 90*u.deg-u.Quantity(pos_angle, u.deg)
         inclination = u.Quantity(inclination, u.one)
 
         ucoord_eff = ucoord*np.cos(pos_angle) + vcoord*np.sin(pos_angle)
