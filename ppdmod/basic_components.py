@@ -443,7 +443,7 @@ class GaussLorentzian(Component):
         self.flor = Parameter(**STANDARD_PARAMETERS.fr)
         self.flor.name = self.flor.shortname = "flor"
         self.flor.free = True
-        self.fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
+        self.hlr = Parameter(**STANDARD_PARAMETERS.hlr)
 
         self.eval(**kwargs)
 
@@ -794,7 +794,12 @@ class StarHaloGaussLor(Component):
         self.flor.name = self.flor.shortname = "flor"
         self.fs.free = self.fc.free = self.flor.free = True
         self.rin = Parameter(**STANDARD_PARAMETERS.rin)
-        self.kernel = Parameter(**STANDARD_PARAMETERS.kernel)
+
+        if self.has_ring:
+            self.kernel = Parameter(**STANDARD_PARAMETERS.kernel)
+        else:
+            self.hlr = Parameter(**STANDARD_PARAMETERS.hlr)
+
         self.wl0 = Parameter(**STANDARD_PARAMETERS.wl)
         self.ks = Parameter(**STANDARD_PARAMETERS.exp)
         self.ks.name = self.ks.shortname = "ks"
@@ -808,8 +813,10 @@ class StarHaloGaussLor(Component):
 
         self.eval(**kwargs)
 
-        self.hlr = Parameter(**STANDARD_PARAMETERS.hlr)
-        self.hlr.value = np.hypot(self.kernel, self.rin)
+        if self.has_ring:
+            self.hlr = Parameter(**STANDARD_PARAMETERS.hlr)
+            self.hlr.value = np.hypot(self.kernel(), self.rin())
+
         self.gl = GaussLorentzian(flor=self.flor, hlr=self.hlr,
                                   inc=self.inc, pa=self.pa)
 

@@ -89,9 +89,9 @@ kc = Parameter(**STANDARD_PARAMETERS.exp)
 kc.value = -3.67
 kc.set(min=-10, max=10)
 
-fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
-fwhm.value = 2.404528869234826
-fwhm.set(min=0.1, max=32)
+kernel = Parameter(**STANDARD_PARAMETERS.kernel)
+kernel.value = 1.155181991760266
+kernel.set(min=0.1, max=32)
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
 rin.value = 0.33315812560811464
@@ -107,7 +107,7 @@ a.value = 0.8275868534480233
 phi = Parameter(**STANDARD_PARAMETERS.phi)
 phi.value = -136.46880071438582
 
-params = {"fs": fs, "fc": fc, "flor": flor, "fwhm": fwhm,
+params = {"fs": fs, "fc": fc, "flor": flor, "kernel": kernel,
           "rin": rin, "kc": kc, "inc": inc, "pa": pa, "a": a, "phi": phi}
 labels = [label for label in params]
 
