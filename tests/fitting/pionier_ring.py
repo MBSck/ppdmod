@@ -89,13 +89,13 @@ kc = Parameter(**STANDARD_PARAMETERS.exp)
 kc.value = -3.67
 kc.set(min=-10, max=10)
 
-kernel = Parameter(**STANDARD_PARAMETERS.kernel)
-kernel.value = 1.155181991760266
-kernel.set(min=0.1, max=32)
+la = Parameter(**STANDARD_PARAMETERS.la)
+la.value = 0.03
+la.set(min=-1, max=1.5)
 
-rin = Parameter(**STANDARD_PARAMETERS.rin)
-rin.value = 0.33315812560811464
-rin.set(min=0.1, max=32)
+lkr = Parameter(**STANDARD_PARAMETERS.lkr)
+lkr.value = 0.54
+lkr.set(min=-1, max=1)
 
 flor = Parameter(**STANDARD_PARAMETERS.fr)
 flor.value = 0.42
@@ -107,8 +107,8 @@ a.value = 0.8275868534480233
 phi = Parameter(**STANDARD_PARAMETERS.phi)
 phi.value = -136.46880071438582
 
-params = {"fs": fs, "fc": fc, "flor": flor, "kernel": kernel,
-          "rin": rin, "kc": kc, "inc": inc, "pa": pa, "a": a, "phi": phi}
+params = {"fs": fs, "fc": fc, "flor": flor, "la": la,
+          "lkr": lkr, "kc": kc, "inc": inc, "pa": pa, "a": a, "phi": phi}
 labels = [label for label in params]
 
 OPTIONS.model.constant_params = {"wl0": 1.68, "ks": ks}
@@ -149,7 +149,7 @@ if __name__ == "__main__":
         fit_params = fit_params_dynesty
 
     sampler = run_fit(**fit_params, ncores=ncores,
-                      save_dir=result_dir, debug=True)
+                      save_dir=result_dir, debug=False)
 
     theta, uncertainties = get_best_fit(
             sampler, **fit_params, method="quantile")

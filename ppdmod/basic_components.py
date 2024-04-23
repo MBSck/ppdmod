@@ -793,12 +793,11 @@ class StarHaloGaussLor(Component):
         self.flor = Parameter(**STANDARD_PARAMETERS.fr)
         self.flor.name = self.flor.shortname = "flor"
         self.fs.free = self.fc.free = self.flor.free = True
-        self.rin = Parameter(**STANDARD_PARAMETERS.rin)
+
+        self.la = Parameter(**STANDARD_PARAMETERS.la)
 
         if self.has_ring:
-            self.kernel = Parameter(**STANDARD_PARAMETERS.kernel)
-        else:
-            self.hlr = Parameter(**STANDARD_PARAMETERS.hlr)
+            self.lkr = Parameter(**STANDARD_PARAMETERS.lkr)
 
         self.wl0 = Parameter(**STANDARD_PARAMETERS.wl)
         self.ks = Parameter(**STANDARD_PARAMETERS.exp)
@@ -813,17 +812,16 @@ class StarHaloGaussLor(Component):
 
         self.eval(**kwargs)
 
-        if self.has_ring:
-            self.hlr = Parameter(**STANDARD_PARAMETERS.hlr)
-            self.hlr.value = np.hypot(self.kernel(), self.rin())
-
+        self.hlr = 10**self.la()
         self.gl = GaussLorentzian(flor=self.flor, hlr=self.hlr,
                                   inc=self.inc, pa=self.pa)
 
         if self.has_ring:
+            self.rin = np.sqrt(10**(2*self.la())/(1+10**(2*self.lkr())))
             self.ring = Ring(rin=self.rin, a=self.a, inc=self.inc,
                              pa=self.pa, phi=self.phi, asymmetric=True)
             self.conv = Convolver(gl=self.gl, ring=self.ring)
+
 
     def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:

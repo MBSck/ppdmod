@@ -89,16 +89,16 @@ kc = Parameter(**STANDARD_PARAMETERS.exp)
 kc.value = -3.9
 kc.set(min=-20, max=20)
 
-hlr = Parameter(**STANDARD_PARAMETERS.hlr)
-hlr.value = 2.143038610475213
-hlr.set(min=0.1, max=32)
+la = Parameter(**STANDARD_PARAMETERS.la)
+la.value = 0.06
+la.set(min=-1, max=1.5)
 
 flor = Parameter(**STANDARD_PARAMETERS.fr)
 flor.value = 0.43
 flor.free = True
 
 params = {"fs": fs, "fc": fc, "flor": flor,
-          "hlr": hlr, "kc": kc, "inc": inc, "pa": pa}
+          "la": la, "kc": kc, "inc": inc, "pa": pa}
 labels = [label for label in params]
 
 OPTIONS.model.constant_params = {"wl0": 1.68, "ks": ks}
