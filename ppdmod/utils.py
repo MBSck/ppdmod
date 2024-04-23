@@ -188,19 +188,19 @@ def compute_effective_baselines(
     """
     ucoord, vcoord = map(lambda x: u.Quantity(x, u.m), [ucoord, vcoord])
     if pos_angle is not None:
-        pos_angle = 90*u.deg-u.Quantity(pos_angle, u.deg)
+        pos_angle = u.Quantity(pos_angle, u.deg)
         inclination = u.Quantity(inclination, u.one)
 
-        ucoord_eff = ucoord*np.cos(pos_angle) + vcoord*np.sin(pos_angle)
-        vcoord_eff = -ucoord*np.sin(pos_angle) - vcoord*np.cos(pos_angle)
+        ucoord_eff = ucoord*np.cos(pos_angle) - vcoord*np.sin(pos_angle)
+        vcoord_eff = ucoord*np.sin(pos_angle) + vcoord*np.cos(pos_angle)
     else:
         ucoord_eff, vcoord_eff = ucoord, vcoord
 
     if inclination is not None:
-        vcoord_eff *= inclination
+        ucoord_eff *= inclination
 
     baselines_eff = np.hypot(ucoord_eff, vcoord_eff)
-    baseline_angles_eff = np.arctan2(vcoord_eff, ucoord_eff)
+    baseline_angles_eff = np.arctan2(ucoord_eff, vcoord_eff)
 
     if longest:
         indices = baselines_eff.argmax(0)
