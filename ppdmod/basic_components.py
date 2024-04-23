@@ -350,7 +350,7 @@ class Gaussian(Component):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
+        self.hlr = Parameter(**STANDARD_PARAMETERS.hlr)
         self.eval(**kwargs)
 
     def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
@@ -366,7 +366,8 @@ class Gaussian(Component):
         wavelength : astropy.units.um
             The wavelengths.
         """
-        vis = np.exp(-(np.pi*baselines*self.fwhm().to(u.rad))**2/(4*np.log(2)))
+        xx = np.pi*baselines*self.hlr().to(u.rad)
+        vis = np.exp(-xx**2/np.log(2))
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
@@ -383,8 +384,8 @@ class Gaussian(Component):
         image : astropy.units.Jy
         """
         radius = np.hypot(xx, yy)[np.newaxis, ...]
-        factor = 1/(np.sqrt(np.pi/(4*np.log(2)))*self.fwhm())
-        return (factor*np.exp(-(4*np.log(2)*radius**2)/self.fwhm()**2)).value.astype(OPTIONS.data.dtype.real)
+        image = np.log(2)/(np.pi*self.hlr()**2)*np.exp(-(radius/self.hlr())**2*np.log(2))
+        return image.value.astype(OPTIONS.data.dtype.real)
 
 
 class Lorentzian(Component):
@@ -394,7 +395,7 @@ class Lorentzian(Component):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
+        self.hlr = Parameter(**STANDARD_PARAMETERS.hlr)
         self.eval(**kwargs)
 
     def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
@@ -410,7 +411,8 @@ class Lorentzian(Component):
         wavelength : astropy.units.um
             The wavelengths.
         """
-        vis = np.exp(-np.pi*baselines*self.fwhm().to(u.rad)/np.sqrt(3))
+        xx = np.pi*baselines*self.hlr().to(u.rad)
+        vis = np.exp(-2*xx/np.sqrt(3))
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
@@ -427,8 +429,8 @@ class Lorentzian(Component):
         image : astropy.units.Jy
         """
         radius = np.hypot(xx, yy)[np.newaxis, ...]
-        factor = self.fwhm()/(4*np.pi*np.sqrt(3))
-        return (factor*(self.fwhm()**2/12+radius**2)**(-3/2)).value.astype(OPTIONS.data.dtype.real)
+        image = self.hlr()/(2*np.pi*np.sqrt(3))*(self.hlr()**2/3+radius**2)**(-3/2)
+        return image.value.astype(OPTIONS.data.dtype.real)
 
 
 class GaussLorentzian(Component):
@@ -445,8 +447,8 @@ class GaussLorentzian(Component):
 
         self.eval(**kwargs)
 
-        self.gauss = Gaussian(fwhm=self.fwhm, inc=self.inc, pa=self.pa)
-        self.lor = Lorentzian(fwhm=self.fwhm, inc=self.inc, pa=self.pa)
+        self.gauss = Gaussian(hlr=self.hlr, inc=self.inc, pa=self.pa)
+        self.lor = Lorentzian(hlr=self.hlr, inc=self.inc, pa=self.pa)
 
     def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
@@ -792,7 +794,7 @@ class StarHaloGaussLor(Component):
         self.flor.name = self.flor.shortname = "flor"
         self.fs.free = self.fc.free = self.flor.free = True
         self.rin = Parameter(**STANDARD_PARAMETERS.rin)
-        self.fwhm = Parameter(**STANDARD_PARAMETERS.fwhm)
+        self.kernel = Parameter(**STANDARD_PARAMETERS.kernel)
         self.wl0 = Parameter(**STANDARD_PARAMETERS.wl)
         self.ks = Parameter(**STANDARD_PARAMETERS.exp)
         self.ks.name = self.ks.shortname = "ks"
@@ -806,7 +808,9 @@ class StarHaloGaussLor(Component):
 
         self.eval(**kwargs)
 
-        self.gl = GaussLorentzian(flor=self.flor, fwhm=self.fwhm,
+        self.hlr = Parameter(**STANDARD_PARAMETERS.hlr)
+        self.hlr.value = np.hypot(self.kernel, self.rin)
+        self.gl = GaussLorentzian(flor=self.flor, hlr=self.hlr,
                                   inc=self.inc, pa=self.pa)
 
         if self.has_ring:
