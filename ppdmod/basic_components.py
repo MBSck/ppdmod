@@ -822,6 +822,8 @@ class StarHaloGaussLor(Component):
                              pa=self.pa, phi=self.phi, asymmetric=True)
             self.conv = Convolver(gl=self.gl, ring=self.ring)
 
+        breakpoint()
+
 
     def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
