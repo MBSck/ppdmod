@@ -10,7 +10,7 @@ import pytest
 from ppdmod import utils
 from ppdmod.basic_components import PointSource, Star, Ring, UniformDisk,\
         Gaussian, TempGradient, GreyBody, assemble_components
-from ppdmod.data import ReadoutFits, set_data, set_fit_wavelengths
+from ppdmod.data import ReadoutFits, set_data
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 from ppdmod.parameter import Parameter
 from ppdmod.utils import compute_vis, compute_t3, compute_effective_baselines, broadcast_baselines

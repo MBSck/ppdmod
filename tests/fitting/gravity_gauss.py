@@ -1,29 +1,21 @@
-import os
 from typing import List
 from pathlib import Path
 
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["OPENBLAS_NUM_THREADS"] = "1"
-os.environ["MKL_NUM_THREADS"] = "1"
-os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
-os.environ["NUMEXPR_NUM_THREADS"] = "1"
-
 import astropy.units as u
 import numpy as np
-from ppdmod import data
 from ppdmod import plot
 from ppdmod.basic_components import assemble_components
+from ppdmod.data import set_data
 from ppdmod.fitting import compute_observable_chi_sq, compute_observables, \
     set_params_from_theta, lnprior, run_fit, get_best_fit, transform_uniform_prior
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
-from ppdmod.utils import compute_photometric_slope
 
 
 def ptform(theta: List[float]) -> np.ndarray:
-    """Transform that constrains the first two parameters to 1 for dynesty."""
+    """Transform that constrains the first two parameters to 1."""
     params = transform_uniform_prior(theta)
-    params[1] = params[1]*(1-params[0])
+    params[1] = params[1] * (1 - params[0])
     return params
 
 
@@ -58,25 +50,25 @@ def lnprob(theta: np.ndarray) -> float:
     return compute_observable_chi_sq(*compute_observables(components))
 
 
-DATA_DIR = Path("../data/pionier/HD142527")
+DATA_DIR = Path("../data/gravity")
 OPTIONS.model.output = "non-physical"
 fits_files = list((DATA_DIR).glob("*fits"))
-data.set_data(fits_files, wavelengths="all", fit_data=["vis2"])
+data = set_data(fits_files, wavelengths="all", fit_data=["vis2"])
 
 pa = Parameter(**STANDARD_PARAMETERS.pa)
-pa.value = 0.12*u.rad.to(u.deg)
+pa.value = 16
 pa.free = True
 
 inc = Parameter(**STANDARD_PARAMETERS.inc)
-inc.value = 0.83
+inc.value = 0.9
 inc.free = True
 
 fc = Parameter(**STANDARD_PARAMETERS.fr)
-fc.value = 0.56
+fc.value = 0.62
 fc.free = True
 
 fs = Parameter(**STANDARD_PARAMETERS.fr)
-fs.value = 0.41
+fs.value = 0.25
 fs.free = True
 
 wavelength = data.get_all_wavelengths()
@@ -86,44 +78,30 @@ ks.wavelength = wavelength
 ks.free = False
 
 kc = Parameter(**STANDARD_PARAMETERS.exp)
-kc.value = -3.9
-kc.set(min=-20, max=20)
+kc.value = -1.256567224292807
+kc.set(min=-10, max=10)
 
 la = Parameter(**STANDARD_PARAMETERS.la)
-la.value = 0.06
+la.value = 0.12057393120584989
 la.set(min=-1, max=1.5)
 
-flor = Parameter(**STANDARD_PARAMETERS.fr)
-flor.value = 0.43
-flor.free = True
-
-params = {"fs": fs, "fc": fc, "flor": flor,
-          "la": la, "kc": kc, "inc": inc, "pa": pa}
+params = {"fs": fs,"fc": fc, "la": la,
+          "kc": kc, "inc": inc, "pa": pa}
 labels = [label for label in params]
 
-OPTIONS.model.constant_params = {"wl0": 1.68, "ks": ks}
-OPTIONS.model.components_and_params = [["StarHaloGaussLor", params]]
+OPTIONS.model.constant_params = {"wl0": 2.15, "ks": ks}
+OPTIONS.model.components_and_params = [["StarHaloGauss", params]]
 OPTIONS.fit.method = "dynesty"
 
-result_dir = Path("results/pionier")
+result_dir = Path("results/gravity")
 result_dir.mkdir(exist_ok=True, parents=True)
 model_name = "starHaloGaussLor"
 
-components = assemble_components(
-        OPTIONS.model.components_and_params,
-        OPTIONS.model.shared_params)
-
-rchi_sq = compute_observable_chi_sq(
-        *compute_observables(components), reduced=True)
-print(f"rchi_sq: {rchi_sq}")
-
 plot.plot_overview(savefig=result_dir / f"{model_name}_data_overview.pdf")
-plot.plot_fit(components[0].inc(), components[0].pa(), components=components,
-              savefig=result_dir / f"{model_name}_pre_fit_results.pdf")
 
 
 if __name__ == "__main__":
-    ncores = None
+    ncores = 6
     fit_params_emcee = {"nburnin": 2000, "nsteps": 8000, "nwalkers": 100,
                         "lnprob": lnprob}
     fit_params_dynesty = {"nlive": 1500, "sample": "rwalk", "bound": "multi",
@@ -131,22 +109,19 @@ if __name__ == "__main__":
 
     if OPTIONS.fit.method == "emcee":
         fit_params = fit_params_emcee
-        ncores = fit_params["nwalkers"]//2 if ncores is None else ncores
+        ncores = fit_params["nwalkers"] // 2 if ncores is None else ncores
         fit_params["discard"] = fit_params["nburnin"]
     else:
         ncores = 50 if ncores is None else ncores
         fit_params = fit_params_dynesty
 
-    sampler = run_fit(**fit_params, ncores=ncores,
-                      save_dir=result_dir, debug=False)
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
 
-    theta, uncertainties = get_best_fit(
-            sampler, **fit_params, method="quantile")
+    theta, uncertainties = get_best_fit(sampler, **fit_params, method="quantile")
 
     components_and_params, shared_params = set_params_from_theta(theta)
     components = assemble_components(components_and_params, shared_params)
-    rchi_sq = compute_observable_chi_sq(
-            *compute_observables(components), reduced=True)
+    rchi_sq = compute_observable_chi_sq(*compute_observables(components), reduced=True)
     print(f"rchi_sq: {rchi_sq}")
 
     plot.plot_chains(sampler, labels, **fit_params,
