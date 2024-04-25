@@ -374,6 +374,8 @@ def run_dynesty(nlive: Optional[int] = 1000,
     queue_size = ncores if not debug else None
     sampler_kwargs = {"nlive": nlive, "sample": sample,
                       "bound": bound, "queue_size": queue_size,
+                      "periodic": kwargs.pop("periodic", None),
+                      "reflective": kwargs.pop("reflective", None),
                       "pool": pool, "update_interval": ndim}
 
     print(f"Executing Dynesty.\n{'':-^50}")

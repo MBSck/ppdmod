@@ -257,13 +257,11 @@ class Ring(Component):
             The wavelengths.
         """
         brightness = kwargs.pop("brightness", 1)
-        if self.asymmetric:
-            factor = -1j * self.a() * np.cos(baseline_angles - self.phi().to(u.rad))
-            
         if self.thin:
             xx = 2 * np.pi * self.rin().to(u.rad) * baselines
             vis = j0(xx).astype(complex)
             if self.asymmetric:
+                factor = -1j * self.a() * np.cos(baseline_angles - self.phi().to(u.rad))
                 vis += factor * j1(xx)
         else:
             # TODO: Finish this with the factor here and use it for the temperature gradient
@@ -272,6 +270,7 @@ class Ring(Component):
 
             vis = (np.trapz(j0(xx), radius)).astype(complex)
             if self.asymmetric:
+                factor = -1j * self.a() * np.cos(baseline_angles - self.phi().to(u.rad))
                 vis += factor.reshape(1, *vis.shape[1:]) * np.trapz(j1(xx), radius)
 
             if brightness != 1:

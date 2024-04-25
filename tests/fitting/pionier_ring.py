@@ -23,6 +23,7 @@ from ppdmod.utils import compute_photometric_slope
 def ptform(theta: List[float]) -> np.ndarray:
     """Transform that constrains the first two parameters to 1 for dynesty."""
     params = transform_uniform_prior(theta)
+    breakpoint()
     params[1] = params[1]*(1-params[0])
     return params
 
@@ -137,8 +138,8 @@ if __name__ == "__main__":
     ncores = None
     fit_params_emcee = {"nburnin": 2000, "nsteps": 8000, "nwalkers": 100,
                         "lnprob": lnprob}
-    fit_params_dynesty = {"nlive": 1500, "sample": "rwalk", "bound": "multi",
-                          "ptform": ptform}
+    fit_params_dynesty = {"nlive": 2000, "sample": "rwalk", "bound": "multi",
+                          "periodic": [5, -1], "ptform": ptform}
 
     if OPTIONS.fit.method == "emcee":
         fit_params = fit_params_emcee
@@ -149,7 +150,6 @@ if __name__ == "__main__":
         fit_params = fit_params_dynesty
 
     sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
-
     theta, uncertainties = get_best_fit(
             sampler, **fit_params, method="quantile")
 
