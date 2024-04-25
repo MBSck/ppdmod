@@ -131,7 +131,7 @@ if __name__ == "__main__":
         ncores = 50 if ncores is None else ncores
         fit_params = fit_params_dynesty
 
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=True)
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
     theta, uncertainties = get_best_fit(sampler, **fit_params, method="quantile")
 
     components_and_params, shared_params = set_params_from_theta(theta)

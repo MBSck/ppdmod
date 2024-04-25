@@ -874,13 +874,15 @@ class StarHaloGauss(Component):
         self.kc.name = self.kc.shortname = "kc"
         self.kc.min, self.kc.max = -10, 10
         self.kc.value = 1
+        
+        if self.is_gauss_lor:
+            self.flor = Parameter(**STANDARD_PARAMETERS.fr)
+            self.flor.name = self.flor.shortname = "flor"
 
         self.eval(**kwargs)
 
         self.hlr = 10 ** self.la()
         if self.is_gauss_lor:
-            self.flor = Parameter(**STANDARD_PARAMETERS.fr)
-            self.flor.name = self.flor.shortname = "flor"
             self.comp = GaussLorentzian(
                 flor=self.flor, hlr=self.hlr, inc=self.inc, pa=self.pa)
         else:
