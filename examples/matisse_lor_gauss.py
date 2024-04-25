@@ -102,7 +102,7 @@ params = {"fs": fs, "fc": fc, "flor": flor,
           "la": la, "kc": kc, "inc": inc, "pa": pa}
 labels = [label for label in params]
 
-OPTIONS.model.constant_params = {"wl0": 3.5, "ks": ks}
+OPTIONS.model.constant_params = {"wl0": 3.14, "ks": ks}
 OPTIONS.model.components_and_params = [["StarHaloGaussLor", params]]
 OPTIONS.fit.method = "dynesty"
 
