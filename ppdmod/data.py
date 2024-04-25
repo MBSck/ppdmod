@@ -21,7 +21,7 @@ class ReadoutFits:
     """
 
     def __init__(self, fits_file: Path,
-                 wavelength_range: Optional[u.um] = None) -> None:
+                 wavelength_range: Optional[u.Quantity[u.um]] = None) -> None:
         """The class's constructor."""
         self.fits_file = Path(fits_file)
         self.wavelength_range = wavelength_range
