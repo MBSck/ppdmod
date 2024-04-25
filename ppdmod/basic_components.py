@@ -857,7 +857,7 @@ class StarHaloGauss(Component):
         self.fs.name = self.fs.shortname = "fs"
         self.fc = Parameter(**STANDARD_PARAMETERS.fr)
         self.fc.name = self.fc.shortname = "fc"
-        self.fs.free = self.fc.free = self.flor.free = True
+        self.fs.free = self.fc.free = True
 
         self.la = Parameter(**STANDARD_PARAMETERS.la)
 
@@ -878,6 +878,7 @@ class StarHaloGauss(Component):
         if self.is_gauss_lor:
             self.flor = Parameter(**STANDARD_PARAMETERS.fr)
             self.flor.name = self.flor.shortname = "flor"
+            self.flor.free = True
 
         self.eval(**kwargs)
 
