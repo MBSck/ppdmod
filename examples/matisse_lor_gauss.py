@@ -106,7 +106,7 @@ OPTIONS.model.constant_params = {"wl0": 3.5, "ks": ks}
 OPTIONS.model.components_and_params = [["StarHaloGaussLor", params]]
 OPTIONS.fit.method = "dynesty"
 
-result_dir = Path("results/pionier")
+result_dir = Path("results/matisse")
 result_dir.mkdir(exist_ok=True, parents=True)
 model_name = "starHaloGaussLor"
 
