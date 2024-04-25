@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Optional, List, Union
 from types import SimpleNamespace
 from pathlib import Path
@@ -19,15 +20,18 @@ class ReadoutFits:
         The path to the (.fits) or flux file.
     """
 
-    def __init__(self, fits_file: Path) -> None:
+    def __init__(self, fits_file: Path,
+                 wavelength_range: Optional[u.um] = None) -> None:
         """The class's constructor."""
         self.fits_file = Path(fits_file)
+        self.wavelength_range = wavelength_range
         self.read_file()
 
     def read_file(self) -> None:
         """Reads the data of the (.fits)-files into vectors."""
         try:
             hdul = fits.open(self.fits_file)
+        # TODO: This will also have a problem opening anything else than a (.fits)-file
         except OSError:
             hdul = None
             wl, flux, flux_err = np.loadtxt(self.fits_file, unpack=True)
@@ -43,19 +47,27 @@ class ReadoutFits:
             wl_index = 1 if instrument == "gravity" else None
             self.wavelength = (hdul["oi_wavelength", sci_index]
                                .data["eff_wave"]*u.m).to(u.um)[wl_index:]
+            
+            indices = slice(None)
+            if self.wavelength_range is not None:
+                indices = (self.wavelength_range[0] < self.wavelength) \
+                    & (self.wavelength_range[1] > self.wavelength)
+                self.wavelength = self.wavelength[indices]
+                
             self.flux = self.read_into_namespace(
-                    hdul, "flux", sci_index, wl_index)
+                    hdul, "flux", sci_index, wl_index, indices)
             self.t3 = self.read_into_namespace(
-                    hdul, "t3", sci_index, wl_index)
+                    hdul, "t3", sci_index, wl_index, indices)
             self.vis = self.read_into_namespace(
-                    hdul, "vis", sci_index, wl_index)
+                    hdul, "vis", sci_index, wl_index, indices)
             self.vis2 = self.read_into_namespace(
-                    hdul, "vis2", sci_index, wl_index)
+                    hdul, "vis2", sci_index, wl_index, indices)
             hdul.close()
 
     def read_into_namespace(self, hdul: fits.HDUList, key: str,
-                            sci_index: Optional[int],
-                            wl_index: Optional[int]) -> SimpleNamespace:
+                            sci_index: Optional[int] = None,
+                            wl_index: Optional[int] = None,
+                            indices: Optional[int] = None) -> SimpleNamespace:
         """Reads a (.fits) Card into a SimpleNamespace."""
         try:
             data = hdul[f"oi_{key}", sci_index]
@@ -66,8 +78,8 @@ class ReadoutFits:
 
         if key == "flux":
             try:
-                return SimpleNamespace(value=data.data["fluxdata"],
-                                       err=data.data["fluxerr"])
+                return SimpleNamespace(value=data.data["fluxdata"][:, indices],
+                                       err=data.data["fluxerr"][:, indices])
             except KeyError:
                 return SimpleNamespace(value=np.array([]), err=np.array([]))
         elif key in ["vis", "vis2"]:
@@ -75,13 +87,13 @@ class ReadoutFits:
                 value_key, err_key = "visamp", "visamperr"
             else:
                 value_key, err_key = "vis2data", "vis2err"
-            return SimpleNamespace(value=data.data[value_key][:, wl_index:],
-                                   err=data.data[err_key][:, wl_index:],
+            return SimpleNamespace(value=data.data[value_key][:, wl_index:][:, indices],
+                                   err=data.data[err_key][:, wl_index:][:, indices],
                                    ucoord=data.data["ucoord"].reshape(1, -1),
                                    vcoord=data.data["vcoord"].reshape(1, -1))
         elif key == "t3":
-            value = data.data["t3phi"][:, wl_index:]
-            err = data.data["t3phierr"][:, wl_index:]
+            value = data.data["t3phi"][:, wl_index:][:, indices]
+            err = data.data["t3phierr"][:, wl_index:][:, indices]
             u1coord, u2coord = map(lambda x: data.data[f"u{x}coord"], ["1", "2"])
             v1coord, v2coord = map(lambda x: data.data[f"v{x}coord"], ["1", "2"])
 
@@ -216,7 +228,9 @@ def set_fit_weights(weights: Optional[List[float]] = None,
 def set_data(fits_files: Optional[List[Path]] = None,
              wavelengths: Optional[Union[str, u.Quantity[u.um]]] = None,
              fit_data: Optional[List[str]] = None,
-             weights: Optional[List[float]] = None, **kwargs) -> SimpleNamespace:
+             weights: Optional[List[float]] = None,
+             wavelength_range: Optional[u.Quantity[u.um]] = None,
+             **kwargs) -> SimpleNamespace:
     """Sets the data as a global variable from the input files.
 
     If called without parameters or recalled, it will clear the data.
@@ -232,6 +246,8 @@ def set_data(fits_files: Optional[List[Path]] = None,
         The data to be fitted.
     weights : list of float, optional
         The weights of the fit parameters from the observed data.
+    wavelength_range : astropy.units.um, optional
+        A range of wavelengths to be kept. Other wavelengths will be omitted.
     """
     OPTIONS.data.readouts = []
 
@@ -244,13 +260,13 @@ def set_data(fits_files: Optional[List[Path]] = None,
         if key in ["vis", "vis2"]:
             data.ucoord, data.vcoord = [np.array([]).reshape(1, -1) for _ in range(2)]
         elif key in "t3":
-            data.u123coord, data.v123coord =[np.array([]) for _ in range(2)]
+            data.u123coord, data.v123coord = [np.array([]) for _ in range(2)]
 
     OPTIONS.fit.wavelengths = None
     if fits_files is None:
         return
 
-    OPTIONS.data.readouts = list(map(ReadoutFits, fits_files))
+    OPTIONS.data.readouts = list(map(partial(ReadoutFits, wavelength_range=wavelength_range), fits_files))
     if wavelengths == "all":
         wavelengths = get_all_wavelengths(OPTIONS.data.readouts)
         OPTIONS.data.binning = None

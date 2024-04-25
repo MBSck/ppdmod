@@ -311,8 +311,8 @@ class Ring(Component):
         image = (1 / (2 * np.pi)) * radius * radial_profile
 
         if self.asymmetric:
-            c, s = self.a() * np.cos(self.phi()), self.a() * np.sin(self.phi())
-            polar_angle = np.arctan2(xx, yy)
+            c, s = self.a() * np.cos(self.phi().to(u.rad)), self.a() * np.sin(self.phi().to(u.rad))
+            polar_angle = np.arctan2(yy, xx)
             image *= 1 + c * np.cos(polar_angle) + s * np.sin(polar_angle)
 
         return image.astype(OPTIONS.data.dtype.real)

@@ -23,7 +23,6 @@ from ppdmod.utils import compute_photometric_slope
 def ptform(theta: List[float]) -> np.ndarray:
     """Transform that constrains the first two parameters to 1 for dynesty."""
     params = transform_uniform_prior(theta)
-    breakpoint()
     params[1] = params[1]*(1-params[0])
     return params
 
@@ -129,40 +128,51 @@ rchi_sq = compute_observable_chi_sq(
         *compute_observables(components), reduced=True)
 print(f"rchi_sq: {rchi_sq}")
 
-plot.plot_overview(savefig=result_dir / f"{model_name}_data_overview.pdf")
-plot.plot_fit(components[0].inc(), components[0].pa(), components=components,
-              savefig=result_dir / f"{model_name}_pre_fit_results.pdf")
+import matplotlib.pyplot as plt
+image = components[0].compute_image(512, 0.02, 1.68)
+plt.imshow(image[0])
+plt.savefig(result_dir / "image.pdf", format="pdf")
+plt.close()
+
+image = components[0].compute_image(512, 0.02, 1.68, from_ft=True)
+plt.imshow(image)
+plt.savefig(result_dir / "image_from_ft.pdf", format="pdf")
+plt.close()
+
+# plot.plot_overview(savefig=result_dir / f"{model_name}_data_overview.pdf")
+# plot.plot_fit(components[0].inc(), components[0].pa(), components=components,
+#               savefig=result_dir / f"{model_name}_pre_fit_results.pdf")
 
 
-if __name__ == "__main__":
-    ncores = None
-    fit_params_emcee = {"nburnin": 2000, "nsteps": 8000, "nwalkers": 100,
-                        "lnprob": lnprob}
-    fit_params_dynesty = {"nlive": 2000, "sample": "rwalk", "bound": "multi",
-                          "periodic": [5, -1], "ptform": ptform}
-
-    if OPTIONS.fit.method == "emcee":
-        fit_params = fit_params_emcee
-        ncores = fit_params["nwalkers"]//2 if ncores is None else ncores
-        fit_params["discard"] = fit_params["nburnin"]
-    else:
-        ncores = 50 if ncores is None else ncores
-        fit_params = fit_params_dynesty
-
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
-    theta, uncertainties = get_best_fit(
-            sampler, **fit_params, method="quantile")
-
-    components_and_params, shared_params = set_params_from_theta(theta)
-    components = assemble_components(components_and_params, shared_params)
-    rchi_sq = compute_observable_chi_sq(
-            *compute_observables(components), reduced=True)
-    print(f"rchi_sq: {rchi_sq}")
-
-    plot.plot_chains(sampler, labels, **fit_params,
-                     savefig=result_dir / f"{model_name}_{OPTIONS.fit.method}_chains.pdf")
-    plot.plot_corner(sampler, labels, **fit_params,
-                     savefig=result_dir / f"{model_name}_{OPTIONS.fit.method}_corner.pdf")
-
-    plot.plot_fit(components[0].inc(), components[0].pa(), components=components,
-                  savefig=result_dir / f"{model_name}_{OPTIONS.fit.method}_fit_results.pdf")
+# if __name__ == "__main__":
+#     ncores = None
+#     fit_params_emcee = {"nburnin": 2000, "nsteps": 8000, "nwalkers": 100,
+#                         "lnprob": lnprob}
+#     fit_params_dynesty = {"nlive": 2000, "sample": "rwalk", "bound": "multi",
+#                           "periodic": [5, -1], "ptform": ptform}
+#
+#     if OPTIONS.fit.method == "emcee":
+#         fit_params = fit_params_emcee
+#         ncores = fit_params["nwalkers"]//2 if ncores is None else ncores
+#         fit_params["discard"] = fit_params["nburnin"]
+#     else:
+#         ncores = 50 if ncores is None else ncores
+#         fit_params = fit_params_dynesty
+#
+#     sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
+#     theta, uncertainties = get_best_fit(
+#             sampler, **fit_params, method="quantile")
+#
+#     components_and_params, shared_params = set_params_from_theta(theta)
+#     components = assemble_components(components_and_params, shared_params)
+#     rchi_sq = compute_observable_chi_sq(
+#             *compute_observables(components), reduced=True)
+#     print(f"rchi_sq: {rchi_sq}")
+#
+#     plot.plot_chains(sampler, labels, **fit_params,
+#                      savefig=result_dir / f"{model_name}_{OPTIONS.fit.method}_chains.pdf")
+#     plot.plot_corner(sampler, labels, **fit_params,
+#                      savefig=result_dir / f"{model_name}_{OPTIONS.fit.method}_corner.pdf")
+#
+#     plot.plot_fit(components[0].inc(), components[0].pa(), components=components,
+#                   savefig=result_dir / f"{model_name}_{OPTIONS.fit.method}_fit_results.pdf")
