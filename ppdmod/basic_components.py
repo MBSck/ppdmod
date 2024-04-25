@@ -880,8 +880,12 @@ class StarHaloGauss(Component):
             self.flor.free = True
 
         self.eval(**kwargs)
-
-        self.hlr = 10 ** self.la()
+        if self.has_ring:
+            self.hlr = np.sqrt(10 ** (2 * self.la()) / (1 + 10 ** (-2 * self.lkr())))
+            self.rin = np.sqrt(10 ** (2 * self.la()) / (1 + 10 ** (2 * self.lkr())))
+        else:
+            self.hlr = 10 ** self.la()
+        
         if self.is_gauss_lor:
             self.comp = GaussLorentzian(
                 flor=self.flor, hlr=self.hlr, inc=self.inc, pa=self.pa)
@@ -889,10 +893,10 @@ class StarHaloGauss(Component):
             self.comp = Gaussian(hlr=self.hlr, inc=self.inc, pa=self.pa)
 
         if self.has_ring:
-            self.rin = np.sqrt(10 ** (2 * self.la()) / (1 + 10 ** (2 * self.lkr())))
             self.ring = Ring(rin=self.rin, a=self.a, inc=self.inc,
                              pa=self.pa, phi=self.phi, asymmetric=True)
             self.comp = Convolver(gl=self.comp, ring=self.ring)
+
 
     def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
