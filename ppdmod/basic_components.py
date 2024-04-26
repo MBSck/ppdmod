@@ -4,8 +4,9 @@ import astropy.units as u
 import numpy as np
 from astropy.modeling.models import BlackBody
 from scipy.special import j0, j1, jv
+from scipy.signal import fftconvolve
 
-from .component import Component, Convolver
+from .component import Component
 from .parameter import Parameter
 from .options import STANDARD_PARAMETERS, OPTIONS
 from .utils import distance_to_angular
@@ -895,8 +896,6 @@ class StarHaloGauss(Component):
         if self.has_ring:
             self.ring = Ring(rin=self.rin, a=self.a, inc=self.inc,
                              pa=self.pa, phi=self.phi, asymmetric=True)
-            self.comp = Convolver(gl=self.comp, ring=self.ring)
-
 
     def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
@@ -909,9 +908,8 @@ class StarHaloGauss(Component):
         if len(baselines.shape) == 4:
             ks = ks[..., np.newaxis]
 
-        # TODO: Change this so the central wavelength from the list will be picked
         if self.wl0() == 0:
-            self.wl0.value = wavelength[0]
+            self.wl0.value = np.mean(wavelength)
 
         wavelength_ratio = self.wl0() / wavelength[..., np.newaxis]
         vis_star = self.fs() * wavelength_ratio**ks
@@ -920,6 +918,10 @@ class StarHaloGauss(Component):
 
         vis_disk = self.comp.vis_func(
             baselines, baseline_angles, wavelength, **kwargs)
+        if self.has_ring:
+            vis_ring = self.ring.vis_func(
+                baselines, baseline_angles, wavelength, **kwargs)
+            vis_comp *= vis_ring
 
         vis_comp = self.fc() * vis_disk * wavelength_ratio ** self.kc()
         vis = (vis_star + vis_comp) / divisor
@@ -930,6 +932,10 @@ class StarHaloGauss(Component):
         """Computes the image."""
         fh = 1 - (self.fs() + self.fc())
         image = self.comp.image_func(xx, yy, pixel_size, wavelength)
+        if self.has_ring:
+            image_ring = self.ring.image_func(xx, yy, pixel_size, wavelength)
+            image = fftconvolve(image, image_ring)
+            
         image *= self.fc()
         pt = PointSource(dim=self.dim, inc=self.inc, pa=self.pa)
         image += pt.image_func(xx, yy, pixel_size, wavelength) * self.fs() + fh
