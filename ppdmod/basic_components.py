@@ -278,8 +278,7 @@ class Ring(Component):
             The wavelengths.
         """
         # brightness = kwargs.pop("brightness", 1)
-        # TODO: Check for the 90 degree shift of the azimuthal modulation
-        angle_diff = baseline_angles - self.phi().to(u.rad)
+        angle_diff = baseline_angles - (self.phi()-90*u.deg).to(u.rad)
         if self.thin:
             xx = 2 * np.pi * self.rin().to(u.rad) * baselines
             vis = j0(xx).astype(complex)
@@ -329,7 +328,8 @@ class Ring(Component):
         image = (1 / (2 * np.pi)) * radius * radial_profile
 
         if self.asymmetric:
-            c, s = self.a() * np.cos(self.phi().to(u.rad)), self.a() * np.sin(self.phi().to(u.rad))
+            phi = (self.phi-90*u.deg).to(u.rad)
+            c, s = self.a() * np.cos(phi), self.a() * np.sin(phi)
             polar_angle = np.arctan2(yy, xx)
             image *= 1 + c * np.cos(polar_angle) + s * np.sin(polar_angle)
 
@@ -938,7 +938,6 @@ class StarHaloGauss(Component):
         if self.has_ring:
             vis_ring = self.ring.vis_func(
                 baselines, baseline_angles, wavelength, **kwargs)
-            breakpoint()
             vis_comp *= vis_ring
 
         vis_comp = self.fc() * vis_comp * wavelength_ratio ** self.kc()

@@ -21,11 +21,11 @@ if __name__ == "__main__":
     ks.wavelength = wavelength
     ks.free = False
     
-    ring = Ring(rin=2)
-    image = ring.compute_image(512, 0.02, 1.68)
-    plt.imshow(image[0])
-    plt.show()
-    plt.close()
+    # ring = Ring(rin=2)
+    # image = ring.compute_image(512, 0.02, 1.68)
+    # plt.imshow(image[0])
+    # plt.show()
+    # plt.close()
 
     shlr = StarHaloRing(
         fs=0.42, fc=0.55, flor=1.0,
@@ -34,7 +34,7 @@ if __name__ == "__main__":
         inc=0.63, pa=1.2*u.rad.to(u.deg),
         a=0.996393496566492,
         phi=100.40771131249006)
-    image = shlr.compute_image(512, 0.02, 1.68)
+    image = shlr.compute_image(2048, 0.02, 1.68)
     plt.imshow(image[0])
     plt.show()
     plt.close()
