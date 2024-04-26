@@ -205,6 +205,26 @@ class Star(Component):
 
 
 class Ring(Component):
+    """A ring.
+
+    Parameters
+    ----------
+    rin : astropy.units.mas
+        The inner radius of the ring
+    thin : bool
+        If toggled the ring has an infinitesimal width.
+        Default is 'True'.
+    has_outer_radius : bool
+        If toggled the ring has an outer radius instead of
+        a width.
+        Default is 'False'.
+    width : astropy.units.mas
+        The width of the ring. Applies only for 'False' thin
+        and 'False' has outer radius.
+    rout : astropy.units.mas
+        The outer radius of the ring. Applies only for 'False' thin
+    """
+    
     name = "Ring"
     shortname = "Ring"
     description = "A simple ring."
@@ -244,8 +264,8 @@ class Ring(Component):
         return radius.astype(OPTIONS.data.dtype.real) * u.mas
 
     def vis_func(
-        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
-    ) -> np.ndarray:
+        self, baselines: 1 / u.rad,
+        baseline_angles: u.rad, wavelength: u.um, **kwargs) -> np.ndarray:
         """Computes the complex visibility
 
         Parameters
@@ -257,35 +277,38 @@ class Ring(Component):
         wavelength : astropy.units.um
             The wavelengths.
         """
-        brightness = kwargs.pop("brightness", 1)
+        # brightness = kwargs.pop("brightness", 1)
+        # TODO: Check for the 90 degree shift of the azimuthal modulation
+        angle_diff = baseline_angles - self.phi().to(u.rad)
         if self.thin:
             xx = 2 * np.pi * self.rin().to(u.rad) * baselines
             vis = j0(xx).astype(complex)
             if self.asymmetric:
-                factor = -1j * self.a() * np.cos(baseline_angles - self.phi().to(u.rad))
-                vis += factor * j1(xx)
+                vis += -1j * self.a() * np.cos(angle_diff) * j1(xx)
         else:
             # TODO: Finish this with the factor here and use it for the temperature gradient
+            # TODO: Check the integration and brightness, is it proper to integrate over the
+            # u.rad or u.mas?
             radius = self.compute_internal_grid().to(u.rad)
             xx = 2 * np.pi * radius.to(u.rad) * baselines
 
             vis = (np.trapz(j0(xx), radius)).astype(complex)
             if self.asymmetric:
-                factor = -1j * self.a() * np.cos(baseline_angles - self.phi().to(u.rad))
-                vis += factor.reshape(1, *vis.shape[1:]) * np.trapz(j1(xx), radius)
+                vis += (-1j * self.a() * np.cos(angle_diff)).reshape(1, *vis.shape[1:]) \
+                    * np.trapz(j1(xx), radius)
 
-            if brightness != 1:
-                if not self.has_outer_radius:
-                    vis /= self.width()
-                else:
-                    vis /= self.rout() - self.rin()
+            # if brightness != 1:
+            #     if not self.has_outer_radius:
+            #         vis /= self.width()
+            #     else:
+            #         vis /= self.rout() - self.rin()
 
             vis = vis[..., np.newaxis]
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
     def image_func(
-        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um
-    ) -> np.ndarray:
+        self, xx: u.mas, yy: u.mas,
+        pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
         """Computes the image from a 2D grid.
 
         Parameters
@@ -298,17 +321,11 @@ class Ring(Component):
         -------
         image : astropy.units.Jy
         """
-        radius = np.hypot(xx, yy)[np.newaxis, ...]
-        if self.thin:
-            dx = np.max(
-                [
-                    np.abs(xx[0, 1] - xx[0, 0]).value,
-                    np.abs(yy[1, 0] - yy[0, 0]).value,
-                ]) * u.mas
-        else:
+        radius, dx = np.hypot(xx, yy)[np.newaxis, ...], pixel_size
+        if not self.thin:
             dx = self.rout() - self.rin() if self.has_outer_radius else self.width()
 
-        radial_profile = np.logical_and(radius >= self.rin(), radius <= self.rin() + dx)
+        radial_profile = np.logical_and(radius >= self.rin(), radius <= (self.rin() + dx))
         image = (1 / (2 * np.pi)) * radius * radial_profile
 
         if self.asymmetric:
@@ -881,10 +898,11 @@ class StarHaloGauss(Component):
             self.flor.free = True
 
         self.eval(**kwargs)
-        self.hlr = 10 ** self.la()
         if self.has_ring:
-            # self.hlr = np.sqrt(10 ** (2 * self.la()) / (1 + 10 ** (-2 * self.lkr())))
+            self.hlr = np.sqrt(10 ** (2 * self.la()) / (1 + 10 ** (-2 * self.lkr())))
             self.rin = np.sqrt(10 ** (2 * self.la()) / (1 + 10 ** (2 * self.lkr())))
+        else:
+            self.hlr = 10 ** self.la()
         
         if self.is_gauss_lor:
             self.comp = GaussLorentzian(
@@ -920,6 +938,7 @@ class StarHaloGauss(Component):
         if self.has_ring:
             vis_ring = self.ring.vis_func(
                 baselines, baseline_angles, wavelength, **kwargs)
+            breakpoint()
             vis_comp *= vis_ring
 
         vis_comp = self.fc() * vis_comp * wavelength_ratio ** self.kc()
@@ -933,10 +952,10 @@ class StarHaloGauss(Component):
         image = self.comp.image_func(xx, yy, pixel_size, wavelength)
         if self.has_ring:
             image_ring = self.ring.image_func(xx, yy, pixel_size, wavelength)
-            image = fftconvolve(image, image_ring)
+            image = fftconvolve(image, image_ring, mode="same")
             
         image *= self.fc()
-        pt = PointSource(dim=self.dim, inc=self.inc, pa=self.pa)
+        pt = PointSource(inc=self.inc, pa=self.pa)
         image += pt.image_func(xx, yy, pixel_size, wavelength) * self.fs() + fh
         return image.astype(OPTIONS.data.dtype.real)
 

@@ -178,6 +178,7 @@ class Component:
             wavelength = wavelength[np.newaxis, np.newaxis]
         pixel_size = pixel_size if isinstance(pixel_size, u.Quantity)\
             else u.Quantity(pixel_size, u.mas)
+        
         xx = np.linspace(-0.5, 0.5, dim)*dim*pixel_size
         xx, yy = self.translate_image_func(*np.meshgrid(xx, xx))
 
@@ -188,5 +189,4 @@ class Component:
             xr, yr = xx, yy
 
         image = self.image_func(xr, yr, pixel_size, wavelength)
-        image /= image.max()
         return (self.fr()*image).value.astype(OPTIONS.data.dtype.real)

@@ -128,17 +128,6 @@ rchi_sq = compute_observable_chi_sq(
         *compute_observables(components), reduced=True)
 print(f"rchi_sq: {rchi_sq}")
 
-# import matplotlib.pyplot as plt
-# image = components[0].compute_image(512, 0.02, 1.68)
-# plt.imshow(image[0])
-# plt.savefig(result_dir / "image.pdf", format="pdf")
-# plt.close()
-#
-# image = components[0].compute_image(512, 0.02, 1.68, from_ft=True)
-# plt.imshow(image)
-# plt.savefig(result_dir / "image_from_ft.pdf", format="pdf")
-# plt.close()
-
 plot.plot_overview(savefig=result_dir / f"{model_name}_data_overview.pdf")
 plot.plot_fit(components[0].inc(), components[0].pa(), components=components,
               savefig=result_dir / f"{model_name}_pre_fit_results.pdf")

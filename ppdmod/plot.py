@@ -22,7 +22,7 @@ from .options import OPTIONS, get_colormap
 from .utils import compute_effective_baselines, restrict_phase, \
         set_legend_color, set_axes_color
 
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 
 
 def plot_corner(sampler: np.ndarray, labels: List[str],
