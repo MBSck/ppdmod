@@ -898,11 +898,10 @@ class StarHaloGauss(Component):
             self.flor.free = True
 
         self.eval(**kwargs)
+        self.hlr = 10 ** self.la()
         if self.has_ring:
-            self.hlr = np.sqrt(10 ** (2 * self.la()) / (1 + 10 ** (-2 * self.lkr())))
+            # self.hlr = np.sqrt(10 ** (2 * self.la()) / (1 + 10 ** (-2 * self.lkr())))
             self.rin = np.sqrt(10 ** (2 * self.la()) / (1 + 10 ** (2 * self.lkr())))
-        else:
-            self.hlr = 10 ** self.la()
         
         if self.is_gauss_lor:
             self.comp = GaussLorentzian(
