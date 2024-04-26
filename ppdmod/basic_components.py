@@ -916,14 +916,14 @@ class StarHaloGauss(Component):
         divisor = (fh + self.fs()) * wavelength_ratio**ks \
             + self.fc() * wavelength_ratio ** self.kc()
 
-        vis_disk = self.comp.vis_func(
+        vis_comp = self.comp.vis_func(
             baselines, baseline_angles, wavelength, **kwargs)
         if self.has_ring:
             vis_ring = self.ring.vis_func(
                 baselines, baseline_angles, wavelength, **kwargs)
             vis_comp *= vis_ring
 
-        vis_comp = self.fc() * vis_disk * wavelength_ratio ** self.kc()
+        vis_comp = self.fc() * vis_comp * wavelength_ratio ** self.kc()
         vis = (vis_star + vis_comp) / divisor
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
