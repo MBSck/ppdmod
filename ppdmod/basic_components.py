@@ -276,6 +276,8 @@ class Ring(Component):
             The deprojected baseline angles.
         wavelength : astropy.units.um
             The wavelengths.
+        brightness : astropy.unit.mas
+            The radial brightness distribution
         """
         # brightness = kwargs.pop("brightness", 1)
         angle_diff = baseline_angles - (self.phi()-90*u.deg).to(u.rad)
@@ -776,8 +778,7 @@ class TempGradient(Component):
         radius = self.compute_internal_grid()
         brightness_profile = self.compute_brightness(radius, wavelength[:, np.newaxis])
         # TODO: Check if a factor of 2*np.pi is required in front of the integration
-        integrand = 2 * np.pi * radius * brightness_profile
-        flux = self.inc() * np.trapz(integrand, radius).to(u.Jy)
+        flux = 2 * np.pi * self.inc() * np.trapz(radius * brightness_profile, radius).to(u.Jy)
         return flux.value.reshape((flux.shape[0], 1)).astype(OPTIONS.data.dtype.real)
 
     def vis_func(
@@ -806,12 +807,11 @@ class TempGradient(Component):
         brightness = brightness[:, np.newaxis, :]
 
         radius = radius.to(u.rad)
-        bessel_factor = 2 * np.pi * radius * baselines
+        xx = 2 * np.pi * radius * baselines
 
         # TODO: Check if a factor of 2*np.pi is required in front of the integration
-        vis = self.inc() * np.trapz(radius * brightness * j0(bessel_factor), radius).to(u.Jy)
-        vis_mod = self.compute_modulation(
-            radius, brightness, baselines, baseline_angles)
+        vis = self.inc() * np.trapz(radius * brightness * j0(xx), radius).to(u.Jy)
+        vis_mod = self.compute_modulation(radius, brightness, baselines, baseline_angles)
 
         if vis_mod.size != 0:
             vis = vis.astype(OPTIONS.data.dtype.complex) + vis_mod.sum(-1)
@@ -900,7 +900,7 @@ class StarHaloGauss(Component):
         self.eval(**kwargs)
         self.hlr = 10 ** self.la()
         if self.has_ring:
-            # self.hlr = np.sqrt(10 ** (2 * self.la()) / (1 + 10 ** (-2 * self.lkr())))
+            self.hlr = np.sqrt(10 ** (2 * self.la()) / (1 + 10 ** (-2 * self.lkr())))
             self.rin = np.sqrt(10 ** (2 * self.la()) / (1 + 10 ** (2 * self.lkr())))
         
         if self.is_gauss_lor:
