@@ -917,7 +917,6 @@ class StarHaloGauss(Component):
             vis_ring = self.ring.vis_func(
                 baselines, baseline_angles, wavelength, **kwargs)
             vis_comp *= vis_ring
-            breakpoint()
 
         vis_comp = self.fc() * vis_comp * wavelength_ratio ** self.kc()
         vis = (vis_star + vis_comp) / divisor
