@@ -10,9 +10,9 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
 import astropy.units as u
 import numpy as np
-from ppdmod import data
 from ppdmod import plot
 from ppdmod.basic_components import assemble_components
+from ppdmod.data import set_data, get_all_wavelengths
 from ppdmod.fitting import compute_observable_chi_sq, compute_observables, \
     set_params_from_theta, lnprior, run_fit, get_best_fit, transform_uniform_prior
 from ppdmod.parameter import Parameter
@@ -58,10 +58,10 @@ def lnprob(theta: np.ndarray) -> float:
     return compute_observable_chi_sq(*compute_observables(components))
 
 
-DATA_DIR = Path("../data/pionier/HD45677")
+DATA_DIR = Path("../data/pionier/HD142527")
 OPTIONS.model.output = "non-physical"
 fits_files = list((DATA_DIR).glob("*fits"))
-data.set_data(fits_files, wavelengths="all", fit_data=["vis2", "t3"])
+data = set_data(fits_files, wavelengths="all", fit_data=["vis2", "t3"])
 
 pa = Parameter(**STANDARD_PARAMETERS.pa)
 pa.value = 0.09*u.rad.to(u.deg)
@@ -79,10 +79,10 @@ fs = Parameter(**STANDARD_PARAMETERS.fr)
 fs.value = 0.42
 fs.free = True
 
-wavelength = data.get_all_wavelengths()
+wavelengths = get_all_wavelengths()
 ks = Parameter(**STANDARD_PARAMETERS.exp)
-ks.value = compute_photometric_slope(wavelength, 6500)
-ks.wavelength = wavelength
+ks.value = compute_photometric_slope(wavelengths, 6500)
+ks.wavelength = wavelengths
 ks.free = False
 
 kc = Parameter(**STANDARD_PARAMETERS.exp)
@@ -148,7 +148,7 @@ if __name__ == "__main__":
         ncores = 50 if ncores is None else ncores
         fit_params = fit_params_dynesty
 
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=True)
     theta, uncertainties = get_best_fit(
             sampler, **fit_params, method="quantile")
 

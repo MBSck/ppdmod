@@ -101,8 +101,8 @@ class ReadoutFits:
             # NOTE: This should be positive as complex conjugation is applied
             # later? Also positive for Jozsef and Anthony?
             u3coord, v3coord = u1coord+u2coord, v1coord+v2coord
-            u123coord = np.array([u1coord, u2coord, u3coord])
-            v123coord = np.array([v1coord, v2coord, v3coord])
+            u123coord = np.array([u1coord, u2coord, -u3coord])
+            v123coord = np.array([v1coord, v2coord, -v3coord])
             return SimpleNamespace(value=value, err=err,
                                    u123coord=u123coord, v123coord=v123coord)
 
@@ -200,6 +200,7 @@ def set_fit_weights(weights: Optional[List[float]] = None,
     else:
         vis = OPTIONS.data.vis if OPTIONS.data.vis2.value.size == 0\
             else OPTIONS.data.vis2
+        breakpoint()
         
         if vis.value.size != 0:
             nvis = vis.value.shape[1]
