@@ -58,7 +58,7 @@ def lnprob(theta: np.ndarray) -> float:
     return compute_observable_chi_sq(*compute_observables(components))
 
 
-DATA_DIR = Path("../data/pionier/HD142527")
+DATA_DIR = Path("../data/pionier/HD45677")
 OPTIONS.model.output = "non-physical"
 fits_files = list((DATA_DIR).glob("*fits"))
 data.set_data(fits_files, wavelengths="all", fit_data=["vis2"])
@@ -155,4 +155,4 @@ if __name__ == "__main__":
                      savefig=result_dir / f"{model_name}_{OPTIONS.fit.method}_corner.pdf")
     plot.plot_fit(components[0].inc(), components[0].pa(), components=components,
                   savefig=result_dir / f"{model_name}_{OPTIONS.fit.method}_fit_results.pdf")
-    plot.plot_components(components, 512, 0.02, 1.68, savefig=result_dir / "image.pdf")
+    plot.plot_components(components, 512, 0.02, 1.68, savefig=result_dir / f"{model_name}_{OPTIONS.fit.method}_image.pdf")
