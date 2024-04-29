@@ -47,9 +47,8 @@ class PointSource(Component):
         """Returns the flux weight of the point source."""
         return self.fr(wavelength).value.reshape((wavelength.size, 1))
 
-    def vis_func(
-        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
-    ) -> np.ndarray:
+    def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
+                 wavelength: u.um, **kwargs) -> np.ndarray:
         """Computes the complex visibility
 
         Parameters
@@ -68,9 +67,8 @@ class PointSource(Component):
         return vis.astype(OPTIONS.data.dtype.complex)
 
     # TODO: Change the way that is implemented, as it is always in the centre right now
-    def image_func(
-        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.m = None
-    ) -> np.ndarray:
+    def image_func(self, xx: u.mas, yy: u.mas,
+                   pixel_size: u.mas, wavelength: u.m = None) -> np.ndarray:
         """Computes the image from a 2D grid.
 
         Parameters
@@ -84,9 +82,9 @@ class PointSource(Component):
         image : astropy.units.Jy
         """
         image = np.zeros((wavelength.size, *xx.shape))
-        centre = xx.shape[0] // 2
-        star_flux = (self.compute_flux(wavelength) / 4)[..., np.newaxis]
-        image[:, centre - 1 : centre + 1, centre - 1 : centre + 1] = star_flux
+        val = np.abs(xx) + np.abs(yy)
+        idx = np.unravel_index(np.argmin(val), np.shape(val))
+        image[:, *idx] = self.compute_flux(wavelength)
         return image
 
 
@@ -144,8 +142,7 @@ class Star(Component):
             The parallax of the stellar radius.
         """
         self._stellar_angular_radius = distance_to_angular(
-            self.eff_radius(), self.dist()
-        )
+            self.eff_radius(), self.dist())
         return self._stellar_angular_radius
 
     def flux_func(self, wavelength: u.um) -> np.ndarray:
@@ -155,16 +152,14 @@ class Star(Component):
         else:
             plancks_law = BlackBody(temperature=self.eff_temp())
             spectral_radiance = plancks_law(wavelength).to(
-                u.erg / (u.cm**2 * u.Hz * u.s * u.rad**2)
-            )
+                u.erg / (u.cm**2 * u.Hz * u.s * u.rad**2))
             stellar_flux = np.pi * (
                 spectral_radiance * self.stellar_radius_angular**2
             ).to(u.Jy)
         return stellar_flux.value.reshape((wavelength.size, 1))
 
-    def vis_func(
-        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
-    ) -> np.ndarray:
+    def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
+                 wavelength: u.um, **kwargs) -> np.ndarray:
         """Computes the complex visibility
 
         Parameters
@@ -178,13 +173,11 @@ class Star(Component):
         """
         new_shape = (-1,) + (1,) * (len(baselines.shape) - 1)
         vis = np.tile(
-            self.flux_func(wavelength).reshape(new_shape), baselines.shape[1:]
-        )
+            self.flux_func(wavelength).reshape(new_shape), baselines.shape[1:])
         return vis.astype(OPTIONS.data.dtype.complex)
 
-    def image_func(
-        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.m = None
-    ) -> np.ndarray:
+    def image_func(self, xx: u.mas, yy: u.mas,
+                   pixel_size: u.mas, wavelength: u.m = None) -> np.ndarray:
         """Computes the image from a 2D grid.
 
         Parameters
@@ -263,9 +256,8 @@ class Ring(Component):
             radius = np.logspace(np.log10(rin), np.log10(rout), self.dim())
         return radius.astype(OPTIONS.data.dtype.real) * u.mas
 
-    def vis_func(
-        self, baselines: 1 / u.rad,
-        baseline_angles: u.rad, wavelength: u.um, **kwargs) -> np.ndarray:
+    def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
+                 wavelength: u.um, **kwargs) -> np.ndarray:
         """Computes the complex visibility
 
         Parameters
@@ -279,37 +271,30 @@ class Ring(Component):
         brightness : astropy.unit.mas
             The radial brightness distribution
         """
-        # brightness = kwargs.pop("brightness", 1)
+        brightness = kwargs.pop("brightness", None)
         angle_diff = baseline_angles - (self.phi()-90*u.deg).to(u.rad)
         if self.thin:
             xx = 2 * np.pi * self.rin().to(u.rad) * baselines
             vis = j0(xx).astype(complex)
-            if self.asymmetric:
-                vis += -1j * self.a() * np.cos(angle_diff) * j1(xx)
+            breakpoint()
+            vis += -1j * self.a() * np.cos(angle_diff) * j1(xx) if self.asymmetric else 0
         else:
-            # TODO: Finish this with the factor here and use it for the temperature gradient
-            # TODO: Check the integration and brightness, is it proper to integrate over the
-            # u.rad or u.mas?
             radius = self.compute_internal_grid().to(u.rad)
-            xx = 2 * np.pi * radius.to(u.rad) * baselines
-
+            xx = 2 * np.pi * radius * baselines
             vis = (np.trapz(j0(xx), radius)).astype(complex)
-            if self.asymmetric:
-                vis += (-1j * self.a() * np.cos(angle_diff)).reshape(1, *vis.shape[1:]) \
-                    * np.trapz(j1(xx), radius)
+            vis += -1j * self.a() * np.cos(angle_diff) * np.trapz(j1(xx), radius) if self.asymmetric else 0
 
-            # if brightness != 1:
-            #     if not self.has_outer_radius:
-            #         vis /= self.width()
-            #     else:
-            #         vis /= self.rout() - self.rin()
+            if brightness is None:
+                if self.has_outer_radius:
+                    vis /= self.rout() - self.rin()
+                else:
+                    vis /= self.width()
 
             vis = vis[..., np.newaxis]
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
-    def image_func(
-        self, xx: u.mas, yy: u.mas,
-        pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
+    def image_func(self, xx: u.mas, yy: u.mas,
+                   pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
         """Computes the image from a 2D grid.
 
         Parameters
@@ -322,17 +307,24 @@ class Ring(Component):
         -------
         image : astropy.units.Jy
         """
-        radius, dx = np.hypot(xx, yy)[np.newaxis, ...], pixel_size
+        radius = np.hypot(xx, yy)[np.newaxis, ...]
+        dx = np.max(
+            [
+                np.abs(1.0 * (xx.value[0, 1] - xx.value[0, 0])),
+                np.abs(1.0 * (yy.value[1, 0] - yy.value[0, 0])),
+            ]
+        ) * u.mas
+            
         if not self.thin:
             dx = self.rout() - self.rin() if self.has_outer_radius else self.width()
 
-        radial_profile = np.logical_and(radius >= self.rin(), radius <= (self.rin() + dx))
-        image = (1 / (2 * np.pi)) * radius * radial_profile
+        radial_profile = (radius >= self.rin()) & (radius <= (self.rin() + dx))
+        image = radial_profile / (2 * np.pi)
 
         if self.asymmetric:
-            phi = (self.phi-90*u.deg).to(u.rad)
-            c, s = self.a() * np.cos(phi), self.a() * np.sin(phi)
             polar_angle = np.arctan2(yy, xx)
+            phi = (self.phi()-90*u.deg).to(u.rad)
+            c, s = self.a() * np.cos(phi), self.a() * np.sin(phi)
             image *= 1 + c * np.cos(polar_angle) + s * np.sin(polar_angle)
 
         return image.astype(OPTIONS.data.dtype.real)
@@ -348,9 +340,8 @@ class UniformDisk(Component):
         self.diam = Parameter(**STANDARD_PARAMETERS.diam)
         self.eval(**kwargs)
 
-    def vis_func(
-        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
-    ) -> np.ndarray:
+    def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
+                 wavelength: u.um, **kwargs) -> np.ndarray:
         """Computes the complex visibility
 
         Parameters
@@ -412,13 +403,12 @@ class Gaussian(Component):
         wavelength : astropy.units.um
             The wavelengths.
         """
-        xx = np.pi * baselines * self.hlr().to(u.rad)
-        vis = np.exp(-(xx**2) / np.log(2))
+        xx = np.pi * self.hlr().to(u.rad) * baselines
+        vis = np.exp(-xx**2 / np.log(2))
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
-    def image_func(
-        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um
-    ) -> np.ndarray:
+    def image_func(self, xx: u.mas, yy: u.mas,
+                   pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
         """Computes the image from a 2D grid.
 
         Parameters
@@ -432,11 +422,8 @@ class Gaussian(Component):
         image : astropy.units.Jy
         """
         radius = np.hypot(xx, yy)[np.newaxis, ...]
-        image = (
-            np.log(2)
-            / (np.pi * self.hlr() ** 2)
-            * np.exp(-((radius / self.hlr()) ** 2) * np.log(2))
-        )
+        image = np.log(2) / (np.pi * self.hlr() ** 2) \
+            * np.exp(-(radius / self.hlr()) ** 2 * np.log(2))
         return image.value.astype(OPTIONS.data.dtype.real)
 
 
@@ -450,9 +437,8 @@ class Lorentzian(Component):
         self.hlr = Parameter(**STANDARD_PARAMETERS.hlr)
         self.eval(**kwargs)
 
-    def vis_func(
-        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
-    ) -> np.ndarray:
+    def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
+                 wavelength: u.um, **kwargs) -> np.ndarray:
         """Computes the complex visibility
 
         Parameters
@@ -464,13 +450,12 @@ class Lorentzian(Component):
         wavelength : astropy.units.um
             The wavelengths.
         """
-        xx = np.pi * baselines * self.hlr().to(u.rad)
+        xx = np.pi * self.hlr().to(u.rad) * baselines
         vis = np.exp(-2 * xx / np.sqrt(3))
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
-    def image_func(
-        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um
-    ) -> np.ndarray:
+    def image_func(self, xx: u.mas, yy: u.mas,
+                   pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
         """Computes the image from a 2D grid.
 
         Parameters
@@ -484,11 +469,8 @@ class Lorentzian(Component):
         image : astropy.units.Jy
         """
         radius = np.hypot(xx, yy)[np.newaxis, ...]
-        image = (
-            self.hlr()
-            / (2 * np.pi * np.sqrt(3))
+        image = self.hlr() / (2 * np.pi * np.sqrt(3)) \
             * (self.hlr() ** 2 / 3 + radius**2) ** (-3 / 2)
-        )
         return image.value.astype(OPTIONS.data.dtype.real)
 
 
@@ -509,9 +491,8 @@ class GaussLorentzian(Component):
         self.gauss = Gaussian(hlr=self.hlr, inc=self.inc, pa=self.pa)
         self.lor = Lorentzian(hlr=self.hlr, inc=self.inc, pa=self.pa)
 
-    def vis_func(
-        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
-    ) -> np.ndarray:
+    def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
+                 wavelength: u.um, **kwargs) -> np.ndarray:
         """Computes the complex visibility
 
         Parameters
@@ -524,15 +505,13 @@ class GaussLorentzian(Component):
             The wavelengths.
         """
         vis_gauss = self.gauss.vis_func(
-            baselines, baseline_angles, wavelength, **kwargs
-        )
+            baselines, baseline_angles, wavelength, **kwargs)
         vis_lor = self.lor.vis_func(baselines, baseline_angles, wavelength, **kwargs)
         vis = (1 - self.flor()) * vis_gauss + self.flor() * vis_lor
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
-    def image_func(
-        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um
-    ) -> np.ndarray:
+    def image_func(self, xx: u.mas, yy: u.mas,
+                   pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
         """Computes the image from a 2D grid.
 
         Parameters
@@ -900,8 +879,8 @@ class StarHaloGauss(Component):
         self.eval(**kwargs)
         self.hlr = 10 ** self.la()
         if self.has_ring:
-            self.hlr = np.sqrt(10 ** (2 * self.la()) / (1 + 10 ** (-2 * self.lkr())))
             self.rin = np.sqrt(10 ** (2 * self.la()) / (1 + 10 ** (2 * self.lkr())))
+            self.hlr = np.sqrt(10 ** (2 * self.la()) / (1 + 10 ** (-2 * self.lkr())))
         
         if self.is_gauss_lor:
             self.comp = GaussLorentzian(
@@ -934,10 +913,12 @@ class StarHaloGauss(Component):
 
         vis_comp = self.comp.vis_func(
             baselines, baseline_angles, wavelength, **kwargs)
+        
         if self.has_ring:
             vis_ring = self.ring.vis_func(
                 baselines, baseline_angles, wavelength, **kwargs)
             vis_comp *= vis_ring
+            breakpoint()
 
         vis_comp = self.fc() * vis_comp * wavelength_ratio ** self.kc()
         vis = (vis_star + vis_comp) / divisor
@@ -950,12 +931,12 @@ class StarHaloGauss(Component):
         image = self.comp.image_func(xx, yy, pixel_size, wavelength)
         if self.has_ring:
             image_ring = self.ring.image_func(xx, yy, pixel_size, wavelength)
-            image = fftconvolve(image, image_ring, mode="same")
+            image = self.fc() * fftconvolve(image, image_ring, mode="same")
             
-        image *= self.fc()
         pt = PointSource(inc=self.inc, pa=self.pa)
-        image += pt.image_func(xx, yy, pixel_size, wavelength) * self.fs() + fh
-        return image.astype(OPTIONS.data.dtype.real)
+        image += self.fs() * pt.image_func(xx, yy, pixel_size, wavelength) + fh
+        image /= total if (total := np.sum(image, axis=(-2, -1))) != 0 else 1
+        return (self.fr() * image).astype(OPTIONS.data.dtype.real)
 
 class StarHaloGaussLor(StarHaloGauss):
     """A star, a disk and a halo model with a Gauss-Lorentzian profile.
@@ -980,9 +961,9 @@ class StarHaloRing(StarHaloGaussLor):
     has_ring = True
 
 
-def assemble_components(
-    parameters: Dict[str, Dict], shared_params: Optional[Dict[str, Parameter]] = None
-) -> List[Component]:
+def assemble_components(parameters: Dict[str, Dict],
+                        shared_params: Optional[Dict[str, Parameter]] = None
+                        ) -> List[Component]:
     """Assembles a model from a dictionary of parameters."""
     shared_params = shared_params if shared_params is not None else {}
     if OPTIONS.model.constant_params is None:

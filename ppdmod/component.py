@@ -183,10 +183,11 @@ class Component:
         xx, yy = self.translate_image_func(*np.meshgrid(xx, xx))
 
         if self.elliptic:
-            xr = xx*np.cos(self.pa())-yy*np.sin(self.pa())
-            yr = (xx*np.sin(self.pa())+yy*np.cos(self.pa()))*self.inc()
-        else:
-            xr, yr = xx, yy
+            pa_rad = self.pa().to(u.rad)
+            xr = xx*np.cos(pa_rad)-yy*np.sin(pa_rad)
+            yr = xx*np.sin(pa_rad)+yy*np.cos(pa_rad)
 
-        image = self.image_func(xr, yr, pixel_size, wavelength)
+            xx, yy = xr*(1/self.inc()), yr
+
+        image = self.image_func(xx, yy, pixel_size, wavelength)
         return (self.fr()*image).value.astype(OPTIONS.data.dtype.real)

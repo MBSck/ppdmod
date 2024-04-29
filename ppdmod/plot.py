@@ -22,7 +22,27 @@ from .options import OPTIONS, get_colormap
 from .utils import compute_effective_baselines, restrict_phase, \
         set_legend_color, set_axes_color
 
-matplotlib.use('Agg')
+
+matplotlib.use("Agg")
+
+
+def plot_components(components: List[Component], dim: int,
+                    pixel_size: u.mas, wavelength: u.um,
+                    norm: Optional[float] = 0.5,
+                    savefig: Optional[Path] = None) -> None:
+    """Plots a component."""
+    components = [components] if not isinstance(components, list) else components
+    image = sum([comp.compute_image(dim, pixel_size, wavelength) for comp in components])
+    extent = [sign * dim * pixel_size / 2 for sign in [-1, 1, -1, 1]]
+    plt.imshow(image[0], extent=extent, norm=mcolors.PowerNorm(gamma=norm))
+    plt.xlabel(r"$\alpha$ (mas)")
+    plt.ylabel(r"$\delta$ (mas)")
+    
+    if savefig is not None:
+        plt.savefig(savefig, format=Path(savefig).suffix[1:])
+    else:
+        plt.show()
+    plt.close()
 
 
 def plot_corner(sampler: np.ndarray, labels: List[str],
