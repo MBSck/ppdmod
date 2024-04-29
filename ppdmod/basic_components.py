@@ -84,7 +84,7 @@ class PointSource(Component):
         image = np.zeros((wavelength.size, *xx.shape))
         val = np.abs(xx) + np.abs(yy)
         idx = np.unravel_index(np.argmin(val), np.shape(val))
-        image[:, *idx] = self.compute_flux(wavelength)
+        image[:, idx[0], idx[1]] = self.compute_flux(wavelength)
         return image
 
 
@@ -276,7 +276,6 @@ class Ring(Component):
         if self.thin:
             xx = 2 * np.pi * self.rin().to(u.rad) * baselines
             vis = j0(xx).astype(complex)
-            breakpoint()
             vis += -1j * self.a() * np.cos(angle_diff) * j1(xx) if self.asymmetric else 0
         else:
             radius = self.compute_internal_grid().to(u.rad)
