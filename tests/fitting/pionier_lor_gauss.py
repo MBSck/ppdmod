@@ -153,6 +153,6 @@ if __name__ == "__main__":
                      savefig=result_dir / f"{model_name}_{OPTIONS.fit.method}_chains.pdf")
     plot.plot_corner(sampler, labels, **fit_params,
                      savefig=result_dir / f"{model_name}_{OPTIONS.fit.method}_corner.pdf")
-
     plot.plot_fit(components[0].inc(), components[0].pa(), components=components,
                   savefig=result_dir / f"{model_name}_{OPTIONS.fit.method}_fit_results.pdf")
+    plot.plot_components(components, 512, 0.02, 1.68, savefig=result_dir / "image.pdf")
