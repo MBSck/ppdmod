@@ -21,20 +21,16 @@ if __name__ == "__main__":
     ks.wavelength = wavelength
     ks.free = False
     
-    # ring = Ring(rin=2)
-    # image = ring.compute_image(512, 0.02, 1.68)
-    # plt.imshow(image[0])
-    # plt.show()
-    # plt.close()
-
     result_dir = Path("results/pionier")
-    shlr = StarHaloRing(
-        fs=0.42, fc=0.55, flor=1.0,
-        la=0.98, lkr=-0.26,
-        ks=ks, kc=-4.12,
-        inc=0.63, pa=1.2*u.rad.to(u.deg),
-        a=0.996393496566492,
-        phi=100.40771131249006)
+    ring = Ring(rin=2, asymmetric=True, a=1, phi=0)
+    image = ring.compute_image(512, 0.02, 1.68)
 
-    shlr.compute_complex_vis(data.vis2.ucoord, data.vis2.vcoord, [1.68]*u.um)
-    plot_components(shlr, 2048, 0.02, 1.68, savefig=result_dir / "test.png")
+    # shlr = StarHaloRing(
+    #     fs=0.42, fc=0.55, flor=1.0,
+    #     la=0.98, lkr=-0.26,
+    #     ks=ks, kc=-4.12,
+    #     inc=0.63, pa=1.2*u.rad.to(u.deg),
+    #     a=0.996393496566492,
+    #     phi=100.40771131249006)
+
+    plot_components(ring, 512, 0.02, 3.5, savefig=result_dir / "test.fits", save_as_fits=True)
