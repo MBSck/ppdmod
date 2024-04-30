@@ -108,7 +108,8 @@ phi = Parameter(**STANDARD_PARAMETERS.phi)
 phi.value = -136.46880071438582
 
 params = {"fs": fs, "fc": fc, "flor": flor, "la": la,
-          "lkr": lkr, "kc": kc, "inc": inc, "pa": pa, "a": a, "phi": phi}
+          "lkr": lkr, "kc": kc, "inc": inc, "pa": pa,}
+          # "a": a, "phi": phi}
 labels = [label for label in params]
 
 OPTIONS.model.constant_params = {"wl0": 1.68, "ks": ks}
