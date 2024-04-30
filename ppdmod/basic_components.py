@@ -876,7 +876,6 @@ class StarHaloGauss(Component):
             self.flor.free = True
 
         self.eval(**kwargs)
-        
         self.hlr = 10 ** self.la()
         if self.has_ring:
             self.rin = np.sqrt(10 ** (2 * self.la()) / (1 + 10 ** (2 * self.lkr())))
@@ -890,7 +889,7 @@ class StarHaloGauss(Component):
 
         if self.has_ring:
             self.ring = Ring(rin=self.rin, a=self.a, inc=self.inc,
-                             pa=self.pa, phi=self.phi, asymmetric=False)
+                             pa=self.pa, phi=self.phi, asymmetric=True)
 
     def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
