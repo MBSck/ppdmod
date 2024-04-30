@@ -200,7 +200,6 @@ def set_fit_weights(weights: Optional[List[float]] = None,
     else:
         vis = OPTIONS.data.vis if OPTIONS.data.vis2.value.size == 0\
             else OPTIONS.data.vis2
-        breakpoint()
         
         if vis.value.size != 0:
             nvis = vis.value.shape[1]
