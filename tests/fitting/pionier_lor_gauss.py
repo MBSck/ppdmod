@@ -58,11 +58,10 @@ def lnprob(theta: np.ndarray) -> float:
     return compute_observable_chi_sq(*compute_observables(components))
 
 
-DATA_DIR = Path("../data/pionier/HD142527")
+DATA_DIR = Path("../data/pionier/HD179218")
 OPTIONS.model.output = "non-physical"
-OPTIONS.model.binning = 0.04*u.um
 fits_files = list((DATA_DIR).glob("*fits"))
-data = set_data(fits_files, wavelengths="all", fit_data=["vis2", "t3"])
+data = set_data(fits_files, wavelengths="all", fit_data=["vis2"])
 
 pa = Parameter(**STANDARD_PARAMETERS.pa)
 pa.value = 0.12*u.rad.to(u.deg)

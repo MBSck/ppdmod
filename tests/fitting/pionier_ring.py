@@ -58,7 +58,7 @@ def lnprob(theta: np.ndarray) -> float:
     return compute_observable_chi_sq(*compute_observables(components))
 
 
-DATA_DIR = Path("../data/pionier/HD142527")
+DATA_DIR = Path("../data/pionier/HD179218")
 OPTIONS.model.output = "non-physical"
 fits_files = list((DATA_DIR).glob("*fits"))
 data = set_data(fits_files, wavelengths="all", fit_data=["vis2"])
@@ -148,7 +148,7 @@ if __name__ == "__main__":
         ncores = 50 if ncores is None else ncores
         fit_params = fit_params_dynesty
 
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=True)
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
     theta, uncertainties = get_best_fit(
             sampler, **fit_params, method="quantile")
 
