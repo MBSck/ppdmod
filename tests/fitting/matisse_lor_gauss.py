@@ -11,12 +11,11 @@ import astropy.units as u
 import numpy as np
 from ppdmod import plot
 from ppdmod.basic_components import assemble_components
-from ppdmod.data import set_data, get_all_wavelengths
+from ppdmod.data import set_data
 from ppdmod.fitting import compute_observable_chi_sq, compute_observables, \
     set_params_from_theta, run_fit, get_best_fit
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
-from ppdmod.utils import compute_photometric_slope
 
 
 DATA_DIR = Path("../data/fits/hd142527")
@@ -40,12 +39,12 @@ fc.free = True
 wl, flux_ratio = np.load(Path("../data/flux/hd142527/hd142527_flux_ratio.npy"))
 fs = Parameter(**STANDARD_PARAMETERS.fr)
 fs.value, fs.wavelength = flux_ratio, wl
-fs.free = False
+fs.interpolate, fs.free = True, False
 
 wl, k = np.load(Path("../data/flux/hd142527/hd142527_slope.npy"))
 ks = Parameter(**STANDARD_PARAMETERS.exp)
 ks.value, ks.wavelength = k, wl
-ks.free = False
+ks.interpolate, ks.free = True, False
 
 kc = Parameter(**STANDARD_PARAMETERS.exp)
 kc.value = -3.9
