@@ -73,5 +73,3 @@ def test_ring_vs_oimod(fits_file: Path) -> None:
     # assert np.allclose(vis2_ring, vis2_oim)
 
     set_data(fit_data=["vis", "t3"])
-
-

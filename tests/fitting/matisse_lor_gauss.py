@@ -61,7 +61,7 @@ flor.free = True
 params = {"fc": fc, "flor": flor, "la": la, "kc": kc, "inc": inc, "pa": pa}
 labels = [label for label in params]
 
-OPTIONS.model.constant_params = {"ks": ks, "fs": fs}
+OPTIONS.model.constant_params = {"ks": 1, "fs": fs}
 OPTIONS.model.components_and_params = [["StarHaloGaussLor", params]]
 OPTIONS.fit.method = "dynesty"
 
@@ -94,7 +94,7 @@ if __name__ == "__main__":
     else:
         ncores = 50 if ncores is None else ncores
         fit_params = fit_params_dynesty
-
+    
     sampler = run_fit(**fit_params, ncores=ncores,
                       save_dir=result_dir, debug=False)
 

@@ -893,27 +893,29 @@ class StarHaloGauss(Component):
 
     def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
-        fs = self.fs(wavelength)
-        if len(fs.shape) >= 1:
-            fs = fs[..., np.newaxis]
-
-        if len(baselines.shape) == 4:
-            fs = fs[..., np.newaxis]
-            
-        fh = 1 - (fs + self.fc())
-        if len(self.ks(wavelength).shape) == 1:
-            ks = self.ks(wavelength)[np.newaxis, np.newaxis]
-        elif len(self.ks(wavelength).shape) >= 2:
-            ks = self.ks(wavelength)[..., np.newaxis]
-
-        if len(baselines.shape) == 4:
-            ks = ks[..., np.newaxis]
-
         if self.wl0() == 0:
             self.wl0.value = np.mean(wavelength)
 
         wavelength_ratio = self.wl0() / wavelength[..., np.newaxis]
+        
+        ks = self.ks(wavelength)
+        if len(ks.shape) == 1:
+            ks = ks[np.newaxis, np.newaxis]
+        elif len(ks.shape) >= 2:
+            ks = ks[..., np.newaxis]
+        if len(baselines.shape) == 4:
+            ks = ks[..., np.newaxis]
+            
+        fs = self.fs(wavelength)
         vis_star = fs * wavelength_ratio**ks
+        if len(fs.shape) >= 1:
+            fs = fs[..., np.newaxis]
+            vis_star = fs
+            
+        fh = 1 - (fs + self.fc())
+        if len(baselines.shape) == 4:
+            fs = fs[..., np.newaxis]
+            
         divisor = (fh + fs) * wavelength_ratio**ks \
             + self.fc() * wavelength_ratio ** self.kc()
 

@@ -217,6 +217,27 @@ def test_ring_compute_vis(
     assert np.allclose(t3.value, t3_ring, atol=1e-2)
 
     set_data(fit_data=["vis", "t3"])
+    
+    
+def test_azimuthal_modulation(
+        ring: Ring, fits_file: Path) -> None:
+    """Tests the calculation of the infinitesimal ring's closure phases
+    with a custom model (.fits)-file of the same ring imported to aspro.
+    """
+    radius, wavelength = 2*u.mas, [3.5]*u.um
+    fits_file = Path("data/aspro") / "Iring_mod_a1_phi0.fits"
+    set_data([fits_file], wavelengths=wavelength, fit_data=["t3"])
+    ring.thin, ring.asymmetric = True, True
+    ring.rin.value = radius
+    
+    t3 = OPTIONS.data.t3
+    t3_ring = compute_t3(ring.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
+    breakpoint()
+
+    assert t3_ring.shape == (wavelength.size, t3.u123coord.shape[1])
+    assert np.allclose(t3.value, t3_ring, atol=1e-2)
+
+    set_data(fit_data=["vis", "t3"])
 
 
 def test_uniform_disk_init(uniform_disk: UniformDisk) -> None:
@@ -299,7 +320,7 @@ def test_gaussian_compute_vis(
 
     set_data(fit_data=["vis", "t3"])
 
-
+    
 # @pytest.mark.parametrize(
 #         "compression, pos_angle",
 #         [(None, None)])
