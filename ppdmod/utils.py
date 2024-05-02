@@ -67,7 +67,6 @@ def get_indices(values, array: np.ndarray,
     return indices
 
 
-# TODO: Replace with np.gradient, does the same thing
 def compute_photometric_slope(
         wavelengths: u.um, temperature: u.K) -> np.ndarray:
     """Computes the photometric slope of the data from
@@ -88,12 +87,7 @@ def compute_photometric_slope(
     wavelengths = u.Quantity(wavelengths, u.um)
     nu = (const.c/wavelengths.to(u.m)).to(u.Hz)
     blackbody = BlackBody(temperature)
-
-    delta_nu = (nu * 1e-5)
-    bb_upper, bb_lower = map(lambda x: blackbody(x), (nu+delta_nu, nu-delta_nu))
-    bb_diff = (bb_upper-bb_lower) / (2 * delta_nu)
-    photometric_slope = (nu / blackbody(nu)) * bb_diff
-    return photometric_slope.value
+    return np.gradient(np.log(blackbody(nu).value), np.log(nu.value))
 
 
 def compute_stellar_radius(luminosity: u.Lsun, temperature: u.K) -> u.Rsun:

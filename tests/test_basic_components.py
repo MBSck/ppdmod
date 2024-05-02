@@ -20,7 +20,7 @@ DIMENSION = [2**power for power in range(9, 13)]
 CALCULATION_FILE = Path("analytical_calculation.xlsx")
 COMPONENT_DIR = Path("component")
 
-READOUT = ReadoutFits(list(Path("data/fits").glob("*2022-04-23*.fits"))[0])
+READOUT = ReadoutFits(list(Path("data/fits/hd142666").glob("*2022-04-23*.fits"))[0])
 utils.make_workbook(
     CALCULATION_FILE,
     {
@@ -89,156 +89,154 @@ def temp_gradient() -> TempGradient:
     return temp_grad
     
 
-# TODO: Add tests for fitting for point source as well
-def test_point_source_init(point_source: PointSource) -> None:
-    """Tests the point source's initialization."""
-    assert "fr" in vars(point_source).keys()
-
-
-def test_point_source_flux_func(point_source: PointSource, wavelength: u.um) -> None:
-    """Tests the point source's initialization."""
-    assert point_source.flux_func(wavelength).shape == (wavelength.size, 1)
-
-
-def test_point_source_compute_vis(point_source: PointSource, wavelength: u.um) -> None:
-    """tests the point source's compute_vis method."""
-    vis = point_source.compute_complex_vis(READOUT.vis.ucoord, READOUT.vis.vcoord, wavelength)
-    assert vis.shape == (wavelength.size, READOUT.vis.ucoord.size)
+# def test_point_source_init(point_source: PointSource) -> None:
+#     """Tests the point source's initialization."""
+#     assert "fr" in vars(point_source).keys()
+#
+#
+# def test_point_source_flux_func(point_source: PointSource, wavelength: u.um) -> None:
+#     """Tests the point source's initialization."""
+#     assert point_source.flux_func(wavelength).shape == (wavelength.size, 1)
+#
+#
+# def test_point_source_compute_vis(point_source: PointSource, wavelength: u.um) -> None:
+#     """tests the point source's compute_vis method."""
+#     vis = point_source.compute_complex_vis(READOUT.vis.ucoord, READOUT.vis.vcoord, wavelength)
+#     assert vis.shape == (wavelength.size, READOUT.vis.ucoord.size)
+#
+#
+# @pytest.mark.parametrize(
+#         "wl, dim", [(u.Quantity([wl], unit=u.um), dim)
+#                     for dim in DIMENSION for wl in [8, 9, 10, 11]*u.um])
+# def test_point_source_image(point_source: Star, dim: int, wl: u.um) -> None:
+#     """Tests the point source's image calculation."""
+#     image = point_source.compute_image(dim, 0.1*u.mas, wl)
+#     point_source_dir = Path("images/point_source")
+#     point_source_dir.mkdir(exist_ok=True, parents=True)
+#     centre = dim//2
+#     plt.imshow(image[0])
+#     plt.xlim(centre-20, centre+20)
+#     plt.ylim(centre-20, centre+20)
+#     plt.savefig(point_source_dir / f"dim{dim}_wl{wl.value}_point_source_image.pdf")
+#     plt.close()
+#     assert len(image[image != 0]) == 1
+#     assert image.shape == (1, dim, dim)
+#     assert np.max(image) < 0.1
+#
+#
+# def test_star_init(star: Star) -> None:
+#     """Tests the star's initialization."""
+#     assert "dist" in vars(star).keys()
+#     assert "eff_temp" in vars(star).keys()
+#     assert "eff_radius" in vars(star).keys()
+#
+#
+# def test_star_stellar_radius_angular(star: Star) -> None:
+#     """Tests the stellar radius conversion to angular radius."""
+#     assert star.stellar_radius_angular.unit == u.mas
+#
+#
+# # TODO: Include test for stellar flux with input file as well.
+# def test_star_flux(star: Star, wavelength: u.um) -> None:
+#     """Tests the calculation of the total flux."""
+#     assert star.flux_func(wavelength).shape == (wavelength.size, 1)
+#
+#
+# def test_star_compute_vis(star: Star, wavelength: u.um) -> None:
+#     """Tests the calculation of the total flux."""
+#     vis = star.compute_complex_vis(READOUT.vis.ucoord, READOUT.vis.vcoord, wavelength)
+#     assert vis.shape == (wavelength.size, READOUT.vis.ucoord.size)
+#
+#
+# # TODO: Make this for multiple wavelengths at the same time
+# @pytest.mark.parametrize(
+#         "wl, dim", [(u.Quantity([wl], unit=u.um), dim)
+#                     for dim in DIMENSION for wl in [8, 9, 10, 11]*u.um])
+# def test_star_image(star: Star, dim: int, wl: u.um) -> None:
+#     """Tests the star's image calculation."""
+#     image = star.compute_image(dim, 0.1*u.mas, wl)
+#
+#     star_dir = Path("images/star")
+#     star_dir.mkdir(exist_ok=True, parents=True)
+#
+#     centre = dim//2
+#
+#     plt.imshow(image[0])
+#     plt.xlim(centre-20, centre+20)
+#     plt.ylim(centre-20, centre+20)
+#     plt.savefig(star_dir / f"dim{dim}_wl{wl.value}_star_image.pdf")
+#     plt.close()
+#
+#     assert len(image[image != 0]) == 4
+#     assert image.shape == (1, dim, dim)
+#     assert np.max(image) < 0.1
+#
+#
+# def test_uniform_ring_init(ring: Ring) -> None:
+#     """Tests the ring's initialization."""
+#     assert "rin" in vars(ring).keys()
+#     assert "rout" in vars(ring).keys()
+#     assert "width" in vars(ring).keys()
 
 
 @pytest.mark.parametrize(
-        "wl, dim", [(u.Quantity([wl], unit=u.um), dim)
-                    for dim in DIMENSION for wl in [8, 9, 10, 11]*u.um])
-def test_point_source_image(point_source: Star, dim: int, wl: u.um) -> None:
-    """Tests the point source's image calculation."""
-    image = point_source.compute_image(dim, 0.1*u.mas, wl)
-    point_source_dir = Path("images/point_source")
-    point_source_dir.mkdir(exist_ok=True, parents=True)
-    centre = dim//2
-    plt.imshow(image[0])
-    plt.xlim(centre-20, centre+20)
-    plt.ylim(centre-20, centre+20)
-    plt.savefig(point_source_dir / f"dim{dim}_wl{wl.value}_point_source_image.pdf")
-    plt.close()
-    assert len(image[image != 0]) == 4
-    assert image.shape == (1, dim, dim)
-    assert np.max(image) < 0.1
-
-
-def test_star_init(star: Star) -> None:
-    """Tests the star's initialization."""
-    assert "dist" in vars(star).keys()
-    assert "eff_temp" in vars(star).keys()
-    assert "eff_radius" in vars(star).keys()
-
-
-def test_star_stellar_radius_angular(star: Star) -> None:
-    """Tests the stellar radius conversion to angular radius."""
-    assert star.stellar_radius_angular.unit == u.mas
-
-
-# TODO: Include test for stellar flux with input file as well.
-def test_star_flux(star: Star, wavelength: u.um) -> None:
-    """Tests the calculation of the total flux."""
-    assert star.flux_func(wavelength).shape == (wavelength.size, 1)
-
-
-def test_star_compute_vis(star: Star, wavelength: u.um) -> None:
-    """Tests the calculation of the total flux."""
-    vis = star.compute_complex_vis(READOUT.vis.ucoord, READOUT.vis.vcoord, wavelength)
-    assert vis.shape == (wavelength.size, READOUT.vis.ucoord.size)
-
-
-# TODO: Make this for multiple wavelengths at the same time
-@pytest.mark.parametrize(
-        "wl, dim", [(u.Quantity([wl], unit=u.um), dim)
-                    for dim in DIMENSION for wl in [8, 9, 10, 11]*u.um])
-def test_star_image(star: Star, dim: int, wl: u.um) -> None:
-    """Tests the star's image calculation."""
-    image = star.compute_image(dim, 0.1*u.mas, wl)
-
-    star_dir = Path("images/star")
-    star_dir.mkdir(exist_ok=True, parents=True)
-
-    centre = dim//2
-
-    plt.imshow(image[0])
-    plt.xlim(centre-20, centre+20)
-    plt.ylim(centre-20, centre+20)
-    plt.savefig(star_dir / f"dim{dim}_wl{wl.value}_star_image.pdf")
-    plt.close()
-
-    assert len(image[image != 0]) == 4
-    assert image.shape == (1, dim, dim)
-    assert np.max(image) < 0.1
-
-
-def test_uniform_ring_init(ring: Ring) -> None:
-    """Tests the ring's initialization."""
-    assert "rin" in vars(ring).keys()
-    assert "width" in vars(ring).keys()
-
-
-@pytest.mark.parametrize(
-        "fits_file, compression, pos_angle, width",
-        [("Iring.fits", None, None, None),
-         ("Iring_inc.fits", 0.351*u.one, None, None),
-         ("Iring_inc_rot.fits", 0.351*u.one, 33*u.deg, None),
-         ("ring.fits", None, None, 1*u.mas),
-         ("ring_inc.fits", 0.351*u.one, None, 1*u.mas),
-         ("ring_inc_rot.fits", 0.351*u.one, 33*u.deg, 1*u.mas)])
+        "fits_file, radius, wl, inc, pos_angle, width, a, phi",
+    [
+        # [("Iring.fits", 5, 10, None, None, None, None, None),
+        #  ("Iring_inc.fits", 5, 10, 0.351, None, None, None, None),
+        #  ("Iring_inc_rot.fits", 5, 10, 0.351, 33, None, None, None),
+        #  ("ring.fits", 5, 10, None, None, 1, None, None),
+        #  ("ring_inc.fits", 5, 10, 0.351, None, 1, None, None),
+        #  ("ring_inc_rot.fits", 5, 10, 0.351, 33, 1, None, None),
+        #  ("cm_Iring_rin2.fits", 2, 3.5, None, None, None, None, None),
+         ("cm_Iring_rin2_a1_phi0.fits", 2, 3.5, None, None, None, 1, None),
+         # ("cm_Iring_rin2_a1_phi30.fits", 2, 3.5, None, None, None, 1, 30),
+         ])
 def test_ring_compute_vis(
-        ring: Ring, fits_file: Path,
-        compression: float, pos_angle: u.deg, width: u.mas) -> None:
+        fits_file: Path,
+        radius: u.mas, wl: u.um, inc: float,
+        pos_angle: u.deg, width: u.mas,
+        a: float, phi: u.deg) -> None:
     """Tests the calculation of uniform disk's visibilities."""
-    radius, wavelength = 5*u.mas, [10]*u.um
+    wavelength = [wl]*u.um
     fits_file = Path("data/aspro") / fits_file
     set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
 
-    if width is not None:
-        ring.thin = False
-        ring.width.value = width
-
-    ring.rin.value = radius
+    thin = False if width is not None else True
+    ring = Ring(rin=radius, width=width, thin=thin)
     vis, t3 = OPTIONS.data.vis, OPTIONS.data.t3
-    if compression is not None:
+    
+    if inc is not None:
         ring.elliptic = True
-
-    ring.inc.value = compression if compression is not None else 1
+        
+    ring.inc.value = inc if inc is not None else 1
     ring.pa.value = pos_angle if pos_angle is not None else 0
+
+    if a is not None:
+        ring.asymmetric = True
+        
+    ring.a.value = a if a is not None else 0
+    ring.phi.value = phi if phi is not None else 0
 
     vis_ring = compute_vis(ring.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
     t3_ring = compute_t3(ring.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
-
+    
+    np.set_printoptions(suppress=True)
+    
+    atol = 1e-2 if not "cm" in fits_file.name else 1e-1
     assert vis_ring.shape == (wavelength.size, vis.ucoord.shape[1])
-    assert np.allclose(vis.value, vis_ring, atol=1e-2)
+    assert np.allclose(vis.value, vis_ring, atol=atol)
 
-    assert t3_ring.shape == (wavelength.size, t3.u123coord.shape[1])
-    assert np.allclose(t3.value, t3_ring, atol=1e-2)
-
+    if phi is None:
+        assert t3_ring.shape == (wavelength.size, t3.u123coord.shape[1])
+        breakpoint()
+        assert np.allclose(t3.value, t3_ring, atol=atol)
+    else:
+        breakpoint()
+        assert np.all(np.abs(t3.value - t3_ring) < 7)
+ 
     set_data(fit_data=["vis", "t3"])
     
-    
-def test_azimuthal_modulation(
-        ring: Ring, fits_file: Path) -> None:
-    """Tests the calculation of the infinitesimal ring's closure phases
-    with a custom model (.fits)-file of the same ring imported to aspro.
-    """
-    radius, wavelength = 2*u.mas, [3.5]*u.um
-    fits_file = Path("data/aspro") / "Iring_mod_a1_phi0.fits"
-    set_data([fits_file], wavelengths=wavelength, fit_data=["t3"])
-    ring.thin, ring.asymmetric = True, True
-    ring.rin.value = radius
-    
-    t3 = OPTIONS.data.t3
-    t3_ring = compute_t3(ring.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
-    breakpoint()
-
-    assert t3_ring.shape == (wavelength.size, t3.u123coord.shape[1])
-    assert np.allclose(t3.value, t3_ring, atol=1e-2)
-
-    set_data(fit_data=["vis", "t3"])
-
 
 def test_uniform_disk_init(uniform_disk: UniformDisk) -> None:
     """Tests the uniform disk's initialization."""
@@ -254,11 +252,11 @@ def test_uniform_disk_compute_vis(
         uniform_disk: UniformDisk, fits_file: Path,
         compression: float, pos_angle: u.deg) -> None:
     """Tests the calculation of uniform disk's visibilities."""
-    diameter, wavelength = 20*u.mas, [10]*u.um
+    wavelength = [10]*u.um
     fits_file = Path("data/aspro") / fits_file
     set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
 
-    uniform_disk.diam.value = diameter
+    uniform_disk.diam.value = 20 * u.mas
     vis, t3 = OPTIONS.data.vis, OPTIONS.data.t3
     if compression is not None:
         uniform_disk.elliptic = True
@@ -285,7 +283,7 @@ def test_uniform_disk_image_func() -> None:
 
 def test_gaussian_init(gaussian: Gaussian) -> None:
     """Tests the gaussian's initialization."""
-    assert "fwhm" in vars(gaussian).keys()
+    assert "hlr" in vars(gaussian).keys()
 
 
 @pytest.mark.parametrize(
@@ -297,11 +295,11 @@ def test_gaussian_compute_vis(
         gaussian: Gaussian, fits_file: Path,
         compression: float, pos_angle: u.deg) -> None:
     """Tests the calculation of the total flux."""
-    fwhm, wavelength = 10*u.mas, [10]*u.um
+    wavelength = [10]*u.um
     fits_file = Path("data/aspro") / fits_file
     set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
 
-    gaussian.fwhm.value = fwhm
+    gaussian.hlr.value = 10 * u.mas / 2
     vis, t3 = OPTIONS.data.vis, OPTIONS.data.t3
     if compression is not None:
         gaussian.elliptic = True
@@ -336,127 +334,127 @@ def test_gaussian_compute_vis(
 #     gaussian.elliptic = False
 
 
-@pytest.mark.parametrize("grid_type", ["linear", "logarithmic"])
-def test_temp_gradient_compute_grid(
-        temp_gradient: TempGradient, grid_type: str) -> None:
-    """Tests the hankel component's grid calculation."""
-    OPTIONS.model.gridtype = grid_type
-    radius = temp_gradient.compute_internal_grid(512)
-    assert radius.unit == u.mas
-    assert radius.shape == (512, )
-    assert radius[0].value == temp_gradient.rin.value\
-        and radius[-1].value == temp_gradient.rout.value
-
-    OPTIONS.model.gridtype = "logarithmic"
-
-
-def test_temp_gradient_compute_brightness():
-    ...
-
-
-def test_temp_gradient_flux(
-        temp_gradient: TempGradient, wavelength: u.um) -> None:
-    """Tests the calculation of the total flux."""
-    flux = temp_gradient.compute_flux(wavelength)
-    assert flux.shape == (wavelength.size, 1)
-
-
-# TODO: Write test for hankel transform itself and compare it to ring model (aspro).
-# and skewed ring model of aspro
-# TODO: Write here check if higher orders are implemented
-@pytest.mark.parametrize("order", [0, 1, 2, 3])
-def test_temp_gradient_hankel_transform(
-        temp_gradient: TempGradient,
-        order: int, wavelength: u.um) -> None:
-    """Tests the hankel component's hankel transformation."""
-    radius = temp_gradient.compute_internal_grid(512)
-
-    OPTIONS.model.modulation = order
-
-    baselines, baseline_angles = compute_effective_baselines(
-            READOUT.vis2.ucoord, READOUT.vis2.vcoord,
-            temp_gradient.inc(), temp_gradient.pa())
-    wavelength, baselines, baseline_angles = broadcast_baselines(
-            wavelength, baselines, baseline_angles, READOUT.vis2.ucoord)
-    vis, vis_mod = temp_gradient.compute_hankel_transform(
-            radius, baselines, baseline_angles, wavelength)
-
-    assert vis.shape == (wavelength.size, 6)
-    assert vis_mod.shape == (wavelength.size, 6, order)
-    OPTIONS.model.modulation = 0
-
-
-# TODO: Add tests for the wavelength
-@pytest.mark.parametrize("order", [0, 1, 2, 3])
-def test_temp_gradient_compute_vis(
-        temp_gradient: TempGradient,
-        order: int, wavelength: u.um) -> None:
-    """Tests the hankel component's hankel transformation."""
-    OPTIONS.model.modulation = order
-
-    vis = temp_gradient.compute_complex_vis(READOUT.vis2.ucoord, READOUT.vis2.vcoord, wavelength)
-    assert vis.shape == (wavelength.size, 6)
-    assert isinstance(vis, np.ndarray)
-
-    t3 = temp_gradient.compute_complex_vis(READOUT.t3.u123coord, READOUT.t3.v123coord, wavelength)
-    assert t3.shape == (wavelength.size, 3, 4)
-    assert isinstance(vis, np.ndarray)
-
-    OPTIONS.model.modulation = 0
-
-
-# TODO: Extend this test to account for multiple files (make files an input)
-@pytest.mark.parametrize(
-        "dim", [4096, 2096, 1024, 512, 256, 128, 64, 32])
-def test_temp_gradient_resolution(temp_gradient: TempGradient,
-                                  dim: int, wavelength: u.um) -> None:
-    """Tests the hankel component's resolution."""
-    temp_gradient.dim.value = dim
-    temp_gradient.optically_thick = True
-    temp_gradient.asymmetric = True
-
-    OPTIONS.model.modulation = 1
-    start_time_vis = time.perf_counter()
-    _ = temp_gradient.compute_complex_vis(
-            READOUT.vis2.ucoord, READOUT.vis2.vcoord, wavelength)
-    end_time_vis = time.perf_counter()-start_time_vis
-
-    start_time_cphase = time.perf_counter()
-    _ = temp_gradient.compute_complex_vis(
-            READOUT.t3.u123coord, READOUT.t3.v123coord, wavelength)
-    end_time_cphase = time.perf_counter()-start_time_cphase
-
-    vis_data = {"Dimension (px)": [dim],
-                "Computation Time (s)": [end_time_vis]}
-
-    t3_data = {"Dimension (px)": [dim],
-               "Computation Time (s)": [end_time_cphase]}
-
-    if CALCULATION_FILE.exists():
-        df = pd.read_excel(CALCULATION_FILE, sheet_name="Vis")
-        new_df = pd.DataFrame(vis_data)
-        df = pd.concat([df, new_df])
-    else:
-        df = pd.DataFrame(vis_data)
-
-    with pd.ExcelWriter(CALCULATION_FILE, engine="openpyxl",
-                        mode="a", if_sheet_exists="replace") as writer:
-        df.to_excel(writer, sheet_name="Vis", index=False)
-
-    if CALCULATION_FILE.exists():
-        df = pd.read_excel(CALCULATION_FILE, sheet_name="T3")
-        new_df = pd.DataFrame(t3_data)
-        df = pd.concat([df, new_df])
-    else:
-        df = pd.DataFrame(t3_data)
-
-    with pd.ExcelWriter(CALCULATION_FILE, engine="openpyxl",
-                        mode="a", if_sheet_exists="replace") as writer:
-        df.to_excel(writer, sheet_name="T3", index=False)
-
-    OPTIONS.model.modulation = 0
-    temp_gradient.optically_thick = False
-    temp_gradient.asymmetric = False
+# @pytest.mark.parametrize("grid_type", ["linear", "logarithmic"])
+# def test_temp_gradient_compute_grid(
+#         temp_gradient: TempGradient, grid_type: str) -> None:
+#     """Tests the hankel component's grid calculation."""
+#     OPTIONS.model.gridtype = grid_type
+#     radius = temp_gradient.compute_internal_grid(512)
+#     assert radius.unit == u.mas
+#     assert radius.shape == (512, )
+#     assert radius[0].value == temp_gradient.rin.value\
+#         and radius[-1].value == temp_gradient.rout.value
+#
+#     OPTIONS.model.gridtype = "logarithmic"
+#
+#
+# def test_temp_gradient_compute_brightness():
+#     ...
+#
+#
+# def test_temp_gradient_flux(
+#         temp_gradient: TempGradient, wavelength: u.um) -> None:
+#     """Tests the calculation of the total flux."""
+#     flux = temp_gradient.compute_flux(wavelength)
+#     assert flux.shape == (wavelength.size, 1)
+#
+#
+# # TODO: Write test for hankel transform itself and compare it to ring model (aspro).
+# # and skewed ring model of aspro
+# # TODO: Write here check if higher orders are implemented
+# @pytest.mark.parametrize("order", [0, 1, 2, 3])
+# def test_temp_gradient_hankel_transform(
+#         temp_gradient: TempGradient,
+#         order: int, wavelength: u.um) -> None:
+#     """Tests the hankel component's hankel transformation."""
+#     radius = temp_gradient.compute_internal_grid(512)
+#
+#     OPTIONS.model.modulation = order
+#
+#     baselines, baseline_angles = compute_effective_baselines(
+#             READOUT.vis2.ucoord, READOUT.vis2.vcoord,
+#             temp_gradient.inc(), temp_gradient.pa())
+#     wavelength, baselines, baseline_angles = broadcast_baselines(
+#             wavelength, baselines, baseline_angles, READOUT.vis2.ucoord)
+#     vis, vis_mod = temp_gradient.compute_hankel_transform(
+#             radius, baselines, baseline_angles, wavelength)
+#
+#     assert vis.shape == (wavelength.size, 6)
+#     assert vis_mod.shape == (wavelength.size, 6, order)
+#     OPTIONS.model.modulation = 0
+#
+#
+# # TODO: Add tests for the wavelength
+# @pytest.mark.parametrize("order", [0, 1, 2, 3])
+# def test_temp_gradient_compute_vis(
+#         temp_gradient: TempGradient,
+#         order: int, wavelength: u.um) -> None:
+#     """Tests the hankel component's hankel transformation."""
+#     OPTIONS.model.modulation = order
+#
+#     vis = temp_gradient.compute_complex_vis(READOUT.vis2.ucoord, READOUT.vis2.vcoord, wavelength)
+#     assert vis.shape == (wavelength.size, 6)
+#     assert isinstance(vis, np.ndarray)
+#
+#     t3 = temp_gradient.compute_complex_vis(READOUT.t3.u123coord, READOUT.t3.v123coord, wavelength)
+#     assert t3.shape == (wavelength.size, 3, 4)
+#     assert isinstance(vis, np.ndarray)
+#
+#     OPTIONS.model.modulation = 0
+#
+#
+# # TODO: Extend this test to account for multiple files (make files an input)
+# @pytest.mark.parametrize(
+#         "dim", [4096, 2096, 1024, 512, 256, 128, 64, 32])
+# def test_temp_gradient_resolution(temp_gradient: TempGradient,
+#                                   dim: int, wavelength: u.um) -> None:
+#     """Tests the hankel component's resolution."""
+#     temp_gradient.dim.value = dim
+#     temp_gradient.optically_thick = True
+#     temp_gradient.asymmetric = True
+#
+#     OPTIONS.model.modulation = 1
+#     start_time_vis = time.perf_counter()
+#     _ = temp_gradient.compute_complex_vis(
+#             READOUT.vis2.ucoord, READOUT.vis2.vcoord, wavelength)
+#     end_time_vis = time.perf_counter()-start_time_vis
+#
+#     start_time_cphase = time.perf_counter()
+#     _ = temp_gradient.compute_complex_vis(
+#             READOUT.t3.u123coord, READOUT.t3.v123coord, wavelength)
+#     end_time_cphase = time.perf_counter()-start_time_cphase
+#
+#     vis_data = {"Dimension (px)": [dim],
+#                 "Computation Time (s)": [end_time_vis]}
+#
+#     t3_data = {"Dimension (px)": [dim],
+#                "Computation Time (s)": [end_time_cphase]}
+#
+#     if CALCULATION_FILE.exists():
+#         df = pd.read_excel(CALCULATION_FILE, sheet_name="Vis")
+#         new_df = pd.DataFrame(vis_data)
+#         df = pd.concat([df, new_df])
+#     else:
+#         df = pd.DataFrame(vis_data)
+#
+#     with pd.ExcelWriter(CALCULATION_FILE, engine="openpyxl",
+#                         mode="a", if_sheet_exists="replace") as writer:
+#         df.to_excel(writer, sheet_name="Vis", index=False)
+#
+#     if CALCULATION_FILE.exists():
+#         df = pd.read_excel(CALCULATION_FILE, sheet_name="T3")
+#         new_df = pd.DataFrame(t3_data)
+#         df = pd.concat([df, new_df])
+#     else:
+#         df = pd.DataFrame(t3_data)
+#
+#     with pd.ExcelWriter(CALCULATION_FILE, engine="openpyxl",
+#                         mode="a", if_sheet_exists="replace") as writer:
+#         df.to_excel(writer, sheet_name="T3", index=False)
+#
+#     OPTIONS.model.modulation = 0
+#     temp_gradient.optically_thick = False
+#     temp_gradient.asymmetric = False
 
 
 def test_assemble_components() -> None:

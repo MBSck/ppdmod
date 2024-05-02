@@ -227,12 +227,8 @@ class Ring(Component):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.rin = Parameter(**STANDARD_PARAMETERS.rin)
-
-        if not self.thin:
-            if self.has_outer_radius:
-                self.rout = Parameter(**STANDARD_PARAMETERS.rout)
-            else:
-                self.width = Parameter(**STANDARD_PARAMETERS.width)
+        self.rout = Parameter(**STANDARD_PARAMETERS.rout)
+        self.width = Parameter(**STANDARD_PARAMETERS.width)
 
         self.eval(**kwargs)
 
@@ -271,23 +267,27 @@ class Ring(Component):
         brightness : astropy.unit.mas
             The radial brightness distribution
         """
-        brightness = kwargs.pop("brightness", None)
-        angle_diff = baseline_angles - (self.phi()-90*u.deg).to(u.rad)
+        phi = (self.phi()-180*u.deg).to(u.rad)
+        angle_diff = np.angle(np.exp(1j*(baseline_angles - phi).value))
+        
         if self.thin:
             xx = 2 * np.pi * self.rin().to(u.rad) * baselines
             vis = j0(xx).astype(complex)
-            vis += -1j * self.a() * np.cos(angle_diff) * j1(xx) if self.asymmetric else 0
+            if self.asymmetric:
+                vis += -1j * self.a() * np.cos(angle_diff) * j1(xx)
         else:
+            brightness = kwargs.pop("brightness", None)
             radius = self.compute_internal_grid().to(u.rad)
             xx = 2 * np.pi * radius * baselines
-            vis = (np.trapz(j0(xx), radius)).astype(complex)
-            vis += -1j * self.a() * np.cos(angle_diff) * np.trapz(j1(xx), radius) if self.asymmetric else 0
+            vis = np.trapz(j0(xx), radius).astype(complex)
+            if self.asymmetric:
+                vis += -1j * self.a() * np.cos(angle_diff) * np.trapz(j1(xx), radius)
 
             if brightness is None:
                 if self.has_outer_radius:
-                    vis /= self.rout() - self.rin()
+                    vis /= (self.rout() - self.rin()).to(u.rad)
                 else:
-                    vis /= self.width()
+                    vis /= self.width().to(u.rad)
 
             vis = vis[..., np.newaxis]
         return vis.value.astype(OPTIONS.data.dtype.complex)
@@ -322,7 +322,7 @@ class Ring(Component):
 
         if self.asymmetric:
             polar_angle = np.arctan2(yy, xx)
-            phi = (self.phi()-90*u.deg).to(u.rad)
+            phi = (self.phi()-180*u.deg).to(u.rad)
             c, s = self.a() * np.cos(phi), self.a() * np.sin(phi)
             image *= 1 + c * np.cos(polar_angle) + s * np.sin(polar_angle)
 
@@ -911,11 +911,10 @@ class StarHaloGauss(Component):
         if len(fs.shape) >= 1:
             fs = fs[..., np.newaxis]
             vis_star = fs
-            
-        fh = 1 - (fs + self.fc())
         if len(baselines.shape) == 4:
             fs = fs[..., np.newaxis]
             
+        fh = 1 - (fs + self.fc())
         divisor = (fh + fs) * wavelength_ratio**ks \
             + self.fc() * wavelength_ratio ** self.kc()
 

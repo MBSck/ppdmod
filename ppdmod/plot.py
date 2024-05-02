@@ -39,7 +39,7 @@ def plot_components(components: List[Component], dim: int,
     if save_as_fits:
         wcs = WCS(naxis=2)
         wcs.wcs.crpix = (dim // 2, dim // 2)
-        wcs.wcs.cdelt = ([pixel_size*u.mas.to(u.deg), -pixel_size*u.mas.to(u.deg)])
+        wcs.wcs.cdelt = ([-pixel_size*u.mas.to(u.deg), -pixel_size*u.mas.to(u.deg)])
         wcs.wcs.crval = (0.0, 0.0)
         hdu = fits.HDUList([fits.PrimaryHDU(image, header=wcs.to_header())])
         hdu.writeto(savefig, overwrite=True)
