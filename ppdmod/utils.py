@@ -67,6 +67,7 @@ def get_indices(values, array: np.ndarray,
     return indices
 
 
+# TODO: Replace with np.gradient, does the same thing
 def compute_photometric_slope(
         wavelengths: u.um, temperature: u.K) -> np.ndarray:
     """Computes the photometric slope of the data from
