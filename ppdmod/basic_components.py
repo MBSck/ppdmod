@@ -893,11 +893,18 @@ class StarHaloGauss(Component):
 
     def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
-        fh = 1 - (self.fs() + self.fc())
-        try:
-            ks = self.ks(wavelength)[:, np.newaxis, np.newaxis]
-        except TypeError:
+        fs = self.fs(wavelength)
+        if len(fs.shape) >= 1:
+            fs = fs[..., np.newaxis]
+
+        if len(baselines.shape) == 4:
+            fs = fs[..., np.newaxis]
+            
+        fh = 1 - (fs + self.fc())
+        if len(self.ks(wavelength).shape) == 1:
             ks = self.ks(wavelength)[np.newaxis, np.newaxis]
+        elif len(self.ks(wavelength).shape) >= 2:
+            ks = self.ks(wavelength)[..., np.newaxis]
 
         if len(baselines.shape) == 4:
             ks = ks[..., np.newaxis]
@@ -906,8 +913,8 @@ class StarHaloGauss(Component):
             self.wl0.value = np.mean(wavelength)
 
         wavelength_ratio = self.wl0() / wavelength[..., np.newaxis]
-        vis_star = self.fs() * wavelength_ratio**ks
-        divisor = (fh + self.fs()) * wavelength_ratio**ks \
+        vis_star = fs * wavelength_ratio**ks
+        divisor = (fh + fs) * wavelength_ratio**ks \
             + self.fc() * wavelength_ratio ** self.kc()
 
         vis_comp = self.comp.vis_func(
@@ -925,14 +932,14 @@ class StarHaloGauss(Component):
     def image_func(self, xx: u.mas, yy: u.mas,
                    pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
         """Computes the image."""
-        fh = 1 - (self.fs() + self.fc())
+        fh = 1 - (self.fs(wavelength) + self.fc())
         image = self.comp.image_func(xx, yy, pixel_size, wavelength)
         if self.has_ring:
             image_ring = self.ring.image_func(xx, yy, pixel_size, wavelength)
             image = self.fc() * fftconvolve(image, image_ring, mode="same")
             
         pt = PointSource(inc=self.inc, pa=self.pa)
-        image += self.fs() * pt.image_func(xx, yy, pixel_size, wavelength) + fh
+        image += self.fs(wavelength) * pt.image_func(xx, yy, pixel_size, wavelength) + fh
         image /= total if (total := np.sum(image, axis=(-2, -1))) != 0 else 1
         return (self.fr() * image).astype(OPTIONS.data.dtype.real)
 
