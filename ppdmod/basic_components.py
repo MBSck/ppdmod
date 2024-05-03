@@ -899,10 +899,8 @@ class StarHaloGauss(Component):
         wavelength_ratio = self.wl0() / wavelength[..., np.newaxis]
         
         ks = self.ks(wavelength)
-        if len(ks.shape) == 1:
-            ks = ks[np.newaxis, np.newaxis]
-        elif len(ks.shape) >= 2:
-            ks = ks[..., np.newaxis]
+        if ks.size > 1:
+            ks = ks[..., np.newaxis, np.newaxis]
         if len(baselines.shape) == 4:
             ks = ks[..., np.newaxis]
             

@@ -181,13 +181,12 @@ def temp_gradient() -> TempGradient:
 
 @pytest.mark.parametrize(
         "fits_file, radius, wl, inc, pos_angle, width, a, phi",
-    [
-        # [("Iring.fits", 5, 10, None, None, None, None, None),
-        #  ("Iring_inc.fits", 5, 10, 0.351, None, None, None, None),
-        #  ("Iring_inc_rot.fits", 5, 10, 0.351, 33, None, None, None),
-        #  ("ring.fits", 5, 10, None, None, 1, None, None),
-        #  ("ring_inc.fits", 5, 10, 0.351, None, 1, None, None),
-        #  ("ring_inc_rot.fits", 5, 10, 0.351, 33, 1, None, None),
+        [("Iring.fits", 5, 10, None, None, None, None, None),
+         ("Iring_inc.fits", 5, 10, 0.351, None, None, None, None),
+         ("Iring_inc_rot.fits", 5, 10, 0.351, 33, None, None, None),
+         ("ring.fits", 5, 10, None, None, 1, None, None),
+         ("ring_inc.fits", 5, 10, 0.351, None, 1, None, None),
+         ("ring_inc_rot.fits", 5, 10, 0.351, 33, 1, None, None),
         #  ("cm_Iring_rin2.fits", 2, 3.5, None, None, None, None, None),
          ("cm_Iring_rin2_a1_phi0.fits", 2, 3.5, None, None, None, 1, None),
          # ("cm_Iring_rin2_a1_phi30.fits", 2, 3.5, None, None, None, 1, 30),
