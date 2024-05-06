@@ -389,7 +389,7 @@ def run_dynesty(sample: Optional[str] = "rwalk",
     print(f"Executing Dynesty.\n{'':-^50}")
     ptform = kwargs.pop("ptform", transform_uniform_prior)
     sampler = samplers[method](
-        lnprob, ptform, ndim, **general_kwargs, sampler_kwargs[method])
+        lnprob, ptform, ndim, **general_kwargs, **sampler_kwargs[method])
     sampler.run_nested(**run_kwargs, print_progress=True,
                        checkpoint_file=str(checkpoint_file))
 
