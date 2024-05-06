@@ -474,14 +474,15 @@ def test_gaussian_compute_vis(
 #                         inc=0.63, pa=1.2/np.pi*180,
 #                         a=0.996393496566492,
 #                         phi=-10.407711312490056)
-#     ring = Ring()
+#
 #     vis, t3 = OPTIONS.data.vis, OPTIONS.data.t3
 #
 #     vis_shlr = compute_vis(shlr.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
 #     t3_shlr = compute_t3(shlr.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
-#     breakpoint()
 #
 #     set_data(fit_data=["vis", "t3"])
+#     breakpoint()
+
 
 def test_assemble_components() -> None:
     """Tests the model's assemble_model method."""

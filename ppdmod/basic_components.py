@@ -217,7 +217,7 @@ class Ring(Component):
     rout : astropy.units.mas
         The outer radius of the ring. Applies only for 'False' thin
     """
-    
+
     name = "Ring"
     shortname = "Ring"
     description = "A simple ring."
@@ -279,7 +279,7 @@ class Ring(Component):
             if self.asymmetric:
                 vis += -1j * self.a() * np.cos(angle_diff) * j1(xx)
             return vis
-        
+
         if self.thin:
             vis = _vis_func(2 * np.pi * self.rin().to(u.rad) * baselines)
         else:
@@ -874,7 +874,7 @@ class StarHaloGauss(Component):
         self.kc.name = self.kc.shortname = "kc"
         self.kc.min, self.kc.max = -10, 10
         self.kc.value = 1
-        
+
         if self.is_gauss_lor:
             self.flor = Parameter(**STANDARD_PARAMETERS.fr)
             self.flor.name = self.flor.shortname = "flor"
@@ -885,7 +885,7 @@ class StarHaloGauss(Component):
         if self.has_ring:
             self.rin = np.sqrt(10 ** (2 * self.la()) / (1 + 10 ** (2 * self.lkr())))
             self.hlr = np.sqrt(10 ** (2 * self.la()) / (1 + 10 ** (-2 * self.lkr())))
-        
+
         if self.is_gauss_lor:
             self.comp = GaussLorentzian(
                 flor=self.flor, hlr=self.hlr, inc=self.inc, pa=self.pa)
@@ -908,7 +908,7 @@ class StarHaloGauss(Component):
             ks = ks[..., np.newaxis, np.newaxis]
         if len(baselines.shape) == 4:
             ks = ks[..., np.newaxis]
-            
+
         fs = self.fs(wavelength)
         vis_star = fs * wavelength_ratio**ks
         if len(fs.shape) >= 1:
@@ -916,14 +916,14 @@ class StarHaloGauss(Component):
             vis_star = fs
         if len(baselines.shape) == 4:
             fs = fs[..., np.newaxis]
-            
+
         fh = 1 - (fs + self.fc())
         divisor = (fh + fs) * wavelength_ratio**ks \
             + self.fc() * wavelength_ratio ** self.kc()
 
         vis_comp = self.comp.vis_func(
             baselines, baseline_angles, wavelength, **kwargs)
-        
+
         if self.has_ring:
             vis_ring = self.ring.vis_func(
                 baselines, baseline_angles, wavelength, **kwargs)
@@ -941,7 +941,7 @@ class StarHaloGauss(Component):
         if self.has_ring:
             image_ring = self.ring.image_func(xx, yy, pixel_size, wavelength)
             image = self.fc() * fftconvolve(image, image_ring, mode="same")
-            
+
         pt = PointSource(inc=self.inc, pa=self.pa)
         image += self.fs(wavelength) * pt.image_func(xx, yy, pixel_size, wavelength) + fh
         image /= total if (total := np.sum(image, axis=(-2, -1))) != 0 else 1
