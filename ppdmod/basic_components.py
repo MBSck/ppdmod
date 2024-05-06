@@ -267,7 +267,9 @@ class Ring(Component):
         brightness : astropy.unit.mas
             The radial brightness distribution
         """
-        phi = (self.phi()-180*u.deg).to(u.rad)
+        # NOTE: Angle convention is `-phi = np.arctan2(c1, s1)` -> Gives correct results
+        # and the rotation is counterclockwise in East of North
+        phi = -(self.phi() - 180*u.deg).to(u.rad)
         angle_diff = np.angle(np.exp(1j*(baseline_angles - phi).value))
         
         if self.thin:
@@ -322,7 +324,10 @@ class Ring(Component):
 
         if self.asymmetric:
             polar_angle = np.arctan2(yy, xx)
-            phi = (self.phi()-180*u.deg).to(u.rad)
+
+            # NOTE: Angle convention is `-phi = np.arctan2(c1, s1)` -> Gives correct results
+            # and the rotation is counterclockwise in East of North
+            phi = -self.phi().to(u.rad)
             c, s = self.a() * np.cos(phi), self.a() * np.sin(phi)
             image *= 1 + c * np.cos(polar_angle) + s * np.sin(polar_angle)
 
