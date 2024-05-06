@@ -61,7 +61,7 @@ def lnprob(theta: np.ndarray) -> float:
 DATA_DIR = Path("../data/pionier/HD142527")
 OPTIONS.model.output = "non-physical"
 fits_files = list((DATA_DIR).glob("*fits"))
-data = set_data(fits_files, wavelengths="all", fit_data=["vis2"])
+data = set_data(fits_files, wavelengths="all", fit_data=["vis2", "t3"])
 
 pa = Parameter(**STANDARD_PARAMETERS.pa)
 pa.value = 0.09*u.rad.to(u.deg)
@@ -138,7 +138,7 @@ if __name__ == "__main__":
     ncores = None
     fit_params_emcee = {"nburnin": 2000, "nsteps": 8000, "nwalkers": 100,
                         "lnprob": lnprob}
-    fit_params_dynesty = {"nlive": 2000, "sample": "rwalk", "bound": "multi", "ptform": ptform}
+    fit_params_dynesty = {"nlive_init": 1000, "ptform": ptform}
 
     if OPTIONS.fit.method == "emcee":
         fit_params = fit_params_emcee
@@ -148,7 +148,8 @@ if __name__ == "__main__":
         ncores = 50 if ncores is None else ncores
         fit_params = fit_params_dynesty
 
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
+    sampler = run_fit(**fit_params, ncores=ncores, method="dynamic",
+                      save_dir=result_dir, debug=False)
     theta, uncertainties = get_best_fit(
             sampler, **fit_params, method="quantile")
 

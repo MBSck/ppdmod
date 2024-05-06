@@ -342,8 +342,7 @@ def run_mcmc(nwalkers: int,
     return sampler
 
 
-def run_dynesty(nlive: Optional[int] = 1000,
-                sample: Optional[str] = "rwalk",
+def run_dynesty(sample: Optional[str] = "rwalk",
                 bound: Optional[str] = "multi",
                 ncores: Optional[int] = 6,
                 debug: Optional[bool] = False,
@@ -366,22 +365,32 @@ def run_dynesty(nlive: Optional[int] = 1000,
     else:
         checkpoint_file = None
 
-    # TODO: Implement this properly
     samplers = {"dynamic": DynamicNestedSampler, "static": NestedSampler}
 
     ndim = init_randomly().shape[0]
     pool = Pool(processes=ncores) if not debug else None
     queue_size = ncores if not debug else None
-    sampler_kwargs = {"nlive": nlive, "sample": sample,
-                      "bound": bound, "queue_size": queue_size,
+    general_kwargs = {"bound": bound, "queue_size": queue_size,
+                      "sample": sample,
                       "periodic": kwargs.pop("periodic", None),
                       "reflective": kwargs.pop("reflective", None),
                       "pool": pool, "update_interval": ndim}
 
+    static_kwargs = {"nlive": kwargs.pop("nlive", 1000)}
+    sampler_kwargs = {"dynamic": {}, "static": static_kwargs}
+
+    static_run = {"dlogz": kwargs.pop("dlogz", 0.01)}
+    dynamic_run = {"nlive_batch": kwargs.pop("nlive_batch", 1000),
+                   "maxbatch": kwargs.pop("maxbatch", 100),
+                   "dlogz_init": kwargs.pop("dlogz_init", 0.01),
+                   "nlive_init": kwargs.pop("nlive_init", 1000)}
+    run_kwargs = {"dynamic": dynamic_run, "static": static_run}
+
     print(f"Executing Dynesty.\n{'':-^50}")
     ptform = kwargs.pop("ptform", transform_uniform_prior)
-    sampler = samplers[method](lnprob, ptform, ndim, **sampler_kwargs)
-    sampler.run_nested(dlogz=0.01, print_progress=True,
+    sampler = samplers[method](
+        lnprob, ptform, ndim, **general_kwargs, sampler_kwargs[method])
+    sampler.run_nested(**run_kwargs, print_progress=True,
                        checkpoint_file=str(checkpoint_file))
 
     if not debug:
