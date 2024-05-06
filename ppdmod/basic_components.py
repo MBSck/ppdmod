@@ -37,10 +37,10 @@ class PointSource(Component):
     name = "Point Source"
     shortname = "Point"
     description = "Point source with flux contribution."
+    elliptic = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.elliptic = False
         self.eval(**kwargs)
 
     def flux_func(self, wavelength: u.um) -> np.ndarray:
@@ -119,11 +119,11 @@ class Star(Component):
     name = "Star"
     shortname = "Star"
     description = "The flux of a star."
+    elliptic = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._stellar_angular_radius = None
-        self.elliptic = False
 
         self.f = Parameter(**STANDARD_PARAMETERS.f)
         self.dist = Parameter(**STANDARD_PARAMETERS.dist)
@@ -271,19 +271,21 @@ class Ring(Component):
         # and the rotation is counterclockwise in East of North
         phi = -(self.phi() - 180*u.deg).to(u.rad)
         angle_diff = np.angle(np.exp(1j*(baseline_angles - phi).value))
-        
-        if self.thin:
-            xx = 2 * np.pi * self.rin().to(u.rad) * baselines
+
+        # TODO: Check if this is too much overhead
+        def _vis_func(xx: np.ndarray):
+            """Shorthand for the vis calculation."""
             vis = j0(xx).astype(complex)
             if self.asymmetric:
                 vis += -1j * self.a() * np.cos(angle_diff) * j1(xx)
+            return vis
+        
+        if self.thin:
+            vis = _vis_func(2 * np.pi * self.rin().to(u.rad) * baselines)
         else:
             brightness = kwargs.pop("brightness", None)
             radius = self.compute_internal_grid().to(u.rad)
-            xx = 2 * np.pi * radius * baselines
-            vis = np.trapz(j0(xx), radius).astype(complex)
-            if self.asymmetric:
-                vis += -1j * self.a() * np.cos(angle_diff) * np.trapz(j1(xx), radius)
+            vis = np.trapz(_vis_func(2 * np.pi * radius * baselines), radius)
 
             if brightness is None:
                 if self.has_outer_radius:
@@ -550,7 +552,6 @@ class TempGradient(Component):
 
     name = "Temperature Gradient"
     shortname = "TempGrad"
-    elliptic = True
     optically_thick = False
     const_temperature = False
     continuum_contribution = True
@@ -847,7 +848,6 @@ class StarHaloGauss(Component):
 
     name = "StarHaloGauss"
     shortname = "StarHaloGauss"
-    elliptic = True
     is_gauss_lor = False
     has_ring = False
 

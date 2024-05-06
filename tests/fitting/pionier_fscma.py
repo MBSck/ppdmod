@@ -22,7 +22,7 @@ if __name__ == "__main__":
     ks.free = False
     
     result_dir = Path("results/pionier")
-    ring = Ring(rin=8.36, asymmetric=True, a=1, phi=-10)
+    ring = Ring(rin=2, inc=0.63, pa=133, asymmetric=True, a=1, phi=30)
 
     # NOTE: FSCMa
     shlr = StarHaloRing(
@@ -32,5 +32,5 @@ if __name__ == "__main__":
         inc=0.63, pa=1.2/np.pi*180,
         a=0.996393496566492, phi=-10)
 
-    plot_components(ring, 2048, 0.02, 3.5, savefig=result_dir / "test.png", save_as_fits=False)
-    plot_components(ring, 2048, 0.02, 3.5, savefig=result_dir / "test.fits", save_as_fits=True)
+    plot_components(ring, 512, 0.02, 3.5, savefig=result_dir / "test.png", save_as_fits=False)
+    plot_components(ring, 512, 0.02, 3.5, savefig=result_dir / "test.fits", save_as_fits=True)

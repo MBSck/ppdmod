@@ -23,7 +23,7 @@ class Component:
     name = "Generic component"
     shortname = "GenComp"
     description = "This is the class from which all components are derived."
-    _elliptic = False
+    _elliptic = True
     _asymmetric = False
 
     def __init__(self, **kwargs):
