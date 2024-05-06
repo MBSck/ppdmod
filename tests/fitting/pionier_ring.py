@@ -65,6 +65,7 @@ data = set_data(fits_files, wavelengths="all", fit_data=["vis2", "t3"])
 
 pa = Parameter(**STANDARD_PARAMETERS.pa)
 pa.value = 0.09*u.rad.to(u.deg)
+pa.set(min=-45, max=45)
 pa.free = True
 
 inc = Parameter(**STANDARD_PARAMETERS.inc)
