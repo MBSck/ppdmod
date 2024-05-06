@@ -10,7 +10,7 @@ import pytest
 
 from ppdmod import utils
 from ppdmod.basic_components import PointSource, Star, Ring, UniformDisk,\
-        Gaussian, TempGradient, GreyBody, assemble_components
+        Gaussian, TempGradient, GreyBody, StarHaloRing, assemble_components
 from ppdmod.data import ReadoutFits, set_data
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 from ppdmod.parameter import Parameter
@@ -221,8 +221,6 @@ def test_ring_compute_vis(
 
     vis_ring = compute_vis(ring.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
     t3_ring = compute_t3(ring.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
-
-    np.set_printoptions(suppress=True)
 
     atol = 1e-2 if not "cm" in fits_file.name else 1e-1
     assert vis_ring.shape == (wavelength.size, vis.ucoord.shape[1])
@@ -456,6 +454,28 @@ def test_gaussian_compute_vis(
 #     temp_gradient.optically_thick = False
 #     temp_gradient.asymmetric = False
 
+
+# def test_star_halo_ring_t3() -> None:
+#     """Tests the calculation of FSCMa with the Lazareff+2017
+#     StarHaloRing model."""
+#     wavelength = [3.5]*u.um
+#     fits_file = Path("data/aspro") / "cm_FSCMa_PIONIER_extended.fits"
+#     set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
+#
+#     shlr = StarHaloRing(fs=0.42, fc=0.55, flor=1.0,
+#                         la=0.98, lkr=-0.26,
+#                         ks=1, kc=-4.12,
+#                         inc=0.63, pa=1.2/np.pi*180,
+#                         a=0.996393496566492,
+#                         phi=-10.407711312490056)
+#     ring = Ring()
+#     vis, t3 = OPTIONS.data.vis, OPTIONS.data.t3
+#
+#     vis_shlr = compute_vis(shlr.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
+#     t3_shlr = compute_t3(shlr.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
+#     breakpoint()
+#
+#     set_data(fit_data=["vis", "t3"])
 
 def test_assemble_components() -> None:
     """Tests the model's assemble_model method."""
