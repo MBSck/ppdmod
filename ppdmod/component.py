@@ -179,14 +179,13 @@ class Component:
         pixel_size = pixel_size if isinstance(pixel_size, u.Quantity)\
             else u.Quantity(pixel_size, u.mas)
         
-        xx = np.linspace(-0.5, 0.5, dim)*dim*pixel_size
+        xx = np.linspace(-dim, dim, dim)*pixel_size
         xx, yy = self.translate_image_func(*np.meshgrid(xx, xx))
 
         if self.elliptic:
             pa_rad = self.pa().to(u.rad)
             xr = xx*np.cos(pa_rad)-yy*np.sin(pa_rad)
             yr = xx*np.sin(pa_rad)+yy*np.cos(pa_rad)
-
             xx, yy = xr*(1/self.inc()), yr
 
         image = self.image_func(xx, yy, pixel_size, wavelength)

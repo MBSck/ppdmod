@@ -22,7 +22,7 @@ class Parameter:
     max: Optional[float] = None
     dtype: Optional[type] = None
     wavelength: Optional[u.Quantity[u.um]] = None
-    interpolate: Optional[bool] = False
+    interpolate: Optional[bool] = True
 
     def __setattr__(self, key: str, value: Any):
         """Sets an attribute."""

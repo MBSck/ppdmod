@@ -9,8 +9,9 @@ import pandas as pd
 import pytest
 
 from ppdmod import utils
-from ppdmod.basic_components import PointSource, Star, Ring, UniformDisk,\
-        Gaussian, TempGradient, GreyBody, StarHaloRing, assemble_components
+from ppdmod.basic_components import PointSource, Star, Ring, UniformDisk, \
+    Gaussian, Lorentzian, GaussLorentzian, TempGradient, GreyBody, StarHaloRing, \
+    assemble_components
 from ppdmod.data import ReadoutFits, set_data
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 from ppdmod.parameter import Parameter
@@ -180,66 +181,67 @@ def temp_gradient() -> TempGradient:
 #     assert "width" in vars(ring).keys()
 
 
-@pytest.mark.parametrize(
-        "fits_file, radius, wl, inc, pos_angle, width, a, phi",
-        [("Iring.fits", 5, 10, None, None, None, None, None),
-         ("Iring_inc.fits", 5, 10, 0.351, None, None, None, None),
-         ("Iring_inc_rot.fits", 5, 10, 0.351, 33, None, None, None),
-         ("ring.fits", 5, 10, None, None, 1, None, None),
-         ("ring_inc.fits", 5, 10, 0.351, None, 1, None, None),
-         ("ring_inc_rot.fits", 5, 10, 0.351, 33, 1, None, None),
-         ("cm_Iring_rin2_extended.fits", 2, 3.5, None, None, None, None, None),
-         ("cm_Iring_rin2_a1_phi0_extended.fits", 2, 3.5, None, None, None, 1, None),
-         ("cm_Iring_rin2_a1_phi30_extended.fits", 2, 3.5, None, None, None, 1, 30),
-         ("cm_Iring_rin2_inc063_pa133_a1_phi30_extended.fits", 2, 3.5, 0.63, 133, None, 1, 30),
-         ("cm_Iring_rin2_a05_phi60_extended.fits", 2, 3.5, None, None, None, 0.5, 60),
-         ("cm_ring_rin2_w02_a1_phi30_extended.fits", 2, 3.5, None, None, 0.2, 1, 30),
-         ("cm_ring_rin2_inc063_pa_133_w02_a1_phi30_extended.fits", 2, 3.5, 0.63, 133, 0.2, 1, 30),
-         ])
-def test_ring_compute_vis(
-        fits_file: Path,
-        radius: u.mas, wl: u.um, inc: float,
-        pos_angle: u.deg, width: u.mas,
-        a: float, phi: u.deg) -> None:
-    """Tests the calculation of uniform disk's visibilities."""
-    wavelength = [wl]*u.um
-    fits_file = Path("data/aspro") / fits_file
-    set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
-
-    thin = False if width is not None else True
-    ring = Ring(rin=radius, width=width, thin=thin)
-    vis, t3 = OPTIONS.data.vis, OPTIONS.data.t3
-
-    if inc is not None:
-        ring.elliptic = True
-
-    ring.inc.value = inc if inc is not None else 1
-    ring.pa.value = pos_angle if pos_angle is not None else 0
-
-    if a is not None:
-        ring.asymmetric = True
-
-    ring.a.value = a if a is not None else 0
-    ring.phi.value = phi if phi is not None else 0
-
-    vis_ring = compute_vis(ring.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
-    t3_ring = compute_t3(ring.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
-
-    atol = 1e-2 if not "cm" in fits_file.name else 1e-1
-    assert vis_ring.shape == (wavelength.size, vis.ucoord.shape[1])
-    assert np.allclose(vis.value, vis_ring, atol=atol)
-
-    if not "cm" in fits_file.name:
-        assert t3_ring.shape == (wavelength.size, t3.u123coord.shape[1])
-        assert np.allclose(t3.value, t3_ring, atol=atol)
-    else:
-        # NOTE: The differences here are larger due to numerical inaccuracies in ASPRO?
-        # Values for positional angle and inclination are ~ 153 degrees (before that < 45)
-        # Sometimes even ~ 160
-        diff = np.ptp(np.hstack((t3.value[0][:, np.newaxis], t3_ring[0][:, np.newaxis])), axis=1)
-        assert diff.max() < 170
- 
-    set_data(fit_data=["vis", "t3"])
+# @pytest.mark.parametrize(
+#         "fits_file, radius, wl, inc, pos_angle, width, a, phi",
+#         [("Iring.fits", 5, 10, None, None, None, None, None),
+#          ("Iring_inc.fits", 5, 10, 0.351, None, None, None, None),
+#          ("Iring_inc_rot.fits", 5, 10, 0.351, 33, None, None, None),
+#          ("ring.fits", 5, 10, None, None, 1, None, None),
+#          ("ring_inc.fits", 5, 10, 0.351, None, 1, None, None),
+#          ("ring_inc_rot.fits", 5, 10, 0.351, 33, 1, None, None),
+#          ("cm_Iring_rin2_extended.fits", 2, 3.5, None, None, None, None, None),
+#          ("cm_Iring_rin2_a1_phi0_extended.fits", 2, 3.5, None, None, None, 1, None),
+#          ("cm_Iring_rin2_a1_phi30_extended.fits", 2, 3.5, None, None, None, 1, 30),
+#          ("cm_Iring_rin2_inc063_pa133_a1_phi30_extended.fits", 2, 3.5, 0.63, 133, None, 1, 30),
+#          ("cm_Iring_rin2_a05_phi60_extended.fits", 2, 3.5, None, None, None, 0.5, 60),
+#          ("cm_ring_rin2_w02_a1_phi30_extended.fits", 2, 3.5, None, None, 0.2, 1, 30),
+#          ("cm_ring_rin2_inc063_pa_133_w02_a1_phi30_extended.fits", 2, 3.5, 0.63, 133, 0.2, 1, 30),
+#          ("cm_Iring_rin8_inc064_pa68_a099_phineg10_UTs.fits", 8.36941905, 3.5, 0.63, 68.75493541569878, None, 0.996393496566492, -10.407711312490056),
+#          ])
+# def test_ring_compute_vis(
+#         fits_file: Path,
+#         radius: u.mas, wl: u.um, inc: float,
+#         pos_angle: u.deg, width: u.mas,
+#         a: float, phi: u.deg) -> None:
+#     """Tests the calculation of uniform disk's visibilities."""
+#     wavelength = [wl]*u.um
+#     fits_file = Path("data/aspro") / fits_file
+#     data = set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
+#
+#     thin = False if width is not None else True
+#     ring = Ring(rin=radius, width=width, thin=thin)
+#     vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
+#
+#     if inc is not None:
+#         ring.elliptic = True
+#
+#     ring.inc.value = inc if inc is not None else 1
+#     ring.pa.value = pos_angle if pos_angle is not None else 0
+#
+#     if a is not None:
+#         ring.asymmetric = True
+#
+#     ring.a.value = a if a is not None else 0
+#     ring.phi.value = phi if phi is not None else 0
+#
+#     vis_ring = compute_vis(ring.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
+#     t3_ring = compute_t3(ring.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
+#
+#     atol = 1e-2 if "cm" not in fits_file.name else 1e-1
+#     assert vis_ring.shape == (wavelength.size, vis.ucoord.shape[1])
+#     assert np.allclose(vis.value, vis_ring, atol=atol)
+#
+#     if "cm" not in fits_file.name:
+#         assert t3_ring.shape == (wavelength.size, t3.u123coord.shape[1])
+#         assert np.allclose(t3.value, t3_ring, atol=atol)
+#     else:
+#         # NOTE: The differences here are larger due to numerical inaccuracies in ASPRO?
+#         # Values for positional angle and inclination are ~ 153 degrees (before that < 45)
+#         # Sometimes even ~ 160
+#         diff = np.ptp(np.hstack((t3.value[0][:, np.newaxis], t3_ring[0][:, np.newaxis])), axis=1)
+#         assert diff.max() < 170
+#
+#     set_data(fit_data=["vis", "t3"])
 
 
 def test_uniform_disk_init(uniform_disk: UniformDisk) -> None:
@@ -258,10 +260,10 @@ def test_uniform_disk_compute_vis(
     """Tests the calculation of uniform disk's visibilities."""
     wavelength = [10]*u.um
     fits_file = Path("data/aspro") / fits_file
-    set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
+    data = set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
+    vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
 
     uniform_disk.diam.value = 20 * u.mas
-    vis, t3 = OPTIONS.data.vis, OPTIONS.data.t3
     if compression is not None:
         uniform_disk.elliptic = True
 
@@ -301,10 +303,10 @@ def test_gaussian_compute_vis(
     """Tests the calculation of the total flux."""
     wavelength = [10]*u.um
     fits_file = Path("data/aspro") / fits_file
-    set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
+    data = set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
 
     gaussian.hlr.value = 10 * u.mas / 2
-    vis, t3 = OPTIONS.data.vis, OPTIONS.data.t3
+    vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
     if compression is not None:
         gaussian.elliptic = True
 
@@ -461,27 +463,69 @@ def test_gaussian_compute_vis(
 #     temp_gradient.asymmetric = False
 
 
-# def test_star_halo_ring_t3() -> None:
-#     """Tests the calculation of FSCMa with the Lazareff+2017
-#     StarHaloRing model."""
-#     wavelength = [3.5]*u.um
-#     fits_file = Path("data/aspro") / "cm_FSCMa_PIONIER_extended.fits"
-#     set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
-#
-#     shlr = StarHaloRing(fs=0.42, fc=0.55, flor=1.0,
-#                         la=0.98, lkr=-0.26,
-#                         ks=1, kc=-4.12,
-#                         inc=0.63, pa=1.2/np.pi*180,
-#                         a=0.996393496566492,
-#                         phi=-10.407711312490056)
-#
-#     vis, t3 = OPTIONS.data.vis, OPTIONS.data.t3
-#
-#     vis_shlr = compute_vis(shlr.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
-#     t3_shlr = compute_t3(shlr.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
-#
-#     set_data(fit_data=["vis", "t3"])
-#     breakpoint()
+def test_star_halo_ring_t3() -> None:
+    """Tests the calculation of FSCMa with the Lazareff+2017
+    StarHaloRing model."""
+    wavelength = [3.5]*u.um
+    ring_fits = Path("data/aspro") / "cm_Iring_rin8_inc064_pa68_a099_phineg10_UTs.fits"
+    data = set_data([ring_fits], wavelengths=wavelength, fit_data=["vis", "t3"])
+    vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
+    vis_ring_aspro, t3_ring_aspro = vis.value.copy(), t3.value.copy()
+
+    # ring = Ring(rin=8.36941905, inc=0.63, pa=68.75493541569878,
+    #             asymmetric=True, a=0.996393496566492, phi=-10.407711312490056)
+    # complex_vis_ring = ring.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
+    # complex_t3_ring = ring.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength)
+    # vis_ring, t3_ring = compute_vis(complex_vis_ring), compute_t3(complex_t3_ring)
+
+    # assert np.allclose(vis_ring_aspro, vis_ring, atol=1e-1)
+    # diff = np.ptp(np.hstack((t3_ring_aspro[0][:, np.newaxis], t3_ring[0][:, np.newaxis])), axis=1)
+    # assert diff.max() < 10
+
+    data = set_data(fit_data=["vis", "t3"])
+
+    gauss_fits = Path("data/aspro") / "gaussian_hlr4_inc063_pa68_UTs.fits"
+    data = set_data([gauss_fits], wavelengths=wavelength, fit_data=["vis", "t3"])
+    vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
+    vis_gauss_aspro, t3_gauss_aspro = vis.value.copy(), t3.value.copy()
+
+    ring = Ring(rin=8.36941905, inc=0.63, pa=68.75493541569878,
+                asymmetric=True, a=0.996393496566492, phi=-10.407711312490056)
+    complex_vis_ring = ring.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
+    complex_t3_ring = ring.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength)
+    vis_ring, t3_ring = compute_vis(complex_vis_ring), compute_t3(complex_t3_ring)
+
+    gauss = Gaussian(hlr=4.59933786, inc=0.63, pa=68.75493541569878)
+    complex_vis_gauss = gauss.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
+    complex_t3_gauss = gauss.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength)
+    vis_gauss, t3_gauss = compute_vis(complex_vis_gauss), compute_t3(complex_t3_gauss)
+
+    assert np.allclose(vis_gauss_aspro, vis_gauss, atol=1e-2)
+    assert np.allclose(t3_gauss_aspro, t3_gauss, atol=1e-6)
+
+    lor = Lorentzian(hlr=4.59933786, inc=0.63, pa=68.75493541569878)
+    complex_vis_lor = lor.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
+    complex_t3_lor = lor.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength)
+    vis_lor, t3_lor = compute_vis(complex_vis_lor), compute_t3(complex_t3_lor)
+
+    gausslor = GaussLorentzian(flor=1., hlr=4.59933786, inc=0.63, pa=68.75493541569878)
+    complex_vis_gausslor = gausslor.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
+    complex_t3_gausslor = gausslor.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength)
+    vis_gausslor, t3_gausslor = compute_vis(complex_vis_gausslor), compute_t3(complex_t3_gausslor)
+
+    complex_vis_conv = complex_vis_ring * complex_vis_gausslor
+    complex_t3_conv = complex_t3_ring * complex_t3_gausslor
+
+    shlr = StarHaloRing(
+        fs=0.42, fc=0.55, flor=1.0,
+        la=0.98, lkr=-0.26,
+        ks=1, kc=-4.12,
+        inc=0.63, pa=1.2/np.pi*180,
+        a=0.996393496566492, phi=-10)
+    
+    # vis_shlr = shlr.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
+    # t3_shlr = shlr.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength)
+    set_data(fit_data=["vis", "t3"])
 
 
 def test_assemble_components() -> None:

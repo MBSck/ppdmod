@@ -106,7 +106,7 @@ a = Parameter(**STANDARD_PARAMETERS.a)
 a.value = 0.8275868534480233
 
 phi = Parameter(**STANDARD_PARAMETERS.phi)
-phi.value = -136.46880071438582
+phi.value = -133.53119928561418
 
 params = {"fs": fs, "fc": fc, "flor": flor, "la": la,
           "lkr": lkr, "kc": kc, "inc": inc, "pa": pa,
@@ -150,7 +150,7 @@ if __name__ == "__main__":
         fit_params = fit_params_dynesty
 
     sampler = run_fit(**fit_params, ncores=ncores, method="dynamic",
-                      save_dir=result_dir, debug=False)
+                      save_dir=result_dir, debug=True)
     theta, uncertainties = get_best_fit(
             sampler, **fit_params, method="quantile")
 

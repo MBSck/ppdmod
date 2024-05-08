@@ -221,8 +221,7 @@ class Ring(Component):
     name = "Ring"
     shortname = "Ring"
     description = "A simple ring."
-    thin = True
-    has_outer_radius = False
+    thin, has_outer_radius = True, False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -311,13 +310,8 @@ class Ring(Component):
         image : astropy.units.Jy
         """
         radius = np.hypot(xx, yy)[np.newaxis, ...]
-        dx = np.max(
-            [
-                np.abs(1.0 * (xx.value[0, 1] - xx.value[0, 0])),
-                np.abs(1.0 * (yy.value[1, 0] - yy.value[0, 0])),
-            ]
-        ) * u.mas
-            
+        dx = pixel_size * 3
+
         if not self.thin:
             dx = self.rout() - self.rin() if self.has_outer_radius else self.width()
 
@@ -427,9 +421,10 @@ class Gaussian(Component):
         -------
         image : astropy.units.Jy
         """
+        hlr = 2 * self.hlr() * (1/self.inc())
         radius = np.hypot(xx, yy)[np.newaxis, ...]
-        image = np.log(2) / (np.pi * self.hlr() ** 2) \
-            * np.exp(-(radius / self.hlr()) ** 2 * np.log(2))
+        image = np.log(2) / (np.pi * hlr ** 2) \
+            * np.exp(-(radius / hlr) ** 2 * np.log(2))
         return image.value.astype(OPTIONS.data.dtype.real)
 
 
@@ -475,8 +470,9 @@ class Lorentzian(Component):
         image : astropy.units.Jy
         """
         radius = np.hypot(xx, yy)[np.newaxis, ...]
-        image = self.hlr() / (2 * np.pi * np.sqrt(3)) \
-            * (self.hlr() ** 2 / 3 + radius**2) ** (-3 / 2)
+        hlr = self.hlr() * self.inc()
+        image = hlr / (2 * np.pi * np.sqrt(3)) \
+            * (hlr ** 2 / 3 + radius**2) ** (-3 / 2)
         return image.value.astype(OPTIONS.data.dtype.real)
 
 
@@ -901,36 +897,24 @@ class StarHaloGauss(Component):
         if self.wl0() == 0:
             self.wl0.value = np.mean(wavelength)
 
-        wavelength_ratio = self.wl0() / wavelength[..., np.newaxis]
-        
-        ks = self.ks(wavelength)
-        if ks.size > 1:
-            ks = ks[..., np.newaxis, np.newaxis]
-        if len(baselines.shape) == 4:
-            ks = ks[..., np.newaxis]
+        wavelength_ratio = self.wl0() / wavelength
+        fs, ks = self.fs(wavelength), self.ks(wavelength)
+        complex_vis_star = (fs * wavelength_ratio**ks).astype(OPTIONS.data.dtype.complex)
+        component_ratio = (1-self.fc()) * wavelength_ratio**ks \
+            + self.fc() * wavelength_ratio**self.kc()
 
-        fs = self.fs(wavelength)
-        vis_star = fs * wavelength_ratio**ks
-        if len(fs.shape) >= 1:
-            fs = fs[..., np.newaxis]
-            vis_star = fs
-        if len(baselines.shape) == 4:
-            fs = fs[..., np.newaxis]
-
-        fh = 1 - (fs + self.fc())
-        divisor = (fh + fs) * wavelength_ratio**ks \
-            + self.fc() * wavelength_ratio ** self.kc()
-
-        vis_comp = self.comp.vis_func(
+        complex_vis_comp = self.comp.vis_func(
             baselines, baseline_angles, wavelength, **kwargs)
 
         if self.has_ring:
-            vis_ring = self.ring.vis_func(
+            complex_vis_ring = self.ring.vis_func(
                 baselines, baseline_angles, wavelength, **kwargs)
-            vis_comp *= vis_ring
+            complex_vis_comp *= complex_vis_ring
 
-        vis_comp = self.fc() * vis_comp * wavelength_ratio ** self.kc()
-        vis = (vis_star + vis_comp) / divisor
+        complex_vis_comp = self.fc() * complex_vis_comp \
+            * wavelength_ratio[..., np.newaxis]**self.kc()
+        vis = (complex_vis_star[..., np.newaxis] + complex_vis_comp) \
+            / component_ratio[..., np.newaxis]
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas,

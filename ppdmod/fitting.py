@@ -135,20 +135,19 @@ def compute_observables(components: List[Component],
     ucoord, vcoord = vis.ucoord, vis.vcoord
     u123coord, v123coord = OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord
 
-    flux_model, vis_model, t3_model = None, None, None
+    flux_model, complex_vis_model, complex_t3_model = None, None, None
     for component in [comp for comp in components if comp.name != "Point Source"]:
-        tmp_flux = component.compute_flux(wavelength)
-        tmp_vis = component.compute_complex_vis(
+        flux_comp = component.compute_flux(wavelength)
+        complex_vis_comp = component.compute_complex_vis(
                 ucoord, vcoord, wavelength)
-        tmp_t3 = component.compute_complex_vis(
+        complex_t3_comp = component.compute_complex_vis(
                 u123coord, v123coord, wavelength)
 
-        if flux_model is None:
-            flux_model, vis_model, t3_model = tmp_flux, tmp_vis, tmp_t3
-        else:
-            flux_model += tmp_flux
-            vis_model += tmp_vis
-            t3_model += tmp_t3
+        flux_model = flux_comp if flux_model is None else flux_model + flux_comp
+        complex_vis_model = complex_vis_comp if complex_vis_model is None \
+            else complex_vis_model + complex_vis_comp
+        complex_t3_model = complex_t3_comp if complex_t3_model is None \
+            else complex_t3_model + complex_t3_comp
 
     flux_ratio, index = None, None
     component_names = [component.shortname for component in components]
@@ -160,24 +159,26 @@ def compute_observables(components: List[Component],
         if OPTIONS.model.output == "physical":
             stellar_flux = (flux_model/(1-flux_ratio))*flux_ratio
             flux_model += stellar_flux
-            vis_model += stellar_flux
-            t3_model += stellar_flux
+            complex_vis_model += stellar_flux
+            complex_t3_model += stellar_flux
         else:
-            vis_model += components[index].compute_complex_vis(
+            complex_vis_model += components[index].compute_complex_vis(
                     ucoord, vcoord, wavelength)
-            t3_model += components[index].compute_complex_vis(
+            complex_t3_model += components[index].compute_complex_vis(
                     u123coord, v123coord, wavelength)
 
     if OPTIONS.model.output == "physical":
-        vis_model = vis_model/flux_model
+        complex_vis_model = complex_vis_model/flux_model.astype(complex)
 
     if flux_model.size > 0:
         flux_model = np.tile(flux_model, (len(OPTIONS.data.readouts)))
 
-    vis_model, t3_model = compute_vis(vis_model), compute_t3(t3_model)
+    vis_model = compute_vis(complex_vis_model)
+    t3_model = compute_t3(complex_t3_model)
 
     if "vis2" in OPTIONS.fit.data:
-        vis_model = vis_model**2
+        vis_model *= vis_model
+    breakpoint()
 
     return flux_model, vis_model, t3_model
 
