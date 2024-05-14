@@ -178,7 +178,6 @@ def compute_observables(components: List[Component],
 
     if "vis2" in OPTIONS.fit.data:
         vis_model *= vis_model
-    breakpoint()
 
     return flux_model, vis_model, t3_model
 

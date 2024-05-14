@@ -559,6 +559,8 @@ def broadcast_baselines(
 
 def compute_t3(vis: np.ndarray) -> np.ndarray:
     """Computes the closure phase from the visibility function."""
+    if vis.size == 0:
+        return np.array([])
     return np.angle(vis[:, 0] * vis[:, 1] * vis[:, 2].conj(), deg=True).astype(OPTIONS.data.dtype.real)
 
 
