@@ -61,6 +61,7 @@ def lnprob(theta: np.ndarray) -> float:
 DATA_DIR = Path("../data/pionier/HD142527")
 OPTIONS.model.output = "non-physical"
 fits_files = list((DATA_DIR).glob("*fits"))
+fits_files.extend((DATA_DIR / "unused_pionier").glob("*fits"))
 data = set_data(fits_files, wavelengths="all", fit_data=["vis2", "t3"])
 
 pa = Parameter(**STANDARD_PARAMETERS.pa)
@@ -85,6 +86,7 @@ ks = Parameter(**STANDARD_PARAMETERS.exp)
 ks.value = compute_photometric_slope(wavelengths, 6500)
 ks.wavelength = wavelengths
 ks.free = False
+breakpoint()
 
 kc = Parameter(**STANDARD_PARAMETERS.exp)
 kc.value = -3.67
