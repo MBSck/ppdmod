@@ -97,10 +97,7 @@ class ReadoutFits:
             u1coord, u2coord = map(lambda x: data.data[f"u{x}coord"], ["1", "2"])
             v1coord, v2coord = map(lambda x: data.data[f"v{x}coord"], ["1", "2"])
 
-            # TODO: Check this!
-            # NOTE: This should be positive as complex conjugation is applied
-            # later? Also positive for Jozsef and Anthony?
-            u3coord, v3coord = u1coord+u2coord, v1coord+v2coord
+            u3coord, v3coord = (u1coord+u2coord), (v1coord+v2coord)
             u123coord = np.array([u1coord, u2coord, u3coord])
             v123coord = np.array([v1coord, v2coord, v3coord])
             return SimpleNamespace(value=value, err=err,
@@ -190,6 +187,7 @@ def set_fit_wavelengths(wavelengths: Optional[u.Quantity[u.um]] = None) -> Union
     return OPTIONS.fit.wavelengths
 
 
+# TODO: Think of weighting here, should it add up to 1? Make it so
 def set_fit_weights(weights: Optional[List[float]] = None, 
                     fit_data: Optional[List[str]] = None) -> None:
     """Sets the weights of the fit parameters
@@ -220,9 +218,11 @@ def set_fit_weights(weights: Optional[List[float]] = None,
 
         wvis = 1
 
-    OPTIONS.fit.weights.flux = wflux
-    OPTIONS.fit.weights.vis = wvis
-    OPTIONS.fit.weights.nt3 = wt3
+    norm = wflux + wvis + wt3
+    OPTIONS.fit.weights.flux = wflux/norm
+    OPTIONS.fit.weights.vis = wvis/norm
+    OPTIONS.fit.weights.nt3 = wt3/norm
+    breakpoint()
 
 
 def set_data(fits_files: Optional[List[Path]] = None,
