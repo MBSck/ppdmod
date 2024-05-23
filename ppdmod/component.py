@@ -34,14 +34,16 @@ class Component:
         self.dim = Parameter(**STANDARD_PARAMETERS.dim)
         self.pa = Parameter(**STANDARD_PARAMETERS.pa)
         self.inc = Parameter(**STANDARD_PARAMETERS.inc)
-        self.a = Parameter(**STANDARD_PARAMETERS.a)
-        self.phi = Parameter(**STANDARD_PARAMETERS.phi)
+
+        # TODO: Add here higher orders of modulations
+        self.c1 = Parameter(**STANDARD_PARAMETERS.mod_amp)
+        self.s1 = Parameter(**STANDARD_PARAMETERS.mod_amp)
 
         if not self.elliptic:
             self.inc.free = self.pa.free = False
 
         if not self.asymmetric:
-            self.a.free = self.phi.free = False
+            self.c1.free = self.s1.free = False
 
     @property
     def elliptic(self) -> bool:
@@ -63,7 +65,7 @@ class Component:
     def asymmetric(self, value: bool) -> None:
         """Sets the position angle and the parameters to free or false
         if elliptic is set."""
-        self._asymmetric = self.a.free = self.phi.free = value
+        self._asymmetric = self.c1.free = self.s1.free = value
 
     def eval(self, **kwargs) -> None:
         """Sets the parameters (values) from the keyword arguments."""
