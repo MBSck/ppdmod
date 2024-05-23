@@ -222,7 +222,6 @@ def set_fit_weights(weights: Optional[List[float]] = None,
     OPTIONS.fit.weights.flux = wflux/norm
     OPTIONS.fit.weights.vis = wvis/norm
     OPTIONS.fit.weights.nt3 = wt3/norm
-    breakpoint()
 
 
 def set_data(fits_files: Optional[List[Path]] = None,
