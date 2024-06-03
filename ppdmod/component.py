@@ -181,7 +181,7 @@ class Component:
         pixel_size = pixel_size if isinstance(pixel_size, u.Quantity)\
             else u.Quantity(pixel_size, u.mas)
         
-        xx = np.linspace(-dim, dim, dim)*pixel_size
+        xx = np.linspace(-0.5, 0.5, dim)*pixel_size*dim
         xx, yy = self.translate_image_func(*np.meshgrid(xx, xx))
 
         if self.elliptic:

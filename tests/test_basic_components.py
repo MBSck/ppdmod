@@ -190,8 +190,13 @@ def temp_gradient() -> TempGradient:
          # ("ring.fits", 5, 10, None, None, 1, None, None),
          # ("ring_inc.fits", 5, 10, 0.351, None, 1, None, None),
          # ("ring_inc_rot.fits", 5, 10, 0.351, 33, 1, None, None),
-         ("cm_Iring_rin5_inc1_pa0_c0_s0_UTs.fits", 5, 3.5, None, None, None, None, None),
-         # ("cm_Iring_rin2_inc0.5_pa0_c0_s0_large.fits", 2, 3.5, None, None, None, 1, None),
+         # ("cm_Iring_rin5_inc1_pa0_c0_s0_UTs.fits", 5, 3.5, None, None, None, None, None),
+         # ("cm_Iring_rin2_inc1_pa0_c0_s0_extended.fits", 2, 3.5, None, None, None, None, None),
+         # ("cm_Iring_rin2_inc05_pa0_c0_s0_extended.fits", 2, 3.5, 0.5, None, None, None, None),
+         # ("cm_Iring_rin2_inc05_pa33_c0_s0_extended.fits", 2, 3.5, 0.5, 33, None, None, None),
+         ("cm_Iring_rin2_inc05_pa33_c1_s0_extended.fits", 2, 3.5, 0.5, 33, None, 1, None),
+         # ("cm_Iring_rin2_inc05_pa33_c0_s1_extended.fits", 2, 3.5, 0.5, 33, None, None, 1),
+         # ("cm_Iring_rin2_inc05_pa33_c1_s1_extended.fits", 2, 3.5, 0.5, 33, None, 1, 1),
          ])
 def test_ring_compute_vis(
         fits_file: Path,
@@ -214,8 +219,8 @@ def test_ring_compute_vis(
 
     vis_ring = compute_vis(ring.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
     t3_ring = compute_t3(ring.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
-    if "cm" in fits_file.name:
-        breakpoint()
+    # if "cm" in fits_file.name:
+    #     breakpoint()
 
     atol = 1e-2 if "cm" not in fits_file.name else 1e-1
     assert vis_ring.shape == (wavelength.size, vis.ucoord.shape[1])

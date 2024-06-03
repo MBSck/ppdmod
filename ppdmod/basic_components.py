@@ -266,17 +266,16 @@ class Ring(Component):
         brightness : astropy.unit.mas
             The radial brightness distribution
         """
-        # NOTE: Angle convention is `-phi = np.arctan2(c1, s1)` -> Gives correct results
-        # and the rotation is counterclockwise in East of North
-        phi = -(self.phi() - 180*u.deg).to(u.rad)
-        angle_diff = np.angle(np.exp(1j*(baseline_angles - phi).value))
+        mod_amp = np.hypot(self.c1(), self.s1())
+        mod_angle = -np.arctan2(self.c1(), self.s1())
+        angle_diff = np.angle(np.exp(1j*(baseline_angles - mod_angle).value))
 
         # TODO: Check if this is too much overhead
         def _vis_func(xx: np.ndarray):
             """Shorthand for the vis calculation."""
             vis = j0(xx).astype(complex)
             if self.asymmetric:
-                vis += -1j * self.a() * np.cos(angle_diff) * j1(xx)
+                vis += -1j * mod_amp * np.cos(angle_diff) * j1(xx)
             return vis
 
         if self.thin:
@@ -310,8 +309,8 @@ class Ring(Component):
         image : astropy.units.Jy
         """
         radius = np.hypot(xx, yy)[np.newaxis, ...]
-        dx = pixel_size * 3
 
+        dx = np.max([np.diff(xx), np.diff(yy)])*u.mas
         if not self.thin:
             dx = self.rout() - self.rin() if self.has_outer_radius else self.width()
 
@@ -319,13 +318,8 @@ class Ring(Component):
         image = radial_profile / (2 * np.pi)
 
         if self.asymmetric:
-            polar_angle = np.arctan2(yy, xx)
-
-            # NOTE: Angle convention is `-phi = np.arctan2(c1, s1)` -> Gives correct results
-            # and the rotation is counterclockwise in East of North
-            phi = -self.phi().to(u.rad)
-            c, s = self.a() * np.cos(phi), self.a() * np.sin(phi)
-            image *= 1 + c * np.cos(polar_angle) + s * np.sin(polar_angle)
+            polar_angle = np.arctan2(xx, yy)
+            image *= 1 + self.c1() * np.cos(polar_angle) + self.s1() * np.sin(polar_angle)
 
         return image.astype(OPTIONS.data.dtype.real)
 
@@ -889,8 +883,9 @@ class StarHaloGauss(Component):
             self.comp = Gaussian(hlr=self.hlr, inc=self.inc, pa=self.pa)
 
         if self.has_ring:
-            self.ring = Ring(rin=self.rin, a=self.a, inc=self.inc,
-                             pa=self.pa, phi=self.phi, asymmetric=True)
+            self.ring = Ring(
+                rin=self.rin, inc=self.inc, pa=self.pa,
+                asymmetric=True, c1=self.c1, s1=self.s1)
 
     def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
