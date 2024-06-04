@@ -465,7 +465,7 @@ class Lorentzian(Component):
         """
         radius = np.hypot(xx, yy)[np.newaxis, ...]
         hlr = self.hlr() * self.inc()
-        image = hlr / (2 * np.pi * np.sqrt(3)) \
+        image = hlr / (2 * np.pi**2 * np.sqrt(3)) \
             * (hlr ** 2 / 3 + radius**2) ** (-3 / 2)
         return image.value.astype(OPTIONS.data.dtype.real)
 
