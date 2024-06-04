@@ -184,19 +184,21 @@ def temp_gradient() -> TempGradient:
 @pytest.mark.parametrize(
         "fits_file, radius, wl, inc, pos_angle, width, c, s",
         [
-         # ("Iring.fits", 5, 10, None, None, None, None, None),
-         # ("Iring_inc.fits", 5, 10, 0.351, None, None, None, None),
-         # ("Iring_inc_rot.fits", 5, 10, 0.351, 33, None, None, None),
-         # ("ring.fits", 5, 10, None, None, 1, None, None),
-         # ("ring_inc.fits", 5, 10, 0.351, None, 1, None, None),
-         # ("ring_inc_rot.fits", 5, 10, 0.351, 33, 1, None, None),
-         # ("cm_Iring_rin5_inc1_pa0_c0_s0_UTs.fits", 5, 3.5, None, None, None, None, None),
-         # ("cm_Iring_rin2_inc1_pa0_c0_s0_extended.fits", 2, 3.5, None, None, None, None, None),
-         # ("cm_Iring_rin2_inc05_pa0_c0_s0_extended.fits", 2, 3.5, 0.5, None, None, None, None),
-         # ("cm_Iring_rin2_inc05_pa33_c0_s0_extended.fits", 2, 3.5, 0.5, 33, None, None, None),
-         ("cm_Iring_rin2_inc05_pa33_c1_s0_extended.fits", 2, 3.5, 0.5, 33, None, 1, None),
-         # ("cm_Iring_rin2_inc05_pa33_c0_s1_extended.fits", 2, 3.5, 0.5, 33, None, None, 1),
+         ("Iring.fits", 5, 10, None, None, None, None, None),
+         ("Iring_inc.fits", 5, 10, 0.351, None, None, None, None),
+         ("Iring_inc_rot.fits", 5, 10, 0.351, 33, None, None, None),
+         ("ring.fits", 5, 10, None, None, 1, None, None),
+         ("ring_inc.fits", 5, 10, 0.351, None, 1, None, None),
+         ("ring_inc_rot.fits", 5, 10, 0.351, 33, 1, None, None),
+         ("cm_Iring_rin2_inc1_pa0_c0_s0_extended.fits", 2, 3.5, None, None, None, None, None),
+         ("cm_Iring_rin2_inc05_pa0_c0_s0_extended.fits", 2, 3.5, 0.5, None, None, None, None),
+         ("cm_Iring_rin2_inc05_pa33_c0_s0_extended.fits", 2, 3.5, 0.5, 33, None, None, None),
+         ("cm_Iring_rin2_inc05_pa33_c1_s0_extended.fits", 2, 3.5, 0.5, 33, None, 1, 0),
+         ("cm_Iring_rin2_inc05_pa33_c0_s1_extended.fits", 2, 3.5, 0.5, 33, None, 0, 1),
          # ("cm_Iring_rin2_inc05_pa33_c1_s1_extended.fits", 2, 3.5, 0.5, 33, None, 1, 1),
+         ("cm_Iring_rin2_inc05_pa33_c05_s05_extended.fits", 2, 3.5, 0.5, 33, None, 0.5, 0.5),
+         ("cm_Iring_rin2_inc05_pa33_c05_s1_extended.fits", 2, 3.5, 0.5, 33, None, 0.5, 1),
+         ("cm_Iring_rin2_inc05_pa33_c1_s05_extended.fits", 2, 3.5, 0.5, 33, None, 1, 0.5),
          ])
 def test_ring_compute_vis(
         fits_file: Path,
@@ -216,11 +218,8 @@ def test_ring_compute_vis(
     ring = Ring(rin=radius, inc=inc, pa=pa, thin=thin,
                 width=width, asymmetric=asymmetric, c1=c, s1=s)
     vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
-
     vis_ring = compute_vis(ring.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
     t3_ring = compute_t3(ring.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
-    # if "cm" in fits_file.name:
-    #     breakpoint()
 
     atol = 1e-2 if "cm" not in fits_file.name else 1e-1
     assert vis_ring.shape == (wavelength.size, vis.ucoord.shape[1])
