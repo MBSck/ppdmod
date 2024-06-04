@@ -281,11 +281,16 @@ class Ring(Component):
         if self.thin:
             vis = _vis_func(2 * np.pi * self.rin().to(u.rad) * baselines)
         else:
-            brightness = kwargs.pop("brightness", None)
-            radius = self.compute_internal_grid().to(u.rad)
-            vis = np.trapz(_vis_func(2 * np.pi * radius * baselines), radius)
+            intensity, intensity_func = 1, kwargs.pop("intensity_func", None)
+            radius = self.compute_internal_grid()
+            if intensity_func is not None:
+                intensity = intensity_func(radius, wavelength).to(u.erg/(u.rad**2 * u.cm**2 * u.s * u.Hz))
 
-            if brightness is None:
+            radius = radius.to(u.rad)
+            vis = _vis_func(2 * np.pi * radius * baselines)
+            vis = np.trapz(radius * intensity * vis, radius).to(u.Jy)
+
+            if intensity_func is None:
                 if self.has_outer_radius:
                     vis /= (self.rout() - self.rin()).to(u.rad)
                 else:
@@ -526,8 +531,7 @@ class GaussLorentzian(Component):
         return image.astype(OPTIONS.data.dtype.real)
 
 
-# TODO: Use the Ring as a base for the temperature gradient
-class TempGradient(Component):
+class TempGradient(Ring):
     """The base class for the component.
 
     Parameters
@@ -542,6 +546,8 @@ class TempGradient(Component):
 
     name = "Temperature Gradient"
     shortname = "TempGrad"
+    thin = False
+    has_outer_radius = True
     optically_thick = False
     const_temperature = False
     continuum_contribution = True
@@ -549,25 +555,18 @@ class TempGradient(Component):
     def __init__(self, **kwargs):
         """The class's constructor."""
         super().__init__(**kwargs)
-        self._stellar_angular_radius = None
 
         self.dist = Parameter(**STANDARD_PARAMETERS.dist)
         self.eff_temp = Parameter(**STANDARD_PARAMETERS.eff_temp)
         self.eff_radius = Parameter(**STANDARD_PARAMETERS.eff_radius)
 
         self.r0 = Parameter(**STANDARD_PARAMETERS.r0)
-        self.rin = Parameter(**STANDARD_PARAMETERS.rin)
-        self.rout = Parameter(**STANDARD_PARAMETERS.rout)
-
         self.q = Parameter(**STANDARD_PARAMETERS.q)
         self.inner_temp = Parameter(**STANDARD_PARAMETERS.inner_temp)
 
         self.p = Parameter(**STANDARD_PARAMETERS.p)
         self.inner_sigma = Parameter(**STANDARD_PARAMETERS.inner_sigma)
         self.kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
-
-        # TODO: Add opacity weights
-        # self.opacity_weights = Parameter()
 
         self.cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
         self.kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
@@ -578,6 +577,7 @@ class TempGradient(Component):
 
         if not self.continuum_contribution:
             self.cont_weight.free = False
+
         self.eval(**kwargs)
 
     @property
@@ -590,31 +590,7 @@ class TempGradient(Component):
         stellar_radius_angular : astropy.units.mas
             The parallax of the stellar radius.
         """
-        self._stellar_angular_radius = distance_to_angular(
-            self.eff_radius(), self.dist()
-        )
-        return self._stellar_angular_radius
-
-    def compute_internal_grid(self) -> u.mas:
-        """Computes the model grid.
-
-        Parameters
-        ----------
-        dim : float
-
-        Returns
-        -------
-        radial_grid : astropy.units.mas
-            A one dimensional linear or logarithmic grid.
-        """
-        rin, rout = self.rin().value, self.rout().value
-        unit = self.rin().unit
-        if OPTIONS.model.gridtype == "linear":
-            radius = np.linspace(rin, rout, dim)
-        else:
-            radius = np.logspace(np.log10(rin), np.log10(rout), dim)
-        radius *= unit
-        return radius.astype(OPTIONS.data.dtype.real)
+        return distance_to_angular(self.eff_radius(), self.dist())
 
     def get_opacity(self, wavelength: u.um) -> u.cm**2 / u.g:
         """Set the opacity from wavelength."""
@@ -685,7 +661,7 @@ class TempGradient(Component):
         emissivity = 1 - np.exp(-optical_depth / self.inc())
         return emissivity.astype(OPTIONS.data.dtype.real)
 
-    def compute_brightness(self, radius: u.mas, wavelength: u.um) -> u.Jy:
+    def compute_intensity(self, radius: u.mas, wavelength: u.um) -> u.Jy:
         """Computes a 1D-brightness profile from a dust-surface density- and
         temperature profile.
 
@@ -703,56 +679,13 @@ class TempGradient(Component):
         emissivity = self.compute_emissivity(radius, wavelength)
         return (brightness * emissivity).astype(OPTIONS.data.dtype.real)
 
-    # TODO: Think of a way to implement higher orders of modulation
-    def compute_modulation(
-        self,
-        radius: u.mas,
-        brightness: u.erg / (u.rad**2 * u.s * u.Hz),
-        baselines: 1 / u.rad,
-        baseline_angles: u.rad,
-    ) -> u.Jy:
-        """The azimuthal modulation as it appears in the hankel transform.
-
-        The results of the modulation is flux in Jansky.
-
-        Parameters
-        ----------
-        radius : astropy.units.mas
-            The radius.
-        brightness_profile : astropy.units.erg/(u.rad**2*u.s*u.Hz)
-            The brightness profile.
-        baselines : 1/astropy.units.rad
-            The deprojected baselines.
-        baseline_angles : astropy.units.rad
-            The deprojected baseline angles.
-        """
-        if not self.asymmetric:
-            return np.array([])
-
-        angle_diff = baseline_angles - self.phi().to(u.rad)
-        order = np.arange(1, OPTIONS.model.modulation + 1)[np.newaxis, np.newaxis, :]
-        integrand = radius * brightness[:, np.newaxis, ...]
-        bessel_factor = 2 * np.pi * radius.value * baselines.value[..., np.newaxis, :]
-
-        if len(baseline_angles.shape) == 4:
-            order = order[..., np.newaxis, :]
-
-        factor = (-1j) ** order * self.a() * np.cos(order * angle_diff)
-        integration = (
-            2
-            * np.pi
-            * np.trapz(integrand * jv(order[..., np.newaxis], bessel_factor), radius)
-        )
-        return u.Quantity(factor * integration, unit=u.Jy).astype(
-            OPTIONS.data.dtype.complex
-        )
-
     def flux_func(self, wavelength: u.um) -> np.ndarray:
         """Computes the total flux from the hankel transformation."""
         radius = self.compute_internal_grid()
-        brightness_profile = self.compute_brightness(radius, wavelength[:, np.newaxis])
+        intensity = self.compute_intensity(radius, wavelength[:, np.newaxis])
+
         # TODO: Check if a factor of 2*np.pi is required in front of the integration
-        flux = 2 * np.pi * self.inc() * np.trapz(radius * brightness_profile, radius).to(u.Jy)
+        flux = 2 * np.pi * self.inc() * np.trapz(radius * intensity, radius).to(u.Jy)
         return flux.value.reshape((flux.shape[0], 1)).astype(OPTIONS.data.dtype.real)
 
     def vis_func(
@@ -776,20 +709,9 @@ class TempGradient(Component):
         vis : numpy.ndarray
             The correlated fluxes.
         """
-        radius = self.compute_internal_grid()
-        brightness = self.compute_brightness(radius, wavelength)
-        brightness = brightness[:, np.newaxis, :]
-
-        radius = radius.to(u.rad)
-        xx = 2 * np.pi * radius * baselines
-
         # TODO: Check if a factor of 2*np.pi is required in front of the integration
-        vis = self.inc() * np.trapz(radius * brightness * j0(xx), radius).to(u.Jy)
-        vis_mod = self.compute_modulation(radius, brightness, baselines, baseline_angles)
-
-        if vis_mod.size != 0:
-            vis = vis.astype(OPTIONS.data.dtype.complex) + vis_mod.sum(-1)
-
+        vis = self.inc() * super().vis_func(
+            baselines, baseline_angles, wavelength, intensity_func=self.compute_intensity)
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas,
@@ -799,7 +721,7 @@ class TempGradient(Component):
         radial_profile = np.logical_and(radius >= self.rin(), radius <= self.rout())
         azimuthal_modulation = self.compute_azimuthal_modulation(xx, yy)
         azimuthal_modulation = azimuthal_modulation[np.newaxis, ...]
-        brightness = (self.compute_brightness(radius, wavelength).to(
+        brightness = (self.compute_intensity(radius, wavelength).to(
             u.erg / (u.cm**2 * u.rad**2 * u.s * u.Hz)) * pixel_size.to(u.rad) ** 2)
         return brightness.to(u.Jy).value * radial_profile * azimuthal_modulation
 

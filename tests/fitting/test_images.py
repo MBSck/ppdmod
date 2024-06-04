@@ -26,7 +26,7 @@ if __name__ == "__main__":
     test_dir = Path("results/pionier/test")
     test_dir.mkdir(parents=True, exist_ok=True)
 
-    ring = Ring(rin=2, inc=0.5, pa=33, asymmetric=True, c1=1, s1=1)
+    ring = Ring(rin=2, rout=2.5, inc=0.5, pa=33, has_outer_radius=True, thin=False, asymmetric=True, c1=0.5, s1=0.5)
 
     # gauss = Gaussian(hlr=4.59933786, inc=0.63, pa=68.75493541569878)
     # gauss_lor = GaussLorentzian(flor=1., hlr=4.59933786*0.63,
