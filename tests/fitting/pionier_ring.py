@@ -86,7 +86,6 @@ ks = Parameter(**STANDARD_PARAMETERS.exp)
 ks.value = compute_photometric_slope(wavelengths, 6500)
 ks.wavelength = wavelengths
 ks.free = False
-breakpoint()
 
 kc = Parameter(**STANDARD_PARAMETERS.exp)
 kc.value = -3.67
@@ -104,15 +103,15 @@ flor = Parameter(**STANDARD_PARAMETERS.fr)
 flor.value = 0.42
 flor.free = True
 
-a = Parameter(**STANDARD_PARAMETERS.a)
-a.value = 0.8275868534480233
+c1 = Parameter(**STANDARD_PARAMETERS.mod_amp)
+c1.value = -0.6
 
-phi = Parameter(**STANDARD_PARAMETERS.phi)
-phi.value = -133.53119928561418
+s1 = Parameter(**STANDARD_PARAMETERS.mod_amp)
+s1.value = -0.57
 
 params = {"fs": fs, "fc": fc, "flor": flor, "la": la,
           "lkr": lkr, "kc": kc, "inc": inc, "pa": pa,
-          "a": a, "phi": phi}
+          "c1": c1, "s1": s1}
 labels = [label for label in params]
 
 OPTIONS.model.constant_params = {"wl0": 1.68, "ks": ks}
