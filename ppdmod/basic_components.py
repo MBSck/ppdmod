@@ -295,12 +295,15 @@ class Ring(Component):
                     vis /= (self.rout() - self.rin()).to(u.rad)
                 else:
                     vis /= self.width().to(u.rad)
+            else:
+                vis *= self.inc()
 
             vis = vis[..., np.newaxis]
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas,
-                   pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
+                   pixel_size: u.mas, wavelength: u.um,
+                   **kwargs) -> np.ndarray:
         """Computes the image from a 2D grid.
 
         Parameters
@@ -320,8 +323,15 @@ class Ring(Component):
             dx = self.rout() - self.rin() if self.has_outer_radius else self.width()
 
         radial_profile = (radius >= self.rin()) & (radius <= (self.rin() + dx))
-        image = radial_profile / (2 * np.pi)
+        intensity_func = kwargs.pop("intensity_func", None)
+        if intensity_func is None:
+            intensity = 1 / (2 * np.pi)
+        else:
+            intensity = intensity_func(radius, wavelength).to(
+                u.erg / (u.cm**2 * u.rad**2 * u.s * u.Hz)) * pixel_size.to(u.rad) ** 2
+            intensity = intensity.to(u.Jy)
 
+        image = intensity * radial_profile
         if self.asymmetric:
             polar_angle = np.arctan2(xx, yy)
             image *= 1 + self.c1() * np.cos(polar_angle) + self.s1() * np.sin(polar_angle)
@@ -609,14 +619,6 @@ class TempGradient(Ring):
         shape = tuple(np.newaxis for _ in range(len(wavelength.shape) - 1))
         return opacity[(slice(None), *shape)]
 
-    def compute_azimuthal_modulation(self, xx: u.mas, yy: u.mas) -> u.one:
-        """Computes the azimuthal modulation."""
-        if not self.asymmetric:
-            return np.array([1])[:, np.newaxis]
-
-        azimuthal_modulation = 1 + self.a() * np.cos(np.arctan2(yy, xx) - self.phi())
-        return azimuthal_modulation.astype(OPTIONS.data.dtype.real)
-
     def compute_temperature(self, radius: u.mas) -> u.K:
         """Computes a 1D-temperature profile."""
         if self.r0.value != 0:
@@ -688,9 +690,7 @@ class TempGradient(Ring):
         flux = 2 * np.pi * self.inc() * np.trapz(radius * intensity, radius).to(u.Jy)
         return flux.value.reshape((flux.shape[0], 1)).astype(OPTIONS.data.dtype.real)
 
-    def vis_func(
-        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
-    ) -> np.ndarray:
+    def vis_func(self, *args) -> np.ndarray:
         """Computes the correlated fluxes via the hankel transformation.
 
         Parameters
@@ -710,20 +710,11 @@ class TempGradient(Ring):
             The correlated fluxes.
         """
         # TODO: Check if a factor of 2*np.pi is required in front of the integration
-        vis = self.inc() * super().vis_func(
-            baselines, baseline_angles, wavelength, intensity_func=self.compute_intensity)
-        return vis.value.astype(OPTIONS.data.dtype.complex)
+        return super().vis_func(*args, intensity_func=self.compute_intensity)
 
-    def image_func(self, xx: u.mas, yy: u.mas,
-                   pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
+    def image_func(self, *args) -> np.ndarray:
         """Computes the image."""
-        radius = np.hypot(xx, yy)
-        radial_profile = np.logical_and(radius >= self.rin(), radius <= self.rout())
-        azimuthal_modulation = self.compute_azimuthal_modulation(xx, yy)
-        azimuthal_modulation = azimuthal_modulation[np.newaxis, ...]
-        brightness = (self.compute_intensity(radius, wavelength).to(
-            u.erg / (u.cm**2 * u.rad**2 * u.s * u.Hz)) * pixel_size.to(u.rad) ** 2)
-        return brightness.to(u.Jy).value * radial_profile * azimuthal_modulation
+        return super().image_func(*args, itensity_func=self.compute_intensity).value
 
 
 class AsymmetricTempGradient(TempGradient):
