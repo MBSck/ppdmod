@@ -287,20 +287,25 @@ def set_data(fits_files: Optional[List[Path]] = None,
                 data.err = np.hstack((data.err, err))
 
             if key in ["vis", "vis2"]:
-                data.ucoord = np.concatenate(
+                if data.ucoord.size == 0:
+                    data.ucoord = np.insert(data_readout.ucoord, 0, 0, axis=1)
+                    data.vcoord = np.insert(data_readout.vcoord, 0, 0, axis=1)
+                else:
+                    data.ucoord = np.concatenate(
                         (data.ucoord, data_readout.ucoord), axis=-1)
-                data.vcoord = np.concatenate(
+                    data.vcoord = np.concatenate(
                         (data.vcoord, data_readout.vcoord), axis=-1)
 
             elif key == "t3":
                 if data.u123coord.size == 0:
-                    data.u123coord = data_readout.u123coord
-                    data.v123coord = data_readout.v123coord
+                    data.u123coord = np.insert(data_readout.u123coord, 0, 0, axis=1)
+                    data.v123coord = np.insert(data_readout.v123coord, 0, 0, axis=1)
                 else:
                     data.u123coord = np.hstack(
                             (data.u123coord, data_readout.u123coord))
                     data.v123coord = np.hstack(
                             (data.v123coord, data_readout.v123coord))
 
+    breakpoint()
     set_fit_weights(weights, fit_data)
     return OPTIONS.data
