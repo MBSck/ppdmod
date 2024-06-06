@@ -460,6 +460,8 @@ def test_ring_compute_vis(
     set_data(fit_data=["vis", "t3"])
 
 
+# TODO: Is factor of 2 pi required for all flux and visibilities?
+# Check if the flux is too high in this case
 @pytest.mark.parametrize(
         "inc, pos_angle, q, inner_temp, p, inner_sigma, cont_weight, c, s",
     [
@@ -510,8 +512,8 @@ def test_temp_gradient_fluxes(
 
     vis = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis
     flux = atg.compute_flux(wl)
-    central_frequency = compute_vis(atg.compute_complex_vis(vis.ucoord, vis.vcoord, wl))
-    breakpoint()
+    vis = compute_vis(atg.compute_complex_vis(vis.ucoord, vis.vcoord, wl))
+    assert np.isclose(flux.max(), vis.max())
 
     set_data(fit_data=["vis", "t3"])
 

@@ -296,7 +296,7 @@ class Ring(Component):
                 else:
                     vis /= self.width().to(u.rad)
             else:
-                vis *= self.inc()
+                vis *= 2 * np.pi * self.inc()
 
             vis = vis[..., np.newaxis]
         return vis.value.astype(OPTIONS.data.dtype.complex)
@@ -553,9 +553,9 @@ class TempGradient(Ring):
     dim : float
         The dimension [px].
     """
-
     name = "Temperature Gradient"
     shortname = "TempGrad"
+    asymmetric = False
     thin = False
     has_outer_radius = True
     optically_thick = False
@@ -604,13 +604,12 @@ class TempGradient(Ring):
 
     def get_opacity(self, wavelength: u.um) -> u.cm**2 / u.g:
         """Set the opacity from wavelength."""
+        kappa_abs = self.kappa_abs(wavelength)
         if self.continuum_contribution:
-            cont_weight = self.cont_weight()
-            opacity = (1 - cont_weight) * self.kappa_abs(
-                wavelength
-            ) + cont_weight * self.kappa_cont(wavelength)
+            cont_weight, kappa_cont = self.cont_weight(), self.kappa_cont(wavelength)
+            opacity = (1 - cont_weight) * kappa_abs + cont_weight * kappa_cont
         else:
-            opacity = self.kappa_abs(wavelength)
+            opacity = kappa_abs
 
         opacity = opacity.astype(OPTIONS.data.dtype.real)
         if opacity.size == 1:
@@ -622,7 +621,7 @@ class TempGradient(Ring):
     def compute_temperature(self, radius: u.mas) -> u.K:
         """Computes a 1D-temperature profile."""
         if self.r0.value != 0:
-            reference_radius = self.r0()
+            reference_radius = distance_to_angular(self.r0(), self.dist())
         else:
             reference_radius = distance_to_angular(
                 OPTIONS.model.reference_radius, self.dist()
@@ -633,21 +632,19 @@ class TempGradient(Ring):
                 np.sqrt(self.stellar_radius_angular / (2.0 * radius)) * self.eff_temp()
             )
         else:
-            temperature = self.inner_temp() * (radius / reference_radius) ** (-self.q())
+            temperature = self.inner_temp() * (radius / reference_radius) ** -self.q()
         return temperature.astype(OPTIONS.data.dtype.real)
 
     def compute_surface_density(self, radius: u.mas) -> u.one:
         """Computes a 1D-surface density profile."""
         if self.r0.value != 0:
-            reference_radius = self.r0()
+            reference_radius = distance_to_angular(self.r0(), self.dist())
         else:
             reference_radius = distance_to_angular(
                 OPTIONS.model.reference_radius, self.dist()
             )
 
-        surface_density = self.inner_sigma() * (radius / reference_radius) ** (
-            -self.p()
-        )
+        surface_density = self.inner_sigma() * (radius / reference_radius) ** -self.p()
         return surface_density.astype(OPTIONS.data.dtype.real)
 
     def compute_emissivity(self, radius: u.mas, wavelength: u.um) -> u.one:
@@ -685,8 +682,6 @@ class TempGradient(Ring):
         """Computes the total flux from the hankel transformation."""
         radius = self.compute_internal_grid()
         intensity = self.compute_intensity(radius, wavelength[:, np.newaxis])
-
-        # TODO: Check if a factor of 2*np.pi is required in front of the integration
         flux = 2 * np.pi * self.inc() * np.trapz(radius * intensity, radius).to(u.Jy)
         return flux.value.reshape((flux.shape[0], 1)).astype(OPTIONS.data.dtype.real)
 
@@ -714,7 +709,7 @@ class TempGradient(Ring):
 
     def image_func(self, *args) -> np.ndarray:
         """Computes the image."""
-        return super().image_func(*args, itensity_func=self.compute_intensity).value
+        return super().image_func(*args, intensity_func=self.compute_intensity)
 
 
 class AsymmetricTempGradient(TempGradient):
