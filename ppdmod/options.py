@@ -97,7 +97,7 @@ STANDARD_PARAMETERS = SimpleNamespace(
            "description": "The width",
            "unit": u.mas, "free": True},
     r0={"name": "r0", "shortname": "r0",
-        "value": 0, "unit": u.mas,
+        "value": 0, "unit": u.au,
         "description": "Reference radius", "free": True},
     rin={"name": "rin", "shortname": "rin",
          "value": 0, "unit": u.mas,

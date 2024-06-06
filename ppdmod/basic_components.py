@@ -290,6 +290,7 @@ class Ring(Component):
             vis = _vis_func(2 * np.pi * radius * baselines)
             vis = np.trapz(radius * intensity * vis, radius).to(u.Jy)
 
+            # TODO: Maybe move the factor of 2pi to the visibility where it belongs?
             if intensity_func is None:
                 if self.has_outer_radius:
                     vis /= (self.rout() - self.rin()).to(u.rad)

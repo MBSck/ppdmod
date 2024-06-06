@@ -167,6 +167,8 @@ def compute_observables(components: List[Component],
             complex_t3_model += components[index].compute_complex_vis(
                     u123coord, v123coord, wavelength)
 
+    # TODO: Check that the norm now works with the 0 frequency included.
+    # Remove that for the fitting itself
     if OPTIONS.model.output == "physical":
         complex_vis_model = complex_vis_model/flux_model.astype(complex)
 
