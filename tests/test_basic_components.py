@@ -92,248 +92,248 @@ def temp_gradient() -> TempGradient:
     return temp_grad
 
 
-# def test_point_source_init(point_source: PointSource) -> None:
-#     """Tests the point source's initialization."""
-#     assert "fr" in vars(point_source).keys()
-#
-#
-# def test_point_source_flux_func(point_source: PointSource, wavelength: u.um) -> None:
-#     """Tests the point source's initialization."""
-#     assert point_source.flux_func(wavelength).shape == (wavelength.size, 1)
-#
-#
-# def test_point_source_compute_vis(point_source: PointSource, wavelength: u.um) -> None:
-#     """tests the point source's compute_vis method."""
-#     vis = point_source.compute_complex_vis(READOUT.vis.ucoord, READOUT.vis.vcoord, wavelength)
-#     assert vis.shape == (wavelength.size, READOUT.vis.ucoord.size)
-#
-#
-# @pytest.mark.parametrize(
-#         "wl, dim", [(u.Quantity([wl], unit=u.um), dim)
-#                     for dim in DIMENSION for wl in [8, 9, 10, 11]*u.um])
-# def test_point_source_image(point_source: Star, dim: int, wl: u.um) -> None:
-#     """Tests the point source's image calculation."""
-#     image = point_source.compute_image(dim, 0.1*u.mas, wl)
-#     point_source_dir = Path("images/point_source")
-#     point_source_dir.mkdir(exist_ok=True, parents=True)
-#     centre = dim//2
-#     plt.imshow(image[0])
-#     plt.xlim(centre-20, centre+20)
-#     plt.ylim(centre-20, centre+20)
-#     plt.savefig(point_source_dir / f"dim{dim}_wl{wl.value}_point_source_image.pdf")
-#     plt.close()
-#     assert len(image[image != 0]) == 1
-#     assert image.shape == (1, dim, dim)
-#     assert np.max(image) < 0.1
-#
-#
-# def test_star_init(star: Star) -> None:
-#     """Tests the star's initialization."""
-#     assert "dist" in vars(star).keys()
-#     assert "eff_temp" in vars(star).keys()
-#     assert "eff_radius" in vars(star).keys()
-#
-#
-# def test_star_stellar_radius_angular(star: Star) -> None:
-#     """Tests the stellar radius conversion to angular radius."""
-#     assert star.stellar_radius_angular.unit == u.mas
-#
-#
-# # TODO: Include test for stellar flux with input file as well.
-# def test_star_flux(star: Star, wavelength: u.um) -> None:
-#     """Tests the calculation of the total flux."""
-#     assert star.flux_func(wavelength).shape == (wavelength.size, 1)
-#
-#
-# def test_star_compute_vis(star: Star, wavelength: u.um) -> None:
-#     """Tests the calculation of the total flux."""
-#     vis = star.compute_complex_vis(READOUT.vis.ucoord, READOUT.vis.vcoord, wavelength)
-#     assert vis.shape == (wavelength.size, READOUT.vis.ucoord.size)
-#
-#
-# # TODO: Make this for multiple wavelengths at the same time
-# @pytest.mark.parametrize(
-#         "wl, dim", [(u.Quantity([wl], unit=u.um), dim)
-#                     for dim in DIMENSION for wl in [8, 9, 10, 11]*u.um])
-# def test_star_image(star: Star, dim: int, wl: u.um) -> None:
-#     """Tests the star's image calculation."""
-#     image = star.compute_image(dim, 0.1*u.mas, wl)
-#
-#     star_dir = Path("images/star")
-#     star_dir.mkdir(exist_ok=True, parents=True)
-#
-#     centre = dim//2
-#
-#     plt.imshow(image[0])
-#     plt.xlim(centre-20, centre+20)
-#     plt.ylim(centre-20, centre+20)
-#     plt.savefig(star_dir / f"dim{dim}_wl{wl.value}_star_image.pdf")
-#     plt.close()
-#
-#     assert len(image[image != 0]) == 4
-#     assert image.shape == (1, dim, dim)
-#     assert np.max(image) < 0.1
-#
-#
-# def test_uniform_ring_init(ring: Ring) -> None:
-#     """Tests the ring's initialization."""
-#     assert "rin" in vars(ring).keys()
-#     assert "rout" in vars(ring).keys()
-#     assert "width" in vars(ring).keys()
-#
-#
-# @pytest.mark.parametrize(
-#         "fits_file, radius, wl, inc, pos_angle, width, c, s",
-#         [
-#          ("Iring.fits", 5, 10, None, None, None, None, None),
-#          ("Iring_inc.fits", 5, 10, 0.351, None, None, None, None),
-#          ("Iring_inc_rot.fits", 5, 10, 0.351, 33, None, None, None),
-#          ("ring.fits", 5, 10, None, None, 1, None, None),
-#          ("ring_inc.fits", 5, 10, 0.351, None, 1, None, None),
-#          ("ring_inc_rot.fits", 5, 10, 0.351, 33, 1, None, None),
-#          ("cm_Iring_rin2_inc1_pa0_c0_s0_extended.fits", 2, 3.5, None, None, None, None, None),
-#          ("cm_Iring_rin2_inc05_pa0_c0_s0_extended.fits", 2, 3.5, 0.5, None, None, None, None),
-#          ("cm_Iring_rin2_inc05_pa33_c0_s0_extended.fits", 2, 3.5, 0.5, 33, None, None, None),
-#          ("cm_Iring_rin2_inc05_pa33_c1_s0_extended.fits", 2, 3.5, 0.5, 33, None, 1, 0),
-#          ("cm_Iring_rin2_inc05_pa33_c0_s1_extended.fits", 2, 3.5, 0.5, 33, None, 0, 1),
-#          # TODO : Test this one again
-#          # ("cm_Iring_rin2_inc05_pa33_c1_s1_extended.fits", 2, 3.5, 0.5, 33, None, 1, 1),
-#          ("cm_Iring_rin2_inc05_pa33_c05_s05_extended.fits", 2, 3.5, 0.5, 33, None, 0.5, 0.5),
-#          ("cm_Iring_rin2_inc05_pa33_c05_s1_extended.fits", 2, 3.5, 0.5, 33, None, 0.5, 1),
-#          ("cm_Iring_rin2_inc05_pa33_c1_s05_extended.fits", 2, 3.5, 0.5, 33, None, 1, 0.5),
-#          ("cm_Iring_rin2_inc1_pa0_c0_s0_w1_extended.fits", 2, 3.5, 1, None, 1, None, None),
-#          ("cm_Iring_rin2_inc1_pa0_c0_s0_w05_extended.fits", 2, 3.5, 1, None, 0.5, None, None),
-#          ("cm_Iring_rin2_inc05_pa0_c0_s0_w05_extended.fits", 2, 3.5, 0.5, None, 0.5, None, None),
-#          ("cm_Iring_rin2_inc05_pa33_c0_s0_w05_extended.fits", 2, 3.5, 0.5, 33, 0.5, None, None),
-#          ("cm_Iring_rin2_inc05_pa33_c1_s0_w05_extended.fits", 2, 3.5, 0.5, 33, 0.5, 1, 0),
-#          ("cm_Iring_rin2_inc05_pa33_c0_s1_w05_extended.fits", 2, 3.5, 0.5, 33, 0.5, 0, 1),
-#          ("cm_Iring_rin2_inc05_pa33_c05_s05_w05_extended.fits", 2, 3.5, 0.5, 33, 0.5, 0.5, 0.5),
-#          ("cm_Iring_rin2_rout25_inc05_pa33_c05_s05_extended.fits", 2, 3.5, 0.5, 33, 0.5, 0.5, 0.5),
-#          ])
-# def test_ring_compute_vis(
-#         fits_file: Path,
-#         radius: u.mas, wl: u.um, inc: float,
-#         pos_angle: u.deg, width: u.mas,
-#         c: float, s: float) -> None:
-#     """Tests the calculation of uniform disk's visibilities."""
-#     wavelength = [wl]*u.um
-#     fits_file = Path("data/aspro") / fits_file
-#     data = set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
-#
-#     thin = False if width is not None else True
-#     asymmetric = True if c is not None or s is not None else False
-#     c, s = c if c is not None else 0, s if s is not None else 0
-#     inc = inc if inc is not None else 1
-#     pa = pos_angle if pos_angle is not None else 0
-#     if "rout" not in fits_file.name:
-#         ring = Ring(rin=radius, inc=inc, pa=pa, thin=thin,
-#                     width=width, asymmetric=asymmetric, c1=c, s1=s)
-#     else:
-#         ring = Ring(rin=radius, rout=radius+width, inc=inc,
-#                     pa=pa, has_outer_radius=True, thin=thin,
-#                     asymmetric=asymmetric, c1=c, s1=s)
-#     vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
-#     vis_ring = compute_vis(ring.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
-#     t3_ring = compute_t3(ring.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
-#
-#     atol = 1e-2 if "cm" not in fits_file.name else 1e-1
-#     assert vis_ring.shape == (wavelength.size, vis.ucoord.shape[1])
-#     assert np.allclose(vis.value, vis_ring, atol=atol)
-#
-#     if "cm" not in fits_file.name:
-#         assert t3_ring.shape == (wavelength.size, t3.u123coord.shape[1])
-#         assert np.allclose(t3.value, t3_ring, atol=atol)
-#     else:
-#         # NOTE: The differences here are larger due to numerical inaccuracies in ASPRO?
-#         # Values for positional angle and inclination are ~ 153 degrees (before that < 45)
-#         # Sometimes even ~ 160
-#         diff = np.ptp(np.hstack((t3.value[0][:, np.newaxis], t3_ring[0][:, np.newaxis])), axis=1)
-#         assert diff.max() < 170
-#
-#     set_data(fit_data=["vis", "t3"])
-#
-#
-# def test_uniform_disk_init(uniform_disk: UniformDisk) -> None:
-#     """Tests the uniform disk's initialization."""
-#     assert "diam" in vars(uniform_disk).keys()
-#
-#
-# @pytest.mark.parametrize(
-#         "fits_file, compression, pos_angle",
-#         [("ud.fits", None, None),
-#          ("ud_inc.fits", 0.351*u.one, None),
-#          ("ud_inc_rot.fits", 0.351*u.one, 33*u.deg)])
-# def test_uniform_disk_compute_vis(
-#         uniform_disk: UniformDisk, fits_file: Path,
-#         compression: float, pos_angle: u.deg) -> None:
-#     """Tests the calculation of uniform disk's visibilities."""
-#     wavelength = [10]*u.um
-#     fits_file = Path("data/aspro") / fits_file
-#     data = set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
-#     vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
-#
-#     uniform_disk.diam.value = 20 * u.mas
-#     if compression is not None:
-#         uniform_disk.elliptic = True
-#
-#     uniform_disk.inc.value = compression if compression is not None else 1
-#     uniform_disk.pa.value = pos_angle if pos_angle is not None else 0
-#
-#     vis_ud = compute_vis(uniform_disk.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
-#     t3_ud = compute_t3(uniform_disk.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
-#
-#     assert vis_ud.shape == (wavelength.size, vis.ucoord.shape[1])
-#     assert np.allclose(vis.value, vis_ud, atol=1e-2)
-#
-#     assert t3_ud.shape == (wavelength.size, t3.u123coord.shape[1])
-#     assert np.allclose(t3.value, t3_ud, atol=1e-2)
-#
-#     set_data(fit_data=["vis", "t3"])
-#
-#
-# def test_uniform_disk_image_func() -> None:
-#     """Tests the calculation of the uniform disk's image function."""
-#     ...
-#
-#
-# def test_gaussian_init(gaussian: Gaussian) -> None:
-#     """Tests the gaussian's initialization."""
-#     assert "hlr" in vars(gaussian).keys()
-#
-#
-# @pytest.mark.parametrize(
-#         "fits_file, compression, pos_angle",
-#         [("gaussian.fits", None, None),
-#          ("gaussian_inc.fits", 0.351*u.one, None),
-#          ("gaussian_inc_rot.fits", 0.351*u.one, 33*u.deg)])
-# def test_gaussian_compute_vis(
-#         gaussian: Gaussian, fits_file: Path,
-#         compression: float, pos_angle: u.deg) -> None:
-#     """Tests the calculation of the total flux."""
-#     wavelength = [10]*u.um
-#     fits_file = Path("data/aspro") / fits_file
-#     data = set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
-#
-#     gaussian.hlr.value = 10 * u.mas / 2
-#     vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
-#     if compression is not None:
-#         gaussian.elliptic = True
-#
-#     gaussian.inc.value = compression if compression is not None else 1
-#     gaussian.pa.value = pos_angle if pos_angle is not None else 0
-#
-#     vis_gauss = compute_vis(gaussian.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
-#     t3_gauss = compute_t3(gaussian.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
-#
-#     assert vis_gauss.shape == (wavelength.size, vis.ucoord.shape[1])
-#     assert np.allclose(vis.value, vis_gauss, atol=1e-2)
-#
-#     assert t3_gauss.shape == (wavelength.size, t3.u123coord.shape[1])
-#     assert np.allclose(t3.value, t3_gauss, atol=1e-2)
-#
-#     set_data(fit_data=["vis", "t3"])
-#
-#
+def test_point_source_init(point_source: PointSource) -> None:
+    """Tests the point source's initialization."""
+    assert "fr" in vars(point_source).keys()
+
+
+def test_point_source_flux_func(point_source: PointSource, wavelength: u.um) -> None:
+    """Tests the point source's initialization."""
+    assert point_source.flux_func(wavelength).shape == (wavelength.size, 1)
+
+
+def test_point_source_compute_vis(point_source: PointSource, wavelength: u.um) -> None:
+    """tests the point source's compute_vis method."""
+    vis = point_source.compute_complex_vis(READOUT.vis.ucoord, READOUT.vis.vcoord, wavelength)
+    assert vis.shape == (wavelength.size, READOUT.vis.ucoord.size)
+
+
+@pytest.mark.parametrize(
+        "wl, dim", [(u.Quantity([wl], unit=u.um), dim)
+                    for dim in DIMENSION for wl in [8, 9, 10, 11]*u.um])
+def test_point_source_image(point_source: Star, dim: int, wl: u.um) -> None:
+    """Tests the point source's image calculation."""
+    image = point_source.compute_image(dim, 0.1*u.mas, wl)
+    point_source_dir = Path("images/point_source")
+    point_source_dir.mkdir(exist_ok=True, parents=True)
+    centre = dim//2
+    plt.imshow(image[0])
+    plt.xlim(centre-20, centre+20)
+    plt.ylim(centre-20, centre+20)
+    plt.savefig(point_source_dir / f"dim{dim}_wl{wl.value}_point_source_image.pdf")
+    plt.close()
+    assert len(image[image != 0]) == 1
+    assert image.shape == (1, dim, dim)
+    assert np.max(image) < 0.1
+
+
+def test_star_init(star: Star) -> None:
+    """Tests the star's initialization."""
+    assert "dist" in vars(star).keys()
+    assert "eff_temp" in vars(star).keys()
+    assert "eff_radius" in vars(star).keys()
+
+
+def test_star_stellar_radius_angular(star: Star) -> None:
+    """Tests the stellar radius conversion to angular radius."""
+    assert star.stellar_radius_angular.unit == u.mas
+
+
+# TODO: Include test for stellar flux with input file as well.
+def test_star_flux(star: Star, wavelength: u.um) -> None:
+    """Tests the calculation of the total flux."""
+    assert star.flux_func(wavelength).shape == (wavelength.size, 1)
+
+
+def test_star_compute_vis(star: Star, wavelength: u.um) -> None:
+    """Tests the calculation of the total flux."""
+    vis = star.compute_complex_vis(READOUT.vis.ucoord, READOUT.vis.vcoord, wavelength)
+    assert vis.shape == (wavelength.size, READOUT.vis.ucoord.size)
+
+
+# TODO: Make this for multiple wavelengths at the same time
+@pytest.mark.parametrize(
+        "wl, dim", [(u.Quantity([wl], unit=u.um), dim)
+                    for dim in DIMENSION for wl in [8, 9, 10, 11]*u.um])
+def test_star_image(star: Star, dim: int, wl: u.um) -> None:
+    """Tests the star's image calculation."""
+    image = star.compute_image(dim, 0.1*u.mas, wl)
+
+    star_dir = Path("images/star")
+    star_dir.mkdir(exist_ok=True, parents=True)
+
+    centre = dim//2
+
+    plt.imshow(image[0])
+    plt.xlim(centre-20, centre+20)
+    plt.ylim(centre-20, centre+20)
+    plt.savefig(star_dir / f"dim{dim}_wl{wl.value}_star_image.pdf")
+    plt.close()
+
+    assert len(image[image != 0]) == 4
+    assert image.shape == (1, dim, dim)
+    assert np.max(image) < 0.1
+
+
+def test_uniform_ring_init(ring: Ring) -> None:
+    """Tests the ring's initialization."""
+    assert "rin" in vars(ring).keys()
+    assert "rout" in vars(ring).keys()
+    assert "width" in vars(ring).keys()
+
+
+@pytest.mark.parametrize(
+        "fits_file, radius, wl, inc, pos_angle, width, c, s",
+        [
+         ("Iring.fits", 5, 10, None, None, None, None, None),
+         ("Iring_inc.fits", 5, 10, 0.351, None, None, None, None),
+         ("Iring_inc_rot.fits", 5, 10, 0.351, 33, None, None, None),
+         ("ring.fits", 5, 10, None, None, 1, None, None),
+         ("ring_inc.fits", 5, 10, 0.351, None, 1, None, None),
+         ("ring_inc_rot.fits", 5, 10, 0.351, 33, 1, None, None),
+         ("cm_Iring_rin2_inc1_pa0_c0_s0_extended.fits", 2, 3.5, None, None, None, None, None),
+         ("cm_Iring_rin2_inc05_pa0_c0_s0_extended.fits", 2, 3.5, 0.5, None, None, None, None),
+         ("cm_Iring_rin2_inc05_pa33_c0_s0_extended.fits", 2, 3.5, 0.5, 33, None, None, None),
+         ("cm_Iring_rin2_inc05_pa33_c1_s0_extended.fits", 2, 3.5, 0.5, 33, None, 1, 0),
+         ("cm_Iring_rin2_inc05_pa33_c0_s1_extended.fits", 2, 3.5, 0.5, 33, None, 0, 1),
+         # TODO : Test this one again
+         # ("cm_Iring_rin2_inc05_pa33_c1_s1_extended.fits", 2, 3.5, 0.5, 33, None, 1, 1),
+         ("cm_Iring_rin2_inc05_pa33_c05_s05_extended.fits", 2, 3.5, 0.5, 33, None, 0.5, 0.5),
+         ("cm_Iring_rin2_inc05_pa33_c05_s1_extended.fits", 2, 3.5, 0.5, 33, None, 0.5, 1),
+         ("cm_Iring_rin2_inc05_pa33_c1_s05_extended.fits", 2, 3.5, 0.5, 33, None, 1, 0.5),
+         ("cm_Iring_rin2_inc1_pa0_c0_s0_w1_extended.fits", 2, 3.5, 1, None, 1, None, None),
+         ("cm_Iring_rin2_inc1_pa0_c0_s0_w05_extended.fits", 2, 3.5, 1, None, 0.5, None, None),
+         ("cm_Iring_rin2_inc05_pa0_c0_s0_w05_extended.fits", 2, 3.5, 0.5, None, 0.5, None, None),
+         ("cm_Iring_rin2_inc05_pa33_c0_s0_w05_extended.fits", 2, 3.5, 0.5, 33, 0.5, None, None),
+         ("cm_Iring_rin2_inc05_pa33_c1_s0_w05_extended.fits", 2, 3.5, 0.5, 33, 0.5, 1, 0),
+         ("cm_Iring_rin2_inc05_pa33_c0_s1_w05_extended.fits", 2, 3.5, 0.5, 33, 0.5, 0, 1),
+         ("cm_Iring_rin2_inc05_pa33_c05_s05_w05_extended.fits", 2, 3.5, 0.5, 33, 0.5, 0.5, 0.5),
+         ("cm_Iring_rin2_rout25_inc05_pa33_c05_s05_extended.fits", 2, 3.5, 0.5, 33, 0.5, 0.5, 0.5),
+         ])
+def test_ring_compute_vis(
+        fits_file: Path,
+        radius: u.mas, wl: u.um, inc: float,
+        pos_angle: u.deg, width: u.mas,
+        c: float, s: float) -> None:
+    """Tests the calculation of the ring's visibilities."""
+    wavelength = [wl]*u.um
+    fits_file = Path("data/aspro") / fits_file
+    data = set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
+
+    thin = False if width is not None else True
+    asymmetric = True if c is not None or s is not None else False
+    c, s = c if c is not None else 0, s if s is not None else 0
+    inc = inc if inc is not None else 1
+    pa = pos_angle if pos_angle is not None else 0
+    if "rout" not in fits_file.name:
+        ring = Ring(rin=radius, inc=inc, pa=pa, thin=thin,
+                    width=width, asymmetric=asymmetric, c1=c, s1=s)
+    else:
+        ring = Ring(rin=radius, rout=radius+width, inc=inc,
+                    pa=pa, has_outer_radius=True, thin=thin,
+                    asymmetric=asymmetric, c1=c, s1=s)
+    vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
+    vis_ring = compute_vis(ring.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
+    t3_ring = compute_t3(ring.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
+
+    atol = 1e-2 if "cm" not in fits_file.name else 1e-1
+    assert vis_ring.shape == (wavelength.size, vis.ucoord.shape[1])
+    assert np.allclose(vis.value, vis_ring, atol=atol)
+
+    if "cm" not in fits_file.name:
+        assert t3_ring.shape == (wavelength.size, t3.u123coord.shape[1])
+        assert np.allclose(t3.value, t3_ring, atol=atol)
+    else:
+        # NOTE: The differences here are larger due to numerical inaccuracies in ASPRO?
+        # Values for positional angle and inclination are ~ 153 degrees (before that < 45)
+        # Sometimes even ~ 160
+        diff = np.ptp(np.hstack((t3.value[0][:, np.newaxis], t3_ring[0][:, np.newaxis])), axis=1)
+        assert diff.max() < 170
+
+    set_data(fit_data=["vis", "t3"])
+
+
+def test_uniform_disk_init(uniform_disk: UniformDisk) -> None:
+    """Tests the uniform disk's initialization."""
+    assert "diam" in vars(uniform_disk).keys()
+
+
+@pytest.mark.parametrize(
+        "fits_file, compression, pos_angle",
+        [("ud.fits", None, None),
+         ("ud_inc.fits", 0.351*u.one, None),
+         ("ud_inc_rot.fits", 0.351*u.one, 33*u.deg)])
+def test_uniform_disk_compute_vis(
+        uniform_disk: UniformDisk, fits_file: Path,
+        compression: float, pos_angle: u.deg) -> None:
+    """Tests the calculation of uniform disk's visibilities."""
+    wavelength = [10]*u.um
+    fits_file = Path("data/aspro") / fits_file
+    data = set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
+    vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
+
+    uniform_disk.diam.value = 20 * u.mas
+    if compression is not None:
+        uniform_disk.elliptic = True
+
+    uniform_disk.inc.value = compression if compression is not None else 1
+    uniform_disk.pa.value = pos_angle if pos_angle is not None else 0
+
+    vis_ud = compute_vis(uniform_disk.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
+    t3_ud = compute_t3(uniform_disk.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
+
+    assert vis_ud.shape == (wavelength.size, vis.ucoord.shape[1])
+    assert np.allclose(vis.value, vis_ud[:, 1:], atol=1e-2)
+
+    assert t3_ud.shape == (wavelength.size, t3.u123coord.shape[1])
+    assert np.allclose(t3.value, t3_ud[:, 1:], atol=1e-2)
+
+    set_data(fit_data=["vis", "t3"])
+
+
+def test_uniform_disk_image_func() -> None:
+    """Tests the calculation of the uniform disk's image function."""
+    ...
+
+
+def test_gaussian_init(gaussian: Gaussian) -> None:
+    """Tests the gaussian's initialization."""
+    assert "hlr" in vars(gaussian).keys()
+
+
+@pytest.mark.parametrize(
+        "fits_file, compression, pos_angle",
+        [("gaussian.fits", None, None),
+         ("gaussian_inc.fits", 0.351*u.one, None),
+         ("gaussian_inc_rot.fits", 0.351*u.one, 33*u.deg)])
+def test_gaussian_compute_vis(
+        gaussian: Gaussian, fits_file: Path,
+        compression: float, pos_angle: u.deg) -> None:
+    """Tests the calculation of the total flux."""
+    wavelength = [10]*u.um
+    fits_file = Path("data/aspro") / fits_file
+    data = set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
+
+    gaussian.hlr.value = 10 * u.mas / 2
+    vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
+    if compression is not None:
+        gaussian.elliptic = True
+
+    gaussian.inc.value = compression if compression is not None else 1
+    gaussian.pa.value = pos_angle if pos_angle is not None else 0
+
+    vis_gauss = compute_vis(gaussian.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
+    t3_gauss = compute_t3(gaussian.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
+
+    assert vis_gauss.shape == (wavelength.size, vis.ucoord.shape[1])
+    assert np.allclose(vis.value, vis_gauss[:, 1:], atol=1e-2)
+
+    assert t3_gauss.shape == (wavelength.size, t3.u123coord.shape[1])
+    assert np.allclose(t3.value, t3_gauss[:, 1:], atol=1e-2)
+
+    set_data(fit_data=["vis", "t3"])
+
+
 # @pytest.mark.parametrize(
 #         "compression, pos_angle",
 #         [(None, None)])
@@ -347,20 +347,20 @@ def temp_gradient() -> TempGradient:
 #     assert image.unit == u.one
 #
 #     gaussian.elliptic = False
-#
-#
-# @pytest.mark.parametrize("grid_type", ["linear", "logarithmic"])
-# def test_temp_gradient_compute_grid(
-#         temp_gradient: TempGradient, grid_type: str) -> None:
-#     """Tests the hankel component's grid calculation."""
-#     OPTIONS.model.gridtype = grid_type
-#     radius = temp_gradient.compute_internal_grid(512)
-#     assert radius.unit == u.mas
-#     assert radius.shape == (512, )
-#     assert radius[0].value == temp_gradient.rin.value\
-#         and radius[-1].value == temp_gradient.rout.value
-#
-#     OPTIONS.model.gridtype = "logarithmic"
+
+
+@pytest.mark.parametrize("grid_type", ["linear", "logarithmic"])
+def test_temp_gradient_compute_grid(
+        temp_gradient: TempGradient, grid_type: str) -> None:
+    """Tests the hankel component's grid calculation."""
+    OPTIONS.model.gridtype = grid_type
+    radius = temp_gradient.compute_internal_grid()
+    assert radius.unit == u.mas
+    assert radius.shape == (temp_gradient.dim(),)
+    assert radius[0].value == temp_gradient.rin.value\
+        and radius[-1].value == temp_gradient.rout.value
+
+    OPTIONS.model.gridtype = "logarithmic"
 
 
 def test_temp_gradient_flux(
@@ -370,25 +370,23 @@ def test_temp_gradient_flux(
     assert flux.shape == (wavelength.size, 1)
 
 
-# TODO: Write tests for the star as well
-# TODO: Write test for the norming in case of the visibilities
 @pytest.mark.parametrize(
         "fits_file, component, rin, rout, inc, pos_angle, q, inner_temp, p, inner_sigma, cont_weight, r0, c, s",
         [
-         # ("cm_AsymTempGrad_rin15_rout2_inc1_pa0_q05_intemp1500_p05_insigma1e-4_cw04_r01_c0_s0_large.fits",
-         #  AsymmetricTempGradient, 1.5, 2, 1, None, 0.5, 1500, 0.5, 1e-4, 0.4, 1, None, None),
-         # ("cm_AsymTempGrad_rin15_rout2_inc1_pa0_q07_intemp1500_p03_insigma1e-4_cw06_r01_c0_s0_large.fits",
-         #  AsymmetricTempGradient, 1.5, 2, 1, None, 0.7, 1500, 0.3, 1e-4, 0.6, 1, None, None),
-         # ("cm_AsymGreyBody_rin15_rout2_inc1_pa0_q0_intemp0_p03_insigma1e-4_cw06_r01_c0_s0_large.fits",
-         #  AsymmetricGreyBody, 1.5, 2, 1, None, 0, 0, 0.3, 1e-4, 0.6, 1, None, None),
-         # ("cm_AsymTempGrad_rin15_rout2_inc05_pa0_q05_intemp1500_p05_insigma1e-4_cw04_r01_c0_s0_large.fits",
-         #  AsymmetricTempGradient, 1.5, 2, 0.5, 0, 0.5, 1500, 0.5, 1e-4, 0.4, 1, None, None),
-         # ("cm_AsymTempGrad_rin15_rout2_inc05_pa33_q05_intemp1500_p05_insigma1e-4_cw04_r01_c0_s0_large.fits",
-         #  AsymmetricTempGradient, 1.5, 2, 0.5, 33, 0.5, 1500, 0.5, 1e-4, 0.4, 1, None, None),
+         ("cm_AsymTempGrad_rin15_rout2_inc1_pa0_q05_intemp1500_p05_insigma1e-4_cw04_r01_c0_s0_large.fits",
+          AsymmetricTempGradient, 1.5, 2, 1, None, 0.5, 1500, 0.5, 1e-4, 0.4, 1, None, None),
+         ("cm_AsymTempGrad_rin15_rout2_inc1_pa0_q07_intemp1500_p03_insigma1e-4_cw06_r01_c0_s0_large.fits",
+          AsymmetricTempGradient, 1.5, 2, 1, None, 0.7, 1500, 0.3, 1e-4, 0.6, 1, None, None),
+         ("cm_AsymGreyBody_rin15_rout2_inc1_pa0_q0_intemp0_p03_insigma1e-4_cw06_r01_c0_s0_large.fits",
+          AsymmetricGreyBody, 1.5, 2, 1, None, 0, 0, 0.3, 1e-4, 0.6, 1, None, None),
+         ("cm_AsymTempGrad_rin15_rout2_inc05_pa0_q05_intemp1500_p05_insigma1e-4_cw04_r01_c0_s0_large.fits",
+          AsymmetricTempGradient, 1.5, 2, 0.5, 0, 0.5, 1500, 0.5, 1e-4, 0.4, 1, None, None),
+         ("cm_AsymTempGrad_rin15_rout2_inc05_pa33_q05_intemp1500_p05_insigma1e-4_cw04_r01_c0_s0_large.fits",
+          AsymmetricTempGradient, 1.5, 2, 0.5, 33, 0.5, 1500, 0.5, 1e-4, 0.4, 1, None, None),
          ("cm_AsymTempGrad_rin15_rout2_inc05_pa33_q05_intemp1500_p05_insigma1e-4_cw04_r01_c05_s05_large.fits",
           AsymmetricTempGradient, 1.5, 2, 0.5, 33, 0.5, 1500, 0.5, 1e-4, 0.4, 1, 0.5, 0.5),
-         # ("cm_Star_AsymTempGrad_rin15_rout2_inc05_pa33_q05_intemp1500_p05_insigma1e-4_cw04_r01_c05_s05_large.fits",
-         #  AsymmetricTempGradient, 1.5, 2, 0.5, 33, 0.5, 1500, 0.5, 1e-4, 0.4, 1, 0.5, 0.5),
+         ("cm_Star_AsymTempGrad_rin15_rout2_inc05_pa33_q05_intemp1500_p05_insigma1e-4_cw04_r01_c05_s05_large.fits",
+          AsymmetricTempGradient, 1.5, 2, 0.5, 33, 0.5, 1500, 0.5, 1e-4, 0.4, 1, 0.5, 0.5),
 ])
 def test_ring_compute_vis(
         fits_file: Path,
@@ -399,7 +397,7 @@ def test_ring_compute_vis(
         p: float, inner_sigma: float,
         cont_weight: float, r0: float,
         c: float, s: float) -> None:
-    """Tests the calculation of uniform disk's visibilities."""
+    """Tests the calculation of the ring's visibilities."""
     data_dir, wl = Path("data"), 3
     weights = np.array([73.2, 8.6, 0.6, 14.2, 2.4, 1.0]) / 100
     names = ["pyroxene", "forsterite", "enstatite", "silica"]
@@ -460,8 +458,6 @@ def test_ring_compute_vis(
     set_data(fit_data=["vis", "t3"])
 
 
-# TODO: Is factor of 2 pi required for all flux and visibilities?
-# Check if the flux is too high in this case
 @pytest.mark.parametrize(
         "inc, pos_angle, q, inner_temp, p, inner_sigma, cont_weight, c, s",
     [
@@ -481,7 +477,7 @@ def test_temp_gradient_fluxes(
         p: float, inner_sigma: float,
         cont_weight: float,
         c: float, s: float) -> None:
-    """Tests the calculation of uniform disk's visibilities."""
+    """Tests the calculation of temperature gradient's visibilities."""
     data_dir, wl = Path("data"), 3
     weights = np.array([73.2, 8.6, 0.6, 14.2, 2.4, 1.0]) / 100
     names = ["pyroxene", "forsterite", "enstatite", "silica"]
