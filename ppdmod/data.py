@@ -306,6 +306,5 @@ def set_data(fits_files: Optional[List[Path]] = None,
                     data.v123coord = np.hstack(
                             (data.v123coord, data_readout.v123coord))
 
-    breakpoint()
     set_fit_weights(weights, fit_data)
     return OPTIONS.data

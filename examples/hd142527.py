@@ -34,9 +34,8 @@ wavelengths = get_all_wavelengths()
 
 # TODO: Check flux values -> gave nan for only N-band
 wl_flux, flux = utils.load_data(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt")
-flux_interpn = np.interp(wavelengths.value, wl_flux, flux)
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
-star_flux.value, star_flux.wavelength = flux_interpn, wavelengths
+star_flux.wavelength, star_flux.value = wl_flux, flux
 
 # wl_flux_ratio, flux_ratio = np.load(DATA_DIR / "flux" / "flux_ratio_inner_disk_hd142666.npy")
 # flux_ratio_interpn = np.interp(wavelengths.value, wl_flux_ratio, flux_ratio)

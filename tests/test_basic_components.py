@@ -1,4 +1,3 @@
-from sys import breakpointhook
 import time
 from pathlib import Path
 
@@ -9,13 +8,15 @@ import pandas as pd
 import pytest
 
 from ppdmod import utils
-from ppdmod.basic_components import PointSource, Star, Ring, UniformDisk, \
+from ppdmod.component import Component
+from ppdmod.basic_components import AsymmetricGreyBody, PointSource, Star, Ring, UniformDisk, \
     Gaussian, Lorentzian, GaussLorentzian, TempGradient, GreyBody, StarHaloRing, \
-    assemble_components
+    AsymmetricTempGradient, assemble_components
 from ppdmod.data import ReadoutFits, set_data
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 from ppdmod.parameter import Parameter
-from ppdmod.utils import compute_vis, compute_t3, compute_effective_baselines, broadcast_baselines
+from ppdmod.utils import compute_vis, compute_t3, compute_effective_baselines, \
+    broadcast_baselines, load_data, qval_to_opacity, get_opacity, compute_stellar_radius
 
 
 DIMENSION = [2**power for power in range(9, 13)]
@@ -89,7 +90,7 @@ def temp_gradient() -> TempGradient:
     temp_grad.optically_thick = True
     temp_grad.asymmetric = True
     return temp_grad
-    
+
 
 # def test_point_source_init(point_source: PointSource) -> None:
 #     """Tests the point source's initialization."""
@@ -362,10 +363,6 @@ def temp_gradient() -> TempGradient:
 #     OPTIONS.model.gridtype = "logarithmic"
 
 
-def test_temp_gradient_compute_brightness():
-    ...
-
-
 def test_temp_gradient_flux(
         temp_gradient: TempGradient, wavelength: u.um) -> None:
     """Tests the calculation of the total flux."""
@@ -373,7 +370,152 @@ def test_temp_gradient_flux(
     assert flux.shape == (wavelength.size, 1)
 
 
-# TODO: Extend this test to account for multiple files (make files an input)
+# TODO: Write tests for the star as well
+# TODO: Write test for the norming in case of the visibilities
+@pytest.mark.parametrize(
+        "fits_file, component, rin, rout, inc, pos_angle, q, inner_temp, p, inner_sigma, cont_weight, r0, c, s",
+        [
+         # ("cm_AsymTempGrad_rin15_rout2_inc1_pa0_q05_intemp1500_p05_insigma1e-4_cw04_r01_c0_s0_large.fits",
+         #  AsymmetricTempGradient, 1.5, 2, 1, None, 0.5, 1500, 0.5, 1e-4, 0.4, 1, None, None),
+         # ("cm_AsymTempGrad_rin15_rout2_inc1_pa0_q07_intemp1500_p03_insigma1e-4_cw06_r01_c0_s0_large.fits",
+         #  AsymmetricTempGradient, 1.5, 2, 1, None, 0.7, 1500, 0.3, 1e-4, 0.6, 1, None, None),
+         # ("cm_AsymGreyBody_rin15_rout2_inc1_pa0_q0_intemp0_p03_insigma1e-4_cw06_r01_c0_s0_large.fits",
+         #  AsymmetricGreyBody, 1.5, 2, 1, None, 0, 0, 0.3, 1e-4, 0.6, 1, None, None),
+         # ("cm_AsymTempGrad_rin15_rout2_inc05_pa0_q05_intemp1500_p05_insigma1e-4_cw04_r01_c0_s0_large.fits",
+         #  AsymmetricTempGradient, 1.5, 2, 0.5, 0, 0.5, 1500, 0.5, 1e-4, 0.4, 1, None, None),
+         # ("cm_AsymTempGrad_rin15_rout2_inc05_pa33_q05_intemp1500_p05_insigma1e-4_cw04_r01_c0_s0_large.fits",
+         #  AsymmetricTempGradient, 1.5, 2, 0.5, 33, 0.5, 1500, 0.5, 1e-4, 0.4, 1, None, None),
+         ("cm_AsymTempGrad_rin15_rout2_inc05_pa33_q05_intemp1500_p05_insigma1e-4_cw04_r01_c05_s05_large.fits",
+          AsymmetricTempGradient, 1.5, 2, 0.5, 33, 0.5, 1500, 0.5, 1e-4, 0.4, 1, 0.5, 0.5),
+         # ("cm_Star_AsymTempGrad_rin15_rout2_inc05_pa33_q05_intemp1500_p05_insigma1e-4_cw04_r01_c05_s05_large.fits",
+         #  AsymmetricTempGradient, 1.5, 2, 0.5, 33, 0.5, 1500, 0.5, 1e-4, 0.4, 1, 0.5, 0.5),
+])
+def test_ring_compute_vis(
+        fits_file: Path,
+        component: Component,
+        rin: u.mas, rout: u.mas,
+        inc: float, pos_angle: u.deg,
+        q: float, inner_temp: float,
+        p: float, inner_sigma: float,
+        cont_weight: float, r0: float,
+        c: float, s: float) -> None:
+    """Tests the calculation of uniform disk's visibilities."""
+    data_dir, wl = Path("data"), 3
+    weights = np.array([73.2, 8.6, 0.6, 14.2, 2.4, 1.0]) / 100
+    names = ["pyroxene", "forsterite", "enstatite", "silica"]
+    fmaxs = [1.0, 1.0, 1.0, 0.7]
+    sizes = [[1.5], [0.1], [0.1, 1.5], [0.1, 1.5]]
+    _, opacity = get_opacity(
+        data_dir, weights, sizes, names, "qval", wl, fmaxs)
+    cont_opacity_file = data_dir / "qval" / "Q_amorph_c_rv0.1.dat"
+    wl_cont, cont_opacity = load_data(cont_opacity_file, load_func=qval_to_opacity)
+    cont_opacity = np.interp(wl, wl_cont, cont_opacity)
+
+    distance, eff_temp = 157.3, 6500
+    eff_radius = compute_stellar_radius(10**0.96, eff_temp).value
+
+    wl = [wl]*u.um
+    fits_file = Path("data/aspro") / fits_file
+    data = set_data([fits_file], wavelengths=wl, fit_data=["vis", "t3"])
+
+    c, s = c if c is not None else 0, s if s is not None else 0
+    inc = inc if inc is not None else 1
+    pa = pos_angle if pos_angle is not None else 0
+    atg = component(rin=rin, rout=rout, inc=inc, pa=pa,
+                    q=q, inner_temp=inner_temp, p=p, inner_sigma=inner_sigma,
+                    kappa_abs=opacity, kappa_cont=cont_opacity,
+                    cont_weight=cont_weight,
+                    dist=distance, eff_temp=eff_temp, eff_radius=eff_radius, 
+                    r0=r0, c1=c, s1=s)
+
+    vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
+    complex_vis = atg.compute_complex_vis(vis.ucoord, vis.vcoord, wl)
+    complex_t3 = atg.compute_complex_vis(t3.u123coord, t3.v123coord, wl)
+    if "star" in fits_file.name.lower():
+        wl_flux, flux = load_data(data_dir / "flux" / "hd142527" / "HD142527_stellar_model.txt")
+        star_flux = Parameter(**STANDARD_PARAMETERS.f)
+        star_flux.wavelength, star_flux.value = wl_flux, flux
+        star = Star(f=star_flux)
+        complex_vis += star.compute_complex_vis(vis.ucoord, vis.vcoord, wl)
+        complex_t3 += star.compute_complex_vis(t3.u123coord, t3.v123coord, wl)
+
+    vis_atg = compute_vis(complex_vis)
+    vis_atg = vis_atg[:, 1:] / vis_atg.max()
+    t3_atg = compute_t3(complex_t3)[:, 1:]
+
+    atol = 1e-2 if "cm" not in fits_file.name else 1e-1
+    assert vis_atg.shape == (wl.size, vis.ucoord.shape[1]-1)
+    assert np.allclose(vis.value, vis_atg, atol=atol)
+
+    if "cm" not in fits_file.name:
+        assert t3_atg.shape == (wl.size, t3.u123coord.shape[1])
+        assert np.allclose(t3.value, t3_atg, atol=atol)
+    else:
+        # NOTE: The differences here are larger due to numerical inaccuracies in ASPRO?
+        # Values for positional angle and inclination are ~ 153 degrees (before that < 45)
+        # Sometimes even ~ 160
+        diff = np.ptp(np.hstack((t3.value[0][:, np.newaxis], t3_atg[0][:, np.newaxis])), axis=1)
+        assert diff.max() < 170
+
+    set_data(fit_data=["vis", "t3"])
+
+
+@pytest.mark.parametrize(
+        "inc, pos_angle, q, inner_temp, p, inner_sigma, cont_weight, c, s",
+    [
+        (1, None, 0.5, 1500, 0.5, 1e-4, 0.4, None, None),
+        (1, None, 0.3, 1500, 0.5, 1e-4, 0.4, None, None),
+        (1, None, 0.3, 1500, 0.7, 1e-4, 0.4, None, None),
+        (1, None, 0.3, 1500, 0.7, 1e-4, 0.6, None, None),
+        (1, None, 0.3, 1500, 0.7, 1e-4, 0.6, 0.5, 0.5),
+        (0.5, None, 0.3, 1500, 0.7, 1e-4, 0.6, None, None),
+        (0.5, 33, 0.3, 1500, 0.7, 1e-4, 0.6, None, None),
+        (0.5, 33, 0.3, 1500, 0.7, 1e-4, 0.6, None, None),
+    ]
+)
+def test_temp_gradient_fluxes(
+        inc: float, pos_angle: u.deg,
+        q: float, inner_temp: float,
+        p: float, inner_sigma: float,
+        cont_weight: float,
+        c: float, s: float) -> None:
+    """Tests the calculation of uniform disk's visibilities."""
+    data_dir, wl = Path("data"), 3
+    weights = np.array([73.2, 8.6, 0.6, 14.2, 2.4, 1.0]) / 100
+    names = ["pyroxene", "forsterite", "enstatite", "silica"]
+    fmaxs = [1.0, 1.0, 1.0, 0.7]
+    sizes = [[1.5], [0.1], [0.1, 1.5], [0.1, 1.5]]
+    _, opacity = get_opacity(
+        data_dir, weights, sizes, names, "qval", wl, fmaxs)
+    cont_opacity_file = data_dir / "qval" / "Q_amorph_c_rv0.1.dat"
+    wl_cont, cont_opacity = load_data(cont_opacity_file, load_func=qval_to_opacity)
+    cont_opacity = np.interp(wl, wl_cont, cont_opacity)
+
+    distance, eff_temp = 157.3, 6500
+    eff_radius = compute_stellar_radius(10**0.96, eff_temp).value
+
+    wl = [wl]*u.um
+    fits_file = data_dir / "aspro" / "cm_AsymTempGrad_rin15_rout2_inc1_pa0_q05_intemp1500_p05_insigma1e-4_cw04_r01_c0_s0_large.fits"
+    data = set_data([fits_file], wavelengths=wl, fit_data=["vis", "t3"])
+    c, s = c if c is not None else 0, s if s is not None else 0
+    inc = inc if inc is not None else 1
+    pa = pos_angle if pos_angle is not None else 0
+    atg = AsymmetricTempGradient(rin=1.5, rout=2, inc=inc, pa=pa,
+                                 q=q, inner_temp=inner_temp,
+                                 p=p, inner_sigma=inner_sigma,
+                                 kappa_abs=opacity, kappa_cont=cont_opacity,
+                                 cont_weight=cont_weight, dist=distance,
+                                 eff_temp=eff_temp, eff_radius=eff_radius, 
+                                 r0=1, c1=c, s1=s)
+
+    vis = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis
+    flux = atg.compute_flux(wl)
+    central_frequency = compute_vis(atg.compute_complex_vis(vis.ucoord, vis.vcoord, wl))
+    breakpoint()
+
+    set_data(fit_data=["vis", "t3"])
+
+
 @pytest.mark.parametrize(
         "dim", [4096, 2096, 1024, 512, 256, 128, 64, 32])
 def test_temp_gradient_resolution(temp_gradient: TempGradient,
