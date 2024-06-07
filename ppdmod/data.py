@@ -187,7 +187,6 @@ def set_fit_wavelengths(wavelengths: Optional[u.Quantity[u.um]] = None) -> Union
     return OPTIONS.fit.wavelengths
 
 
-# TODO: Think of weighting here, should it add up to 1? Make it so
 def set_fit_weights(weights: Optional[List[float]] = None, 
                     fit_data: Optional[List[str]] = None) -> None:
     """Sets the weights of the fit parameters
@@ -221,7 +220,7 @@ def set_fit_weights(weights: Optional[List[float]] = None,
     norm = wflux + wvis + wt3
     OPTIONS.fit.weights.flux = wflux/norm
     OPTIONS.fit.weights.vis = wvis/norm
-    OPTIONS.fit.weights.nt3 = wt3/norm
+    OPTIONS.fit.weights.t3 = wt3/norm
 
 
 def set_data(fits_files: Optional[List[Path]] = None,

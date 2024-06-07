@@ -14,8 +14,8 @@ from ppdmod.options import OPTIONS
 @pytest.fixture
 def fits_files() -> List[Path]:
     """A MATISSE (.fits)-file."""
-    april_one_file = list(Path("data/fits").glob("*2022-04-21*.fits"))
-    april_two_files = list(Path("data/fits").glob("*2022-04-23*.fits"))
+    april_one_file = list(Path("data/fits/hd142666").glob("*2022-04-21*.fits"))
+    april_two_files = list(Path("data/fits/hd142666").glob("*2022-04-23*.fits"))
     april_two_files.extend(april_one_file)
     return april_two_files
 
@@ -41,7 +41,7 @@ def test_read_into_namespace(fits_files: List[Path],
 
             u1coord, u2coord = map(lambda x: t3.data[f"u{x}coord"], ["1", "2"])
             v1coord, v2coord = map(lambda x: t3.data[f"v{x}coord"], ["1", "2"])
-            u3coord, v3coord = -(u1coord+u2coord), -(v1coord+v2coord)
+            u3coord, v3coord = (u1coord+u2coord), (v1coord+v2coord)
             u123coord = np.array([u1coord, u2coord, u3coord])
             v123coord = np.array([v1coord, v2coord, v3coord])
 
@@ -87,8 +87,6 @@ def test_read_into_namespace(fits_files: List[Path],
         assert readout.vis2.err.shape == (6, wl_len)
         assert readout.vis2.ucoord.shape == (1, 6)
         assert readout.vis2.vcoord.shape == (1, 6)
-
-
 
 
 @pytest.mark.parametrize(
@@ -182,13 +180,15 @@ def test_set_weights(fits_files: List[Path], fit_data: List[str]) -> None:
     set_data(fits_files, wavelengths=[3.5]*u.um, fit_data=fit_data)
     set_fit_weights()
 
-    assert OPTIONS.fit.weights.flux != 1
-    assert OPTIONS.fit.weights.vis == 1
-    assert OPTIONS.fit.weights.nt3 != 1
+    weights = OPTIONS.fit.weights
+    assert weights
+    assert weights.flux != 1
+    assert weights.vis != 1
+    assert weights.t3 != 1
+    assert weights.flux + weights.vis + weights.t3 == 1
 
     set_fit_weights([0.5, 0.5, 0.5])
-    assert OPTIONS.fit.weights.flux == 0.5
-    assert OPTIONS.fit.weights.vis == 0.5
-    assert OPTIONS.fit.weights.nt3 == 0.5
+    assert weights.flux == weights.vis == weights.t3
+    assert np.isclose(weights.flux, 1/3)
 
     set_data(fit_data=fit_data)
