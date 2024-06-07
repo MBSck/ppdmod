@@ -36,8 +36,8 @@ class Component:
         self.inc = Parameter(**STANDARD_PARAMETERS.inc)
 
         # TODO: Add here higher orders of modulations
-        self.c1 = Parameter(**STANDARD_PARAMETERS.mod_amp)
-        self.s1 = Parameter(**STANDARD_PARAMETERS.mod_amp)
+        self.c1 = Parameter(**STANDARD_PARAMETERS.c)
+        self.s1 = Parameter(**STANDARD_PARAMETERS.s)
 
         if not self.elliptic:
             self.inc.free = self.pa.free = False

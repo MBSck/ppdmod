@@ -285,6 +285,7 @@ class Ring(Component):
             radius = self.compute_internal_grid()
             if intensity_func is not None:
                 intensity = intensity_func(radius, wavelength).to(u.erg/(u.rad**2 * u.cm**2 * u.s * u.Hz))
+                intensity = intensity[:, np.newaxis]
 
             radius = radius.to(u.rad)
             vis = _vis_func(2 * np.pi * radius * baselines)

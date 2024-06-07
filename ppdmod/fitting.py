@@ -126,6 +126,7 @@ def compute_chi_sq(data: u.Quantity, error: u.Quantity,
 
     return -0.5*(diff**2*inv_sigma_squared + np.log(1/inv_sigma_squared)).sum()
 
+
 # TODO: Make it so that both point source and star can be used at the same time
 def compute_observables(components: List[Component],
                         wavelength: Optional[np.ndarray] = None):
@@ -135,53 +136,49 @@ def compute_observables(components: List[Component],
     ucoord, vcoord = vis.ucoord, vis.vcoord
     u123coord, v123coord = OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord
 
-    flux_model, complex_vis_model, complex_t3_model = None, None, None
+    complex_vis_model, complex_t3_model = None, None
     for component in [comp for comp in components if comp.name != "Point Source"]:
-        flux_comp = component.compute_flux(wavelength)
         complex_vis_comp = component.compute_complex_vis(
                 ucoord, vcoord, wavelength)
         complex_t3_comp = component.compute_complex_vis(
                 u123coord, v123coord, wavelength)
 
-        flux_model = flux_comp if flux_model is None else flux_model + flux_comp
-        complex_vis_model = complex_vis_comp if complex_vis_model is None \
-            else complex_vis_model + complex_vis_comp
-        complex_t3_model = complex_t3_comp if complex_t3_model is None \
-            else complex_t3_model + complex_t3_comp
+        if complex_vis_model is None:
+            complex_vis_model = complex_vis_comp
+            complex_t3_model = complex_t3_comp
+        else:
+            complex_vis_model += complex_vis_comp
+            complex_t3_model += complex_t3_comp
 
-    flux_ratio, index = None, None
-    component_names = [component.shortname for component in components]
-    if "Point" in component_names:
-        index = component_names.index("Point")
-        flux_ratio = components[index].compute_flux(wavelength)
+    flux_model = complex_vis_model[:, 0].reshape(-1, 1)
 
-    if flux_ratio is not None:
-        if OPTIONS.model.output == "physical":
-            stellar_flux = (flux_model/(1-flux_ratio))*flux_ratio
+    # TODO: Rework this
+    for comp in components:
+        if "Point" == comp.shortname:
+            flux_ratio = comp.compute_flux(wavelength)
+            if OPTIONS.model.output == "physical":
+                stellar_flux = (flux_model/(1-flux_ratio))*flux_ratio
+            else:
+                stellar_flux = flux_ratio
+
             flux_model += stellar_flux
             complex_vis_model += stellar_flux
             complex_t3_model += stellar_flux
-        else:
-            complex_vis_model += components[index].compute_complex_vis(
-                    ucoord, vcoord, wavelength)
-            complex_t3_model += components[index].compute_complex_vis(
-                    u123coord, v123coord, wavelength)
+            break
 
-    # TODO: Check that the norm now works with the 0 frequency included.
-    # Remove that for the fitting itself
     if OPTIONS.model.output == "physical":
-        complex_vis_model = complex_vis_model/flux_model.astype(complex)
+        complex_vis_model = complex_vis_model/flux_model
 
     if flux_model.size > 0:
         flux_model = np.tile(flux_model, (len(OPTIONS.data.readouts)))
 
-    vis_model = compute_vis(complex_vis_model)
-    t3_model = compute_t3(complex_t3_model)
+    vis_model = compute_vis(complex_vis_model)[:, 1:]
+    t3_model = compute_t3(complex_t3_model)[:, 1:]
 
     if "vis2" in OPTIONS.fit.data:
         vis_model *= vis_model
 
-    return flux_model, vis_model, t3_model
+    return flux_model.real, vis_model, t3_model
 
 
 def compute_observable_chi_sq(
