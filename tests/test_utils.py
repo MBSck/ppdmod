@@ -9,7 +9,7 @@ from scipy.special import j1
 
 from ppdmod import utils
 from ppdmod.component import Component
-from ppdmod.data import ReadoutFits, set_data
+from ppdmod.data import ReadoutFits, set_data, get_all_wavelengths
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 from ppdmod.basic_components import PointSource, Star, Gaussian, TempGradient
@@ -42,18 +42,18 @@ def continuum_file() -> Path:
     return Path("data/qval") / "Q_amorph_c_rv0.1.dat"
 
 
+# TODO: Fits file is empty right now use ASPRO test files for N-band
 @pytest.fixture
 def fits_files() -> Path:
     """MATISSE (.fits)-files."""
-    return list(Path("data/fits").glob("*2022-04-23*.fits"))
+    return list(Path("data/matisse").glob("*.fits"))
 
 
 @pytest.fixture
-def all_wavelength_grid() -> Path:
+def all_wavelength_grid(fits_files) -> Path:
     """The wavelength grid."""
-    data = list(map(lambda x: ReadoutFits(x).wavelength,
-                    Path("data/fits").glob("*fits")))
-    return np.sort(np.unique(np.concatenate(data)))
+    set_data(fits_files, wavelengths="all", fit_data=["vis", "vis2", "t3"])
+    return get_all_wavelengths()
 
 
 @pytest.fixture
@@ -214,28 +214,29 @@ def test_calculate_effective_baselines(
     effective_baselines, baseline_angles = utils.compute_effective_baselines(
         vis.ucoord, vis.vcoord, axis_ratio, pos_angle)
 
-    assert effective_baselines.shape == (6*nfiles, )
+    assert effective_baselines.shape == (6*nfiles + 1, )
     assert effective_baselines.unit == u.m
-    assert baseline_angles.shape == (6*nfiles, )
+    assert baseline_angles.shape == (6*nfiles + 1, )
     assert baseline_angles.unit == u.rad
 
     t3 = OPTIONS.data.t3
     effective_baselines_cp, baseline_angles = utils.compute_effective_baselines(
         t3.u123coord, t3.v123coord, axis_ratio, pos_angle, longest=True)
 
-    assert effective_baselines_cp.shape == (4*nfiles, )
+    assert effective_baselines_cp.shape == (4*nfiles + 1, )
     assert effective_baselines_cp.unit == u.m
-    assert baseline_angles.shape == (4*nfiles, )
+    assert baseline_angles.shape == (4*nfiles + 1, )
     assert baseline_angles.unit == u.rad
 
+    wavelengths = wavelengths.value[:, np.newaxis]
     _, (ax, bx) = plt.subplots(1, 2, figsize=(12, 4))
-    ax.scatter(effective_baselines.value/wavelengths.value[:, np.newaxis],
-               vis.value)
+    ax.scatter(
+        (effective_baselines.value/wavelengths)[:, 1:], vis.value)
     ax.set_xlabel(r"$B_{\mathrm{eff}}$ (M$\lambda$)")
     ax.set_ylabel("Visibilities")
 
-    bx.scatter(effective_baselines_cp.value/wavelengths.value[:, np.newaxis],
-               t3.value)
+    bx.scatter(
+        (effective_baselines_cp.value/wavelengths)[:, 1:], t3.value)
     bx.set_xlabel(r"$B_{\mathrm{max}}$ (M$\lambda$)")
     bx.set_ylabel("Closure phase (deg)")
     plt.savefig(baseline_dir / "effective_baselines.pdf", format="pdf")
@@ -283,8 +284,13 @@ def test_compare_effective_baselines(
     _, (ax, bx) = plt.subplots(1, 2, figsize=(12, 6))
     for name, baseline, angle, ud_vis in zip(
             names, all_baselines, all_angles, ud_visibilities):
-        ax.scatter(baseline.value*1e-6, ud_vis, label=name, alpha=0.6)
-        bx.scatter(angle.to(u.deg).value, ud_vis, label=name, alpha=0.6)
+        baseline = baseline.value.squeeze()*1e-6
+        baseline_angle = angle.to(u.deg).value.squeeze()
+        if ud_vis.size != baseline.size:
+            baseline, baseline_angle = baseline[1:], baseline_angle[1:]
+
+        ax.scatter(baseline, ud_vis, label=name, alpha=0.6)
+        bx.scatter(baseline_angle, ud_vis, label=name, alpha=0.6)
 
     ax.set_xlabel(r"$B_{\mathrm{eff}}$ (M$\lambda$)")
     ax.set_ylabel("Visibilities")
@@ -311,9 +317,8 @@ def test_binary() -> None:
     """Tests the calculation of a binary's brightness."""
     flux1, flux2 = 5*u.Jy, 2*u.Jy
     position1, position2 = [5, 10]*u.mas, [-10, -10]*u.mas
-    binary = utils.binary(512, 0.1*u.mas,
-                          flux1, flux2,
-                          position1, position2)
+    binary = utils.binary(
+        512, 0.1*u.mas, flux1, flux2, position1, position2)
     assert binary[binary != 0].size == 2
     assert binary.shape == (512, 512)
     assert binary.unit == u.Jy
@@ -377,13 +382,13 @@ def test_restrict_phase(shape: Tuple[int, int]) -> None:
     assert ((new_phases < 180) | (new_phases > -180)).all()
 
 
-def test_get_opacity() -> None:
-    """Tests the retrieval of the opacity."""
-    ...
+# def test_get_opacity() -> None:
+#     """Tests the retrieval of the opacity."""
+#     ...
 
 
 def test_load_data(qval_files: List[Path],
-                   grf_files: List[Path]) -> None:
+                grf_files: List[Path]) -> None:
     """Tests the loading of a data file."""
     wavelength_grids, data = utils.load_data(
             qval_files[0], load_func=utils.qval_to_opacity)
@@ -528,6 +533,7 @@ def test_broadcast_baselines(fits_files: List[Path], wavelength: u.um) -> None:
     assert baseline_angles_cp.shape == (1, *t3.u123coord.shape, 1)
 
     set_data(fit_data=["vis2", "t3"])
+
 
 # TODO: This test doesn't test much
 @pytest.mark.parametrize(

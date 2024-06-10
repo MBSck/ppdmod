@@ -174,14 +174,14 @@ def test_init_randomly(nwalkers: int) -> None:
 
 
 @pytest.mark.parametrize(
-        "wavelength", [# [3.5]*u.um, [8]*u.um,
+        "wavelength", [[3.5]*u.um, [8]*u.um,
                        [3.5, 8]*u.um, [3.5, 8, 10]*u.um])
 def test_calculate_observables(components_and_params: List[Tuple[str, Dict]],
                                shared_params: Dict[str, Parameter],
                                constant_params: Dict[str, Parameter],
                                fits_files: List[Path], wavelength: u.um) -> None:
     """Tests the calculate_observables function."""
-    data = set_data(fits_files, wavelengths=wavelength)
+    data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis", "t3"])
     nwl = wavelength.size
 
     OPTIONS.model.components_and_params = components_and_params
