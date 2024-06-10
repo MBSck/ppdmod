@@ -267,7 +267,7 @@ class Ring(Component):
             The radial brightness distribution
         """
         mod_amp = np.hypot(self.c1(), self.s1())
-        mod_angle = np.arctan2(self.c1(), self.s1()) - 180 * u.deg
+        mod_angle = np.arctan2(self.c1(), self.s1())
         angle_diff = np.angle(np.exp(1j*(baseline_angles - mod_angle).value))
 
         # TODO: Check if this is too much overhead

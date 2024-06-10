@@ -197,6 +197,9 @@ def compute_effective_baselines(
     baselines_eff = np.hypot(ucoord_eff, vcoord_eff)
     baseline_angles_eff = np.arctan2(vcoord_eff, ucoord_eff)
 
+    # HACK: For some reason all my phases are mirrored?
+    baseline_angles_eff -= (180*u.deg).to(u.rad)
+
     if longest:
         indices = baselines_eff.argmax(0)
         iteration = np.arange(baselines_eff.shape[1])
