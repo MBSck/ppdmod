@@ -396,7 +396,7 @@ def restrict_phase(phase: np.ndarray) -> np.ndarray:
     return restricted_phase
 
 
-def get_opacity(source_dir: Path,weights: np.ndarray,
+def get_opacity(source_dir: Path, weights: np.ndarray,
                 sizes: List[List[float]],
                 names: List[str], method: str,
                 wavelength_grid: Optional[np.ndarray] = None,
@@ -407,7 +407,7 @@ def get_opacity(source_dir: Path,weights: np.ndarray,
                  "pyroxene": "Q_Am_Mgpyroxene_Dor_DHS",
                  "forsterite": "Q_Fo_Suto_DHS",
                  "enstatite": "Q_En_Jaeger_DHS",
-                 "silica": "Q_Silica_MH_DHS"}
+                 "silica": "Q_silica"}
 
     grf_dict = {"olivine": "MgOlivine",
                 "pyroxene": "MgPyroxene",
@@ -419,7 +419,10 @@ def get_opacity(source_dir: Path,weights: np.ndarray,
     for index, (size, name) in enumerate(zip(sizes, names)):
         for s in size:
             if method == "qval":
-                file_name = f"{qval_dict[name]}_f{fmaxs[index]:.1f}_rv{s:.1f}.dat"
+                if fmaxs[index] is not None:
+                    file_name = f"{qval_dict[name]}_f{fmaxs[index]:.1f}_rv{s:.1f}.dat"
+                else:
+                    file_name = f"{qval_dict[name]}_rv{s:.1f}.dat"
             else:
                 file_name = f"{grf_dict[name]}{s:.1f}.Combined.Kappa"
 
@@ -463,7 +466,7 @@ def load_data(files: List[Path],
     data : numpy.ndarray
     """
     files = files if isinstance(files, list) else [files]
-    wavelength_grids, data = [], []
+    wavelength_grid, data = np.array([]), []
     for file in files:
         if load_func is not None:
             wavelengths, content = load_func(file)
@@ -480,22 +483,14 @@ def load_data(files: List[Path],
             wavelengths, content = restrict_wavelength(
                     wavelengths, content, wavelength_range)
 
-        wavelength_grids.append(wavelengths)
+        if wavelength_grid.size == 0:
+            wavelength_grid = wavelengths
+        else:
+            content = np.interp(wavelength_grid, wavelengths, content)
+
         data.append(content)
 
-    if len(files) > 1:
-        min_shape = min(map(lambda x: x.shape[0], data))
-        wl_ind = np.where(map(lambda x: x.shape[0] == min_shape, wavelength_grids))
-        min_wl = wavelength_grids[wl_ind[0][0]]
-        for index, (wl, d) in enumerate(zip(wavelength_grids, data)):
-            if wl.shape[0] == min_shape:
-                continue
-
-            wavelength_grids[index] = min_wl
-            data[index] = np.interp(min_wl, wl, d)
-
-    return tuple(map(lambda x: np.array(x).squeeze(),
-                     (wavelength_grids, data)))
+    return wavelength_grid.squeeze(), np.array(data).squeeze()
 
 
 def linearly_combine_data(data: np.ndarray, weights: u.one) -> np.ndarray:
@@ -519,14 +514,14 @@ def set_axes_color(ax: Axes, background_color: str) -> None:
     """Sets all the axes' facecolor."""
     opposite_color = "white" if background_color == "black" else "black"
     ax.set_facecolor(background_color)
-    ax.spines['bottom'].set_color(opposite_color)
-    ax.spines['top'].set_color(opposite_color)
-    ax.spines['right'].set_color(opposite_color)
-    ax.spines['left'].set_color(opposite_color)
+    ax.spines["bottom"].set_color(opposite_color)
+    ax.spines["top"].set_color(opposite_color)
+    ax.spines["right"].set_color(opposite_color)
+    ax.spines["left"].set_color(opposite_color)
     ax.xaxis.label.set_color(opposite_color)
     ax.yaxis.label.set_color(opposite_color)
-    ax.tick_params(axis='x', colors=opposite_color)
-    ax.tick_params(axis='y', colors=opposite_color)
+    ax.tick_params(axis="x", colors=opposite_color)
+    ax.tick_params(axis="y", colors=opposite_color)
 
 
 def set_legend_color(legend: Legend, background_color: str) -> None:

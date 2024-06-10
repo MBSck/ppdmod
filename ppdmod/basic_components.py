@@ -617,8 +617,7 @@ class TempGradient(Ring):
         if opacity.size == 1:
             return opacity.squeeze()
 
-        shape = tuple(np.newaxis for _ in range(len(wavelength.shape) - 1))
-        return opacity[(slice(None), *shape)]
+        return opacity
 
     def compute_temperature(self, radius: u.mas) -> u.K:
         """Computes a 1D-temperature profile."""

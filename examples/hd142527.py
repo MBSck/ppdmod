@@ -44,7 +44,7 @@ star_flux.wavelength, star_flux.value = wl_flux, flux
 
 weights = np.array([73.2, 8.6, 0.6, 14.2, 2.4, 1.0])/100
 names = ["pyroxene", "forsterite", "enstatite", "silica"]
-fmaxs = [1.0, 1.0, 1.0, 0.7]
+fmaxs = [1.0, 1.0, 1.0, None]
 sizes = [[1.5], [0.1], [0.1, 1.5], [0.1, 1.5]]
 
 wl_opacity, roy_opacity = utils.get_opacity(
@@ -66,7 +66,7 @@ cont_opacity_file = DATA_DIR / "qval" / "Q_amorph_c_rv0.1.dat"
 wl_cont, cont_opacity = utils.load_data(cont_opacity_file, load_func=utils.qval_to_opacity)
 
 kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
-kappa_abs.value, kappa_abs.wavelength = opacity, wl_opacity[0]
+kappa_abs.value, kappa_abs.wavelength = opacity, wl_opacity
 kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
 kappa_cont.value, kappa_cont.wavelength = cont_opacity, wl_cont
 
@@ -194,7 +194,7 @@ post_fit_dir.mkdir(parents=True, exist_ok=True)
 
 if __name__ == "__main__":
     ncores = 6
-    fit_params_emcee = {"nburnin": 200, "nsteps": 500, "nwalkers": 100}
+    fit_params_emcee = {"nburnin": 2, "nsteps": 5, "nwalkers": 100}
     fit_params_dynesty = {"nlive": 2000, "sample": "rwalk", "bound": "multi"}
 
     if OPTIONS.fit.method == "emcee":
