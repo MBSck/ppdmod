@@ -345,9 +345,9 @@ def plot_datapoints(
             if not (wavelength_range[0] <= wavelength <= wavelength_range[1]):
                 continue
 
-        effective_baselines_mlambda = effective_baselines/wavelength.value
+        effective_baselines_mlambda = (effective_baselines/wavelength.value)[1:]
         if "t3" in data_to_plot:
-            longest_baselines_mlambda = longest_baselines/wavelength.value
+            longest_baselines_mlambda = (longest_baselines/wavelength.value)[1:]
         color = colormap(norm(wavelength.value))
         errorbar_params.color = scatter_params.color = color
 
@@ -648,12 +648,12 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
                 continue
 
         effective_baselines, _ = compute_effective_baselines(vis.ucoord, vis.vcoord)
-        effective_baselines_mlambda = effective_baselines/wavelength.value
+        effective_baselines_mlambda = (effective_baselines/wavelength.value)[1:]
 
         if "t3" in data_to_plot:
             longest_baselines, _ = compute_effective_baselines(
-                    t3.u123coord, t3.v123coord, longest=True)
-            longest_baselines_mlambda = longest_baselines/wavelength.value
+                t3.u123coord, t3.v123coord, longest=True)
+            longest_baselines_mlambda = (longest_baselines/wavelength.value)[1:]
 
         color = colormap(norm(wavelength.value))
         errorbar_params.color = color
