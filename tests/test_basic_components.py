@@ -401,7 +401,7 @@ def test_ring_compute_vis(
     data_dir, wl = Path("data"), 3
     weights = np.array([73.2, 8.6, 0.6, 14.2, 2.4, 1.0]) / 100
     names = ["pyroxene", "forsterite", "enstatite", "silica"]
-    fmaxs = [1.0, 1.0, 1.0, 0.7]
+    fmaxs = [1.0, 1.0, 1.0, None]
     sizes = [[1.5], [0.1], [0.1, 1.5], [0.1, 1.5]]
     _, opacity = get_opacity(
         data_dir, weights, sizes, names, "qval", wl, fmaxs)
@@ -481,7 +481,7 @@ def test_temp_gradient_fluxes(
     data_dir, wl = Path("data"), 3
     weights = np.array([73.2, 8.6, 0.6, 14.2, 2.4, 1.0]) / 100
     names = ["pyroxene", "forsterite", "enstatite", "silica"]
-    fmaxs = [1.0, 1.0, 1.0, 0.7]
+    fmaxs = [1.0, 1.0, 1.0, None]
     sizes = [[1.5], [0.1], [0.1, 1.5], [0.1, 1.5]]
     _, opacity = get_opacity(
         data_dir, weights, sizes, names, "qval", wl, fmaxs)

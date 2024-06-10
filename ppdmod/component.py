@@ -130,10 +130,10 @@ class Component:
         xx, yy =  xx-self.x(), yy-self.y()
         return xx.astype(OPTIONS.data.dtype.real), yy.astype(OPTIONS.data.dtype.real)
 
-    # TODO: Check if the positive factor in the exp here is correct?
     def translate_vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad) -> np.ndarray:
         """Translates a coordinate shift in image space to Fourier space."""
-        translation = np.exp(2*1j*np.pi*baselines*(self.x()*np.cos(baseline_angles)+self.y()*np.sin(baseline_angles)))
+        uv_coords = self.x()*np.cos(baseline_angles) + self.y()*np.sin(baseline_angles)
+        translation = np.exp(2*1j*np.pi*baselines*uv_coords.to(u.rad))
         return translation.value.astype(OPTIONS.data.dtype.complex)
 
     def flux_func(self, wavelength: u.um) -> np.ndarray:
@@ -164,6 +164,7 @@ class Component:
 
         if self.shortname != "Point":
             vis *= self.fr()
+
         return (vis*shift).astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
