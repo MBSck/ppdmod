@@ -32,7 +32,8 @@ wavelengths = {"hband": [1.6]*u.um,
                "nband": [8., 9., 10., 11.3, 12.5]*u.um}
 
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
-wavelength = np.concatenate((wavelengths["lband"], wavelengths["nband"]))
+# wavelength = np.concatenate((wavelengths["lband"], wavelengths["nband"]))
+wavelength = wavelengths["lband"]
 data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis2", "t3"])
 
 # TODO: Check flux values -> gave nan for only N-band
@@ -98,16 +99,16 @@ inner_sigma.value = 1e-3
 c1.value = 0.5
 s1.value = 0.5
 
-rin.set(min=0.5, max=5)
-rout.set(min=1.5, max=6)
+rin.set(min=0.5, max=20)
+rout.set(min=0.9, max=500)
 p.set(min=0., max=1.)
 inner_sigma.set(min=0, max=1e-2)
 
 rout.free = True
 
-# inner_ring = {"rin": rin, "rout": rout, "c1": c1, "s1": s1,
-#               "inner_sigma": inner_sigma, "p": p}
-inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma, "p": p}
+inner_ring = {"rin": rin, "rout": rout, "c1": c1, "s1": s1,
+              "inner_sigma": inner_sigma, "p": p}
+# inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma, "p": p}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
@@ -157,12 +158,14 @@ shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 
 OPTIONS.model.components_and_params = [
     ["Star", {}],
-    ["GreyBody", inner_ring],
-    ["AsymmetricGreyBody", outer_ring],
+    ["AsymmetricGreyBody", inner_ring],
+    # ["AsymmetricGreyBody", outer_ring],
 ]
 
-labels = inner_ring_labels + outer_ring_labels + shared_params_labels
-component_labels = ["Star", "Inner Ring", "Outer Ring"]
+# labels = inner_ring_labels + outer_ring_labels + shared_params_labels
+labels = inner_ring_labels + shared_params_labels
+# component_labels = ["Star", "Inner Ring", "Outer Ring"]
+component_labels = ["Star", "Inner Ring"]
 
 OPTIONS.model.modulation = 1
 OPTIONS.model.gridtype = "logarithmic"
