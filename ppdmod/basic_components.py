@@ -675,9 +675,9 @@ class TempGradient(Ring):
         brightness_profile : astropy.units.Jy
         """
         temperature = self.compute_temperature(radius)
-        brightness = BlackBody(temperature)(wavelength)
         emissivity = self.compute_emissivity(radius, wavelength)
-        return (brightness * emissivity).astype(OPTIONS.data.dtype.real)
+        intensity = BlackBody(temperature)(wavelength) * (1 - emissivity)
+        return intensity.astype(OPTIONS.data.dtype.real)
 
     def flux_func(self, wavelength: u.um) -> np.ndarray:
         """Computes the total flux from the hankel transformation."""
