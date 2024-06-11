@@ -31,7 +31,7 @@ wavelengths = {"hband": [1.6]*u.um,
                "lband": [3.2]*u.um,
                "nband": [8., 9., 10., 11.3, 12.5]*u.um}
 
-fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
+fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*HAW*fits"))
 # wavelength = np.concatenate((wavelengths["lband"], wavelengths["nband"]))
 wavelength = wavelengths["lband"]
 data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis2", "t3"])
@@ -77,8 +77,8 @@ kappa_cont.value, kappa_cont.wavelength = cont_opacity, wl_cont
 
 # TODO: Think of a better way to assign f than through const_params
 # include the model itself with f?
-dim, distance, eff_temp = 32, 157.3, 7500
-eff_radius = utils.compute_stellar_radius(10**0.96, eff_temp).value
+dim, distance, eff_temp = 32, 158.51, 6500
+eff_radius = utils.compute_stellar_radius(10**1.35, eff_temp).value
 OPTIONS.model.constant_params = {
     "dim": dim, "dist": distance,
     "f": star_flux, "kappa_abs": kappa_abs,
