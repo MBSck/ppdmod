@@ -156,7 +156,8 @@ def compute_effective_baselines(
         ucoord: u.m, vcoord: u.m,
         inclination: Optional[u.Quantity[u.one]] = None,
         pos_angle: Optional[u.Quantity[u.deg]] = None,
-        longest: Optional[bool] = False
+        longest: Optional[bool] = False,
+        rzero: Optional[bool] = True
         ) -> Tuple[u.Quantity[u.m], u.Quantity[u.one]]:
     """Calculates the effective baselines from the projected baselines
     in mega lambda.
@@ -173,6 +174,8 @@ def compute_effective_baselines(
         The positional angle of the object
     longest : bool, optional
         If True, the longest baselines are returned.
+    rzero : bool, optional
+        If True, the zero-frequency is returned as well.
 
     Returns
     -------
@@ -205,6 +208,14 @@ def compute_effective_baselines(
         iteration = np.arange(baselines_eff.shape[1])
         baselines_eff = baselines_eff[indices, iteration]
         baseline_angles_eff = baseline_angles_eff[indices, iteration]
+
+    if not rzero:
+        if len(baselines_eff.shape) > 1:
+            baselines_eff = baselines_eff[:, 1:]
+            baseline_angles_eff = baseline_angles_eff[:, 1:]
+        else:
+            baselines_eff = baselines_eff[1:]
+            baseline_angles_eff = baseline_angles_eff[1:]
 
     return baselines_eff.squeeze(), baseline_angles_eff.squeeze()
 

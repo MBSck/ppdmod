@@ -843,8 +843,7 @@ def plot_target(target: str,
         plt.close()
 
 
-def plot_observables(target: str,
-                     wavelength_range: u.um,
+def plot_observables(wavelength_range: u.um,
                      components: List[Component],
                      save_dir: Optional[Path] = None) -> None:
     """Plots the observables of the model.
@@ -871,8 +870,6 @@ def plot_observables(target: str,
         set_axes_color(ax, OPTIONS.plot.color.background)
         ax.plot(wavelength, flux)
         
-        # plot_target(target, wavelength_range=wavelength_range,
-        #             ax=ax, show_legend=False)
         ax.set_xlabel(r"$\lambda$ ($\mu$m)")
         ax.set_ylabel("Flux (Jy)")
         ax.set_ylim([0, None])
@@ -885,7 +882,7 @@ def plot_observables(target: str,
 
     effective_baselines, baseline_angles = compute_effective_baselines(
             vis_data.ucoord, vis_data.vcoord,
-            components[1].inc(), components[1].pa())
+            components[1].inc(), components[1].pa(), rzero=False)
 
     for index, (baseline, baseline_angle) in enumerate(
             zip(effective_baselines, baseline_angles)):
@@ -895,7 +892,7 @@ def plot_observables(target: str,
         set_axes_color(ax, OPTIONS.plot.color.background)
 
         ax.plot(wavelength, vis[:, index],
-                label=rf"B={baseline:.2f} m, $\phi$={baseline_angle:.2f}$^\circ$")
+                label=rf"B={baseline.value:.2f} m, $\phi$={baseline_angle.value:.2f}$^\circ$")
         ax.set_xlabel(r"$\lambda$ ($\mu$m)")
         ax.set_ylabel("Visibilities (Normalized)")
         ax.set_ylim([0, 1])
@@ -906,7 +903,7 @@ def plot_observables(target: str,
     if "t3" in OPTIONS.fit.data:
         effective_baselines, baseline_angles = compute_effective_baselines(
                 OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord,
-                components[1].inc(), components[1].pa(), longest=True)
+                components[1].inc(), components[1].pa(), longest=True, rzero=False)
 
         for index, (baseline, baseline_angle) in enumerate(
                 zip(effective_baselines, baseline_angles)):
@@ -914,9 +911,9 @@ def plot_observables(target: str,
                            tight_layout=True)
             ax = plt.axes(facecolor=OPTIONS.plot.color.background)
             set_axes_color(ax, OPTIONS.plot.color.background)
-            ax.plot(wavelength, t3[:, index], label=f"B={baseline:.2f} m")
+            ax.plot(wavelength, t3[:, index], label=f"B={baseline.value:.2f} m")
             ax.set_xlabel(r"$\lambda$ ($\mu$m)")
             ax.set_ylabel(r"Closure Phases ($^\circ$)")
             plt.legend()
-            plt.savefig(t3_dir / f"t3_{baseline:.2f}.pdf", format="pdf")
+            plt.savefig(t3_dir / f"t3_{baseline.value:.2f}.pdf", format="pdf")
             plt.close()

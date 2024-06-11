@@ -11,15 +11,19 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 import astropy.units as u
 import numpy as np
 
-# from ppdmod import analysis
+from ppdmod import analysis
 from ppdmod import basic_components
 from ppdmod import fitting
 from ppdmod import plot
 from ppdmod import utils
-from ppdmod.data import set_data, get_all_wavelengths
+from ppdmod.data import set_data
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
+
+# TODO: Check if also the work together of the different components gives right result
+# as well as the broadcasting
+# TODO: Check also everything else, step-by-step
 
 DATA_DIR = Path("../tests/data")
 wavelengths = {"hband": [1.6]*u.um,
@@ -101,8 +105,9 @@ inner_sigma.set(min=0, max=1e-2)
 
 rout.free = True
 
-inner_ring = {"rin": rin, "rout": rout, "c1": c1, "s1": s1,
-              "inner_sigma": inner_sigma, "p": p}
+# inner_ring = {"rin": rin, "rout": rout, "c1": c1, "s1": s1,
+#               "inner_sigma": inner_sigma, "p": p}
+inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma, "p": p}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
@@ -117,7 +122,6 @@ inner_sigma.value = 1e-3
 c1.value = 0.5
 s1.value = 0.5
 
-# NOTE: Set outer radius to be constant and calculate flux once?
 rin.set(min=1, max=40)
 p.set(min=0., max=1.)
 inner_sigma.set(min=0, max=1e-2)
@@ -153,7 +157,7 @@ shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 
 OPTIONS.model.components_and_params = [
     ["Star", {}],
-    ["AsymmetricGreyBody", inner_ring],
+    ["GreyBody", inner_ring],
     ["AsymmetricGreyBody", outer_ring],
 ]
 
@@ -162,7 +166,7 @@ component_labels = ["Star", "Inner Ring", "Outer Ring"]
 
 OPTIONS.model.modulation = 1
 OPTIONS.model.gridtype = "logarithmic"
-OPTIONS.fit.method = "dynesty"
+OPTIONS.fit.method = "emcee"
 
 model_result_dir = Path("../model_results/")
 day_dir = model_result_dir / str(datetime.now().date())
@@ -176,39 +180,39 @@ pre_fit_dir.mkdir(parents=True, exist_ok=True)
 components = basic_components.assemble_components(
         OPTIONS.model.components_and_params,
         OPTIONS.model.shared_params)
+rchi_sq = fitting.compute_observable_chi_sq(
+        *fitting.compute_observables(components), reduced=True)
+print(f"rchi_sq: {rchi_sq}")
 
 plot.plot_overview(savefig=pre_fit_dir / "data_overview.pdf")
-# plot.plot_observables("hd142666", [1, 12]*u.um, components,
-#                       save_dir=pre_fit_dir)
+plot.plot_observables([1, 12]*u.um, components, save_dir=pre_fit_dir)
 
-# analysis.save_fits(
-#         4096, 0.1, distance,
-#         components, component_labels,
-#         opacities=[kappa_abs, kappa_cont],
-#         savefits=pre_fit_dir / "model.fits",
-#         object_name="HD 142666")
+analysis.save_fits(
+        4096, 0.1, distance,
+        components, component_labels,
+        opacities=[kappa_abs, kappa_cont],
+        savefits=pre_fit_dir / "model.fits",
+        object_name="HD 142527")
 
 post_fit_dir = result_dir / "post_fit"
 post_fit_dir.mkdir(parents=True, exist_ok=True)
 
 
 if __name__ == "__main__":
-    ncores = 6
+    ncores = None
     fit_params_emcee = {"nburnin": 2, "nsteps": 5, "nwalkers": 100}
-    fit_params_dynesty = {"nlive": 2000, "sample": "rwalk", "bound": "multi"}
+    fit_params_dynesty = {"nlive_init": 1000}
 
     if OPTIONS.fit.method == "emcee":
         fit_params = fit_params_emcee
         ncores = fit_params["nwalkers"]//2 if ncores is None else ncores
         fit_params["discard"] = fit_params["nburnin"]
     else:
-        ncores = 30 if ncores is None else ncores
+        ncores = 50 if ncores is None else ncores
         fit_params = fit_params_dynesty
 
-    sampler = fitting.run_fit(
-            **fit_params, ncores=ncores,
-            save_dir=post_fit_dir, debug=False)
-
+    sampler = fitting.run_fit(**fit_params, ncores=ncores, method="dynamic",
+                      save_dir=result_dir, debug=True)
     theta, uncertainties = fitting.get_best_fit(
             sampler, **fit_params, method="quantile")
 
@@ -221,16 +225,18 @@ if __name__ == "__main__":
     components_and_params, shared_params = fitting.set_params_from_theta(theta)
     components = basic_components.assemble_components(
             components_and_params, shared_params)
+    rchi_sq = fitting.compute_observable_chi_sq(
+            *fitting.compute_observables(components), reduced=True)
+    print(f"rchi_sq: {rchi_sq}")
 
-    # plot.plot_observables("hd142666", [1, 12]*u.um, components,
-    #                       save_dir=post_fit_dir)
+    plot.plot_observables([1, 12]*u.um, components, save_dir=post_fit_dir)
 
-    # analysis.save_fits(
-    #         4096, 0.1, distance,
-    #         components, component_labels,
-    #         opacities=[kappa_abs, kappa_cont],
-    #         savefits=post_fit_dir / "model.fits",
-    #         object_name="HD 142666", **fit_params, ncores=ncores)
+    analysis.save_fits(
+            4096, 0.1, distance,
+            components, component_labels,
+            opacities=[kappa_abs, kappa_cont],
+            savefits=post_fit_dir / "model.fits",
+            object_name="HD 142527", **fit_params, ncores=ncores)
 
     inclination = shared_params["inc"]
     pos_angle = shared_params["pa"]

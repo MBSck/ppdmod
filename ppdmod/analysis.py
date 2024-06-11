@@ -35,7 +35,7 @@ def save_fits(dim: int, pixel_size: u.mas,
     distance = u.Quantity(distance, u.pc)
 
     total_flux = np.empty(wavelength.size)*u.Jy
-    image, tables = np.empty((wavelength.size, dim, dim))*u.Jy, []
+    image, tables = np.empty((wavelength.size, dim, dim)), []
     for index, component in enumerate(components):
         image += component.compute_image(dim, pixel_size, wavelength)
 
@@ -46,7 +46,8 @@ def save_fits(dim: int, pixel_size: u.mas,
 
         data = {"wavelength": wavelength}
         if component.shortname not in ["Star", "Point"]:
-            radius = np.tile(component.compute_internal_grid(dim), (wavelength.size, 1))
+            component.dim.value = dim
+            radius = np.tile(component.compute_internal_grid(), (wavelength.size, 1))
 
             data["radius"] = radius
             data["temperature"] = component.compute_temperature(radius)
@@ -54,7 +55,7 @@ def save_fits(dim: int, pixel_size: u.mas,
 
             data["emissivity"] = component.compute_emissivity(
                     radius, wavelength[:, np.newaxis])
-            data["brightness"] = component.compute_brightness(
+            data["brightness"] = component.compute_intensity(
                     radius, wavelength[:, np.newaxis])
 
         data["flux"] = component.compute_flux(wavelength[:, np.newaxis])
@@ -102,18 +103,18 @@ def save_fits(dim: int, pixel_size: u.mas,
     tables.append(table)
 
     if opacities is not None:
-        data = {"wavelength": opacities[0].wavelength}
+        data = {"wavelength": opacities[np.argmin([op.wavelength.size for op in opacities])].wavelength}
         for opacity in opacities:
-            data[opacity.shortname] = opacity()
+            data[opacity.shortname] = np.interp(data["wavelength"], opacity.wavelength, opacity())
         tables.append(fits.BinTableHDU(Table(data=data), name="OPACITIES"))
 
     wcs = WCS(naxis=3)
     wcs.wcs.crpix = (*np.array(image.shape[1:]) // 2, wavelength.size)
-    wcs.wcs.cdelt = ([pixel_size.value, pixel_size.value, -1.0])
+    wcs.wcs.cdelt = (-pixel_size.to(u.deg).value, -pixel_size.to(u.deg).value, -1.)
     wcs.wcs.crval = (0.0, 0.0, 1.0)
-    wcs.wcs.ctype = ("RA---AIR", "DEC--AIR", "WAVELENGTHS")
-    wcs.wcs.cunit = ("mas", "mas", "um")
-    wcs.wcs.pc = np.array([[-1, 0, 0], [0, -1, 0], [0, 0, 1]])
+    # wcs.wcs.ctype = ("RA---DEG", "DEC--DEG", "WAVELENGTHS")
+    wcs.wcs.cunit = ("deg", "deg", "um")
+    wcs.wcs.pc = np.array([[1, 0, 0], [0, -1, 0], [0, 0, 1]])
     header = wcs.to_header()
 
     header["FITMETH"] = (OPTIONS.fit.method, "Method applied for fitting")
@@ -132,5 +133,5 @@ def save_fits(dim: int, pixel_size: u.mas,
     header["R0"] = (OPTIONS.model.reference_radius.value,
                     "[AU] Reference radius for the power laws")
 
-    hdu = fits.HDUList([fits.PrimaryHDU(image.value, header=header), *tables])
+    hdu = fits.HDUList([fits.PrimaryHDU(image, header=header), *tables])
     hdu.writeto(savefits, overwrite=True)
