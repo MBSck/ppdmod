@@ -99,8 +99,8 @@ inner_sigma.value = 1e-3
 c1.value = 0.5
 s1.value = 0.5
 
-rin.set(min=0.5, max=5)
-rout.set(min=0.9, max=27)
+rin.set(min=0, max=5)
+rout.set(min=0, max=27)
 p.set(min=0., max=1.)
 inner_sigma.set(min=0, max=1e-2)
 
@@ -123,7 +123,7 @@ inner_sigma.value = 1e-3
 c1.value = 0.5
 s1.value = 0.5
 
-rin.set(min=27, max=100)
+rin.set(min=0, max=27)
 p.set(min=0., max=1.)
 inner_sigma.set(min=0, max=1e-2)
 
