@@ -31,10 +31,11 @@ wavelengths = {"hband": [1.6]*u.um,
                "lband": [3.2]*u.um,
                "nband": [8., 9., 10., 11.3, 12.5]*u.um}
 
+OPTIONS.model.output = "non-normed"
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
 wavelength = np.concatenate((wavelengths["lband"], wavelengths["nband"]))
 # wavelength = wavelengths["lband"]
-data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis2", "t3"])
+data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis", "t3"])
 
 # TODO: Check flux values -> gave nan for only N-band
 wl_flux, flux = utils.load_data(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt")

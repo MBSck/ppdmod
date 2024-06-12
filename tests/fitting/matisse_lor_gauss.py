@@ -19,7 +19,6 @@ from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 
 DATA_DIR = Path("../data/fits/hd142527")
-OPTIONS.model.output = "non-physical"
 fits_files = list((DATA_DIR).glob("*HAWAII*fits"))
 data = set_data(fits_files, wavelengths="all",
                 fit_data=["vis2"], wavelength_range=[3., 3.3]*u.um)

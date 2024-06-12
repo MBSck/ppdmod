@@ -168,7 +168,7 @@ data = SimpleNamespace(readouts=[], flux=flux, vis=vis,
 # NOTE: Model
 model = SimpleNamespace(components_and_params=None,
                         constant_params=None, shared_params=None,
-                        output="physical", reference_radius=1*u.au,
+                        output="normed", reference_radius=1*u.au,
                         gridtype="linear", modulation=0)
 
 # NOTE: Plot

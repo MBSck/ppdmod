@@ -10,7 +10,6 @@ from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 
-OPTIONS.model.output = "non-physical"
 fits_file = Path("../data/aspro") / "model_pt_Iring_inc_rot.fits"
 wavelength = [10] * u.um
 data.set_data([fits_file], wavelengths=wavelength, fit_data=["vis"])

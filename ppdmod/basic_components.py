@@ -648,6 +648,12 @@ class TempGradient(Ring):
         surface_density = self.inner_sigma() * (radius / reference_radius) ** -self.p()
         return surface_density.astype(OPTIONS.data.dtype.real)
 
+    def compute_optical_depth(self, radius: u.mas, wavelength: u.um) -> u.one:
+        """Computes a 1D-optical depth profile."""
+        surface_density = self.compute_surface_density(radius)
+        optical_depth = surface_density * self.get_opacity(wavelength)
+        return optical_depth.astype(OPTIONS.data.dtype.real)
+
     def compute_emissivity(self, radius: u.mas, wavelength: u.um) -> u.one:
         """Computes a 1D-emissivity profile."""
         if wavelength.shape == ():
@@ -656,8 +662,7 @@ class TempGradient(Ring):
         if self.optically_thick:
             return np.array([1])[:, np.newaxis]
 
-        surface_density = self.compute_surface_density(radius)
-        optical_depth = surface_density * self.get_opacity(wavelength)
+        optical_depth = self.compute_optical_depth(radius, wavelength)
         emissivity = 1 - np.exp(-optical_depth / self.inc())
         return emissivity.astype(OPTIONS.data.dtype.real)
 

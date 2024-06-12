@@ -12,7 +12,6 @@ from ppdmod.utils import compute_vis, compute_t3
 
 
 # TODO: Change the errors and do this test again.
-OPTIONS.model.output = "non-physical"
 fits_file = Path("../data/aspro") / "model_pt_ring_inc_rot_xy.fits"
 wavelength = [10] * u.um
 data.set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])

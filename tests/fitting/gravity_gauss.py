@@ -51,7 +51,6 @@ def lnprob(theta: np.ndarray) -> float:
 
 
 DATA_DIR = Path("../data/gravity")
-OPTIONS.model.output = "non-physical"
 fits_files = list((DATA_DIR).glob("*fits"))
 data = set_data(fits_files, wavelengths="all", fit_data=["vis2"])
 

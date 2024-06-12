@@ -151,22 +151,20 @@ def compute_observables(components: List[Component],
             complex_t3_model += complex_t3_comp
 
     flux_model = complex_vis_model[:, 0].reshape(-1, 1)
-
-    # TODO: Rework this
     for comp in components:
         if "Point" == comp.shortname:
             flux_ratio = comp.compute_flux(wavelength)
-            if OPTIONS.model.output == "physical":
-                stellar_flux = (flux_model/(1-flux_ratio))*flux_ratio
-            else:
+            if OPTIONS.model.output == "normed":
                 stellar_flux = flux_ratio
+            else:
+                stellar_flux = (flux_model/(1-flux_ratio))*flux_ratio
 
             flux_model += stellar_flux
             complex_vis_model += stellar_flux
             complex_t3_model += stellar_flux
             break
 
-    if OPTIONS.model.output == "physical":
+    if OPTIONS.model.output == "normed":
         complex_vis_model = complex_vis_model/flux_model
 
     if flux_model.size > 0:

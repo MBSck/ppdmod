@@ -53,13 +53,15 @@ def save_fits(dim: int, pixel_size: u.mas,
             data["temperature"] = component.compute_temperature(radius)
             data["surface_density"] = component.compute_surface_density(radius)
 
+            data["optical_depth"] = component.compute_optical_depth(
+                    radius, wavelength[:, np.newaxis])
             data["emissivity"] = component.compute_emissivity(
                     radius, wavelength[:, np.newaxis])
             data["brightness"] = component.compute_intensity(
                     radius, wavelength[:, np.newaxis])
 
         data["flux"] = component.compute_flux(wavelength[:, np.newaxis])
-        data["flux_ratio"] = np.empty(data["flux"].shape)
+        data["flux_ratio"] = np.zeros(data["flux"].shape)
 
         total_flux += u.Quantity(data["flux"].squeeze(), unit=u.Jy)
 
@@ -82,7 +84,8 @@ def save_fits(dim: int, pixel_size: u.mas,
 
     data = None
     for table in tables:
-        table.data["flux_ratio"] = (table.data["flux"].squeeze()*u.Jy/total_flux)[:, np.newaxis]*100
+        flux_ratio = (table.data["flux"].squeeze() * u.Jy/total_flux)[:, np.newaxis]
+        table.data["flux_ratio"] = np.round(flux_ratio * 100, 2)
         if table.header["COMP"] in ["Star", "Point"]:
             continue
         if data is None:
@@ -99,6 +102,7 @@ def save_fits(dim: int, pixel_size: u.mas,
                 filler = np.zeros(data[column.name].shape)
             data[column.name] = np.hstack((data[column.name],
                                            filler, table.data[column.name]))
+
     table = fits.BinTableHDU(Table(data=data), name="FULL_DISK")
     tables.append(table)
 

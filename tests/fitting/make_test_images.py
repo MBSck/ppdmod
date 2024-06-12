@@ -11,7 +11,6 @@ from ppdmod.utils import compute_photometric_slope, compute_t3
 
 
 DATA_DIR = Path("../data/pionier/HD142527")
-OPTIONS.model.output = "non-physical"
 fits_files = list((DATA_DIR).glob("*fits"))
 data = set_data(fits_files, wavelengths="all", fit_data=["vis2", "t3"])
 

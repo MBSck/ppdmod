@@ -13,7 +13,6 @@ from ppdmod.utils import compute_photometric_slope, compute_t3, \
 
 if __name__ == "__main__":
     DATA_DIR = Path("../data/fits/hd142527/")
-    OPTIONS.model.output = "non-physical"
     fits_files = list((DATA_DIR).glob("*HAW*fits"))
     data = set_data(fits_files, wavelengths="all", fit_data=["vis2", "t3"])
     

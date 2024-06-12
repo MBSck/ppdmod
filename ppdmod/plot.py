@@ -532,7 +532,7 @@ def plot_fit(inclination: u.one, pos_angle: u.deg,
             lower_ax.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}$ (M$\lambda$)")
 
             if key == "vis":
-                if OPTIONS.model.output == "physical":
+                if OPTIONS.model.output != "normed":
                     y_label = "Correlated fluxes (Jy)"
                     unit = "Jy"
                 else:
@@ -717,7 +717,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
 
         if key == "vis":
             ax.set_xlabel(r"$\mathrm{B}$ (M$\lambda$)")
-            if OPTIONS.model.output == "physical":
+            if OPTIONS.model.output != "normed":
                 label = "Correlated fluxes (Jy)"
             else:
                 label = "Visibilities (Normalized)"

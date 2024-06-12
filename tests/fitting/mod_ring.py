@@ -19,7 +19,6 @@ from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 
 DATA_DIR = Path("../data/aspro/")
-OPTIONS.model.output = "non-physical"
 fits_files = [DATA_DIR / "a1_phi0_rin2_modulated_ring.fits"]
 data = set_data(fits_files, wavelengths=[3.5]*u.um, fit_data=["vis", "t3"])
 
