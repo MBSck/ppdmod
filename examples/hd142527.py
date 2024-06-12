@@ -99,16 +99,16 @@ inner_sigma.value = 1e-3
 c1.value = 0.5
 s1.value = 0.5
 
-rin.set(min=0.5, max=20)
-rout.set(min=0.9, max=40)
+rin.set(min=0.5, max=100)
+rout.set(min=0.9, max=300)
 p.set(min=0., max=1.)
 inner_sigma.set(min=0, max=1e-2)
 
 rout.free = True
 
-# inner_ring = {"rin": rin, "rout": rout, "c1": c1, "s1": s1,
-#               "inner_sigma": inner_sigma, "p": p}
-inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma, "p": p}
+inner_ring = {"rin": rin, "rout": rout, "c1": c1, "s1": s1,
+              "inner_sigma": inner_sigma, "p": p}
+# inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma, "p": p}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
@@ -158,14 +158,14 @@ shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 
 OPTIONS.model.components_and_params = [
     ["Star", {}],
-    ["GreyBody", inner_ring],
-    ["AsymmetricGreyBody", outer_ring],
+    ["AsymmetricGreyBody", inner_ring],
+    # ["AsymmetricGreyBody", outer_ring],
 ]
 
-labels = inner_ring_labels + outer_ring_labels + shared_params_labels
-# labels = inner_ring_labels + shared_params_labels
-component_labels = ["Star", "Inner Ring", "Outer Ring"]
-# component_labels = ["Star", "Inner Ring"]
+# labels = inner_ring_labels + outer_ring_labels + shared_params_labels
+labels = inner_ring_labels + shared_params_labels
+# component_labels = ["Star", "Inner Ring", "Outer Ring"]
+component_labels = ["Star", "Inner Ring"]
 
 OPTIONS.model.modulation = 1
 OPTIONS.model.gridtype = "logarithmic"
