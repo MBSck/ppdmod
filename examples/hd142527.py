@@ -106,14 +106,15 @@ inner_sigma.value = 1e-3
 p.value = 0.5
 c1.value = s1.value = 0.5
 
-rin.set(min=0, max=5)
-rout.set(min=0, max=27)
+rin.set(min=0, max=30)
+rout.set(min=0, max=300)
 rout.free = True
 
 # inner_ring = {"rin": rin, "rout": rout, "c1": c1, "s1": s1,
 #               "inner_sigma": inner_sigma, "p": p}
 inner_ring = {"rin": rin, "rout": rout,
               "inner_sigma": inner_sigma, "p": p}
+# inner_ring = {}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
@@ -129,7 +130,8 @@ c1.value = s1.value = 0.5
 
 rin.set(min=0, max=27)
 
-outer_ring = {"rin": rin, "c1": c1, "s1": s1, "inner_sigma": inner_sigma, "p": p}
+# outer_ring = {"rin": rin, "c1": c1, "s1": s1, "inner_sigma": inner_sigma, "p": p}
+outer_ring = {}
 outer_ring_labels = [f"or_{label}" for label in outer_ring]
 
 q = Parameter(**STANDARD_PARAMETERS.q)
@@ -157,13 +159,14 @@ shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 OPTIONS.model.components_and_params = [
     ["Star", star],
     ["TempGradient", inner_ring],
-    ["AsymmetricTempGradient", outer_ring],
+    # ["AsymmetricTempGradient", outer_ring],
 ]
 
-# labels = inner_ring_labels + outer_ring_labels + shared_params_labels
-labels = star_labels + inner_ring_labels + outer_ring_labels + shared_params_labels
-component_labels = ["Star", "Inner Ring", "Outer Ring"]
-# component_labels = ["Star", "Inner Ring"]
+COMPONENT_LABEL_IDS = {"st": "Star", "ir": "Inner Ring", "or": "Outer Ring"}
+labels = star_labels + inner_ring_labels + outer_ring_labels
+component_labels = [COMPONENT_LABEL_IDS[label.split("_")[0]] for label in labels]
+component_labels = [i for n, i in enumerate(component_labels) if i not in component_labels[:n]]
+labels += shared_params_labels
 
 OPTIONS.model.modulation = 1
 OPTIONS.model.gridtype = "logarithmic"
