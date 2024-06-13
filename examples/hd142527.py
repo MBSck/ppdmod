@@ -160,8 +160,8 @@ OPTIONS.model.components_and_params = [
     ["AsymmetricTempGradient", outer_ring],
 ]
 
-labels = inner_ring_labels + outer_ring_labels + shared_params_labels
-# labels = star_labels + inner_ring_labels + shared_params_labels
+# labels = inner_ring_labels + outer_ring_labels + shared_params_labels
+labels = star_labels + inner_ring_labels + outer_ring_labels + shared_params_labels
 component_labels = ["Star", "Inner Ring", "Outer Ring"]
 # component_labels = ["Star", "Inner Ring"]
 
