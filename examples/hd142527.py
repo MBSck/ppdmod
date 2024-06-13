@@ -89,36 +89,31 @@ OPTIONS.model.constant_params = {
 x = Parameter(**STANDARD_PARAMETERS.x)
 y = Parameter(**STANDARD_PARAMETERS.y)
 x.free = y.free = True
-# star = {"x": x, "y": y}
-star = {}
+star = {"x": x, "y": y}
+# star = {}
 star_labels = [f"st_{label}" for label in star]
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
 rout = Parameter(**STANDARD_PARAMETERS.rout)
 p = Parameter(**STANDARD_PARAMETERS.p)
 inner_sigma = Parameter(**STANDARD_PARAMETERS.inner_sigma)
-q = Parameter(**STANDARD_PARAMETERS.q)
-inner_temp = Parameter(**STANDARD_PARAMETERS.inner_temp)
 c1 = Parameter(**STANDARD_PARAMETERS.c)
 s1 = Parameter(**STANDARD_PARAMETERS.s)
 
 rin.value = 1.
 rout.value = 2.
 inner_sigma.value = 1e-3
-inner_temp.value = 1500
-p.value = q.value = 0.5
+p.value = 0.5
 c1.value = s1.value = 0.5
 
 rin.set(min=0, max=5)
 rout.set(min=0, max=27)
-
 rout.free = True
 
 # inner_ring = {"rin": rin, "rout": rout, "c1": c1, "s1": s1,
 #               "inner_sigma": inner_sigma, "p": p}
 inner_ring = {"rin": rin, "rout": rout,
-              "inner_sigma": inner_sigma, "p": p,
-              "inner_temp": inner_temp, "q": q}
+              "inner_sigma": inner_sigma, "p": p}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
@@ -136,44 +131,39 @@ rin.set(min=0, max=27)
 
 outer_ring = {"rin": rin, "c1": c1, "s1": s1, "inner_sigma": inner_sigma, "p": p}
 outer_ring_labels = [f"or_{label}" for label in outer_ring]
-breakpoint()
 
-# q = Parameter(**STANDARD_PARAMETERS.q)
-# inner_temp = Parameter(**STANDARD_PARAMETERS.inner_temp)
+q = Parameter(**STANDARD_PARAMETERS.q)
+inner_temp = Parameter(**STANDARD_PARAMETERS.inner_temp)
 pa = Parameter(**STANDARD_PARAMETERS.pa)
 inc = Parameter(**STANDARD_PARAMETERS.inc)
 cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 
-# q.value = 0.5
-# inner_temp.value = 1500
+q.value = 0.5
+inner_temp.value = 1500
 pa.value = 163
 inc.value = 0.5
 cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass fractions
 
-# q.set(min=0., max=1.)
-# inner_temp.set(min=300, max=2000)
+inner_temp.set(min=300, max=2000)
 pa.set(min=0, max=180)
 inc.set(min=0.3, max=0.95)
 cont_weight.set(min=0.3, max=0.8)
 
-# OPTIONS.model.shared_params = {"q": q, "inner_temp": inner_temp,
-#                                "pa": pa, "inc": inc,
-#                                "cont_weight": cont_weight}
-OPTIONS.model.shared_params = {"pa": pa, "inc": inc,
+OPTIONS.model.shared_params = {"q": q, "inner_temp": inner_temp,
+                               "pa": pa, "inc": inc,
                                "cont_weight": cont_weight}
-# OPTIONS.model.shared_params = {"cont_weight": cont_weight}
 shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 
 OPTIONS.model.components_and_params = [
     ["Star", star],
     ["TempGradient", inner_ring],
-    # ["AsymmetricGreyBody", outer_ring],
+    ["AsymmetricTempGradient", outer_ring],
 ]
 
-# labels = inner_ring_labels + outer_ring_labels + shared_params_labels
-labels = star_labels + inner_ring_labels + shared_params_labels
-# component_labels = ["Star", "Inner Ring", "Outer Ring"]
-component_labels = ["Star", "Inner Ring"]
+labels = inner_ring_labels + outer_ring_labels + shared_params_labels
+# labels = star_labels + inner_ring_labels + shared_params_labels
+component_labels = ["Star", "Inner Ring", "Outer Ring"]
+# component_labels = ["Star", "Inner Ring"]
 
 OPTIONS.model.modulation = 1
 OPTIONS.model.gridtype = "logarithmic"
