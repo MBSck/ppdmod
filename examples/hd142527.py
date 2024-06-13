@@ -32,9 +32,9 @@ wavelengths = {"hband": [1.6]*u.um,
                "nband": [8., 9., 10., 11.3, 12.5]*u.um}
 
 OPTIONS.model.output = "non-normed"
-fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
-wavelength = np.concatenate((wavelengths["lband"], wavelengths["nband"]))
-# wavelength = wavelengths["lband"]
+fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*HAW*fits"))
+# wavelength = np.concatenate((wavelengths["lband"], wavelengths["nband"]))
+wavelength = wavelengths["lband"]
 data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis", "t3"])
 
 # TODO: Check flux values -> gave nan for only N-band
@@ -89,33 +89,36 @@ OPTIONS.model.constant_params = {
 x = Parameter(**STANDARD_PARAMETERS.x)
 y = Parameter(**STANDARD_PARAMETERS.y)
 x.free = y.free = True
-star = {"x": x, "y": y}
+# star = {"x": x, "y": y}
+star = {}
 star_labels = [f"st_{label}" for label in star]
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
 rout = Parameter(**STANDARD_PARAMETERS.rout)
 p = Parameter(**STANDARD_PARAMETERS.p)
 inner_sigma = Parameter(**STANDARD_PARAMETERS.inner_sigma)
+q = Parameter(**STANDARD_PARAMETERS.q)
+inner_temp = Parameter(**STANDARD_PARAMETERS.inner_temp)
 c1 = Parameter(**STANDARD_PARAMETERS.c)
 s1 = Parameter(**STANDARD_PARAMETERS.s)
 
 rin.value = 1.
 rout.value = 2.
-p.value = 0.5
 inner_sigma.value = 1e-3
-c1.value = 0.5
-s1.value = 0.5
+inner_temp.value = 1500
+p.value = q.value = 0.5
+c1.value = s1.value = 0.5
 
 rin.set(min=0, max=5)
 rout.set(min=0, max=27)
-p.set(min=0., max=1.)
-inner_sigma.set(min=0, max=1e-2)
 
 rout.free = True
 
 # inner_ring = {"rin": rin, "rout": rout, "c1": c1, "s1": s1,
 #               "inner_sigma": inner_sigma, "p": p}
-inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma, "p": p}
+inner_ring = {"rin": rin, "rout": rout,
+              "inner_sigma": inner_sigma, "p": p,
+              "inner_temp": inner_temp, "q": q}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
@@ -127,15 +130,13 @@ s1 = Parameter(**STANDARD_PARAMETERS.s)
 rin.value = 13
 p.value = 0.5
 inner_sigma.value = 1e-3
-c1.value = 0.5
-s1.value = 0.5
+c1.value = s1.value = 0.5
 
 rin.set(min=0, max=27)
-p.set(min=0., max=1.)
-inner_sigma.set(min=0, max=1e-2)
 
 outer_ring = {"rin": rin, "c1": c1, "s1": s1, "inner_sigma": inner_sigma, "p": p}
 outer_ring_labels = [f"or_{label}" for label in outer_ring]
+breakpoint()
 
 # q = Parameter(**STANDARD_PARAMETERS.q)
 # inner_temp = Parameter(**STANDARD_PARAMETERS.inner_temp)
@@ -165,7 +166,7 @@ shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 
 OPTIONS.model.components_and_params = [
     ["Star", star],
-    ["GreyBody", inner_ring],
+    ["TempGradient", inner_ring],
     # ["AsymmetricGreyBody", outer_ring],
 ]
 
@@ -194,15 +195,15 @@ rchi_sq = fitting.compute_observable_chi_sq(
         *fitting.compute_observables(components), reduced=True)
 print(f"rchi_sq: {rchi_sq}")
 
-# plot.plot_overview(savefig=pre_fit_dir / "data_overview.pdf")
-# plot.plot_observables([1, 12]*u.um, components, save_dir=pre_fit_dir)
+plot.plot_overview(savefig=pre_fit_dir / "data_overview.pdf")
+plot.plot_observables([1, 12]*u.um, components, save_dir=pre_fit_dir)
 
-# analysis.save_fits(
-#         4096, 0.1, distance,
-#         components, component_labels,
-#         opacities=[kappa_abs, kappa_cont],
-#         savefits=pre_fit_dir / "model.fits",
-#         object_name="HD 142527")
+analysis.save_fits(
+        4096, 0.1, distance,
+        components, component_labels,
+        opacities=[kappa_abs, kappa_cont],
+        savefits=pre_fit_dir / "model.fits",
+        object_name="HD 142527")
 
 post_fit_dir = result_dir / "post_fit"
 post_fit_dir.mkdir(parents=True, exist_ok=True)
@@ -211,7 +212,7 @@ post_fit_dir.mkdir(parents=True, exist_ok=True)
 if __name__ == "__main__":
     ncores = None
     fit_params_emcee = {"nburnin": 2, "nsteps": 5, "nwalkers": 100}
-    fit_params_dynesty = {"nlive_init": 1000}
+    fit_params_dynesty = {"nlive_init": 2000}
 
     if OPTIONS.fit.method == "emcee":
         fit_params = fit_params_emcee
@@ -222,7 +223,7 @@ if __name__ == "__main__":
         fit_params = fit_params_dynesty
 
     sampler = fitting.run_fit(**fit_params, ncores=ncores, method="dynamic",
-                      save_dir=result_dir, debug=True)
+                      save_dir=result_dir, debug=False)
     theta, uncertainties = fitting.get_best_fit(
             sampler, **fit_params, method="quantile")
 
