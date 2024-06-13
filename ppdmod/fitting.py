@@ -218,6 +218,7 @@ def compute_observable_chi_sq(
                 data.err[~nan_indices],
                 params[key][~nan_indices],
                 method=method) * weight
+
     chi_sq = float(chi_sq)
     if reduced:
         chi_sq /= ndata + get_priors().shape[0]
