@@ -89,8 +89,8 @@ OPTIONS.model.constant_params = {
 x = Parameter(**STANDARD_PARAMETERS.x)
 y = Parameter(**STANDARD_PARAMETERS.y)
 x.free = y.free = True
-star = {"x": x, "y": y}
-# star = {}
+# star = {"x": x, "y": y}
+star = {}
 star_labels = [f"st_{label}" for label in star]
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
@@ -101,14 +101,14 @@ c1 = Parameter(**STANDARD_PARAMETERS.c)
 s1 = Parameter(**STANDARD_PARAMETERS.s)
 
 rin.value = 1.
-rout.value = 2.
+# rout.value = 2.
 inner_sigma.value = 1e-3
 p.value = 0.5
 c1.value = s1.value = 0.5
 
 rin.set(min=0, max=30)
-rout.set(min=0, max=300)
-rout.free = True
+# rout.set(min=0, max=300)
+# rout.free = True
 
 # inner_ring = {"rin": rin, "rout": rout, "c1": c1, "s1": s1,
 #               "inner_sigma": inner_sigma, "p": p}
@@ -151,14 +151,14 @@ pa.set(min=0, max=180)
 inc.set(min=0.3, max=0.95)
 cont_weight.set(min=0.3, max=0.8)
 
-OPTIONS.model.shared_params = {"q": q, "inner_temp": inner_temp,
+OPTIONS.model.shared_params = {# "q": q, "inner_temp": inner_temp,
                                "pa": pa, "inc": inc,
                                "cont_weight": cont_weight}
 shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 
 OPTIONS.model.components_and_params = [
     ["Star", star],
-    ["TempGradient", inner_ring],
+    ["GreyBody", inner_ring],
     # ["AsymmetricTempGradient", outer_ring],
 ]
 
