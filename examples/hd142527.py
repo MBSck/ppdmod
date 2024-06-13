@@ -112,8 +112,7 @@ rin.set(min=0, max=30)
 
 # inner_ring = {"rin": rin, "rout": rout, "c1": c1, "s1": s1,
 #               "inner_sigma": inner_sigma, "p": p}
-inner_ring = {"rin": rin, "rout": rout,
-              "inner_sigma": inner_sigma, "p": p}
+inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma, "p": p}
 # inner_ring = {}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
@@ -162,11 +161,10 @@ OPTIONS.model.components_and_params = [
     # ["AsymmetricTempGradient", outer_ring],
 ]
 
-COMPONENT_LABEL_IDS = {"st": "Star", "ir": "Inner Ring", "or": "Outer Ring"}
 labels = star_labels + inner_ring_labels + outer_ring_labels
-component_labels = [COMPONENT_LABEL_IDS[label.split("_")[0]] for label in labels]
-component_labels = [i for n, i in enumerate(component_labels) if i not in component_labels[:n]]
 labels += shared_params_labels
+component_labels = ["Star", "Inner Ring", "Outer Ring"]
+component_labels = component_labels[:len(OPTIONS.model.components_and_params)]
 
 OPTIONS.model.modulation = 1
 OPTIONS.model.gridtype = "logarithmic"
