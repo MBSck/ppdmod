@@ -681,7 +681,7 @@ class TempGradient(Ring):
         """
         temperature = self.compute_temperature(radius)
         emissivity = self.compute_emissivity(radius, wavelength)
-        intensity = BlackBody(temperature)(wavelength) * (1 - emissivity)
+        intensity = BlackBody(temperature)(wavelength) * emissivity
         return intensity.astype(OPTIONS.data.dtype.real)
 
     def flux_func(self, wavelength: u.um) -> np.ndarray:
