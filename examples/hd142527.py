@@ -86,6 +86,11 @@ OPTIONS.model.constant_params = {
     "eff_temp": eff_temp, "eff_radius": eff_radius,
     "kappa_cont": kappa_cont}
 
+x = Parameter(**STANDARD_PARAMETERS.x)
+y = Parameter(**STANDARD_PARAMETERS.y)
+star = {"x": x, "y": y}
+star_labels = [f"ir_{label}" for label in star]
+
 rin = Parameter(**STANDARD_PARAMETERS.rin)
 rout = Parameter(**STANDARD_PARAMETERS.rout)
 p = Parameter(**STANDARD_PARAMETERS.p)
@@ -158,15 +163,15 @@ OPTIONS.model.shared_params = {"pa": pa, "inc": inc,
 shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 
 OPTIONS.model.components_and_params = [
-    ["Star", {}],
+    ["Star", star],
     ["GreyBody", inner_ring],
-    ["AsymmetricGreyBody", outer_ring],
+    # ["AsymmetricGreyBody", outer_ring],
 ]
 
-labels = inner_ring_labels + outer_ring_labels + shared_params_labels
-# labels = inner_ring_labels + shared_params_labels
-component_labels = ["Star", "Inner Ring", "Outer Ring"]
-# component_labels = ["Star", "Inner Ring"]
+# labels = inner_ring_labels + outer_ring_labels + shared_params_labels
+labels = inner_ring_labels + shared_params_labels
+# component_labels = ["Star", "Inner Ring", "Outer Ring"]
+component_labels = ["Star", "Inner Ring"]
 
 OPTIONS.model.modulation = 1
 OPTIONS.model.gridtype = "logarithmic"
