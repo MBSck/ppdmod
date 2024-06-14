@@ -101,7 +101,7 @@ p.value = 0.5
 c1.value = s1.value = 0.5
 
 rin.set(min=0, max=30)
-rout.set(min=0, max=300)
+rout.set(min=0, max=30)
 rout.free = True
 
 # inner_ring = {"rin": rin, "rout": rout, "c1": c1, "s1": s1,
@@ -153,7 +153,7 @@ shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 OPTIONS.model.components_and_params = [
     ["Star", star],
     ["GreyBody", inner_ring],
-    ["GreyBody", outer_ring],
+    # ["GreyBody", outer_ring],
 ]
 
 labels = star_labels + inner_ring_labels + outer_ring_labels
