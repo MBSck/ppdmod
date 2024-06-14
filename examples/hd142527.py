@@ -93,20 +93,25 @@ p = Parameter(**STANDARD_PARAMETERS.p)
 inner_sigma = Parameter(**STANDARD_PARAMETERS.inner_sigma)
 c1 = Parameter(**STANDARD_PARAMETERS.c)
 s1 = Parameter(**STANDARD_PARAMETERS.s)
+cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 
 rin.value = 1.
 rout.value = 2.
 inner_sigma.value = 1e-3
 p.value = 0.5
 c1.value = s1.value = 0.5
+cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass fractions
 
-rin.set(min=0, max=30)
-rout.set(min=0, max=30)
+rin.set(min=0, max=2)
+rout.set(min=0, max=13.5)
 rout.free = True
+# Calculate the continuum weight?
+cont_weight.set(min=0, max=1)
 
 # inner_ring = {"rin": rin, "rout": rout, "c1": c1, "s1": s1,
 #               "inner_sigma": inner_sigma, "p": p}
-inner_ring = {"rin": rin, "rout": rout, "inner_sigma": inner_sigma, "p": p}
+inner_ring = {"rin": rin, "rout": rout,
+              "inner_sigma": inner_sigma, "p": p, "cont_weight": cont_weight}
 # inner_ring = {}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
@@ -115,16 +120,20 @@ p = Parameter(**STANDARD_PARAMETERS.p)
 inner_sigma = Parameter(**STANDARD_PARAMETERS.inner_sigma)
 c1 = Parameter(**STANDARD_PARAMETERS.c)
 s1 = Parameter(**STANDARD_PARAMETERS.s)
+cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 
 rin.value = 13
 p.value = 0.5
 inner_sigma.value = 1e-3
 c1.value = s1.value = 0.5
+cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass fractions
 
-rin.set(min=0, max=27)
+rin.set(min=0, max=13.5)
+cont_weight.set(min=0, max=1)
 
 # outer_ring = {"rin": rin, "c1": c1, "s1": s1, "inner_sigma": inner_sigma, "p": p}
-outer_ring = {"rin": rin, "inner_sigma": inner_sigma, "p": p}
+outer_ring = {"rin": rin, "inner_sigma": inner_sigma,
+              "p": p, "cont_weight": cont_weight}
 # outer_ring = {}
 outer_ring_labels = [f"or_{label}" for label in outer_ring]
 
@@ -132,28 +141,24 @@ q = Parameter(**STANDARD_PARAMETERS.q)
 inner_temp = Parameter(**STANDARD_PARAMETERS.inner_temp)
 pa = Parameter(**STANDARD_PARAMETERS.pa)
 inc = Parameter(**STANDARD_PARAMETERS.inc)
-cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 
 q.value = 0.5
 inner_temp.value = 1500
 pa.value = 163
 inc.value = 0.5
-cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass fractions
 
 inner_temp.set(min=300, max=2000)
 pa.set(min=0, max=180)
 inc.set(min=0.3, max=0.95)
-cont_weight.set(min=0.3, max=0.8)
 
 OPTIONS.model.shared_params = {# "q": q, "inner_temp": inner_temp,
-                               "pa": pa, "inc": inc,
-                               "cont_weight": cont_weight}
+                               "pa": pa, "inc": inc}
 shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 
 OPTIONS.model.components_and_params = [
     ["Star", star],
     ["GreyBody", inner_ring],
-    # ["GreyBody", outer_ring],
+    ["GreyBody", outer_ring],
 ]
 
 labels = star_labels + inner_ring_labels + outer_ring_labels
