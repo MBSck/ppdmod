@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from typing import List
 from pathlib import Path
 
 os.environ["OMP_NUM_THREADS"] = "1"
@@ -24,6 +25,17 @@ from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 # TODO: Check if also the work together of the different components gives right result
 # as well as the broadcasting
 # TODO: Check also everything else, step-by-step
+
+
+def ptform(theta: List[float]) -> np.ndarray:
+    """Transform that constrains the first two parameters to 1 for dynesty."""
+    params = fitting.transform_uniform_prior(theta)
+    if "ir_rout" in labels and "or_rin" in labels:
+        ind = np.array([labels.index("ir_rout"), labels.index("or_rin")])
+        if params[ind[0]] > params[ind[1]]:
+            params[ind[1]] = params[ind[0]]
+    return params
+
 
 DATA_DIR = Path("../tests/data")
 wavelengths = {"hband": [1.6]*u.um,
@@ -105,7 +117,7 @@ cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass f
 rin.set(min=0, max=2)
 rout.set(min=0, max=13.5)
 rout.free = True
-# Calculate the continuum weight?
+p.set(min=-1, max=1)
 cont_weight.set(min=0, max=1)
 
 # inner_ring = {"rin": rin, "rout": rout, "c1": c1, "s1": s1,
@@ -129,6 +141,7 @@ c1.value = s1.value = 0.5
 cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass fractions
 
 rin.set(min=0, max=13.5)
+p.set(min=-1, max=1)
 cont_weight.set(min=0, max=1)
 
 # outer_ring = {"rin": rin, "c1": c1, "s1": s1, "inner_sigma": inner_sigma, "p": p}
@@ -186,15 +199,15 @@ rchi_sq = fitting.compute_observable_chi_sq(
         *fitting.compute_observables(components), reduced=True)
 print(f"rchi_sq: {rchi_sq}")
 
-plot.plot_overview(savefig=pre_fit_dir / "data_overview.pdf")
-plot.plot_observables([1, 12]*u.um, components, save_dir=pre_fit_dir)
+# plot.plot_overview(savefig=pre_fit_dir / "data_overview.pdf")
+# plot.plot_observables([1, 12]*u.um, components, save_dir=pre_fit_dir)
 
-analysis.save_fits(
-        4096, 0.1, distance,
-        components, component_labels,
-        opacities=[kappa_abs, kappa_cont],
-        savefits=pre_fit_dir / "model.fits",
-        object_name="HD 142527")
+# analysis.save_fits(
+#         4096, 0.1, distance,
+#         components, component_labels,
+#         opacities=[kappa_abs, kappa_cont],
+#         savefits=pre_fit_dir / "model.fits",
+#         object_name="HD 142527")
 
 post_fit_dir = result_dir / "post_fit"
 post_fit_dir.mkdir(parents=True, exist_ok=True)
@@ -203,7 +216,7 @@ post_fit_dir.mkdir(parents=True, exist_ok=True)
 if __name__ == "__main__":
     ncores = None
     fit_params_emcee = {"nburnin": 2, "nsteps": 5, "nwalkers": 100}
-    fit_params_dynesty = {"nlive_init": 2000}
+    fit_params_dynesty = {"nlive_init": 2000, "ptform": ptform}
 
     if OPTIONS.fit.method == "emcee":
         fit_params = fit_params_emcee
@@ -214,7 +227,7 @@ if __name__ == "__main__":
         fit_params = fit_params_dynesty
 
     sampler = fitting.run_fit(**fit_params, ncores=ncores, method="dynamic",
-                      save_dir=result_dir, debug=False)
+                      save_dir=result_dir, debug=True)
     theta, uncertainties = fitting.get_best_fit(
             sampler, **fit_params, method="quantile")
 
