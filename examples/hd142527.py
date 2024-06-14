@@ -95,14 +95,14 @@ c1 = Parameter(**STANDARD_PARAMETERS.c)
 s1 = Parameter(**STANDARD_PARAMETERS.s)
 
 rin.value = 1.
-# rout.value = 2.
+rout.value = 2.
 inner_sigma.value = 1e-3
 p.value = 0.5
 c1.value = s1.value = 0.5
 
 rin.set(min=0, max=30)
-# rout.set(min=0, max=300)
-# rout.free = True
+rout.set(min=0, max=300)
+rout.free = True
 
 # inner_ring = {"rin": rin, "rout": rout, "c1": c1, "s1": s1,
 #               "inner_sigma": inner_sigma, "p": p}
@@ -124,7 +124,8 @@ c1.value = s1.value = 0.5
 rin.set(min=0, max=27)
 
 # outer_ring = {"rin": rin, "c1": c1, "s1": s1, "inner_sigma": inner_sigma, "p": p}
-outer_ring = {}
+outer_ring = {"rin": rin, "inner_sigma": inner_sigma, "p": p}
+# outer_ring = {}
 outer_ring_labels = [f"or_{label}" for label in outer_ring]
 
 q = Parameter(**STANDARD_PARAMETERS.q)
@@ -208,7 +209,7 @@ if __name__ == "__main__":
         fit_params = fit_params_dynesty
 
     sampler = fitting.run_fit(**fit_params, ncores=ncores, method="dynamic",
-                      save_dir=result_dir, debug=False)
+                      save_dir=result_dir, debug=True)
     theta, uncertainties = fitting.get_best_fit(
             sampler, **fit_params, method="quantile")
 
