@@ -32,21 +32,15 @@ wavelengths = {"hband": [1.6]*u.um,
                "nband": [8., 9., 10., 11.3, 12.5]*u.um}
 
 OPTIONS.model.output = "non-normed"
-fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*HAW*fits"))
-# wavelength = np.concatenate((wavelengths["lband"], wavelengths["nband"]))
-wavelength = wavelengths["lband"]
+fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
+wavelength = np.concatenate((wavelengths["lband"], wavelengths["nband"]))
+# wavelength = wavelengths["lband"]
 data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis", "t3"])
 
 # TODO: Check flux values -> gave nan for only N-band
 wl_flux, flux = utils.load_data(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt")
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
 star_flux.wavelength, star_flux.value = wl_flux, flux
-
-# wl_flux_ratio, flux_ratio = np.load(DATA_DIR / "flux" / "flux_ratio_inner_disk_hd142666.npy")
-# flux_ratio_interpn = np.interp(wavelengths.value, wl_flux_ratio, flux_ratio)
-# flux_ratio_interpn += 0.2
-# point_flux_ratio = Parameter(**STANDARD_PARAMETERS.fr)
-# point_flux_ratio.value, point_flux_ratio.wavelength = flux_ratio_interpn, wavelengths
 
 weights = np.array([73.2, 8.6, 0.6, 14.2, 2.4, 1.0])/100
 names = ["pyroxene", "forsterite", "enstatite", "silica"]
@@ -158,7 +152,7 @@ shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 OPTIONS.model.components_and_params = [
     ["Star", star],
     ["GreyBody", inner_ring],
-    # ["AsymmetricTempGradient", outer_ring],
+    ["GreyBody", outer_ring],
 ]
 
 labels = star_labels + inner_ring_labels + outer_ring_labels
