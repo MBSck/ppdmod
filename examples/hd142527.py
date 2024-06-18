@@ -28,9 +28,10 @@ def ptform(theta: List[float]) -> np.ndarray:
     params = fitting.transform_uniform_prior(theta)
     indices = list(map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels))))
     for count, index in enumerate(indices):
+        next_index = indices[count + 1]
         if count == len(indices) - 1:
             break
-        params[indices[count + 1]] = params[indices[count + 1]] if params[index] <= params[indices[count + 1]] else params[index]
+        params[next_index] = params[next_index] if params[index] <= params[next_index] else params[index]
 
     return params
 
@@ -138,7 +139,7 @@ sigma0.value = 1e-3
 c1.value = s1.value = 0.5
 cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass fractions
 
-rin.set(min=0, max=13.5)
+rin.set(min=0, max=30)
 p.set(min=-1, max=1)
 cont_weight.set(min=0, max=1)
 
