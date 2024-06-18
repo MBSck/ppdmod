@@ -122,8 +122,8 @@ cont_weight.set(min=0, max=1)
 
 # inner_ring = {"rin": rin, "rout": rout, "c1": c1, "s1": s1,
 #               "sigma0": sigma0, "p": p}
-inner_ring = {"rin": rin, "rout": rout,
-              "sigma0": sigma0, "p": p, "cont_weight": cont_weight}
+inner_ring = {"rin": rin, "p": p, "sigma0": sigma0,
+              "cont_weight": cont_weight}
 # inner_ring = {}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
@@ -145,8 +145,8 @@ p.set(min=-1, max=1)
 cont_weight.set(min=0, max=1)
 
 # outer_ring = {"rin": rin, "c1": c1, "s1": s1, "sigma0": sigma0, "p": p}
-outer_ring = {"rin": rin, "sigma0": sigma0,
-              "p": p, "cont_weight": cont_weight}
+outer_ring = {"rin": rin, "p": p, "sigma0": sigma0,
+              "cont_weight": cont_weight}
 # outer_ring = {}
 outer_ring_labels = [f"or_{label}" for label in outer_ring]
 
@@ -200,7 +200,8 @@ rchi_sq = fitting.compute_observable_chi_sq(
 print(f"rchi_sq: {rchi_sq}")
 
 # plot.plot_overview(savefig=pre_fit_dir / "data_overview.pdf")
-# plot.plot_observables([1, 12]*u.um, components, save_dir=pre_fit_dir)
+plot.plot_observables([1, 12]*u.um, components, save_dir=pre_fit_dir)
+breakpoint()
 
 # analysis.save_fits(
 #         4096, 0.1, distance,

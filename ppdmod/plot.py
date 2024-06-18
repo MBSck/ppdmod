@@ -1,3 +1,4 @@
+import re
 from typing import Optional, Dict, List
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from astropy.table import Table
 from astropy.wcs import WCS
 from dynesty import plotting as dyplot
 from matplotlib.gridspec import GridSpec
+from matplotlib.lines import Line2D
 
 from .component import Component
 from .fitting import compute_observables
@@ -25,7 +27,6 @@ from .utils import compute_effective_baselines, restrict_phase, \
 
 
 matplotlib.use("Agg")
-
 
 def plot_components(components: List[Component], dim: int,
                     pixel_size: u.mas, wavelength: u.um,
@@ -868,12 +869,37 @@ def plot_observables(wavelength_range: u.um,
                        tight_layout=True)
         ax = plt.axes(facecolor=OPTIONS.plot.color.background)
         set_axes_color(ax, OPTIONS.plot.color.background)
-        ax.plot(wavelength, flux)
-        
+        ax.plot(wavelength, flux[:, 0], label="Model", color="black")
+        names = [re.findall(r"(\d{4}-\d{2}-\d{2})", readout.fits_file.name)[0] for readout in OPTIONS.data.readouts]
+        sorted_readouts = np.array(OPTIONS.data.readouts.copy())[np.argsort(names)].tolist()
+
+        values = [flux[:, 0]]
+        for name, readout in zip(np.sort(names), sorted_readouts):
+            if readout.flux.value.size == 0:
+                continue
+
+            readout_wavelength = readout.wavelength.value
+            readout_flux, readout_err = readout.flux.value.flatten(), readout.flux.err.flatten()
+            if "HAW" in readout.fits_file.name:
+                indices_high = np.where((readout_wavelength >= 4.55) & (readout_wavelength <= 4.9))
+                indices_low = np.where((readout_wavelength >= 3.1) & (readout_wavelength <= 3.9))
+                indices = np.hstack((indices_high, indices_low))
+                readout_wavelength = readout_wavelength[indices].flatten()
+                readout_flux, readout_err = readout_flux[indices].flatten(), readout_err[indices].flatten()
+
+            lower_err, upper_err = readout_flux - readout_err, readout_flux + readout_err
+            line = ax.plot(readout_wavelength, readout_flux, label=name)
+            ax.fill_between(readout_wavelength, lower_err, upper_err, color=line[0].get_color(), alpha=0.5)
+            values.append(readout_flux)
+
+        max_value = np.concatenate(values).max()
         ax.set_xlabel(r"$\lambda$ ($\mu$m)")
         ax.set_ylabel("Flux (Jy)")
-        ax.set_ylim([0, None])
-        ax.legend()
+        ax.set_ylim([0, max_value + 0.1*max_value])
+        handles, labels = ax.get_legend_handles_labels()
+        custom_handles = [handles[0], handles[1], Line2D([0], [0], color="white", label="..."), handles[-1]]
+        custom_labels = [labels[0], labels[1], "...", labels[-1]]
+        ax.legend(custom_handles, custom_labels)
         plt.savefig(save_dir / "sed.pdf", format="pdf")
         plt.close()
 
