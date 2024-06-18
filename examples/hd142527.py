@@ -28,9 +28,9 @@ def ptform(theta: List[float]) -> np.ndarray:
     params = fitting.transform_uniform_prior(theta)
     indices = list(map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels))))
     for count, index in enumerate(indices):
-        next_index = indices[count + 1]
         if count == len(indices) - 1:
             break
+        next_index = indices[count + 1]
         params[next_index] = params[next_index] if params[index] <= params[next_index] else params[index]
 
     return params
