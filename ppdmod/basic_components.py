@@ -3,7 +3,7 @@ from typing import Optional, Dict, List
 import astropy.units as u
 import numpy as np
 from astropy.modeling.models import BlackBody
-from scipy.special import j0, j1, jv
+from scipy.special import j0, j1
 from scipy.signal import fftconvolve
 
 from .component import Component
@@ -113,7 +113,6 @@ class Star(Component):
     description : str
         The component's description.
      : dict of Parameter
-    stellar_radius_angular : u.mas
     """
 
     name = "Star"
@@ -123,27 +122,13 @@ class Star(Component):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._stellar_angular_radius = None
-
         self.f = Parameter(**STANDARD_PARAMETERS.f)
         self.dist = Parameter(**STANDARD_PARAMETERS.dist)
         self.eff_temp = Parameter(**STANDARD_PARAMETERS.eff_temp)
         self.eff_radius = Parameter(**STANDARD_PARAMETERS.eff_radius)
         self.eval(**kwargs)
 
-    @property
-    def stellar_radius_angular(self) -> u.mas:
-        r"""Computes the parallax from the stellar radius and the distance to
-        the object.
-
-        Returns
-        -------
-        stellar_radius_angular : astropy.units.mas
-            The parallax of the stellar radius.
-        """
-        self._stellar_angular_radius = distance_to_angular(
-            self.eff_radius(), self.dist())
-        return self._stellar_angular_radius
+        self.stellar_radius_angular = distance_to_angular(self.eff_radius(), self.dist())
 
     def flux_func(self, wavelength: u.um) -> np.ndarray:
         """Computes the flux of the star."""
@@ -575,34 +560,22 @@ class TempGradient(Ring):
         self.r0 = Parameter(**STANDARD_PARAMETERS.r0)
         self.q = Parameter(**STANDARD_PARAMETERS.q)
         self.temp0 = Parameter(**STANDARD_PARAMETERS.temp0)
-
         self.p = Parameter(**STANDARD_PARAMETERS.p)
         self.sigma0 = Parameter(**STANDARD_PARAMETERS.sigma0)
-        self.kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
 
-        self.cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
+        self.kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
         self.kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
+        self.cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 
         if self.const_temperature:
-            self.q.free = False
-            self.temp0.free = False
+            self.q.free = self.temp0.free = False
 
         if not self.continuum_contribution:
             self.cont_weight.free = False
 
         self.eval(**kwargs)
 
-    @property
-    def stellar_radius_angular(self) -> u.mas:
-        r"""Computes the parallax from the stellar radius and the distance to
-        the object.
-
-        Returns
-        -------
-        stellar_radius_angular : astropy.units.mas
-            The parallax of the stellar radius.
-        """
-        return distance_to_angular(self.eff_radius(), self.dist())
+        self.stellar_radius_angular = distance_to_angular(self.eff_radius(), self.dist())
 
     def get_opacity(self, wavelength: u.um) -> u.cm**2 / u.g:
         """Set the opacity from wavelength."""
@@ -622,9 +595,7 @@ class TempGradient(Ring):
     def compute_temperature(self, radius: u.mas) -> u.K:
         """Computes a 1D-temperature profile."""
         if self.const_temperature:
-            temperature = (
-                np.sqrt(self.stellar_radius_angular / (2.0 * radius)) * self.eff_temp()
-            )
+            temperature = np.sqrt(self.stellar_radius_angular / (2.0 * radius)) * self.eff_temp()
         else:
             r0 = OPTIONS.model.reference_radius if self.r0.value == 0 else self.r0()
             r0_angular = distance_to_angular(r0, self.dist())
