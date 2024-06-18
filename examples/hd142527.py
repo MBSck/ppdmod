@@ -107,7 +107,7 @@ s1 = Parameter(**STANDARD_PARAMETERS.s)
 cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 
 rin.value = 1.
-rout.value = 2.
+rout.value = 3.
 sigma0.value = 1e-3
 p.value = 0.5
 c1.value = s1.value = 0.5
@@ -127,27 +127,48 @@ inner_ring = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0,
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
+rout = Parameter(**STANDARD_PARAMETERS.rout)
 p = Parameter(**STANDARD_PARAMETERS.p)
 sigma0 = Parameter(**STANDARD_PARAMETERS.sigma0)
 c1 = Parameter(**STANDARD_PARAMETERS.c)
 s1 = Parameter(**STANDARD_PARAMETERS.s)
 cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 
-rin.value = 13
+rin.value = 5
+rout.value = 10
 p.value = 0.5
 sigma0.value = 1e-3
 c1.value = s1.value = 0.5
 cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass fractions
 
 rin.set(min=0, max=30)
+rout.set(min=0, max=50)
+rout.free = True
 p.set(min=-1, max=1)
 cont_weight.set(min=0, max=1)
 
 # outer_ring = {"rin": rin, "c1": c1, "s1": s1, "sigma0": sigma0, "p": p}
-outer_ring = {"rin": rin, "p": p, "sigma0": sigma0,
+outer_ring = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0,
               "cont_weight": cont_weight}
 # outer_ring = {}
 outer_ring_labels = [f"or_{label}" for label in outer_ring]
+
+rin.value = 12
+p.value = 0.5
+sigma0.value = 1e-3
+c1.value = s1.value = 0.5
+cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass fractions
+
+rin.set(min=0, max=30)
+rout.set(min=0, max=50)
+rout.free = True
+p.set(min=-1, max=1)
+cont_weight.set(min=0, max=1)
+
+last_ring = {"rin": rin, "p": p, "sigma0": sigma0,
+              "cont_weight": cont_weight}
+# last_ring = {}
+last_ring_labels = [f"or_{label}" for label in last_ring]
 
 q = Parameter(**STANDARD_PARAMETERS.q)
 temp0 = Parameter(**STANDARD_PARAMETERS.temp0)
@@ -171,11 +192,12 @@ OPTIONS.model.components_and_params = [
     ["Star", star],
     ["GreyBody", inner_ring],
     ["GreyBody", outer_ring],
+    ["GreyBody", last_ring],
 ]
 
 labels = star_labels + inner_ring_labels + outer_ring_labels
 labels += shared_params_labels
-component_labels = ["Star", "Inner Ring", "Outer Ring"]
+component_labels = ["Star", "Inner Ring", "Outer Ring", "Last Ring"]
 component_labels = component_labels[:len(OPTIONS.model.components_and_params)]
 
 OPTIONS.fit.method = "dynesty"
