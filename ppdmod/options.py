@@ -169,7 +169,7 @@ data = SimpleNamespace(readouts=[], flux=flux, vis=vis,
 model = SimpleNamespace(components_and_params=None,
                         constant_params=None, shared_params=None,
                         output="normed", reference_radius=1*u.au,
-                        gridtype="linear", modulation=0)
+                        gridtype="logarithmic", modulation=1)
 
 # NOTE: Plot
 color = SimpleNamespace(background="white",

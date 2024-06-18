@@ -22,10 +22,6 @@ from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 
-# TODO: Check if also the work together of the different components gives right result
-# as well as the broadcasting
-# TODO: Check also everything else, step-by-step
-
 
 def ptform(theta: List[float]) -> np.ndarray:
     """Transform that constrains the first two parameters to 1 for dynesty."""
@@ -122,7 +118,7 @@ cont_weight.set(min=0, max=1)
 
 # inner_ring = {"rin": rin, "rout": rout, "c1": c1, "s1": s1,
 #               "sigma0": sigma0, "p": p}
-inner_ring = {"rin": rin, "p": p, "sigma0": sigma0,
+inner_ring = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0,
               "cont_weight": cont_weight}
 # inner_ring = {}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
@@ -179,8 +175,6 @@ labels += shared_params_labels
 component_labels = ["Star", "Inner Ring", "Outer Ring"]
 component_labels = component_labels[:len(OPTIONS.model.components_and_params)]
 
-OPTIONS.model.modulation = 1
-OPTIONS.model.gridtype = "logarithmic"
 OPTIONS.fit.method = "dynesty"
 
 model_result_dir = Path("../model_results/")
@@ -199,15 +193,16 @@ rchi_sq = fitting.compute_observable_chi_sq(
         *fitting.compute_observables(components), reduced=True)
 print(f"rchi_sq: {rchi_sq}")
 
-plot.plot_overview(savefig=pre_fit_dir / "data_overview.pdf")
+# plot.plot_overview(savefig=pre_fit_dir / "data_overview.pdf")
 plot.plot_observables([1, 12]*u.um, components, save_dir=pre_fit_dir)
+breakpoint()
 
-analysis.save_fits(
-        4096, 0.1, distance,
-        components, component_labels,
-        opacities=[kappa_abs, kappa_cont],
-        savefits=pre_fit_dir / "model.fits",
-        object_name="HD 142527")
+# analysis.save_fits(
+#         4096, 0.1, distance,
+#         components, component_labels,
+#         opacities=[kappa_abs, kappa_cont],
+#         savefits=pre_fit_dir / "model.fits",
+#         object_name="HD 142527")
 
 post_fit_dir = result_dir / "post_fit"
 post_fit_dir.mkdir(parents=True, exist_ok=True)
@@ -227,7 +222,7 @@ if __name__ == "__main__":
         fit_params = fit_params_dynesty
 
     sampler = fitting.run_fit(**fit_params, ncores=ncores, method="dynamic",
-                      save_dir=result_dir, debug=False)
+                      save_dir=result_dir, debug=True)
     theta, uncertainties = fitting.get_best_fit(
             sampler, **fit_params, method="quantile")
 
