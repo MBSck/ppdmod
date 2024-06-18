@@ -1,7 +1,5 @@
 import os
-import operator
 from datetime import datetime
-from functools import reduce
 from typing import List
 from pathlib import Path
 
