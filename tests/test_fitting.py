@@ -53,26 +53,26 @@ def components_and_params() -> List[Dict[str, Parameter]]:
     p = Parameter(**STANDARD_PARAMETERS.p)
     c = Parameter(**STANDARD_PARAMETERS.c)
     s = Parameter(**STANDARD_PARAMETERS.s)
-    inner_sigma = Parameter(**STANDARD_PARAMETERS.inner_sigma)
+    sigma0 = Parameter(**STANDARD_PARAMETERS.sigma0)
 
     rin.value = 1.
     rout.value = 7.
     c.value = 0.5
     s.value = 0.5
     p.value = 0.5
-    inner_sigma.value = 1e-3
+    sigma0.value = 1e-3
 
     rin.set(min=0.5, max=5)
     rout.set(min=0.5, max=10)
     c.set(min=-1., max=1.)
     s.set(min=-1, max=1)
     p.set(min=0., max=1.)
-    inner_sigma.set(min=0, max=1e-2)
+    sigma0.set(min=0, max=1e-2)
 
     rout.free = True
 
     inner_ring = {"rin": rin, "rout": rout,
-                  "inner_sigma": inner_sigma, "p": p,
+                  "sigma0": sigma0, "p": p,
                   "c": c, "s": s}
     return [["Star", {}], ["AsymmetricGreyBody", inner_ring]]
 
@@ -286,7 +286,7 @@ def test_lnprob(fits_files: List[Path], wavelength: u.um) -> None:
                      "eff_temp": 7800, "eff_radius": 1.8,
                      "kappa_abs": 1000, "kappa_cont": 3000}
     param_names = ["rin", "p", "c", "s",
-                   "inner_sigma", "cont_weight", "pa", "inc"]
+                   "sigma0", "cont_weight", "pa", "inc"]
     values = [1.5, 0.5, 0.3, 0.7, 2000, 0.5, 45, 1.6]
     limits = [[0, 20], [0, 1], [-1, 1], [-1, 1],
               [100, 10000], [0, 1], [0, 360], [1, 50]]

@@ -102,14 +102,14 @@ star_labels = [f"st_{label}" for label in star]
 rin = Parameter(**STANDARD_PARAMETERS.rin)
 rout = Parameter(**STANDARD_PARAMETERS.rout)
 p = Parameter(**STANDARD_PARAMETERS.p)
-inner_sigma = Parameter(**STANDARD_PARAMETERS.inner_sigma)
+sigma0 = Parameter(**STANDARD_PARAMETERS.sigma0)
 c1 = Parameter(**STANDARD_PARAMETERS.c)
 s1 = Parameter(**STANDARD_PARAMETERS.s)
 cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 
 rin.value = 1.
 rout.value = 2.
-inner_sigma.value = 1e-3
+sigma0.value = 1e-3
 p.value = 0.5
 c1.value = s1.value = 0.5
 cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass fractions
@@ -121,22 +121,22 @@ p.set(min=-1, max=1)
 cont_weight.set(min=0, max=1)
 
 # inner_ring = {"rin": rin, "rout": rout, "c1": c1, "s1": s1,
-#               "inner_sigma": inner_sigma, "p": p}
+#               "sigma0": sigma0, "p": p}
 inner_ring = {"rin": rin, "rout": rout,
-              "inner_sigma": inner_sigma, "p": p, "cont_weight": cont_weight}
+              "sigma0": sigma0, "p": p, "cont_weight": cont_weight}
 # inner_ring = {}
 inner_ring_labels = [f"ir_{label}" for label in inner_ring]
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
 p = Parameter(**STANDARD_PARAMETERS.p)
-inner_sigma = Parameter(**STANDARD_PARAMETERS.inner_sigma)
+sigma0 = Parameter(**STANDARD_PARAMETERS.sigma0)
 c1 = Parameter(**STANDARD_PARAMETERS.c)
 s1 = Parameter(**STANDARD_PARAMETERS.s)
 cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 
 rin.value = 13
 p.value = 0.5
-inner_sigma.value = 1e-3
+sigma0.value = 1e-3
 c1.value = s1.value = 0.5
 cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass fractions
 
@@ -144,27 +144,27 @@ rin.set(min=0, max=13.5)
 p.set(min=-1, max=1)
 cont_weight.set(min=0, max=1)
 
-# outer_ring = {"rin": rin, "c1": c1, "s1": s1, "inner_sigma": inner_sigma, "p": p}
-outer_ring = {"rin": rin, "inner_sigma": inner_sigma,
+# outer_ring = {"rin": rin, "c1": c1, "s1": s1, "sigma0": sigma0, "p": p}
+outer_ring = {"rin": rin, "sigma0": sigma0,
               "p": p, "cont_weight": cont_weight}
 # outer_ring = {}
 outer_ring_labels = [f"or_{label}" for label in outer_ring]
 
 q = Parameter(**STANDARD_PARAMETERS.q)
-inner_temp = Parameter(**STANDARD_PARAMETERS.inner_temp)
+temp0 = Parameter(**STANDARD_PARAMETERS.temp0)
 pa = Parameter(**STANDARD_PARAMETERS.pa)
 inc = Parameter(**STANDARD_PARAMETERS.inc)
 
 q.value = 0.5
-inner_temp.value = 1500
+temp0.value = 1500
 pa.value = 163
 inc.value = 0.5
 
-inner_temp.set(min=300, max=2000)
+temp0.set(min=300, max=2000)
 pa.set(min=0, max=180)
 inc.set(min=0.3, max=0.95)
 
-OPTIONS.model.shared_params = {# "q": q, "inner_temp": inner_temp,
+OPTIONS.model.shared_params = {# "q": q, "temp0": temp0,
                                "pa": pa, "inc": inc}
 shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
 

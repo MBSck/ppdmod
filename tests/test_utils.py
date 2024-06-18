@@ -548,9 +548,9 @@ def test_compute_t3(fits_files: List[Path],
     fr.value, fr.wavelength = np.array([0.2]*wavelength.size), wavelength
 
     params = {"dim": 512, "fwhm": 0.5,
-              "rin": 0.5, "q": 0.5, "inner_temp": 1500,
+              "rin": 0.5, "q": 0.5, "temp0": 1500,
               "dim": 512, "dist": 148.3, "eff_temp": 7800, "eff_radius": 1.8,
-              "inner_sigma": 2000, "pixel_size": 0.1, "p": 0.5}
+              "sigma0": 2000, "pixel_size": 0.1, "p": 0.5}
 
     t3 = OPTIONS.data.t3
     component = component(**params)
@@ -577,9 +577,9 @@ def test_compute_vis(fits_files: List[Path],
     fr.value, fr.wavelength = np.array([0.2]*wavelength.size), wavelength
 
     params = {"dim": 512, "fwhm": 0.5,
-              "rin": 0.5, "q": 0.5, "inner_temp": 1500,
+              "rin": 0.5, "q": 0.5, "temp0": 1500,
               "dim": 512, "dist": 148.3, "eff_temp": 7800, "eff_radius": 1.8,
-              "inner_sigma": 2000, "pixel_size": 0.1, "p": 0.5}
+              "sigma0": 2000, "pixel_size": 0.1, "p": 0.5}
 
     vis = OPTIONS.data.vis2
     component = component(**params)

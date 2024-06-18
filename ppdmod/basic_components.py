@@ -574,10 +574,10 @@ class TempGradient(Ring):
 
         self.r0 = Parameter(**STANDARD_PARAMETERS.r0)
         self.q = Parameter(**STANDARD_PARAMETERS.q)
-        self.inner_temp = Parameter(**STANDARD_PARAMETERS.inner_temp)
+        self.temp0 = Parameter(**STANDARD_PARAMETERS.temp0)
 
         self.p = Parameter(**STANDARD_PARAMETERS.p)
-        self.inner_sigma = Parameter(**STANDARD_PARAMETERS.inner_sigma)
+        self.sigma0 = Parameter(**STANDARD_PARAMETERS.sigma0)
         self.kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
 
         self.cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
@@ -585,7 +585,7 @@ class TempGradient(Ring):
 
         if self.const_temperature:
             self.q.free = False
-            self.inner_temp.free = False
+            self.temp0.free = False
 
         if not self.continuum_contribution:
             self.cont_weight.free = False
@@ -621,31 +621,21 @@ class TempGradient(Ring):
 
     def compute_temperature(self, radius: u.mas) -> u.K:
         """Computes a 1D-temperature profile."""
-        if self.r0.value != 0:
-            reference_radius = distance_to_angular(self.r0(), self.dist())
-        else:
-            reference_radius = distance_to_angular(
-                OPTIONS.model.reference_radius, self.dist()
-            )
-
         if self.const_temperature:
             temperature = (
                 np.sqrt(self.stellar_radius_angular / (2.0 * radius)) * self.eff_temp()
             )
         else:
-            temperature = self.inner_temp() * (radius / reference_radius) ** -self.q()
+            r0 = OPTIONS.model.reference_radius if self.r0.value == 0 else self.r0()
+            r0_angular = distance_to_angular(r0, self.dist())
+            temperature = self.temp0() * (radius / r0_angular) ** -self.q()
         return temperature.astype(OPTIONS.data.dtype.real)
 
     def compute_surface_density(self, radius: u.mas) -> u.one:
         """Computes a 1D-surface density profile."""
-        if self.r0.value != 0:
-            reference_radius = distance_to_angular(self.r0(), self.dist())
-        else:
-            reference_radius = distance_to_angular(
-                OPTIONS.model.reference_radius, self.dist()
-            )
-
-        surface_density = self.inner_sigma() * (radius / reference_radius) ** -self.p()
+        r0 = OPTIONS.model.reference_radius if self.r0.value == 0 else self.r0()
+        r0_angular = distance_to_angular(r0, self.dist())
+        surface_density = self.sigma0() * (radius / r0_angular) ** -self.p()
         return surface_density.astype(OPTIONS.data.dtype.real)
 
     def compute_optical_depth(self, radius: u.mas, wavelength: u.um) -> u.one:

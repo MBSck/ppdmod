@@ -8,7 +8,7 @@ import pytest
 from ppdmod.component import Component
 from ppdmod.basic_components import Star, Ring, Gaussian
 from ppdmod.data import ReadoutFits, set_data
-from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
+from ppdmod.options import STANDARD_PARAMETERS
 from ppdmod.parameter import Parameter
 from ppdmod.utils import compute_vis, compute_t3
 

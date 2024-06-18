@@ -64,7 +64,7 @@ if __name__ == "__main__":
     star_flux.wavelength, star_flux.value = wl_flux, flux
     star = Star(f=star_flux)
     atg = AsymmetricTempGradient(rin=1.5, rout=2, dist=distance, eff_temp=eff_temp, eff_radius=eff_radius,
-                                 inc=0.5, pa=33, q=0.5, inner_temp=1500, p=0.5, inner_sigma=1e-4, r0=1,
+                                 inc=0.5, pa=33, q=0.5, temp0=1500, p=0.5, sigma0=1e-4, r0=1,
                                  kappa_abs=opacity, kappa_cont=cont_opacity, cont_weight=0.4, c1=0.5, s1=0.5)
     model = [star, atg]
     model_names = "_".join([m.shortname for m in model])

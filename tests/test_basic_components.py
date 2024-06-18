@@ -85,8 +85,8 @@ def gaussian() -> Gaussian:
 def temp_gradient() -> TempGradient:
     """Initializes a numerical component."""
     temp_grad = TempGradient(**{
-        "rin": 0.5, "q": 0.5, "inner_temp": 1500, "dist": 148.3,
-        "inner_sigma": 2000, "pixel_size": 0.1, "p": 0.5})
+        "rin": 0.5, "q": 0.5, "temp0": 1500, "dist": 148.3,
+        "sigma0": 2000, "pixel_size": 0.1, "p": 0.5})
     temp_grad.optically_thick = True
     temp_grad.asymmetric = True
     return temp_grad
@@ -371,7 +371,7 @@ def test_temp_gradient_flux(
 
 
 @pytest.mark.parametrize(
-        "fits_file, component, rin, rout, inc, pos_angle, q, inner_temp, p, inner_sigma, cont_weight, r0, c, s",
+        "fits_file, component, rin, rout, inc, pos_angle, q, temp0, p, sigma0, cont_weight, r0, c, s",
         [
          ("cm_AsymTempGrad_rin15_rout2_inc1_pa0_q05_intemp1500_p05_insigma1e-4_cw04_r01_c0_s0_large.fits",
           AsymmetricTempGradient, 1.5, 2, 1, None, 0.5, 1500, 0.5, 1e-4, 0.4, 1, None, None),
@@ -393,8 +393,8 @@ def test_ring_compute_vis(
         component: Component,
         rin: u.mas, rout: u.mas,
         inc: float, pos_angle: u.deg,
-        q: float, inner_temp: float,
-        p: float, inner_sigma: float,
+        q: float, temp0: float,
+        p: float, sigma0: float,
         cont_weight: float, r0: float,
         c: float, s: float) -> None:
     """Tests the calculation of the ring's visibilities."""
@@ -404,7 +404,7 @@ def test_ring_compute_vis(
     fmaxs = [1.0, 1.0, 1.0, None]
     sizes = [[1.5], [0.1], [0.1, 1.5], [0.1, 1.5]]
     _, opacity = get_opacity(
-        data_dir, weights, sizes, names, "qval", wl, fmaxs)
+        data_dir, weights, sizes, names, "qval", fmaxs=fmaxs)
     cont_opacity_file = data_dir / "qval" / "Q_amorph_c_rv0.1.dat"
     wl_cont, cont_opacity = load_data(cont_opacity_file, load_func=qval_to_opacity)
     cont_opacity = np.interp(wl, wl_cont, cont_opacity)
@@ -420,7 +420,7 @@ def test_ring_compute_vis(
     inc = inc if inc is not None else 1
     pa = pos_angle if pos_angle is not None else 0
     atg = component(rin=rin, rout=rout, inc=inc, pa=pa,
-                    q=q, inner_temp=inner_temp, p=p, inner_sigma=inner_sigma,
+                    q=q, temp0=temp0, p=p, sigma0=sigma0,
                     kappa_abs=opacity, kappa_cont=cont_opacity,
                     cont_weight=cont_weight,
                     dist=distance, eff_temp=eff_temp, eff_radius=eff_radius, 
@@ -459,7 +459,7 @@ def test_ring_compute_vis(
 
 
 @pytest.mark.parametrize(
-        "inc, pos_angle, q, inner_temp, p, inner_sigma, cont_weight, c, s",
+        "inc, pos_angle, q, temp0, p, sigma0, cont_weight, c, s",
     [
         (1, None, 0.5, 1500, 0.5, 1e-4, 0.4, None, None),
         (1, None, 0.3, 1500, 0.5, 1e-4, 0.4, None, None),
@@ -473,8 +473,8 @@ def test_ring_compute_vis(
 )
 def test_temp_gradient_fluxes(
         inc: float, pos_angle: u.deg,
-        q: float, inner_temp: float,
-        p: float, inner_sigma: float,
+        q: float, temp0: float,
+        p: float, sigma0: float,
         cont_weight: float,
         c: float, s: float) -> None:
     """Tests the calculation of temperature gradient's visibilities."""
@@ -484,7 +484,7 @@ def test_temp_gradient_fluxes(
     fmaxs = [1.0, 1.0, 1.0, None]
     sizes = [[1.5], [0.1], [0.1, 1.5], [0.1, 1.5]]
     _, opacity = get_opacity(
-        data_dir, weights, sizes, names, "qval", wl, fmaxs)
+        data_dir, weights, sizes, names, "qval", fmaxs=fmaxs)
     cont_opacity_file = data_dir / "qval" / "Q_amorph_c_rv0.1.dat"
     wl_cont, cont_opacity = load_data(cont_opacity_file, load_func=qval_to_opacity)
     cont_opacity = np.interp(wl, wl_cont, cont_opacity)
@@ -499,8 +499,7 @@ def test_temp_gradient_fluxes(
     inc = inc if inc is not None else 1
     pa = pos_angle if pos_angle is not None else 0
     atg = AsymmetricTempGradient(rin=1.5, rout=2, inc=inc, pa=pa,
-                                 q=q, inner_temp=inner_temp,
-                                 p=p, inner_sigma=inner_sigma,
+                                 q=q, temp0=temp0, p=p, sigma0=sigma0,
                                  kappa_abs=opacity, kappa_cont=cont_opacity,
                                  cont_weight=cont_weight, dist=distance,
                                  eff_temp=eff_temp, eff_radius=eff_radius, 
