@@ -195,16 +195,16 @@ rchi_sq = fitting.compute_observable_chi_sq(
         *fitting.compute_observables(components), reduced=True)
 print(f"rchi_sq: {rchi_sq}")
 
-# plot.plot_overview(savefig=pre_fit_dir / "data_overview.pdf")
-# plot.plot_observables([1, 12]*u.um, components, save_dir=pre_fit_dir)
-#
-# analysis.save_fits(
-#         4096, 0.1, distance,
-#         components, component_labels,
-#         opacities=[kappa_abs, kappa_cont],
-#         savefits=pre_fit_dir / "model.fits",
-#         object_name="HD 142527")
-#
+plot.plot_overview(savefig=pre_fit_dir / "data_overview.pdf")
+plot.plot_observables([1, 12]*u.um, components, save_dir=pre_fit_dir)
+
+analysis.save_fits(
+        4096, 0.1, distance,
+        components, component_labels,
+        opacities=[kappa_abs, kappa_cont],
+        savefits=pre_fit_dir / "model.fits",
+        object_name="HD 142527")
+
 post_fit_dir = result_dir / "post_fit"
 post_fit_dir.mkdir(parents=True, exist_ok=True)
 
@@ -223,7 +223,7 @@ if __name__ == "__main__":
         fit_params = fit_params_dynesty
 
     sampler = fitting.run_fit(**fit_params, ncores=ncores, method="dynamic",
-                      save_dir=result_dir, debug=True)
+                      save_dir=result_dir, debug=False)
     theta, uncertainties = fitting.get_best_fit(
             sampler, **fit_params, method="quantile")
 
