@@ -116,7 +116,7 @@ cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass f
 rin.set(min=0, max=30)
 rout.set(min=0, max=30)
 rout.free = True
-p.set(min=-1, max=1)
+p.set(min=-3, max=3)
 cont_weight.set(min=0, max=1)
 
 # inner_ring = {"rin": rin, "rout": rout, "c1": c1, "s1": s1,
@@ -144,7 +144,7 @@ cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass f
 rin.set(min=0, max=30)
 # rout.set(min=0, max=50)
 # rout.free = True
-p.set(min=-1, max=1)
+p.set(min=-3, max=3)
 cont_weight.set(min=0, max=1)
 
 # outer_ring = {"rin": rin, "c1": c1, "s1": s1, "sigma0": sigma0, "p": p}
@@ -164,7 +164,7 @@ cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass f
 rin.set(min=0, max=30)
 rout.set(min=0, max=50)
 rout.free = True
-p.set(min=-1, max=1)
+p.set(min=-3, max=3)
 cont_weight.set(min=0, max=1)
 
 last_ring = {"rin": rin, "p": p, "sigma0": sigma0,
