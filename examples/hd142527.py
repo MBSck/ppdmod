@@ -116,7 +116,7 @@ cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass f
 rin.set(min=0, max=30)
 rout.set(min=0, max=30)
 rout.free = True
-p.set(min=-3, max=3)
+p.set(min=-10, max=10)
 cont_weight.set(min=0, max=1)
 
 # inner_ring = {"rin": rin, "rout": rout, "c1": c1, "s1": s1,
@@ -142,16 +142,16 @@ c1.value = s1.value = 0.5
 cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass fractions
 
 rin.set(min=0, max=30)
-# rout.set(min=0, max=50)
-# rout.free = True
-p.set(min=-3, max=3)
+rout.set(min=0, max=50)
+rout.free = True
+p.set(min=-10, max=10)
 cont_weight.set(min=0, max=1)
 
 # outer_ring = {"rin": rin, "c1": c1, "s1": s1, "sigma0": sigma0, "p": p}
-# outer_ring = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0,
-              # "cont_weight": cont_weight}
-outer_ring = {"rin": rin, "p": p, "sigma0": sigma0,
+outer_ring = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0,
               "cont_weight": cont_weight}
+# outer_ring = {"rin": rin, "p": p, "sigma0": sigma0,
+              # "cont_weight": cont_weight}
 # outer_ring = {}
 outer_ring_labels = [f"or_{label}" for label in outer_ring]
 
@@ -164,7 +164,7 @@ cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass f
 rin.set(min=0, max=30)
 rout.set(min=0, max=50)
 rout.free = True
-p.set(min=-3, max=3)
+p.set(min=-10, max=10)
 cont_weight.set(min=0, max=1)
 
 last_ring = {"rin": rin, "p": p, "sigma0": sigma0,
@@ -194,10 +194,11 @@ OPTIONS.model.components_and_params = [
     ["Star", star],
     ["GreyBody", inner_ring],
     ["GreyBody", outer_ring],
+    ["GreyBody", last_ring],
 ]
 
-# labels = star_labels + inner_ring_labels + outer_ring_labels + last_ring_labels
-labels = star_labels + inner_ring_labels + outer_ring_labels
+labels = star_labels + inner_ring_labels + outer_ring_labels + last_ring_labels
+# labels = star_labels + inner_ring_labels + outer_ring_labels
 labels += shared_params_labels
 component_labels = ["Star", "Inner Ring", "Outer Ring", "Last Ring"]
 component_labels = component_labels[:len(OPTIONS.model.components_and_params)]
