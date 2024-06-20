@@ -129,7 +129,8 @@ def compute_chi_sq(data: u.Quantity, error: u.Quantity,
 
 # TODO: Make it so that both point source and star can be used at the same time
 def compute_observables(components: List[Component],
-                        wavelength: Optional[np.ndarray] = None):
+                        wavelength: Optional[np.ndarray] = None,
+                        rzero: Optional[bool] = False) -> Tuple[np.ndarray]:
     """Calculates the observables from the model."""
     wavelength = OPTIONS.fit.wavelengths if wavelength is None else wavelength
     vis = OPTIONS.data.vis2 if "vis2" in OPTIONS.fit.data else OPTIONS.data.vis
@@ -170,8 +171,11 @@ def compute_observables(components: List[Component],
     if flux_model.size > 0:
         flux_model = np.tile(flux_model, (len(OPTIONS.data.readouts)))
 
-    vis_model = compute_vis(complex_vis_model)[:, 1:]
-    t3_model = compute_t3(complex_t3_model)[:, 1:]
+    vis_model = compute_vis(complex_vis_model)
+    t3_model = compute_t3(complex_t3_model)
+
+    if not rzero:
+        vis_model, t3_model = vis_model[:, 1:], t3_model[:, 1:]
 
     if "vis2" in OPTIONS.fit.data:
         vis_model *= vis_model

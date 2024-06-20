@@ -22,11 +22,11 @@ from matplotlib.lines import Line2D
 from .component import Component
 from .fitting import compute_observables
 from .options import OPTIONS, get_colormap
-from .utils import compute_effective_baselines, restrict_phase, \
+from .utils import compute_effective_baselines, compute_vis, restrict_phase, \
         set_legend_color, set_axes_color
 
-
 matplotlib.use("Agg")
+
 
 def plot_components(components: List[Component], dim: int,
                     pixel_size: u.mas, wavelength: u.um,
@@ -135,8 +135,8 @@ def plot_chains(sampler: np.ndarray, labels: List[str],
         dyplot.traceplot(results, labels=labels,
                          truths=np.zeros(len(labels)),
                          quantiles=quantiles,
-                         truth_color='black', show_titles=True,
-                         trace_cmap='viridis', connect=True,
+                         truth_color="black", show_titles=True,
+                         trace_cmap="viridis", connect=True,
                          connect_highlight=range(5))
 
     if savefig:
@@ -539,6 +539,7 @@ def plot_fit(inclination: u.one, pos_angle: u.deg,
                 else:
                     y_label = "Visibilities (Normalized)"
                     unit = "Normalized"
+                    upper_ax.set_ylim([0, 1])
 
                 residual_label = f"Residuals ({unit})"
                 if "vis" in ylimits:
@@ -844,6 +845,16 @@ def plot_target(target: str,
         plt.close()
 
 
+# TODO: Finish this plot
+def plot_cumulative_flux(components: List[Component],
+                         wavelength: u.um, save_dir: Optional[Path] = None) -> None:
+    """Plots the cumulative flux of the model."""
+    vis_data = OPTIONS.data.vis if "vis" in OPTIONS.fit.data\
+        else OPTIONS.data.vis2
+    complex_vis = [comp.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength) for comp in components]
+    breakpoint()
+
+
 def plot_observables(wavelength_range: u.um,
                      components: List[Component],
                      save_dir: Optional[Path] = None) -> None:
@@ -854,13 +865,6 @@ def plot_observables(wavelength_range: u.um,
     wavelength_range : astropy.units.m
     """
     save_dir = Path.cwd() if save_dir is None else save_dir
-    baseline_dir = save_dir / "baselines"
-    baseline_dir.mkdir(exist_ok=True, parents=True)
-    vis_dir = baseline_dir / "vis"
-    vis_dir.mkdir(exist_ok=True, parents=True)
-    t3_dir = baseline_dir / "t3"
-    t3_dir.mkdir(exist_ok=True, parents=True)
-
     wavelength = np.linspace(wavelength_range[0], wavelength_range[1])
     flux, vis, t3 = compute_observables(components, wavelength=wavelength)
 
@@ -910,36 +914,61 @@ def plot_observables(wavelength_range: u.um,
             vis_data.ucoord, vis_data.vcoord,
             components[1].inc(), components[1].pa(), rzero=False)
 
+    num_plots = len(effective_baselines)
+    cols = int(str(num_plots)[:int(np.floor(np.log10(num_plots)))])
+    rows = int(np.ceil(num_plots/cols))
+    fig, axes = plt.subplots(rows, cols, figsize=(30, 30),
+                             facecolor=OPTIONS.plot.color.background,
+                             sharex=True, constrained_layout=True)
+    axes = axes.flatten()
+    if "vis" in OPTIONS.fit.data:
+        if OPTIONS.model.output != "normed":
+            y_label = "Correlated fluxes (Jy)"
+            ylims = [None, None]
+        else:
+            y_label = "Visibilities (Normalized)"
+            ylims = [0, 1]
+    else:
+        y_label = "Visibilities Squared (Normalized)"
+        ylims = [0, 1]
+
     for index, (baseline, baseline_angle) in enumerate(
             zip(effective_baselines, baseline_angles)):
-        _ = plt.figure(facecolor=OPTIONS.plot.color.background,
-                       tight_layout=True)
-        ax = plt.axes(facecolor=OPTIONS.plot.color.background)
+        ax = axes[index]
         set_axes_color(ax, OPTIONS.plot.color.background)
-
         ax.plot(wavelength, vis[:, index],
                 label=rf"B={baseline.value:.2f} m, $\phi$={baseline_angle.value:.2f}$^\circ$")
-        ax.set_xlabel(r"$\lambda$ ($\mu$m)")
-        ax.set_ylabel("Visibilities (Normalized)")
-        ax.set_ylim([0, 1])
-        # plt.legend()
-        plt.savefig(vis_dir / f"vis_{baseline:.2f}.pdf", format="pdf")
-        plt.close()
+
+        ax.set_ylim(ylims)
+        ax.legend()
+
+    fig.subplots_adjust(left=0.2, bottom=0.2)
+    fig.text(0.5, 0.04, r"$\lambda$ ($\mu$m)", ha="center", fontsize=16)
+    fig.text(0.04, 0.5, y_label, va="center", rotation="vertical", fontsize=16)
+    plt.savefig(save_dir / "vis_vs_baseline.pdf", format="pdf")
+    plt.close()
 
     if "t3" in OPTIONS.fit.data:
         effective_baselines, baseline_angles = compute_effective_baselines(
                 OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord,
                 components[1].inc(), components[1].pa(), longest=True, rzero=False)
 
+        num_plots = len(effective_baselines)
+        cols = int(str(num_plots)[:int(np.floor(np.log10(num_plots)))])
+        rows = int(np.ceil(num_plots/cols))
+        fig, axes = plt.subplots(rows, cols, figsize=(30, 30),
+                                 facecolor=OPTIONS.plot.color.background,
+                                 sharex=True, constrained_layout=True)
+        axes = axes.flatten()
         for index, (baseline, baseline_angle) in enumerate(
-                zip(effective_baselines, baseline_angles)):
-            _ = plt.figure(facecolor=OPTIONS.plot.color.background,
-                           tight_layout=True)
-            ax = plt.axes(facecolor=OPTIONS.plot.color.background)
+            zip(effective_baselines, baseline_angles)):
+            ax = axes[index]
             set_axes_color(ax, OPTIONS.plot.color.background)
             ax.plot(wavelength, t3[:, index], label=f"B={baseline.value:.2f} m")
-            ax.set_xlabel(r"$\lambda$ ($\mu$m)")
-            ax.set_ylabel(r"Closure Phases ($^\circ$)")
-            plt.legend()
-            plt.savefig(t3_dir / f"t3_{baseline.value:.2f}.pdf", format="pdf")
-            plt.close()
+            ax.legend()
+
+        fig.subplots_adjust(left=0.2, bottom=0.2)
+        fig.text(0.5, 0.04, r"$\lambda$ ($\mu$m)", ha="center", fontsize=16)
+        fig.text(0.04, 0.5, y_label, va="center", rotation="vertical", fontsize=16)
+        plt.savefig(save_dir / "t3_vs_baseline.pdf", format="pdf")
+        plt.close()

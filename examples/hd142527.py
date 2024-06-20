@@ -221,8 +221,14 @@ rchi_sq = fitting.compute_observable_chi_sq(
         *fitting.compute_observables(components), reduced=True)
 print(f"rchi_sq: {rchi_sq}")
 
+for wl in OPTIONS.fit.wavelengths:
+    plot.plot_components(components, 512, 0.1, wl,
+                         savefig=pre_fit_dir / f"model_{wl.value}.png",
+                         save_as_fits=False, norm=0.5)
+
 plot.plot_overview(savefig=pre_fit_dir / "data_overview.pdf")
 plot.plot_observables([1, 12]*u.um, components, save_dir=pre_fit_dir)
+# plot.plot_cumulative_flux()
 
 analysis.save_fits(
         4096, 0.1, distance,
@@ -267,6 +273,10 @@ if __name__ == "__main__":
     print(f"rchi_sq: {rchi_sq}")
 
     plot.plot_observables([1, 12]*u.um, components, save_dir=post_fit_dir)
+    for wl in OPTIONS.fit.wavelengths:
+        plot.plot_components(components, 512, 0.1, wl,
+                             savefig=pre_fit_dir / f"model_{wl.value}.png",
+                             save_as_fits=False, norm=0.5)
 
     analysis.save_fits(
             4096, 0.1, distance,
