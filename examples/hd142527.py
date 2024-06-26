@@ -234,7 +234,7 @@ analysis.save_fits(
         4096, 0.1, distance,
         components, component_labels,
         opacities=[kappa_abs, kappa_cont],
-        savefits=pre_fit_dir / "model.fits",
+        save_dir=pre_fit_dir, make_plots=True,
         object_name="HD 142527")
 
 post_fit_dir = result_dir / "post_fit"
@@ -275,14 +275,14 @@ if __name__ == "__main__":
     plot.plot_observables([1, 12]*u.um, components, save_dir=post_fit_dir)
     for wl in OPTIONS.fit.wavelengths:
         plot.plot_components(components, 512, 0.1, wl,
-                             savefig=pre_fit_dir / f"model_{wl.value}.png",
+                             savefig=post_fit_dir / f"model_{wl.value}.png",
                              save_as_fits=False, norm=0.5)
 
     analysis.save_fits(
             4096, 0.1, distance,
             components, component_labels,
             opacities=[kappa_abs, kappa_cont],
-            savefits=post_fit_dir / "model.fits",
+            save_dir=post_fit_dir, make_plots=True,
             object_name="HD 142527", **fit_params, ncores=ncores)
 
     inclination = shared_params["inc"]

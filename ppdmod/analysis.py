@@ -3,6 +3,7 @@ from typing import Optional, List
 from pathlib import Path
 
 import astropy.units as u
+import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
 from astropy.table import Table
@@ -18,7 +19,8 @@ def save_fits(dim: int, pixel_size: u.mas,
               component_labels: List[str],
               wavelength: Optional[u.Quantity[u.um]] = None,
               opacities: List[np.ndarray] = None,
-              savefits: Optional[Path] = None,
+              save_dir: Optional[Path] = None,
+              make_plots: Optional[bool] = False,
               object_name: Optional[str] = None,
               nlive: Optional[int] = None,
               sample: Optional[str] = None,
@@ -29,6 +31,7 @@ def save_fits(dim: int, pixel_size: u.mas,
               ncores: Optional[int] = None, **kwargs) -> None:
     """Saves a (.fits)-file of the model with all the information on the
     parameter space."""
+    save_dir = Path.cwd() if save_dir is None else Path(save_dir)
     pixel_size = u.Quantity(pixel_size, u.mas)
     wavelength = u.Quantity(wavelength, u.um) if wavelength is not None\
         else OPTIONS.fit.wavelengths
@@ -37,6 +40,7 @@ def save_fits(dim: int, pixel_size: u.mas,
     total_flux = np.empty(wavelength.size)*u.Jy
     image, tables = np.empty((wavelength.size, dim, dim)), []
     for index, component in enumerate(components):
+        comp_dir = save_dir / component_labels[index].lower().replace(" ", "_")
         image += component.compute_image(dim, pixel_size, wavelength)
 
         table_header = fits.Header()
@@ -48,19 +52,38 @@ def save_fits(dim: int, pixel_size: u.mas,
         if component.shortname not in ["Star", "Point"]:
             component.dim.value = dim
             radius = np.tile(component.compute_internal_grid(), (wavelength.size, 1))
+            temperature = component.compute_temperature(radius)
+            surface_density = component.compute_surface_density(radius)
+            optical_depth = component.compute_optical_depth(
+                radius, wavelength[:, np.newaxis])
+            emissivity = component.compute_emissivity(
+                    radius, wavelength[:, np.newaxis])
+            brightness = component.compute_intensity(
+                    radius, wavelength[:, np.newaxis])
 
             data["radius"] = radius
-            data["temperature"] = component.compute_temperature(radius)
-            data["surface_density"] = component.compute_surface_density(radius)
+            data["temperature"] = temperature
+            data["surface_density"] = surface_density
+            data["optical_depth"] = optical_depth
+            data["emissivity"] = emissivity
+            data["brightness"] = brightness
 
-            data["optical_depth"] = component.compute_optical_depth(
-                    radius, wavelength[:, np.newaxis])
-            data["emissivity"] = component.compute_emissivity(
-                    radius, wavelength[:, np.newaxis])
-            data["brightness"] = component.compute_intensity(
-                    radius, wavelength[:, np.newaxis])
+            if make_plots:
+                comp_dir.mkdir(exist_ok=True, parents=True)
+                plots = [temperature, surface_density, optical_depth, emissivity, brightness]
+                names = ["temperature", "surface_density", "optical_depth",
+                         "emissivity", "brightness"]
+                for name, plot in zip(names, plots):
+                    for wl_index, values in enumerate(plot):
+                        plt.plot(radius[0], values, label=wavelength[wl_index])
+                    plt.title(f"{component.shortname} {name.title()}")
+                    plt.legend()
+                    plt.savefig(comp_dir / f"{component.shortname}_{name}.png")
+                    plt.close()
 
-        data["flux"] = component.compute_flux(wavelength[:, np.newaxis])
+        flux = component.compute_flux(wavelength[:, np.newaxis])
+        # TODO: Plot this
+        data["flux"] = flux
         data["flux_ratio"] = np.zeros(data["flux"].shape)
 
         total_flux += u.Quantity(data["flux"].squeeze(), unit=u.Jy)
@@ -85,7 +108,8 @@ def save_fits(dim: int, pixel_size: u.mas,
     data = None
     for table in tables:
         flux_ratio = (table.data["flux"].squeeze() * u.Jy/total_flux)[:, np.newaxis]
-        table.data["flux_ratio"] = np.round(flux_ratio * 100, 2)
+        flux_ratio = np.round(flux_ratio * 100, 2)
+        table.data["flux_ratio"] = flux_ratio
         if table.header["COMP"] in ["Star", "Point"]:
             continue
         if data is None:
@@ -138,4 +162,4 @@ def save_fits(dim: int, pixel_size: u.mas,
                     "[AU] Reference radius for the power laws")
 
     hdu = fits.HDUList([fits.PrimaryHDU(image, header=header), *tables])
-    hdu.writeto(savefits, overwrite=True)
+    hdu.writeto(save_dir / "mode.fits", overwrite=True)
