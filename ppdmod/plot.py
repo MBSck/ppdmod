@@ -845,16 +845,6 @@ def plot_target(target: str,
         plt.close()
 
 
-# TODO: Finish this plot
-def plot_cumulative_flux(components: List[Component],
-                         wavelength: u.um, save_dir: Optional[Path] = None) -> None:
-    """Plots the cumulative flux of the model."""
-    vis_data = OPTIONS.data.vis if "vis" in OPTIONS.fit.data\
-        else OPTIONS.data.vis2
-    complex_vis = [comp.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength) for comp in components]
-    breakpoint()
-
-
 def plot_observables(wavelength_range: u.um,
                      components: List[Component],
                      save_dir: Optional[Path] = None) -> None:
@@ -972,3 +962,24 @@ def plot_observables(wavelength_range: u.um,
         fig.text(0.04, 0.5, y_label, va="center", rotation="vertical", fontsize=16)
         plt.savefig(save_dir / "t3_vs_baseline.pdf", format="pdf")
         plt.close()
+
+
+def plot_(dim: int, wavelength: Optional[u.Quantity[u.um]] = None):
+    wavelength = u.Quantity(wavelength, u.um) if wavelength is not None\
+        else OPTIONS.fit.wavelengths
+
+    for index, component in enumerate(components):
+        if component.shortname not in ["Star", "Point"]:
+            component.dim.value = dim
+            radius = np.tile(component.compute_internal_grid(), (wavelength.size, 1))
+
+            temperature = component.compute_temperature(radius)
+            surface_density = component.compute_surface_density(radius)
+            optical_depth = component.compute_optical_depth(
+                    radius, wavelength[:, np.newaxis])
+            emissivity = component.compute_emissivity(
+                    radius, wavelength[:, np.newaxis])
+            brightness = component.compute_intensity(
+                    radius, wavelength[:, np.newaxis])
+
+        flux = component.compute_flux(wavelength[:, np.newaxis])

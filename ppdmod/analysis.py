@@ -78,7 +78,7 @@ def save_fits(dim: int, pixel_size: u.mas,
                         plt.plot(radius[0], values, label=wavelength[wl_index])
                     plt.title(f"{component.shortname} {name.title()}")
                     plt.legend()
-                    plt.savefig(comp_dir / f"{component.shortname}_{name}.png")
+                    plt.savefig(comp_dir / f"{component.shortname}_{name}.pdf", format="pdf")
                     plt.close()
 
         flux = component.compute_flux(wavelength[:, np.newaxis])
@@ -106,9 +106,14 @@ def save_fits(dim: int, pixel_size: u.mas,
         tables.append(table)
 
     data = None
-    for table in tables:
+    for index, table in enumerate(tables):
+        comp_dir = save_dir / component_labels[index].lower().replace(" ", "_")
         flux_ratio = (table.data["flux"].squeeze() * u.Jy/total_flux)[:, np.newaxis]
         flux_ratio = np.round(flux_ratio * 100, 2)
+        if make_plots:
+            plt.plot(wavelength, flux_ratio)
+            plt.savefig(comp_dir / "flux_ratio.pdf", format="pdf")
+            plt.close()
         table.data["flux_ratio"] = flux_ratio
         if table.header["COMP"] in ["Star", "Point"]:
             continue
