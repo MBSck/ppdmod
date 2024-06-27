@@ -847,6 +847,7 @@ def plot_target(target: str,
 
 def plot_observables(wavelength_range: u.um,
                      components: List[Component],
+                     component_labels: List[str],
                      save_dir: Optional[Path] = None) -> None:
     """Plots the observables of the model.
 
@@ -856,7 +857,8 @@ def plot_observables(wavelength_range: u.um,
     """
     save_dir = Path.cwd() if save_dir is None else save_dir
     wavelength = np.linspace(wavelength_range[0], wavelength_range[1])
-    flux, vis, t3 = compute_observables(components, wavelength=wavelength)
+    flux, vis, t3, vis_comps = compute_observables(
+        components, wavelength=wavelength, rcomponents=True)
 
     if "flux" in OPTIONS.fit.data:
         _ = plt.figure(facecolor=OPTIONS.plot.color.background,
@@ -928,6 +930,9 @@ def plot_observables(wavelength_range: u.um,
         set_axes_color(ax, OPTIONS.plot.color.background)
         ax.plot(wavelength, vis[:, index],
                 label=rf"B={baseline.value:.2f} m, $\phi$={baseline_angle.value:.2f}$^\circ$")
+
+        for comp_index, vis_comp in enumerate(vis_comps):
+            ax.plot(wavelength, vis_comp[:, index], label=component_labels[comp_index])
 
         ax.set_ylim(ylims)
         ax.legend()

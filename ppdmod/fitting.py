@@ -127,60 +127,63 @@ def compute_chi_sq(data: u.Quantity, error: u.Quantity,
     return -0.5*(diff**2*inv_sigma_squared + np.log(1/inv_sigma_squared)).sum()
 
 
+# TODO: Write tests (ASPRO) that tests multiple components with the total flux
 # TODO: Make it so that both point source and star can be used at the same time
 def compute_observables(components: List[Component],
                         wavelength: Optional[np.ndarray] = None,
-                        rzero: Optional[bool] = False) -> Tuple[np.ndarray]:
+                        rzero: Optional[bool] = False,
+                        rcomponents: Optional[bool] = False) -> Tuple[np.ndarray]:
     """Calculates the observables from the model."""
     wavelength = OPTIONS.fit.wavelengths if wavelength is None else wavelength
     vis = OPTIONS.data.vis2 if "vis2" in OPTIONS.fit.data else OPTIONS.data.vis
-    ucoord, vcoord = vis.ucoord, vis.vcoord
-    u123coord, v123coord = OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord
 
-    complex_vis_model, complex_t3_model = None, None
+    complex_vis_comps, complex_t3_comps = [], []
     for component in [comp for comp in components if comp.name != "Point Source"]:
-        complex_vis_comp = component.compute_complex_vis(
-                ucoord, vcoord, wavelength)
-        complex_t3_comp = component.compute_complex_vis(
-                u123coord, v123coord, wavelength)
+        complex_vis_comps.append(component.compute_complex_vis(
+            vis.ucoord, vis.vcoord, wavelength))
+        complex_t3_comps.append(component.compute_complex_vis(
+            OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord, wavelength))
 
-        if complex_vis_model is None:
-            complex_vis_model = complex_vis_comp
-            complex_t3_model = complex_t3_comp
-        else:
-            complex_vis_model += complex_vis_comp
-            complex_t3_model += complex_t3_comp
+    complex_vis_comps = np.array(complex_vis_comps)
 
-    flux_model = complex_vis_model[:, 0].reshape(-1, 1)
-    for comp in components:
-        if "Point" == comp.shortname:
-            flux_ratio = comp.compute_flux(wavelength)
-            if OPTIONS.model.output == "normed":
-                stellar_flux = flux_ratio
-            else:
-                stellar_flux = (flux_model/(1-flux_ratio))*flux_ratio
+    # TODO: Make this implementation work again
+    # for comp in components:
+    #     if "Point" == comp.shortname:
+    #         flux_ratio = comp.compute_flux(wavelength)
+    #         if OPTIONS.model.output == "normed":
+    #             stellar_flux = flux_ratio
+    #         else:
+    #             stellar_flux = (flux_model/(1-flux_ratio))*flux_ratio
+    #
+    #         flux_model += stellar_flux
+    #         # complex_vis_model += stellar_flux
+    #         # complex_t3_model += stellar_flux
+    #         break
 
-            flux_model += stellar_flux
-            complex_vis_model += stellar_flux
-            complex_t3_model += stellar_flux
-            break
-
+    flux_model = complex_vis_comps[..., 0].sum(axis=0).reshape(-1, 1)
+    t3_model = compute_t3(np.sum(complex_t3_comps, axis=0))
     if OPTIONS.model.output == "normed":
-        complex_vis_model = complex_vis_model/flux_model
+        complex_vis_comps /= flux_model
 
     if flux_model.size > 0:
-        flux_model = np.tile(flux_model, (len(OPTIONS.data.readouts)))
-
-    vis_model = compute_vis(complex_vis_model)
-    t3_model = compute_t3(complex_t3_model)
+        flux_model = np.tile(flux_model, (len(OPTIONS.data.readouts))).real
 
     if not rzero:
-        vis_model, t3_model = vis_model[:, 1:], t3_model[:, 1:]
+        complex_vis_comps = complex_vis_comps[:, :, 1:]
+        t3_model = t3_model[:, 1:]
+
+    vis_model = compute_vis(complex_vis_comps.sum(axis=0))
 
     if "vis2" in OPTIONS.fit.data:
         vis_model *= vis_model
 
-    return flux_model.real, vis_model, t3_model
+    if rcomponents:
+        vis_comps = compute_vis(complex_vis_comps)
+        if "vis2" in OPTIONS.fit.data:
+            vis_comps *= vis_comps
+        return flux_model, vis_model, t3_model, vis_comps
+
+    return flux_model, vis_model, t3_model
 
 
 def compute_observable_chi_sq(
