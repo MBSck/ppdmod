@@ -145,6 +145,7 @@ rin.set(min=0, max=30)
 rout.set(min=0, max=50)
 rout.free = True
 p.set(min=-10, max=10)
+sigma0.set(min=0, max=1e-1)
 cont_weight.set(min=0, max=1)
 
 # outer_ring = {"rin": rin, "c1": c1, "s1": s1, "sigma0": sigma0, "p": p}
@@ -165,6 +166,7 @@ rin.set(min=0, max=30)
 rout.set(min=0, max=50)
 rout.free = True
 p.set(min=-10, max=10)
+sigma0.set(min=0, max=1e-1)
 cont_weight.set(min=0, max=1)
 
 last_ring = {"rin": rin, "p": p, "sigma0": sigma0,
