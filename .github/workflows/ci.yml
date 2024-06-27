@@ -6,7 +6,7 @@ on:
     - README.md
   push:
     branches:
-    - analytical_modulation
+    - analytical-modulation
 
 jobs:
   tests:
