@@ -14,8 +14,8 @@ from ppdmod.options import OPTIONS
 @pytest.fixture
 def fits_files() -> List[Path]:
     """A MATISSE (.fits)-file."""
-    april_one_file = list(Path("data/fits/hd142666").glob("*2022-04-21*.fits"))
-    april_two_files = list(Path("data/fits/hd142666").glob("*2022-04-23*.fits"))
+    april_one_file = list(Path("data/matisse").glob("*2022-04-21*.fits"))
+    april_two_files = list(Path("data/matisse").glob("*2022-04-23*.fits"))
     april_two_files.extend(april_one_file)
     return april_two_files
 

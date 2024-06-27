@@ -15,15 +15,15 @@ from ppdmod.basic_components import AsymmetricGreyBody, PointSource, Star, Ring,
 from ppdmod.data import ReadoutFits, set_data
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 from ppdmod.parameter import Parameter
-from ppdmod.utils import compute_vis, compute_t3, compute_effective_baselines, \
-    broadcast_baselines, load_data, qval_to_opacity, get_opacity, compute_stellar_radius
+from ppdmod.utils import compute_vis, compute_t3, load_data, qval_to_opacity, \
+    get_opacity, compute_stellar_radius
 
 
 DIMENSION = [2**power for power in range(9, 13)]
 CALCULATION_FILE = Path("analytical_calculation.xlsx")
 COMPONENT_DIR = Path("component")
 
-READOUT = ReadoutFits(list(Path("data/fits/hd142666").glob("*2022-04-23*.fits"))[0])
+READOUT = ReadoutFits(list(Path("data/matisse").glob("*2022-04-21*.fits"))[0])
 utils.make_workbook(
     CALCULATION_FILE,
     {
