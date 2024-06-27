@@ -266,7 +266,7 @@ class Ring(Component):
         if self.thin:
             vis = _vis_func(2 * np.pi * self.rin().to(u.rad) * baselines)
         else:
-            intensity, intensity_func = 1, kwargs.pop("intensity_func", None)
+            intensity_func = kwargs.pop("intensity_func", None)
             radius = self.compute_internal_grid()
             if intensity_func is not None:
                 intensity = intensity_func(radius, wavelength).to(u.erg/(u.rad**2 * u.cm**2 * u.s * u.Hz))
@@ -274,9 +274,11 @@ class Ring(Component):
 
             radius = radius.to(u.rad)
             vis = _vis_func(2 * np.pi * radius * baselines)
-            vis = np.trapz(radius * intensity * vis, radius).to(u.Jy)
+            if intensity_func is not None:
+                vis = np.trapz(radius * intensity * vis, radius).to(u.Jy)
+            else:
+                vis = np.trapz(vis, radius)
 
-            # TODO: Maybe move the factor of 2pi to the visibility where it belongs?
             if intensity_func is None:
                 if self.has_outer_radius:
                     vis /= (self.rout() - self.rin()).to(u.rad)

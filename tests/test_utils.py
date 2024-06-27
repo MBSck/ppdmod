@@ -388,21 +388,21 @@ def test_restrict_phase(shape: Tuple[int, int]) -> None:
 
 
 def test_load_data(qval_files: List[Path],
-                grf_files: List[Path]) -> None:
+                   grf_files: List[Path]) -> None:
     """Tests the loading of a data file."""
-    wavelength_grids, data = utils.load_data(
+    wavelength, data = utils.load_data(
             qval_files[0], load_func=utils.qval_to_opacity)
+    assert len(wavelength.shape) == 1
     assert len(data.shape) == 1
-    assert len(wavelength_grids.shape) == 1
 
-    wavelength_grids, data = utils.load_data(
+    wavelength, data = utils.load_data(
             qval_files, load_func=utils.qval_to_opacity)
+    assert len(wavelength.shape) == 1
     assert data.shape[0] == 6
-    assert wavelength_grids.shape[0] == 6
 
-    wavelength_grids, data = utils.load_data(grf_files)
+    wavelength, data = utils.load_data(grf_files)
+    assert len(wavelength.shape) == 1
     assert data.shape[0] == 6
-    assert wavelength_grids.shape[0] == 6
 
 
 def test_linearly_combine_data(
@@ -424,15 +424,13 @@ def test_linearly_combine_data(
     weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
     wavelength_qval, qval = utils.load_data(
             qval_files, load_func=utils.qval_to_opacity)
-    wavelength_qval = wavelength_qval[0]
     qval_combined = utils.linearly_combine_data(qval, weights)
 
     wavelength_grf, grf = utils.load_data(grf_files)
-    wavelength_grf = wavelength_grf[0]
     grf_combined = utils.linearly_combine_data(grf, weights)
 
-    assert (grf.shape[1],) == grf_combined.shape
-    assert (qval.shape[1],) == qval_combined.shape
+    assert len(grf_combined.shape) == 1
+    assert len(qval_combined.shape) == 1
 
     wavelength_cont, continuum_data = utils.load_data(
             continuum_file, load_func=utils.qval_to_opacity)

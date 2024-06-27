@@ -235,13 +235,14 @@ def test_ring_compute_vis(
     vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
     vis_ring = compute_vis(ring.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
     t3_ring = compute_t3(ring.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength))
+    vis_ring, t3_ring = vis_ring[:, 1:], t3_ring[:, 1:]
 
     atol = 1e-2 if "cm" not in fits_file.name else 1e-1
-    assert vis_ring.shape == (wavelength.size, vis.ucoord.shape[1])
+    assert vis_ring.shape == (wavelength.size, vis.ucoord.shape[1] - 1)
     assert np.allclose(vis.value, vis_ring, atol=atol)
 
+    assert t3_ring.shape == (wavelength.size, t3.u123coord.shape[1] - 1)
     if "cm" not in fits_file.name:
-        assert t3_ring.shape == (wavelength.size, t3.u123coord.shape[1])
         assert np.allclose(t3.value, t3_ring, atol=atol)
     else:
         # NOTE: The differences here are larger due to numerical inaccuracies in ASPRO?
@@ -388,7 +389,7 @@ def test_temp_gradient_flux(
          ("cm_Star_AsymTempGrad_rin15_rout2_inc05_pa33_q05_intemp1500_p05_insigma1e-4_cw04_r01_c05_s05_large.fits",
           AsymmetricTempGradient, 1.5, 2, 0.5, 33, 0.5, 1500, 0.5, 1e-4, 0.4, 1, 0.5, 0.5),
 ])
-def test_ring_compute_vis(
+def test_temp_gradient_compute_vis(
         fits_file: Path,
         component: Component,
         rin: u.mas, rout: u.mas,
@@ -403,11 +404,16 @@ def test_ring_compute_vis(
     names = ["pyroxene", "forsterite", "enstatite", "silica"]
     fmaxs = [1.0, 1.0, 1.0, None]
     sizes = [[1.5], [0.1], [0.1, 1.5], [0.1, 1.5]]
-    _, opacity = get_opacity(
+    wl_op, opacity = get_opacity(
         data_dir, weights, sizes, names, "qval", fmaxs=fmaxs)
     cont_opacity_file = data_dir / "qval" / "Q_amorph_c_rv0.1.dat"
-    wl_cont, cont_opacity = load_data(cont_opacity_file, load_func=qval_to_opacity)
-    cont_opacity = np.interp(wl, wl_cont, cont_opacity)
+    wl_cont, cont_opacity = load_data(
+        cont_opacity_file, load_func=qval_to_opacity)
+
+    kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
+    kappa_abs.wavelength, kappa_abs.value = wl_op, opacity
+    kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
+    kappa_cont.wavelength, kappa_cont.value = wl_cont, cont_opacity
 
     distance, eff_temp = 157.3, 6500
     eff_radius = compute_stellar_radius(10**0.96, eff_temp).value
@@ -421,7 +427,7 @@ def test_ring_compute_vis(
     pa = pos_angle if pos_angle is not None else 0
     atg = component(rin=rin, rout=rout, inc=inc, pa=pa,
                     q=q, temp0=temp0, p=p, sigma0=sigma0,
-                    kappa_abs=opacity, kappa_cont=cont_opacity,
+                    kappa_abs=kappa_abs, kappa_cont=kappa_cont,
                     cont_weight=cont_weight,
                     dist=distance, eff_temp=eff_temp, eff_radius=eff_radius, 
                     r0=r0, c1=c, s1=s)
@@ -483,11 +489,16 @@ def test_temp_gradient_fluxes(
     names = ["pyroxene", "forsterite", "enstatite", "silica"]
     fmaxs = [1.0, 1.0, 1.0, None]
     sizes = [[1.5], [0.1], [0.1, 1.5], [0.1, 1.5]]
-    _, opacity = get_opacity(
+    wl_op, opacity = get_opacity(
         data_dir, weights, sizes, names, "qval", fmaxs=fmaxs)
     cont_opacity_file = data_dir / "qval" / "Q_amorph_c_rv0.1.dat"
-    wl_cont, cont_opacity = load_data(cont_opacity_file, load_func=qval_to_opacity)
-    cont_opacity = np.interp(wl, wl_cont, cont_opacity)
+    wl_cont, cont_opacity = load_data(
+        cont_opacity_file, load_func=qval_to_opacity)
+
+    kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
+    kappa_abs.wavelength, kappa_abs.value = wl_op, opacity
+    kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
+    kappa_cont.wavelength, kappa_cont.value = wl_cont, cont_opacity
 
     distance, eff_temp = 157.3, 6500
     eff_radius = compute_stellar_radius(10**0.96, eff_temp).value
@@ -500,7 +511,7 @@ def test_temp_gradient_fluxes(
     pa = pos_angle if pos_angle is not None else 0
     atg = AsymmetricTempGradient(rin=1.5, rout=2, inc=inc, pa=pa,
                                  q=q, temp0=temp0, p=p, sigma0=sigma0,
-                                 kappa_abs=opacity, kappa_cont=cont_opacity,
+                                 kappa_abs=kappa_abs, kappa_cont=kappa_cont,
                                  cont_weight=cont_weight, dist=distance,
                                  eff_temp=eff_temp, eff_radius=eff_radius, 
                                  r0=1, c1=c, s1=s)
