@@ -108,6 +108,7 @@ def save_fits(dim: int, pixel_size: u.mas,
     data = None
     for index, table in enumerate(tables):
         comp_dir = save_dir / component_labels[index].lower().replace(" ", "_")
+        comp_dir.mkdir(exist_ok=True, parents=True)
         flux_ratio = (table.data["flux"].squeeze() * u.Jy/total_flux)[:, np.newaxis]
         flux_ratio = np.round(flux_ratio * 100, 2)
         if make_plots:
