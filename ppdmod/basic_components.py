@@ -242,7 +242,7 @@ class Ring(Component):
 
         Parameters
         ----------
-        baseline : 1/astropy.units.rad
+        baseline : 1 / astropy.units.rad
             The deprojected baselines.
         baseline_angles : astropy.units.rad
             The deprojected baseline angles.

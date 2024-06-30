@@ -437,8 +437,12 @@ def get_opacity(source_dir: Path, weights: np.ndarray,
                     file_name = f"{qval_dict[name]}_f{fmaxs[index]:.1f}_rv{s:.1f}.dat"
                 else:
                     file_name = f"{qval_dict[name]}_rv{s:.1f}.dat"
-            else:
+            elif method == "grf":
+                s = 2.0 if s == 1.5 else s
                 file_name = f"{grf_dict[name]}{s:.1f}.Combined.Kappa"
+            else:
+                prefix = "Big" if s in [1.5, 2] else "Small"
+                file_name = f"{prefix}{name.title()}.kappa"
 
             files.append(source_dir / method / file_name)
 

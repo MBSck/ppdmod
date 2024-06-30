@@ -48,18 +48,17 @@ wavelength = np.concatenate((wavelengths["lband"], wavelengths["nband"]))
 # wavelength = wavelengths["lband"]
 data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis", "t3"])
 
-# TODO: Check flux values -> gave nan for only N-band
 wl_flux, flux = utils.load_data(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt")
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
 star_flux.wavelength, star_flux.value = wl_flux, flux
 
 weights = np.array([73.2, 8.6, 0.6, 14.2, 2.4, 1.0])/100
 names = ["pyroxene", "forsterite", "enstatite", "silica"]
-fmaxs = [1.0, 1.0, 1.0, None]
+# fmaxs = [1.0, 1.0, 1.0, None]
 sizes = [[1.5], [0.1], [0.1, 1.5], [0.1, 1.5]]
 
 wl_opacity, roy_opacity = utils.get_opacity(
-    DATA_DIR, weights, sizes, names, "qval", fmaxs=fmaxs)
+    DATA_DIR, weights, sizes, names, "boekel")
 
 # # TODO: Finish this for the Juhasz opacities and also check Roy's paper again
 # weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
