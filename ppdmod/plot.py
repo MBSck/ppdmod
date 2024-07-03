@@ -22,7 +22,7 @@ from matplotlib.lines import Line2D
 from .component import Component
 from .fitting import compute_observables
 from .options import OPTIONS, get_colormap
-from .utils import compute_effective_baselines, compute_vis, restrict_phase, \
+from .utils import compute_effective_baselines, restrict_phase, \
         set_legend_color, set_axes_color
 
 matplotlib.use("Agg")
@@ -48,7 +48,7 @@ def plot_components(components: List[Component], dim: int,
         plt.imshow(image[0], extent=extent, norm=mcolors.PowerNorm(gamma=norm))
         plt.xlabel(r"$\alpha$ (mas)")
         plt.ylabel(r"$\delta$ (mas)")
-        
+
         if savefig is not None:
             plt.savefig(savefig, format=Path(savefig).suffix[1:])
         else:
@@ -535,6 +535,7 @@ def plot_fit(inclination: u.one, pos_angle: u.deg,
             if key == "vis":
                 if OPTIONS.model.output != "normed":
                     y_label = "Correlated fluxes (Jy)"
+                    upper_ax.set_ylim([0, None])
                     unit = "Jy"
                 else:
                     y_label = "Visibilities (Normalized)"
@@ -600,6 +601,9 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
                   wavelength_range: Optional[List[float]] = None,
                   ylimits: Optional[Dict[str, List[float]]] = {},
                   title: Optional[str] = None,
+                  raxis: Optional[bool] = False,
+                  inclination: Optional[float] = None,
+                  pos_angle: Optional[float] = None,
                   savefig: Optional[Path] = None) -> None:
     """Plots an overview over the total data for baselines [Mlambda].
 
@@ -625,9 +629,9 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
         nplots += 1
 
     figsize = (15, 5) if nplots == 3 else ((12, 5) if nplots == 2 else None)
-    _, axarr = plt.subplots(1, nplots, figsize=figsize,
-                            tight_layout=True,
-                            facecolor=OPTIONS.plot.color.background)
+    fig, axarr = plt.subplots(1, nplots, figsize=figsize,
+                              tight_layout=True,
+                              facecolor=OPTIONS.plot.color.background)
     axarr = axarr.flatten() if isinstance(axarr, np.ndarray) else [axarr]
     axarr = dict(zip(data_types, axarr))
 
@@ -649,13 +653,16 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
             if not (wavelength_range[0] <= wavelength <= wavelength_range[1]):
                 continue
 
-        effective_baselines, _ = compute_effective_baselines(vis.ucoord, vis.vcoord)
+        effective_baselines, _ = compute_effective_baselines(
+            vis.ucoord, vis.vcoord, inclination, pos_angle)
         effective_baselines_mlambda = (effective_baselines/wavelength.value)[1:]
 
         if "t3" in data_to_plot:
             longest_baselines, _ = compute_effective_baselines(
+                t3.u123coord, t3.v123coord, inclination, pos_angle, longest=True)
+            longest_baselines, _ = compute_effective_baselines(
                 t3.u123coord, t3.v123coord, longest=True)
-            longest_baselines_mlambda = (longest_baselines/wavelength.value)[1:]
+            longest_baselines_mlambda = (longest_baselines / wavelength.value)[1:]
 
         color = colormap(norm(wavelength.value))
         errorbar_params.color = color
@@ -717,8 +724,13 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
             else:
                 ax.set_ylim([0, None])
 
+        if inclination is not None:
+            label = r"$\mathrm{B}_\mathrm{eff}$ (M$\lambda$)"
+        else:
+            label = r"$\mathrm{B}$ (M$\lambda$)"
+
         if key == "vis":
-            ax.set_xlabel(r"$\mathrm{B}$ (M$\lambda$)")
+            ax.set_xlabel(label)
             if OPTIONS.model.output != "normed":
                 label = "Correlated fluxes (Jy)"
             else:
@@ -727,11 +739,12 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
             ax.set_ylabel(label)
             if "vis" in ylimits:
                 ax.set_ylim(ylimits["vis"])
+            ax.set_ylim([0, None])
             ax.set_xlim([0, None])
             ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.2f'))
 
         if key == "vis2":
-            ax.set_xlabel(r"$\mathrm{B}$ (M$\lambda$)")
+            ax.set_xlabel(label)
             ax.set_ylabel("Squared Visibilities (Normalized)")
             if "vis2" in ylimits:
                 ax.set_ylim(ylimits["vis2"])
@@ -756,6 +769,9 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
 
     if title is not None:
         plt.title(title)
+
+    if raxis:
+        return fig, axarr
 
     if savefig is not None:
         plt.savefig(savefig, format=Path(savefig).suffix[1:],
@@ -856,7 +872,7 @@ def plot_observables(wavelength_range: u.um,
     wavelength_range : astropy.units.m
     """
     save_dir = Path.cwd() if save_dir is None else save_dir
-    wavelength = np.linspace(wavelength_range[0], wavelength_range[1])
+    wavelength = np.linspace(wavelength_range[0], wavelength_range[1], 4096)
     flux, vis, t3, vis_comps = compute_observables(
         components, wavelength=wavelength, rcomponents=True)
 
