@@ -132,8 +132,23 @@ def compute_chi_sq(data: u.Quantity, error: u.Quantity,
 def compute_observables(components: List[Component],
                         wavelength: Optional[np.ndarray] = None,
                         rzero: Optional[bool] = False,
-                        rcomponents: Optional[bool] = False) -> Tuple[np.ndarray]:
-    """Calculates the observables from the model."""
+                        rcomponents: Optional[bool] = False,
+                        rraw: Optional[bool] = False) -> Tuple[np.ndarray]:
+    """Calculates the observables from the model.
+
+    Parameters
+    ----------
+    components : list of Component
+        The components to be used in the model.
+    wavelength : numpy.ndarray, optional
+        The wavelength to be used in the model.
+    rzero : bool, optional
+        Whether to include the zero baseline.
+    rcomponents : bool, optional
+        Whether to return the individual components.
+    rraw : bool, optional
+        Whether to return the raw observables.
+    """
     wavelength = OPTIONS.fit.wavelengths if wavelength is None else wavelength
     vis = OPTIONS.data.vis2 if "vis2" in OPTIONS.fit.data else OPTIONS.data.vis
 
@@ -172,7 +187,9 @@ def compute_observables(components: List[Component],
         complex_vis_comps = complex_vis_comps[:, :, 1:]
         t3_model = t3_model[:, 1:]
 
-    vis_model = compute_vis(complex_vis_comps.sum(axis=0))
+    vis_model = complex_vis_comps.sum(axis=0)
+    if not rraw:
+        vis_model = compute_vis(vis_model)
 
     if "vis2" in OPTIONS.fit.data:
         vis_model *= vis_model

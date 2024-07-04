@@ -182,7 +182,7 @@ errorbar = SimpleNamespace(color=None,
                            ecolor="gray", zorder=2)
 scatter = SimpleNamespace(color="", edgecolor="black",
                           linewidths=0.2, zorder=3)
-plot = SimpleNamespace(dpi=300, color=color,
+plot = SimpleNamespace(dim=4096, dpi=300, color=color,
                        errorbar=errorbar, scatter=scatter)
 
 # NOTE: Fitting

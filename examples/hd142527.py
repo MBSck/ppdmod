@@ -17,7 +17,7 @@ from ppdmod import basic_components
 from ppdmod import fitting
 from ppdmod import plot
 from ppdmod import utils
-from ppdmod.data import set_data
+from ppdmod.data import set_data, get_all_wavelengths
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
@@ -48,6 +48,7 @@ wavelength = np.concatenate((wavelengths["lband"], wavelengths["nband"]))
 # wavelength = wavelengths["lband"]
 data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis", "t3"])
 
+all_wavelengths = get_all_wavelengths()
 wl_flux, flux = utils.load_data(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt")
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
 star_flux.wavelength, star_flux.value = wl_flux, flux
@@ -70,7 +71,6 @@ wl_opacity, roy_opacity = utils.get_opacity(
 #                                       wavelengths.value, fmaxs)
 
 opacity = roy_opacity
-
 cont_opacity_file = DATA_DIR / "qval" / "Q_amorph_c_rv0.1.dat"
 # cont_opacity_file = DATA_DIR / "qval" / "Q_iron_0.10um_dhs_0.7.dat",
 wl_cont, cont_opacity = utils.load_data(cont_opacity_file, load_func=utils.qval_to_opacity)
@@ -80,8 +80,6 @@ kappa_abs.value, kappa_abs.wavelength = opacity, wl_opacity
 kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
 kappa_cont.value, kappa_cont.wavelength = cont_opacity, wl_cont
 
-# TODO: Think of a better way to assign f than through const_params
-# include the model itself with f?
 dim, distance, eff_temp = 32, 158.51, 6500
 eff_radius = utils.compute_stellar_radius(10**1.35, eff_temp).value
 OPTIONS.model.constant_params = {

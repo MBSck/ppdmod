@@ -872,7 +872,8 @@ def plot_observables(wavelength_range: u.um,
     wavelength_range : astropy.units.m
     """
     save_dir = Path.cwd() if save_dir is None else save_dir
-    wavelength = np.linspace(wavelength_range[0], wavelength_range[1], 4096)
+    wavelength = np.linspace(
+        wavelength_range[0], wavelength_range[1], OPTIONS.plot.dim)
     flux, vis, t3, vis_comps = compute_observables(
         components, wavelength=wavelength, rcomponents=True)
 
