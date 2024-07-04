@@ -146,10 +146,10 @@ sigma0.set(min=0, max=1e-1)
 cont_weight.set(min=0, max=1)
 
 # outer_ring = {"rin": rin, "c1": c1, "s1": s1, "sigma0": sigma0, "p": p}
-outer_ring = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0,
+# outer_ring = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0,
+#               "cont_weight": cont_weight}
+outer_ring = {"rin": rin, "p": p, "sigma0": sigma0,
               "cont_weight": cont_weight}
-# outer_ring = {"rin": rin, "p": p, "sigma0": sigma0,
-              # "cont_weight": cont_weight}
 # outer_ring = {}
 outer_ring_labels = [f"or_{label}" for label in outer_ring]
 
@@ -193,11 +193,11 @@ OPTIONS.model.components_and_params = [
     ["Star", star],
     ["GreyBody", inner_ring],
     ["GreyBody", outer_ring],
-    ["GreyBody", last_ring],
+    # ["GreyBody", last_ring],
 ]
 
-labels = star_labels + inner_ring_labels + outer_ring_labels + last_ring_labels
-# labels = star_labels + inner_ring_labels + outer_ring_labels
+# labels = star_labels + inner_ring_labels + outer_ring_labels + last_ring_labels
+labels = star_labels + inner_ring_labels + outer_ring_labels
 labels += shared_params_labels
 component_labels = ["Star", "Inner Ring", "Outer Ring", "Last Ring"]
 component_labels = component_labels[:len(OPTIONS.model.components_and_params)]
