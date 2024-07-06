@@ -220,6 +220,7 @@ def set_data(fits_files: Optional[List[Path]] = None,
              fit_data: Optional[List[str]] = None,
              weights: Optional[List[float]] = None,
              wavelength_range: Optional[u.Quantity[u.um]] = None,
+             min_err: Optional[float] = 0.05,
              **kwargs) -> SimpleNamespace:
     """Sets the data as a global variable from the input files.
 
@@ -238,6 +239,8 @@ def set_data(fits_files: Optional[List[Path]] = None,
         The weights of the fit parameters from the observed data.
     wavelength_range : astropy.units.um, optional
         A range of wavelengths to be kept. Other wavelengths will be omitted.
+    min_err : float, optional
+        The minimum error of the data to be kept. Will set the error to be that at least.
     """
     OPTIONS.data.readouts = []
 
@@ -270,6 +273,10 @@ def set_data(fits_files: Optional[List[Path]] = None,
             data_readout = getattr(readout, key)
             value = readout.get_data_for_wavelength(wavelengths, key, "value")
             err = readout.get_data_for_wavelength(wavelengths, key, "err")
+
+            if key in ["vis", "vis2", "t3"]:
+                ind = np.where((err/value) < min_err)
+                err[ind] = value[ind] * min_err
 
             if data.value.size == 0:
                 data.value, data.err = value, err
