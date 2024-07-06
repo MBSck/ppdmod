@@ -210,9 +210,6 @@ dir_name = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 result_dir = day_dir / dir_name
 result_dir.mkdir(parents=True, exist_ok=True)
 
-pre_fit_dir = result_dir / "pre_fit"
-pre_fit_dir.mkdir(parents=True, exist_ok=True)
-
 components = basic_components.assemble_components(
         OPTIONS.model.components_and_params,
         OPTIONS.model.shared_params)
@@ -220,25 +217,10 @@ rchi_sq = fitting.compute_observable_chi_sq(
         *fitting.compute_observables(components), reduced=True)
 print(f"rchi_sq: {rchi_sq}")
 
-plot.plot_overview(savefig=pre_fit_dir / "data_overview.pdf")
-plot.plot_observables(
-    [1, 12]*u.um, components, component_labels, save_dir=pre_fit_dir)
-
-for wl in OPTIONS.fit.wavelengths:
-    plot.plot_components(components, 512, 0.1, wl,
-                         savefig=pre_fit_dir / f"model_{wl.value}.png",
-                         save_as_fits=False, norm=0.5)
-# plot.plot_cumulative_flux()
-
 analysis.save_fits(
-        4096, 0.1, distance,
-        components, component_labels,
-        opacities=[kappa_abs, kappa_cont],
-        save_dir=pre_fit_dir, make_plots=True,
-        object_name="HD 142527")
-
-post_fit_dir = result_dir / "post_fit"
-post_fit_dir.mkdir(parents=True, exist_ok=True)
+    components, component_labels,
+    save_dir=result_dir / "pre_fit_model.fits",
+    object_name="HD142527")
 
 
 if __name__ == "__main__":
@@ -255,15 +237,9 @@ if __name__ == "__main__":
         fit_params = fit_params_dynesty
 
     sampler = fitting.run_fit(**fit_params, ncores=ncores, method="dynamic",
-                      save_dir=result_dir, debug=False)
+                              save_dir=result_dir, debug=False)
     theta, uncertainties = fitting.get_best_fit(
             sampler, **fit_params, method="quantile")
-
-    plot.plot_chains(sampler, labels, **fit_params,
-                     savefig=post_fit_dir / "chains.pdf")
-    plot.plot_corner(sampler, labels, **fit_params,
-                     savefig=post_fit_dir / "corner.pdf")
-    new_params = dict(zip(labels, theta))
 
     components_and_params, shared_params = fitting.set_params_from_theta(theta)
     components = basic_components.assemble_components(
@@ -272,24 +248,8 @@ if __name__ == "__main__":
             *fitting.compute_observables(components), reduced=True)
     print(f"rchi_sq: {rchi_sq}")
 
-    plot.plot_observables(
-        [1, 12]*u.um, components, component_labels, save_dir=post_fit_dir)
-    for wl in OPTIONS.fit.wavelengths:
-        plot.plot_components(components, 512, 0.1, wl,
-                             savefig=post_fit_dir / f"model_{wl.value}.png",
-                             save_as_fits=False, norm=0.5)
-
     analysis.save_fits(
-            4096, 0.1, distance,
-            components, component_labels,
-            opacities=[kappa_abs, kappa_cont],
-            save_dir=post_fit_dir, make_plots=True,
-            object_name="HD 142527", **fit_params, ncores=ncores)
-
-    inclination = shared_params["inc"]
-    pos_angle = shared_params["pa"]
-
-    plot.plot_fit(
-            inclination, pos_angle,
-            components=components,
-            savefig=post_fit_dir / "fit_results.pdf")
+        components, component_labels,
+        fit_hyperparameters=fit_params, ncores=ncores,
+        save_dir=result_dir / "post_fit_model.fits",
+        object_name="HD142527")

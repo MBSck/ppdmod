@@ -14,19 +14,22 @@ from .parameter import Parameter
 
 # TODO: Include showing dynamic fitting
 KEYWORD_DESCRIPTIONS = {
-    "object": "Name of the object",
+    "data": "The data sets used for fitting",
     "date": "Creation date",
+    "discard": "Chain discarded until element for emcee",
     "fitmeth": "Method applied for fitting",
+    "gridtype": "The type of the model grid",
+    "nburnin": "Number of burnin-steps for emcee",
+    "ncore": "Numbers of cores for the fitting",
+    "nlive": "Number of live points for dynesty",
+    "nlive_init": "Number of initial live points for dynesty",
+    "nsteps": "Number of steps for emcee",
+    "nwalkers": "Numbers of walkers for emcee",
+    "object": "Name of the object",
+    "outtype": "The output type of the model",
     "quantiles": "The quantiles used for the fitting",
     "wavelengths": "The wavelengths used for fitting",
     "weights": "The weights for the different data sets",
-    "data": "The data sets used for fitting",
-    "nstep": "Number of steps for emcee",
-    "nwalk": "Numbers of walkers for emcee",
-    "nlive": "Number of live points for dynesty",
-    "ncore": "Numbers of cores for the fitting",
-    "gridtype": "The type of the model grid",
-    "outtype": "The output type of the model",
 }
 
 
@@ -84,7 +87,7 @@ def save_fits(components: List[Component],
         tables.append(table)
 
     hdu = fits.HDUList([primary, *tables])
-    hdu.writeto(save_dir / "model.fits", overwrite=True)
+    hdu.writeto(save_dir, overwrite=True)
 
 
 def retrieve_components_from_fits(fits_file: Path) -> List[Component]:
