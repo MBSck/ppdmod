@@ -1,6 +1,7 @@
 import sys
 from typing import Optional, Dict, List
 import astropy.units as u
+from matplotlib.pyplot import get
 import numpy as np
 from astropy.modeling.models import BlackBody
 from scipy.special import j0, j1
@@ -543,7 +544,7 @@ class TempGradient(Ring):
         The dimension [px].
     """
     name = "Temperature Gradient"
-    shortname = "TempGrad"
+    shortname = "TempGradient"
     asymmetric = False
     thin = False
     has_outer_radius = True
@@ -685,8 +686,8 @@ class AsymmetricTempGradient(TempGradient):
     """An analytical implementation of an asymmetric temperature
     gradient."""
 
-    name = "Asymmetric Continuum Grey Body"
-    shortname = "AsymContinuumGreyBody"
+    name = "Asymmetric Temperature Gradient"
+    shortname = "AsymmetricTempGradient"
     asymmetric = True
 
 
@@ -694,8 +695,8 @@ class GreyBody(TempGradient):
     """An analytical implementation of an asymmetric temperature
     gradient."""
 
-    name = "Symmetric Continuum Grey Body"
-    shortname = "ContinuumGreyBody"
+    name = "Grey Body"
+    shortname = "GreyBody"
     const_temperature = True
 
 
@@ -703,8 +704,8 @@ class AsymmetricGreyBody(GreyBody):
     """An analytical implementation of an asymmetric temperature
     gradient."""
 
-    name = "Asymmetric Continuum Grey Body"
-    shortname = "AsymContinuumGreyBody"
+    name = "Asymmetric Grey Body"
+    shortname = "AsymmetricGreyBody"
     asymmetric = True
 
 class StarHaloGauss(Component):
@@ -826,6 +827,11 @@ class StarHaloRing(StarHaloGaussLor):
     has_ring = True
 
 
+def get_component_by_name(name: str) -> Component:
+    """Gets the component by its name."""
+    return getattr(sys.modules[__name__], name)
+
+
 def assemble_components(parameters: Dict[str, Dict],
                         shared_params: Optional[Dict[str, Parameter]] = None
                         ) -> List[Component]:
@@ -838,6 +844,6 @@ def assemble_components(parameters: Dict[str, Dict],
 
     components = []
     for component, params in parameters:
-        comp = getattr(sys.modules[__name__], component)
+        comp = get_component_by_name(component)
         components.append(comp(**params, **shared_params, **constant_params))
     return components

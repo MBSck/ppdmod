@@ -1,171 +1,113 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict
 from pathlib import Path
 
-import astropy.units as u
-import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
 from astropy.table import Table
-from astropy.wcs import WCS
 
+from .basic_components import get_component_by_name
 from .component import Component
-from .options import OPTIONS
+from .options import OPTIONS, STANDARD_PARAMETERS
+from .parameter import Parameter
 
 
-def save_fits(dim: int, pixel_size: u.mas,
-              distance: u.pc,
-              components: List[Component],
+# TODO: Include showing dynamic fitting
+KEYWORD_DESCRIPTIONS = {
+    "object": "Name of the object",
+    "date": "Creation date",
+    "fitmeth": "Method applied for fitting",
+    "quantiles": "The quantiles used for the fitting",
+    "wavelengths": "The wavelengths used for fitting",
+    "weights": "The weights for the different data sets",
+    "data": "The data sets used for fitting",
+    "nstep": "Number of steps for emcee",
+    "nwalk": "Numbers of walkers for emcee",
+    "nlive": "Number of live points for dynesty",
+    "ncore": "Numbers of cores for the fitting",
+    "gridtype": "The type of the model grid",
+    "outtype": "The output type of the model",
+}
+
+
+def save_fits(components: List[Component],
               component_labels: List[str],
-              wavelength: Optional[u.Quantity[u.um]] = None,
-              opacities: List[np.ndarray] = None,
               save_dir: Optional[Path] = None,
-              make_plots: Optional[bool] = False,
               object_name: Optional[str] = None,
-              nlive: Optional[int] = None,
-              sample: Optional[str] = None,
-              bound: Optional[str] = None,
-              nwalkers: Optional[int] = None,
-              nburnin: Optional[int] = None,
-              nsteps: Optional[int] = None,
-              ncores: Optional[int] = None, **kwargs) -> None:
+              fit_hyperparameters: Optional[Dict] = None,
+              ncores: Optional[int] = None) -> None:
     """Saves a (.fits)-file of the model with all the information on the
     parameter space."""
     save_dir = Path.cwd() if save_dir is None else Path(save_dir)
-    pixel_size = u.Quantity(pixel_size, u.mas)
-    wavelength = u.Quantity(wavelength, u.um) if wavelength is not None\
-        else OPTIONS.fit.wavelengths
-    distance = u.Quantity(distance, u.pc)
 
-    total_flux = np.empty(wavelength.size)*u.Jy
-    image, tables = np.empty((wavelength.size, dim, dim)), []
-    for index, component in enumerate(components):
-        comp_dir = save_dir / component_labels[index].lower().replace(" ", "_")
-        image += component.compute_image(dim, pixel_size, wavelength)
+    header = fits.Header()
+    header["OBJECT"] = (object_name, KEYWORD_DESCRIPTIONS["object"])
+    header["FITMETH"] = (OPTIONS.fit.method, KEYWORD_DESCRIPTIONS["fitmeth"])
+    # header["QUANTILES"[:8]] = (OPTIONS.fit.quantiles, KEYWORD_DESCRIPTIONS["quantiles"])
+    # header["WAVELENGTH"[:8]] = (OPTIONS.fit.wavelengths, KEYWORD_DESCRIPTIONS["wavelengths"])
 
-        table_header = fits.Header()
-        table_header["COMP"] = component.shortname
-        table_header["GRIDTYPE"] = (OPTIONS.model.gridtype,
-                                    "The type of the model grid")
+    # TODO: Add here the chi square values as well?
+    # TODO: And the flux ratios as well? There should be as much info as possible?
+    
+    for key in OPTIONS.fit.data:
+        key = "vis" if key == "vis2" else key
+        description = f"The weight for the {key.upper()} data set"
+        header[f"W{key.upper()}"] = (np.round(getattr(OPTIONS.fit.weights, key), 3), description)
 
-        data = {"wavelength": wavelength}
-        if component.shortname not in ["Star", "Point"]:
-            component.dim.value = dim
-            radius = np.tile(component.compute_internal_grid(), (wavelength.size, 1))
-            temperature = component.compute_temperature(radius)
-            surface_density = component.compute_surface_density(radius)
-            optical_depth = component.compute_optical_depth(
-                radius, wavelength[:, np.newaxis])
-            emissivity = component.compute_emissivity(
-                    radius, wavelength[:, np.newaxis])
-            brightness = component.compute_intensity(
-                    radius, wavelength[:, np.newaxis])
-
-            data["radius"] = radius
-            data["temperature"] = temperature
-            data["surface_density"] = surface_density
-            data["optical_depth"] = optical_depth
-            data["emissivity"] = emissivity
-            data["brightness"] = brightness
-
-            if make_plots:
-                comp_dir.mkdir(exist_ok=True, parents=True)
-                plots = [temperature, surface_density, optical_depth, emissivity, brightness]
-                names = ["temperature", "surface_density", "optical_depth",
-                         "emissivity", "brightness"]
-                for name, plot in zip(names, plots):
-                    for wl_index, values in enumerate(plot):
-                        plt.plot(radius[0], values, label=wavelength[wl_index])
-                    plt.title(f"{component.shortname} {name.title()}")
-                    plt.legend()
-                    plt.savefig(comp_dir / f"{component.shortname}_{name}.pdf", format="pdf")
-                    plt.close()
-
-        flux = component.compute_flux(wavelength[:, np.newaxis])
-        # TODO: Plot this
-        data["flux"] = flux
-        data["flux_ratio"] = np.zeros(data["flux"].shape)
-
-        total_flux += u.Quantity(data["flux"].squeeze(), unit=u.Jy)
-
-        for parameter in component.get_params().values():
-            if parameter.name == "flux":
+    if fit_hyperparameters is not None:
+        for key, value in fit_hyperparameters.items():
+            if key in ["ptform"]:
                 continue
-            if parameter.wavelength is None:
-                name = parameter.shortname.upper()
-                if name not in table_header:
-                    description = f"[{parameter.unit}] {parameter.description}"
-                    table_header[name] = (parameter().value, description)
-            else:
-                data[parameter.name] = parameter(wavelength[:, np.newaxis])
+            header[key.upper()[:8]] = (value, KEYWORD_DESCRIPTIONS[key.lower()])
+
+    header["NCORE"] = (ncores, KEYWORD_DESCRIPTIONS["ncore"])
+    header["GRIDTYPE"] = (OPTIONS.model.gridtype, KEYWORD_DESCRIPTIONS["gridtype"])
+    header["OUTTYPE"] = (OPTIONS.model.output, KEYWORD_DESCRIPTIONS["outtype"])
+    header["DATE"] = (f"{datetime.now()}", KEYWORD_DESCRIPTIONS["date"])
+    primary = fits.PrimaryHDU(header=header)
+
+    tables = []
+    for index, component in enumerate(components):
+        table_header, data = fits.Header(), {}
+        table_header["COMP"] = component.shortname
+
+        # TODO: Also save if it is thin or asymmetric here?
+        for parameter in component.get_params().values():
+
+            wavelength = np.full(parameter().shape, np.nan) \
+                if parameter.wavelength is None else parameter.wavelength
+            data[parameter.shortname] = (wavelength, parameter().value)
 
         table = fits.BinTableHDU(
-                Table(data=data),
-                name="_".join(component_labels[index].split(" ")).upper(),
-                header=table_header)
+                Table(data=data), header=table_header,
+                name=component_labels[index].upper().replace(" ", "_"))
         tables.append(table)
 
-    data = None
-    for index, table in enumerate(tables):
-        comp_dir = save_dir / component_labels[index].lower().replace(" ", "_")
-        comp_dir.mkdir(exist_ok=True, parents=True)
-        flux_ratio = (table.data["flux"].squeeze() * u.Jy/total_flux)[:, np.newaxis]
-        flux_ratio = np.round(flux_ratio * 100, 2)
-        if make_plots:
-            plt.plot(wavelength, flux_ratio)
-            plt.savefig(comp_dir / "flux_ratio.pdf", format="pdf")
-            plt.close()
-        table.data["flux_ratio"] = flux_ratio
-        if table.header["COMP"] in ["Star", "Point"]:
-            continue
-        if data is None:
-            data = {col.name: table.data[col.name] for col in table.columns}
-            continue
-        for column in table.columns:
-            if column.name in ["wavelength", "kappa_abs", "kappa_cont", "flux"]:
+    hdu = fits.HDUList([primary, *tables])
+    hdu.writeto(save_dir / "model.fits", overwrite=True)
+
+
+def retrieve_components_from_fits(fits_file: Path) -> List[Component]:
+    """Retrieves the individual model components from a model (.fits)-file"""
+    components, component_labels = [], []
+    with fits.open(fits_file, "readonly") as hdul:
+        for card in hdul:
+            header = card.header
+            if card.name == "PRIMARY":
                 continue
-            if column.name == "radius":
-                filler = np.tile(
-                        np.linspace(data[column.name][0][-1], table.data[column.name][0][0], dim),
-                        (table.data[column.name].shape[0], 1))
-            else:
-                filler = np.zeros(data[column.name].shape)
-            data[column.name] = np.hstack((data[column.name],
-                                           filler, table.data[column.name]))
 
-    table = fits.BinTableHDU(Table(data=data), name="FULL_DISK")
-    tables.append(table)
+            component_labels.append(card.name)
+            param_names, param_data = card.data.columns.names, card.data.tolist()
+            param_wavelength = [value if not np.all(np.isnan(value)) else None
+                                for value in param_data[0]]
 
-    if opacities is not None:
-        data = {"wavelength": opacities[np.argmin([op.wavelength.size for op in opacities])].wavelength}
-        for opacity in opacities:
-            data[opacity.shortname] = np.interp(data["wavelength"], opacity.wavelength, opacity())
-        tables.append(fits.BinTableHDU(Table(data=data), name="OPACITIES"))
+            params = []
+            for name, wavelength, value in zip(param_names, param_wavelength, param_data[1]):
+                param = Parameter(**getattr(STANDARD_PARAMETERS, name))
+                param.wavelength, param.value = wavelength, value
+                params.append(param)
 
-    wcs = WCS(naxis=3)
-    wcs.wcs.crpix = (*np.array(image.shape[1:]) // 2, wavelength.size)
-    wcs.wcs.cdelt = (-pixel_size.to(u.deg).value, -pixel_size.to(u.deg).value, -1.)
-    wcs.wcs.crval = (0.0, 0.0, 1.0)
-    # wcs.wcs.ctype = ("RA---DEG", "DEC--DEG", "WAVELENGTHS")
-    wcs.wcs.cunit = ("deg", "deg", "um")
-    wcs.wcs.pc = np.array([[1, 0, 0], [0, -1, 0], [0, 0, 1]])
-    header = wcs.to_header()
+            component = get_component_by_name(header["COMP"])(**dict(zip(param_names, params)))
+            components.append(component)
 
-    header["FITMETH"] = (OPTIONS.fit.method, "Method applied for fitting")
-    if OPTIONS.fit.method == "emcee":
-        header["NBURNIN"] = (nburnin, "Number of burn-in steps for emcee")
-        header["NSTEP"] = (nsteps, "Number of steps for emcee")
-        header["NWALK"] = (nwalkers, "Numbers of walkers for emcee")
-    else:
-        header["NLIVE"] = (nlive, "Number of burn-in steps for dynesty")
-        header["NSTEP"] = (sample, "Method of sampling for dynesty")
-        header["NWALK"] = (bound, "Method of bounding for dynesty")
-
-    header["NCORE"] = (ncores, "Numbers of cores for the fitting")
-    header["OBJECT"] = (object_name, "Name of the object")
-    header["DATE"] = (f"{datetime.now()}", "Creation date")
-    header["R0"] = (OPTIONS.model.reference_radius.value,
-                    "[AU] Reference radius for the power laws")
-
-    hdu = fits.HDUList([fits.PrimaryHDU(image, header=header), *tables])
-    hdu.writeto(save_dir / "mode.fits", overwrite=True)
+    return component_labels, components
