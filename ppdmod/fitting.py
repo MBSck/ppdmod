@@ -205,6 +205,7 @@ def compute_observables(components: List[Component],
     return flux_model, vis_model, t3_model
 
 
+# TODO: Finish the split functionality.
 def compute_observable_chi_sq(
         flux_model: np.ndarray,
         vis_model: np.ndarray,
@@ -251,7 +252,7 @@ def compute_observable_chi_sq(
     ndata, nfree_params = get_counts_data(), get_priors().shape[0]
     if reduced:
         chi_sq = chi_sqs.sum() / (ndata.sum() + nfree_params)
-        chi_sqs /= (ndata + nfree_params)
+        # chi_sqs /= (ndata + nfree_params)
     else:
         chi_sq = chi_sqs.sum()
 
@@ -471,8 +472,8 @@ def get_best_fit(
 
         if method == "quantile":
             for index in range(samples.shape[1]):
-                quantiles = np.percentile(samples[:, index],
-                                          OPTIONS.fit.quantiles)
+                quantiles = np.percentile(
+                    samples[:, index], OPTIONS.fit.quantiles)
                 params.append(quantiles[1])
                 uncertainties.append(np.diff(quantiles))
             params, uncertainties = map(np.array, (params, uncertainties))
