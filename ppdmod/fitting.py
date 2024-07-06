@@ -10,6 +10,7 @@ from scipy.stats import gaussian_kde
 
 from .basic_components import assemble_components
 from .component import Component
+from .data import get_counts_data
 from .parameter import Parameter
 from .options import OPTIONS
 from .utils import compute_vis, compute_t3
@@ -208,7 +209,8 @@ def compute_observable_chi_sq(
         flux_model: np.ndarray,
         vis_model: np.ndarray,
         t3_model: np.ndarray,
-        reduced: Optional[bool] = False) -> float:
+        reduced: Optional[bool] = False,
+        split: Optional[bool] = False):
     """Calculates the model's observables.
 
     Parameters
@@ -222,6 +224,8 @@ def compute_observable_chi_sq(
         The model's closure phase.
     reduced : bool, optional
         Whether to return the reduced chi square.
+    split : bool, optional
+        Whether to return the individual components.
 
     Returns
     -------
@@ -230,23 +234,27 @@ def compute_observable_chi_sq(
     """
     params = {"flux": flux_model, "vis": vis_model, "t3": t3_model}
 
-    chi_sq, ndata = 0., 0
+    chi_sqs = []
     for key in OPTIONS.fit.data:
         data = getattr(OPTIONS.data, key)
-        ndata += data.value.size
         key = key if key != "vis2" else "vis"
         weight = getattr(OPTIONS.fit.weights, key)
         nan_indices = np.isnan(data.value)
         method = "linear" if key != "t3" else "exponential"
-        chi_sq += compute_chi_sq(
+        chi_sqs.append(compute_chi_sq(
                 data.value[~nan_indices],
                 data.err[~nan_indices],
                 params[key][~nan_indices],
-                method=method) * weight
+                method=method) * weight)
 
-    chi_sq = float(chi_sq)
+    chi_sqs = np.array(chi_sqs).astype(float)
+    ndata, nfree_params = get_counts_data(), get_priors().shape[0]
     if reduced:
-        chi_sq /= ndata + get_priors().shape[0]
+        chi_sq = chi_sqs.sum() / (ndata.sum() + nfree_params)
+        chi_sqs /= (ndata + nfree_params)
+    else:
+        chi_sq = chi_sqs.sum()
+
     return chi_sq
 
 

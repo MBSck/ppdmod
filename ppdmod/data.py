@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Tuple
 from types import SimpleNamespace
 from pathlib import Path
 
@@ -187,17 +187,25 @@ def set_fit_wavelengths(wavelengths: Optional[u.Quantity[u.um]] = None) -> Union
     return OPTIONS.fit.wavelengths
 
 
+def get_counts_data() -> np.ndarray[int]:
+    """Gets the number of data points for the flux,
+    visibilities and closure phases."""
+    data = OPTIONS.data
+    nflux = data.flux.value[~np.isnan(data.flux.value)].size
+    vis = data.vis.value if data.vis2.value.size == 0 \
+        else data.vis2.value
+    nvis = vis[~np.isnan(vis)].size
+    nt3 = data.t3.value[~np.isnan(data.t3.value)].size
+    return np.array([nflux, nvis, nt3])
+
+
 def set_fit_weights(weights: Optional[List[float]] = None) -> None:
     """Sets the weights of the fit parameters
     from the observed data"""
-    wvis, data = 1, OPTIONS.data
     if weights is not None:
         wflux, wvis, wt3 = weights
     else:
-        nflux = data.flux.value.size
-        nvis = data.vis.value.size if data.vis2.value.size == 0\
-            else data.vis2.value.size
-        nt3 = data.t3.value.size
+        nflux, nvis, nt3, wvis = (*get_counts_data(), 1)
         wflux = 0 if nflux == 0 else nvis/nflux
         wt3 = 0 if nt3 == 0 else nvis/nt3
 
