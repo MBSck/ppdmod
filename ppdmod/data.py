@@ -187,35 +187,19 @@ def set_fit_wavelengths(wavelengths: Optional[u.Quantity[u.um]] = None) -> Union
     return OPTIONS.fit.wavelengths
 
 
-def set_fit_weights(weights: Optional[List[float]] = None, 
-                    fit_data: Optional[List[str]] = None) -> None:
+def set_fit_weights(weights: Optional[List[float]] = None) -> None:
     """Sets the weights of the fit parameters
     from the observed data"""
-    fit_data = OPTIONS.fit.data if fit_data is None else fit_data
+    wvis, data = 1, OPTIONS.data
     if weights is not None:
         wflux, wvis, wt3 = weights
     else:
-        vis = OPTIONS.data.vis if OPTIONS.data.vis2.value.size == 0\
-            else OPTIONS.data.vis2
-        
-        if vis.value.size != 0:
-            nvis = vis.value.shape[1]
-        else:
-            nvis = 1
-
-        if "flux" in fit_data:
-            nflux = OPTIONS.data.flux.value.shape[1]
-            wflux = nvis/nflux
-        else:
-            wflux = 1
-
-        if "t3" in fit_data:
-            nt3 = OPTIONS.data.t3.value.shape[1]
-            wt3 = nvis/nt3
-        else:
-            wt3 = 1
-
-        wvis = 1
+        nflux = data.flux.value.size
+        nvis = data.vis.value.size if data.vis2.value.size == 0\
+            else data.vis2.value.size
+        nt3 = data.t3.value.size
+        wflux = 0 if nflux == 0 else nvis/nflux
+        wt3 = 0 if nt3 == 0 else nvis/nt3
 
     norm = wflux + wvis + wt3
     OPTIONS.fit.weights.flux = wflux/norm
@@ -305,5 +289,5 @@ def set_data(fits_files: Optional[List[Path]] = None,
                     data.v123coord = np.hstack(
                             (data.v123coord, data_readout.v123coord))
 
-    set_fit_weights(weights, fit_data)
+    set_fit_weights(weights)
     return OPTIONS.data

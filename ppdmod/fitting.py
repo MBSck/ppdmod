@@ -185,7 +185,8 @@ def compute_observables(components: List[Component],
 
     if not rzero:
         complex_vis_comps = complex_vis_comps[:, :, 1:]
-        t3_model = t3_model[:, 1:]
+        if t3_model.size > 0:
+            t3_model = t3_model[:, 1:]
 
     vis_model = complex_vis_comps.sum(axis=0)
     if not rraw:
