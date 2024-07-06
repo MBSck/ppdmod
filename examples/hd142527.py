@@ -15,7 +15,6 @@ import numpy as np
 from ppdmod import analysis
 from ppdmod import basic_components
 from ppdmod import fitting
-from ppdmod import plot
 from ppdmod import utils
 from ppdmod.data import set_data, get_all_wavelengths
 from ppdmod.parameter import Parameter
@@ -40,13 +39,14 @@ DATA_DIR = Path("../tests/data")
 wavelengths = {"hband": [1.6]*u.um,
                "kband": [2.25]*u.um,
                "lband": [3.2]*u.um,
+               "mband": [4.7]*u.um,
                "nband": [8., 9., 10., 11.3, 12.5]*u.um}
 
 OPTIONS.model.output = "non-normed"
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
-wavelength = np.concatenate((wavelengths["lband"], wavelengths["nband"]))
+wavelength = np.concatenate((wavelengths["lband"], wavelengths["mband"], wavelengths["nband"]))
 # wavelength = wavelengths["lband"]
-data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis", "t3"])
+data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis"])
 
 all_wavelengths = get_all_wavelengths()
 wl_flux, flux = utils.load_data(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt")
@@ -58,19 +58,9 @@ names = ["pyroxene", "forsterite", "enstatite", "silica"]
 # fmaxs = [1.0, 1.0, 1.0, None]
 sizes = [[1.5], [0.1], [0.1, 1.5], [0.1, 1.5]]
 
-wl_opacity, roy_opacity = utils.get_opacity(
+wl_opacity, opacity = utils.get_opacity(
     DATA_DIR, weights, sizes, names, "boekel")
 
-# # TODO: Finish this for the Juhasz opacities and also check Roy's paper again
-# weights = np.array([42.8, 9.7, 43.5, 1.1, 2.3, 0.6])/100
-# names = ["olivine", "pyroxene", "forsterite", "enstatite"]
-# fmaxs = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-# sizes = [[0.1, 1.5], [1.5], [0.1, 1.5], [1.5]]
-
-# _, juhasz_opacity = utils.get_opacity(DATA_DIR, weights, sizes, names, "qval",
-#                                       wavelengths.value, fmaxs)
-
-opacity = roy_opacity
 cont_opacity_file = DATA_DIR / "qval" / "Q_amorph_c_rv0.1.dat"
 # cont_opacity_file = DATA_DIR / "qval" / "Q_iron_0.10um_dhs_0.7.dat",
 wl_cont, cont_opacity = utils.load_data(cont_opacity_file, load_func=utils.qval_to_opacity)
@@ -238,6 +228,8 @@ if __name__ == "__main__":
 
     sampler = fitting.run_fit(**fit_params, ncores=ncores, method="dynamic",
                               save_dir=result_dir, debug=False)
+
+    # TODO: Check if the parameters are the same as the ones from dynesty
     theta, uncertainties = fitting.get_best_fit(
             sampler, **fit_params, method="quantile")
 
