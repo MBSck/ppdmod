@@ -362,9 +362,9 @@ def plot_datapoints(
     vis = OPTIONS.data.vis if "vis" in OPTIONS.fit.data\
         else OPTIONS.data.vis2
 
-    pos_angle, inclination = components[0].pa(), components[1].inc()
     flux_model, vis_model, t3_model = compute_observables(components)
 
+    pos_angle, inclination = components[0].pa(), components[1].inc()
     effective_baselines, _ = compute_effective_baselines(
         vis.ucoord, vis.vcoord, inclination, pos_angle)
 
@@ -461,7 +461,7 @@ def plot_datapoints(
     if "flux" in data_to_plot:
         axarr["flux"][0].set_xticks(wavelengths.value)
         axarr["flux"][1].set_xticks(wavelengths.value)
-        axarr["flux"][1].set_xticklabels(wavelengths.value, rotation=45)
+        axarr["flux"][1].set_xticklabels(wavelengths.value, rotation=0)
     errorbar_params.color = None
 
 
@@ -525,8 +525,9 @@ def plot_fit(components: Optional[List] = None,
     sm.set_array([])
     cbar = plt.colorbar(sm, ax=axarr[data_types[-1]])
     cbar.set_ticks(wavelengths.value)
-    cbar.set_ticklabels([f"{wavelength:.1f}"
-                         for wavelength in wavelengths.value])
+    cbar.set_ticklabels(
+        [f"{wavelength:.1f}" for wavelength in wavelengths.value])
+
     if OPTIONS.plot.color.background == "black":
         cbar.ax.yaxis.set_tick_params(color="white")
         plt.setp(plt.getp(cbar.ax.axes, "yticklabels"), color="white")
@@ -726,7 +727,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
 
     if "flux" in data_to_plot:
         axarr["flux"].set_xticks(wavelengths.value)
-        axarr["flux"].set_xticklabels(wavelengths.value, rotation=45)
+        axarr["flux"].set_xticklabels(wavelengths.value, rotation=0)
 
     errorbar_params.color = None
 
@@ -896,6 +897,7 @@ def plot_target(target: str,
         plt.close()
 
 
+# TODO: Make colorscale permanent -> Implement colormap
 def plot_observables(wavelength_range: u.um,
                      components: List[Component],
                      component_labels: List[str],
@@ -911,13 +913,16 @@ def plot_observables(wavelength_range: u.um,
         wavelength_range[0], wavelength_range[1], OPTIONS.plot.dim)
     flux, vis, t3, vis_comps = compute_observables(
         components, wavelength=wavelength, rcomponents=True)
+    colors = OPTIONS.plot.color.list
 
     if "flux" in OPTIONS.fit.data:
         _ = plt.figure(facecolor=OPTIONS.plot.color.background,
                        tight_layout=True)
         ax = plt.axes(facecolor=OPTIONS.plot.color.background)
         set_axes_color(ax, OPTIONS.plot.color.background)
+
         names = [re.findall(r"(\d{4}-\d{2}-\d{2})", readout.fits_file.name)[0] for readout in OPTIONS.data.readouts]
+        date_to_color = {date: color for date, color in zip(set(names), colors)}
         sorted_readouts = np.array(OPTIONS.data.readouts.copy())[np.argsort(names)].tolist()
 
         values = [flux[:, 0]]
@@ -935,7 +940,7 @@ def plot_observables(wavelength_range: u.um,
                 readout_flux, readout_err = readout_flux[indices].flatten(), readout_err[indices].flatten()
 
             lower_err, upper_err = readout_flux - readout_err, readout_flux + readout_err
-            line = ax.plot(readout_wavelength, readout_flux, label=name)
+            line = ax.plot(readout_wavelength, readout_flux, color=date_to_color[name])
             ax.fill_between(readout_wavelength, lower_err, upper_err, color=line[0].get_color(), alpha=0.5)
             values.append(readout_flux)
 
@@ -946,9 +951,10 @@ def plot_observables(wavelength_range: u.um,
         ax.set_ylabel("Flux (Jy)")
         ax.set_ylim([0, max_value + 0.1*max_value])
         handles, labels = ax.get_legend_handles_labels()
-        custom_handles = [handles[0], handles[1], Line2D([0], [0], color="white", label="..."), handles[-1]]
-        custom_labels = [labels[0], labels[1], "...", labels[-1]]
-        ax.legend(custom_handles, custom_labels)
+        # custom_handles = [handles[0], handles[1], Line2D([0], [0], color="white", label="..."), handles[-1]]
+        # custom_labels = [labels[0], labels[1], "...", labels[-1]]
+        # ax.legend(custom_handles, custom_labels)
+        ax.legend(loc="upper left")
         plt.savefig(save_dir / "sed.pdf", format="pdf")
         plt.close()
 
