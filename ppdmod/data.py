@@ -276,7 +276,7 @@ def set_data(fits_files: Optional[List[Path]] = None,
 
             if key in ["vis", "vis2", "t3"]:
                 ind = np.where((err/value) < min_err)
-                err[ind] = value[ind] * min_err
+                err[ind] = np.abs(value[ind]) * min_err
 
             if data.value.size == 0:
                 data.value, data.err = value, err
