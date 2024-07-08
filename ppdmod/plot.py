@@ -28,15 +28,47 @@ from .utils import compute_effective_baselines, restrict_phase, \
 matplotlib.use("Agg")
 
 
+def plot_component_mosaic(components: List[Component], dim: int,
+                          pixel_size: u.mas, wavelengths: u.um,
+                          norm: Optional[float] = 0.5,
+                          zoom: Optional[float] = None,
+                          cols: Optional[int] = 4,
+                          cmap: Optional[str] = "inferno",
+                          savefig: Optional[Path] = None) -> None:
+    """Plots a mosaic of components for the different wavelengths."""
+    num_plots = np.array(wavelengths).size
+    rows = int(np.ceil(num_plots/cols))
+    fig, axes = plt.subplots(
+        rows, cols, figsize=(5, 5), facecolor=OPTIONS.plot.color.background)
+
+    for ax, wavelength in zip(axes.flatten(), wavelengths):
+        plot_components(components, dim, pixel_size, wavelength,
+                        norm=norm, zoom=zoom, ax=ax, cmap=cmap)
+
+    [fig.delaxes(ax) for ax in axes.flatten()[num_plots:]]
+    plt.tight_layout()
+
+    if savefig is not None:
+        plt.savefig(savefig, format=Path(savefig).suffix[1:])
+    else:
+        plt.show()
+    plt.close()
+
+
+# TODO: Add here the text in the top left corner for the wavelength
+# and a scale for the au
 def plot_components(components: List[Component], dim: int,
                     pixel_size: u.mas, wavelength: u.um,
                     norm: Optional[float] = 0.5,
                     save_as_fits: Optional[bool] = False,
+                    zoom: Optional[float] = None,
+                    ax: Optional[bool] = False,
+                    cmap: Optional[str] = "inferno",
                     savefig: Optional[Path] = None) -> None:
     """Plots a component."""
     components = [components] if not isinstance(components, list) else components
     image = sum([comp.compute_image(dim, pixel_size, wavelength) for comp in components])
-    extent = [sign * dim * pixel_size / 2 for sign in [-1, 1, -1, 1]]
+    extent = [sign * dim * pixel_size / 2 for sign in [-1, 1, 1, -1]]
     if save_as_fits:
         wcs = WCS(naxis=2)
         wcs.wcs.crpix = (dim // 2, dim // 2)
@@ -45,15 +77,19 @@ def plot_components(components: List[Component], dim: int,
         hdu = fits.HDUList([fits.PrimaryHDU(image, header=wcs.to_header())])
         hdu.writeto(savefig, overwrite=True)
     else:
-        plt.imshow(image[0], extent=extent, norm=mcolors.PowerNorm(gamma=norm))
-        plt.xlabel(r"$\alpha$ (mas)")
-        plt.ylabel(r"$\delta$ (mas)")
+        if ax is None:
+            _, ax = plt.subplots(1, 1)
+        ax.imshow(image[0], extent=extent,
+                  norm=mcolors.PowerNorm(gamma=norm), cmap=cmap)
+        ax.text(-22, 22, fr"$\lambda$ = {wavelength} " +r"$\mathrm{\mu}$m", fontsize=12, color="white")
+        ax.set_xlim([zoom, -zoom])
+        ax.set_ylim([-zoom, zoom])
+
+        ax.set_xlabel(r"$\alpha$ (mas)")
+        ax.set_ylabel(r"$\delta$ (mas)")
 
         if savefig is not None:
             plt.savefig(savefig, format=Path(savefig).suffix[1:])
-        else:
-            plt.show()
-        plt.close()
 
 
 def plot_corner(sampler: np.ndarray, labels: List[str],
@@ -294,8 +330,7 @@ def plot_all(model_file: Path,
 
 
 def plot_datapoints(
-        axarr, inclination: u.one,
-        pos_angle: u.deg, wavelengths: u.um,
+        axarr, wavelengths: u.um,
         components: Optional[List] = None,
         data_to_plot: Optional[List[str]] = OPTIONS.fit.data,
         norm: Optional[np.ndarray] = None,
@@ -326,6 +361,8 @@ def plot_datapoints(
     flux, t3 = OPTIONS.data.flux, OPTIONS.data.t3
     vis = OPTIONS.data.vis if "vis" in OPTIONS.fit.data\
         else OPTIONS.data.vis2
+
+    pos_angle, inclination = components[0].pa(), components[1].inc()
     flux_model, vis_model, t3_model = compute_observables(components)
 
     effective_baselines, _ = compute_effective_baselines(
@@ -428,10 +465,9 @@ def plot_datapoints(
     errorbar_params.color = None
 
 
-def plot_fit(inclination: u.one, pos_angle: u.deg,
-             components: Optional[List] = None,
+def plot_fit(components: Optional[List] = None,
              data_to_plot: Optional[List[str]] = None,
-             colormap: Optional[str] = OPTIONS.plot.color.colormap,
+             cmap: Optional[str] = OPTIONS.plot.color.colormap,
              ylimits: Optional[Dict[str, List[float]]] = {},
              wavelength_range: Optional[List[float]] = None,
              plot_nan: Optional[bool] = False,
@@ -448,7 +484,7 @@ def plot_fit(inclination: u.one, pos_angle: u.deg,
         The position angle.
     data_to_plot : list of str, optional
         The data to plot. The default is OPTIONS.fit.data.
-    colormap : str, optional
+    cmap : str, optional
         The colormap.
     plot_nan : bool, optional
         If True plots the model values at points where the real data
@@ -480,13 +516,12 @@ def plot_fit(inclination: u.one, pos_angle: u.deg,
         data_types, [[fig.add_subplot(gs[j, i], facecolor=OPTIONS.plot.color.background)
                       for j in range(2)] for i in range(nplots)])}
 
-    plot_datapoints(axarr, inclination, pos_angle,
-                    wavelengths, components=components,
+    plot_datapoints(axarr, wavelengths, components=components,
                     wavelength_range=wavelength_range,
                     norm=norm, data_to_plot=data_to_plot,
-                    plot_nan=plot_nan, colormap=colormap)
+                    plot_nan=plot_nan, colormap=cmap)
 
-    sm = cm.ScalarMappable(cmap=get_colormap(colormap), norm=norm)
+    sm = cm.ScalarMappable(cmap=get_colormap(cmap), norm=norm)
     sm.set_array([])
     cbar = plt.colorbar(sm, ax=axarr[data_types[-1]])
     cbar.set_ticks(wavelengths.value)
@@ -517,7 +552,7 @@ def plot_fit(inclination: u.one, pos_angle: u.deg,
         upper_ax, lower_ax = axarr[ax_key]
 
         if key == "flux":
-            lower_ax.set_xlabel(r"Wavelength ($\mathrm{\mu}$m)")
+            lower_ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
             lower_ax.set_ylabel("Residuals (Jy)")
             upper_ax.tick_params(**tick_settings)
             upper_ax.set_ylabel("Fluxes (Jy)")
@@ -800,7 +835,7 @@ def plot_target(target: str,
 
     if ax is None:
         _ = plt.figure(facecolor=OPTIONS.plot.color.background,
-                   tight_layout=True)
+                       tight_layout=True)
         ax = plt.axes(facecolor=OPTIONS.plot.color.background)
         set_axes_color(ax, OPTIONS.plot.color.background)
         ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
@@ -882,7 +917,6 @@ def plot_observables(wavelength_range: u.um,
                        tight_layout=True)
         ax = plt.axes(facecolor=OPTIONS.plot.color.background)
         set_axes_color(ax, OPTIONS.plot.color.background)
-        ax.plot(wavelength, flux[:, 0], label="Model", color="black")
         names = [re.findall(r"(\d{4}-\d{2}-\d{2})", readout.fits_file.name)[0] for readout in OPTIONS.data.readouts]
         sorted_readouts = np.array(OPTIONS.data.readouts.copy())[np.argsort(names)].tolist()
 
@@ -905,8 +939,10 @@ def plot_observables(wavelength_range: u.um,
             ax.fill_between(readout_wavelength, lower_err, upper_err, color=line[0].get_color(), alpha=0.5)
             values.append(readout_flux)
 
+        ax.plot(wavelength, flux[:, 0], label="Model", color="black")
+
         max_value = np.concatenate(values).max()
-        ax.set_xlabel(r"$\lambda$ ($\mu$m)")
+        ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
         ax.set_ylabel("Flux (Jy)")
         ax.set_ylim([0, max_value + 0.1*max_value])
         handles, labels = ax.get_legend_handles_labels()
@@ -955,7 +991,7 @@ def plot_observables(wavelength_range: u.um,
         ax.legend()
 
     fig.subplots_adjust(left=0.2, bottom=0.2)
-    fig.text(0.5, 0.04, r"$\lambda$ ($\mu$m)", ha="center", fontsize=16)
+    fig.text(0.5, 0.04, r"$\lambda$ ($\mathrm{\mu}$m)", ha="center", fontsize=16)
     fig.text(0.04, 0.5, y_label, va="center", rotation="vertical", fontsize=16)
     plt.savefig(save_dir / "vis_vs_baseline.pdf", format="pdf")
     plt.close()
@@ -980,13 +1016,14 @@ def plot_observables(wavelength_range: u.um,
             ax.legend()
 
         fig.subplots_adjust(left=0.2, bottom=0.2)
-        fig.text(0.5, 0.04, r"$\lambda$ ($\mu$m)", ha="center", fontsize=16)
+        fig.text(0.5, 0.04, r"$\lambda$ ($\mathrm{\mu}$m)", ha="center", fontsize=16)
         fig.text(0.04, 0.5, y_label, va="center", rotation="vertical", fontsize=16)
         plt.savefig(save_dir / "t3_vs_baseline.pdf", format="pdf")
         plt.close()
 
 
-def plot_(dim: int, wavelength: Optional[u.Quantity[u.um]] = None):
+# TODO: Finish this function
+def plot_sth(dim: int, wavelength: Optional[u.Quantity[u.um]] = None):
     wavelength = u.Quantity(wavelength, u.um) if wavelength is not None\
         else OPTIONS.fit.wavelengths
 
