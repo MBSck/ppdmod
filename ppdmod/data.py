@@ -275,7 +275,7 @@ def set_data(fits_files: Optional[List[Path]] = None,
             err = readout.get_data_for_wavelength(wavelengths, key, "err")
 
             if key in ["vis", "vis2", "t3"]:
-                ind = np.where((err/value) < min_err)
+                ind = np.where(np.abs(err/value) < min_err)
                 err[ind] = np.abs(value[ind]) * min_err
 
             if data.value.size == 0:
