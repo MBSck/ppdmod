@@ -18,6 +18,7 @@ from ppdmod import fitting
 from ppdmod import utils
 from ppdmod.data import set_data, get_all_wavelengths
 from ppdmod.parameter import Parameter
+from ppdmod.plot import plot_corner, plot_chains
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 
@@ -240,13 +241,13 @@ if __name__ == "__main__":
             *fitting.compute_observables(components), reduced=True)
     print(f"rchi_sq: {rchi_sq}")
 
-    plot_corner(sampler, labels, **fit_params,
-                savefig=result_dir / "corner.pdf")
-    plot_chains(sampler, labels, **fit_params,
-                savefig=result_dir / "chains.pdf")
-
     analysis.save_fits(
         components, component_labels,
         fit_hyperparameters=fit_params, ncores=ncores,
         save_dir=result_dir / "post_fit_model.fits",
         object_name="HD142527")
+
+    plot_corner(sampler, labels, **fit_params,
+                savefig=result_dir / "corner.pdf")
+    plot_chains(sampler, labels, **fit_params,
+                savefig=result_dir / "chains.pdf")
