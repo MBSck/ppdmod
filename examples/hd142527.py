@@ -240,6 +240,11 @@ if __name__ == "__main__":
             *fitting.compute_observables(components), reduced=True)
     print(f"rchi_sq: {rchi_sq}")
 
+    plot_corner(sampler, labels, **fit_params,
+                savefig=result_dir / "corner.pdf")
+    plot_chains(sampler, labels, **fit_params,
+                savefig=result_dir / "chains.pdf")
+
     analysis.save_fits(
         components, component_labels,
         fit_hyperparameters=fit_params, ncores=ncores,
