@@ -1,5 +1,5 @@
 import re
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, no_type_check
 from pathlib import Path
 
 import astropy.units as u
@@ -39,11 +39,14 @@ def plot_component_mosaic(components: List[Component], dim: int,
     num_plots = np.array(wavelengths).size
     rows = int(np.ceil(num_plots/cols))
     fig, axes = plt.subplots(
-        rows, cols, figsize=(5, 5), facecolor=OPTIONS.plot.color.background)
+        rows, cols, figsize=(20, 8),
+        facecolor=OPTIONS.plot.color.background)
 
     for ax, wavelength in zip(axes.flatten(), wavelengths):
         plot_components(components, dim, pixel_size, wavelength,
-                        norm=norm, zoom=zoom, ax=ax, cmap=cmap)
+                        no_text=True, norm=norm, zoom=zoom, ax=ax, cmap=cmap)
+        ax.text(0.18, 0.95, fr"$\lambda$ = {wavelength} " +r"$\mathrm{\mu}$m",
+                transform=ax.transAxes, fontsize=12, color="white", ha="center")
 
     [fig.delaxes(ax) for ax in axes.flatten()[num_plots:]]
     plt.tight_layout()
@@ -64,6 +67,7 @@ def plot_components(components: List[Component], dim: int,
                     zoom: Optional[float] = None,
                     ax: Optional[bool] = False,
                     cmap: Optional[str] = "inferno",
+                    no_text: Optional[bool] = False,
                     savefig: Optional[Path] = None) -> None:
     """Plots a component."""
     components = [components] if not isinstance(components, list) else components
@@ -81,7 +85,8 @@ def plot_components(components: List[Component], dim: int,
             _, ax = plt.subplots(1, 1)
         ax.imshow(image[0], extent=extent,
                   norm=mcolors.PowerNorm(gamma=norm), cmap=cmap)
-        ax.text(-22, 22, fr"$\lambda$ = {wavelength} " +r"$\mathrm{\mu}$m", fontsize=12, color="white")
+        if not no_text:
+            ax.text(-22, 22, fr"$\lambda$ = {wavelength} " +r"$\mathrm{\mu}$m", fontsize=12, color="white")
         ax.set_xlim([zoom, -zoom])
         ax.set_ylim([-zoom, zoom])
 
@@ -723,7 +728,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
                     longest_baselines_mlambda.value,
                     t3.value[index], t3.err[index],
                     fmt="o", **vars(errorbar_params))
-                ax.axhline(y=0, color=hline_color, linestyle='--')
+                ax.axhline(y=0, color=hline_color, linestyle="--")
 
     if "flux" in data_to_plot:
         axarr["flux"].set_xticks(wavelengths.value)
