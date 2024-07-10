@@ -92,12 +92,12 @@ def init_randomly(nwalkers: Optional[int] = None) -> np.ndarray:
     return np.array([[np.random.uniform(param.min, param.max)
                       for param in params] for _ in range(nwalkers)])
 
-
 def compute_chi_sq(data: u.Quantity, error: u.Quantity,
                    model_data: u.Quantity,
-                   method: Optional[str] = "linear",
+                   diff_method: Optional[str] = "linear",
+                   func_method: Optional[str] = "logarithmic",
                    lnf: Optional[float] = None) -> float:
-    """the chi square minimisation.
+    """Computes the chi square minimisation.
 
     Parameters
     ----------
@@ -107,8 +107,11 @@ def compute_chi_sq(data: u.Quantity, error: u.Quantity,
         The real data's error.
     model_data : numpy.ndarray
         The model data.
-    method : str, optional
-        The method of comparison, either "linear" or "exponential".
+    diff_method : str, optional
+        The method to determine the difference of the dataset,
+        to the data. Either "linear" or "exponential".
+        Default is "linear".
+
     lnf : float, optional
         The error correction term for the real data.
 
@@ -122,10 +125,13 @@ def compute_chi_sq(data: u.Quantity, error: u.Quantity,
         inv_sigma_squared = 1./(error**2 + model_data**2*np.exp(2*lnf))
 
     diff = data-model_data
-    if method != "linear":
-        diff = np.angle(np.exp(diff*u.deg.to(u.rad)*1j), deg=False)
+    if diff_method != "linear":
+        diff = np.angle(np.exp(diff*u.deg.to(u.rad)*1j), deg=True)
 
-    return -0.5*(diff**2*inv_sigma_squared + np.log(1/inv_sigma_squared)).sum()
+    square_term = diff**2*inv_sigma_squared
+    if func_method == "default":
+        return square_term.sum()
+    return -0.5*(square_term + np.log(inv_sigma_squared)).sum()
 
 
 # TODO: Write tests (ASPRO) that tests multiple components with the total flux
@@ -234,6 +240,7 @@ def compute_observable_chi_sq(
         The chi square.
     """
     params = {"flux": flux_model, "vis": vis_model, "t3": t3_model}
+    func_method = "default" if reduced else "logarithmic"
 
     chi_sqs = []
     for key in OPTIONS.fit.data:
@@ -241,18 +248,18 @@ def compute_observable_chi_sq(
         key = key if key != "vis2" else "vis"
         weight = getattr(OPTIONS.fit.weights, key)
         nan_indices = np.isnan(data.value)
-        method = "linear" if key != "t3" else "exponential"
+        diff_method = "linear" if key != "t3" else "exponential"
         chi_sqs.append(compute_chi_sq(
-                data.value[~nan_indices],
-                data.err[~nan_indices],
-                params[key][~nan_indices],
-                method=method) * weight)
+            data.value[~nan_indices],
+            data.err[~nan_indices],
+            params[key][~nan_indices],
+            diff_method=diff_method,
+            func_method=func_method) * weight)
 
     chi_sqs = np.array(chi_sqs).astype(float)
     ndata, nfree_params = get_counts_data(), get_priors().shape[0]
     if reduced:
-        chi_sq = chi_sqs.sum() / (ndata.sum() + nfree_params)
-        # chi_sqs /= (ndata + nfree_params)
+        chi_sq = chi_sqs.sum() / (ndata.sum() - nfree_params)
     else:
         chi_sq = chi_sqs.sum()
 
