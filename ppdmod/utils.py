@@ -10,9 +10,38 @@ from astropy.modeling.models import BlackBody
 from matplotlib.axes import Axes
 from matplotlib.legend import Legend
 from openpyxl import Workbook, load_workbook
+from scipy.interpolate import interp1d
 from scipy.special import j1
 
 from .options import OPTIONS
+
+
+def rebin_and_interpolate1D(
+        interpolation_points: np.ndarray, points: np.ndarray,
+        values: np.ndarray, factor: int) -> np.ndarray:
+    """Rebins the grid to a higher factor and then interpolates and averages
+    to the original grid.
+
+    Parameters
+    ----------
+    interpolation_points : numpy.ndarray
+        The points to interpolate to.
+    points : numpy.ndarray
+        The points to interpolate from.
+    values : numpy.ndarray
+        The values to interpolate.
+    factor : int
+        The factor to sample and then rebin.
+    """
+    finer_interpolation_points = np.linspace(
+        interpolation_points[0], interpolation_points[-1],
+        factor*interpolation_points.size)
+
+    interpolator = interp1d(points, values, kind='cubic')
+    interpolated_data = interpolator(finer_interpolation_points)
+
+    breakpoint()
+    return np.mean(interpolated_data.reshape(-1, factor), axis=1)
 
 
 def take_time_average(func: Callable, *args,
@@ -201,7 +230,7 @@ def compute_effective_baselines(
     baseline_angles_eff = np.arctan2(vcoord_eff, ucoord_eff)
 
     # HACK: For some reason all my phases are mirrored?
-    # baseline_angles_eff -= (180*u.deg).to(u.rad)
+    baseline_angles_eff -= (180*u.deg).to(u.rad)
 
     if longest:
         indices = baselines_eff.argmax(0)

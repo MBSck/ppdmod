@@ -6,6 +6,7 @@ import astropy.units as u
 import astropy.constants as const
 import corner
 import matplotlib
+from matplotlib.axes import Axes
 import matplotlib.colors as mcolors
 import matplotlib.cm as cm
 import matplotlib.lines as mlines
@@ -65,7 +66,7 @@ def plot_components(components: List[Component], dim: int,
                     norm: Optional[float] = 0.5,
                     save_as_fits: Optional[bool] = False,
                     zoom: Optional[float] = None,
-                    ax: Optional[bool] = False,
+                    ax: Optional[Axes] = None,
                     cmap: Optional[str] = "inferno",
                     no_text: Optional[bool] = False,
                     savefig: Optional[Path] = None) -> None:
@@ -83,12 +84,16 @@ def plot_components(components: List[Component], dim: int,
     else:
         if ax is None:
             _, ax = plt.subplots(1, 1)
+
         ax.imshow(image[0], extent=extent,
                   norm=mcolors.PowerNorm(gamma=norm), cmap=cmap)
         if not no_text:
-            ax.text(-22, 22, fr"$\lambda$ = {wavelength} " +r"$\mathrm{\mu}$m", fontsize=12, color="white")
-        ax.set_xlim([zoom, -zoom])
-        ax.set_ylim([-zoom, zoom])
+            ax.text(0.18, 0.95, fr"$\lambda$ = {wavelength} " +r"$\mathrm{\mu}$m",
+                    transform=ax.transAxes, fontsize=12, color="white", ha="center")
+
+        if zoom is not None:
+            ax.set_xlim([zoom, -zoom])
+            ax.set_ylim([-zoom, zoom])
 
         ax.set_xlabel(r"$\alpha$ (mas)")
         ax.set_ylabel(r"$\delta$ (mas)")
