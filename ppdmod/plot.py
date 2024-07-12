@@ -1,5 +1,5 @@
 import re
-from typing import Optional, Dict, List, no_type_check
+from typing import Optional, Dict, List
 from pathlib import Path
 
 import astropy.units as u
@@ -18,13 +18,12 @@ from astropy.table import Table
 from astropy.wcs import WCS
 from dynesty import plotting as dyplot
 from matplotlib.gridspec import GridSpec
-from matplotlib.lines import Line2D
 
 from .component import Component
 from .fitting import compute_observables
 from .options import OPTIONS, get_colormap
 from .utils import compute_effective_baselines, restrict_phase, \
-        set_legend_color, set_axes_color
+        set_legend_color, set_axes_color, angular_to_distance, distance_to_angular
 
 matplotlib.use("Agg")
 
@@ -40,7 +39,7 @@ def plot_component_mosaic(components: List[Component], dim: int,
     num_plots = np.array(wavelengths).size
     rows = int(np.ceil(num_plots/cols))
     fig, axes = plt.subplots(
-        rows, cols, figsize=(20, 8),
+        rows, cols, figsize=(20, 8), gridspec_kw={"hspace": 0, "wspace": 0},
         facecolor=OPTIONS.plot.color.background)
 
     for ax, wavelength in zip(axes.flatten(), wavelengths):
@@ -50,6 +49,10 @@ def plot_component_mosaic(components: List[Component], dim: int,
                 transform=ax.transAxes, fontsize=12, color="white", ha="center")
 
     [fig.delaxes(ax) for ax in axes.flatten()[num_plots:]]
+
+    # for ax in axs[:-1]:
+    #     ax.label_outer()
+
     plt.tight_layout()
 
     if savefig is not None:
@@ -87,6 +90,16 @@ def plot_components(components: List[Component], dim: int,
 
         ax.imshow(image[0], extent=extent,
                   norm=mcolors.PowerNorm(gamma=norm), cmap=cmap)
+
+        def convert_to_au(x):
+            return angular_to_distance(x*u.mas, components[0].dist()).to(u.au).value
+
+        def convert_to_mas(x):
+            return distance_to_angular(x*u.au, components[0].dist()).value
+
+        top_ax = ax.secondary_xaxis("top", functions=(convert_to_au, convert_to_mas))
+        right_ax = ax.secondary_yaxis("right", functions=(convert_to_au, convert_to_mas))
+
         if not no_text:
             ax.text(0.18, 0.95, fr"$\lambda$ = {wavelength} " +r"$\mathrm{\mu}$m",
                     transform=ax.transAxes, fontsize=12, color="white", ha="center")
@@ -97,6 +110,8 @@ def plot_components(components: List[Component], dim: int,
 
         ax.set_xlabel(r"$\alpha$ (mas)")
         ax.set_ylabel(r"$\delta$ (mas)")
+        top_ax.set_xlabel(r"$\alpha$ (au)")
+        right_ax.set_xlabel(r"$\delta$ (au)")
 
         if savefig is not None:
             plt.savefig(savefig, format=Path(savefig).suffix[1:])
@@ -907,6 +922,90 @@ def plot_target(target: str,
         plt.close()
 
 
+def plot_sed(wavelength_range: u.um,
+             components: List[Component],
+             scaling: Optional[str] = "nu",
+             save_dir: Optional[Path] = None):
+    """Plots the observables of the model.
+
+    Parameters
+    ----------
+    wavelength_range : astropy.units.m
+    scaling : str, optional
+        The scaling of the SED. "nu" for the flux to be
+        in Jy times Hz. If "lambda" the flux is in Jy times m.
+        If "none" the flux is in Jy.
+        The default is "nu".
+    """
+    save_dir = Path.cwd() if save_dir is None else save_dir
+    wavelength = np.linspace(
+        wavelength_range[0], wavelength_range[1], OPTIONS.plot.dim)
+    flux, *_ = compute_observables(components, wavelength=wavelength)
+    colors = OPTIONS.plot.color.list
+
+    _ = plt.figure(facecolor=OPTIONS.plot.color.background,
+                    tight_layout=True)
+    ax = plt.axes(facecolor=OPTIONS.plot.color.background)
+    set_axes_color(ax, OPTIONS.plot.color.background)
+
+    names = [re.findall(r"(\d{4}-\d{2}-\d{2})", readout.fits_file.name)[0] for readout in OPTIONS.data.readouts]
+    date_to_color = {date: color for date, color in zip(set(names), colors)}
+    sorted_readouts = np.array(OPTIONS.data.readouts.copy())[np.argsort(names)].tolist()
+
+    values = []
+    for name, readout in zip(np.sort(names), sorted_readouts):
+        if readout.flux.value.size == 0:
+            continue
+
+        readout_wavelength = readout.wavelength.value
+        readout_flux, readout_err = readout.flux.value.flatten(), readout.flux.err.flatten()
+        if "HAW" in readout.fits_file.name:
+            indices_high = np.where((readout_wavelength >= 4.55) & (readout_wavelength <= 4.9))
+            indices_low = np.where((readout_wavelength >= 3.1) & (readout_wavelength <= 3.9))
+            indices = np.hstack((indices_high, indices_low))
+            readout_wavelength = readout_wavelength[indices].flatten()
+            readout_flux, readout_err = readout_flux[indices].flatten(), readout_err[indices].flatten()
+
+        readout_err_percentage = readout_err/readout_flux
+        if scaling not in ["none", None]:
+            readout_flux = (readout_flux*u.Jy).to(u.erg/u.s/u.Hz/u.cm**2)
+        if scaling == "nu":
+            readout_flux = (readout_flux * (const.c/((readout_wavelength*u.um).to(u.m))).to(u.Hz)).value
+        elif scaling == "lambda":
+            ...
+
+        readout_err = readout_err_percentage * readout_flux
+        lower_err, upper_err = readout_flux - readout_err, readout_flux + readout_err
+        line = ax.plot(readout_wavelength, readout_flux, color=date_to_color[name])
+        ax.fill_between(readout_wavelength, lower_err, upper_err, color=line[0].get_color(), alpha=0.5)
+        values.append(readout_flux)
+
+    flux_label = "$F$ (Jy)"
+    flux = flux[:, 0]
+    if scaling not in ["none", None]:
+        flux = (flux*u.Jy).to(u.erg/u.s/u.Hz/u.cm**2)
+    if scaling == "nu":
+        flux = (flux * (const.c/(wavelength.to(u.m))).to(u.Hz)).value
+        flux_label = r"$F_{\nu}\nu$ (erg s$^{-1}$ cm$^{-2}$)"
+    elif scaling == "lambda":
+        ...
+
+    ax.plot(wavelength, flux, label="Model", color="black")
+    ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
+    ax.set_ylabel(flux_label)
+
+    values.append(flux)
+    max_value = np.concatenate(values).max()
+    ax.set_ylim([0, max_value + 0.1*max_value])
+    # handles, labels = ax.get_legend_handles_labels()
+    # custom_handles = [handles[0], handles[1], Line2D([0], [0], color="white", label="..."), handles[-1]]
+    # custom_labels = [labels[0], labels[1], "...", labels[-1]]
+    # ax.legend(custom_handles, custom_labels)
+    ax.legend(loc="upper left")
+    plt.savefig(save_dir / f"sed_scaling_{scaling}.pdf", format="pdf")
+    plt.close()
+
+
 # TODO: Make colorscale permanent -> Implement colormap
 def plot_observables(wavelength_range: u.um,
                      components: List[Component],
@@ -917,56 +1016,17 @@ def plot_observables(wavelength_range: u.um,
     Parameters
     ----------
     wavelength_range : astropy.units.m
+    sed_scaling : str, optional
+        The scaling of the SED. "nu" for the flux to be
+        in Jy times Hz. If "lambda" the flux is in Jy times m.
+        If "none" the flux is in Jy.
+        The default is "nu".
     """
     save_dir = Path.cwd() if save_dir is None else save_dir
     wavelength = np.linspace(
         wavelength_range[0], wavelength_range[1], OPTIONS.plot.dim)
-    flux, vis, t3, vis_comps = compute_observables(
+    _, vis, t3, vis_comps = compute_observables(
         components, wavelength=wavelength, rcomponents=True)
-    colors = OPTIONS.plot.color.list
-
-    if "flux" in OPTIONS.fit.data:
-        _ = plt.figure(facecolor=OPTIONS.plot.color.background,
-                       tight_layout=True)
-        ax = plt.axes(facecolor=OPTIONS.plot.color.background)
-        set_axes_color(ax, OPTIONS.plot.color.background)
-
-        names = [re.findall(r"(\d{4}-\d{2}-\d{2})", readout.fits_file.name)[0] for readout in OPTIONS.data.readouts]
-        date_to_color = {date: color for date, color in zip(set(names), colors)}
-        sorted_readouts = np.array(OPTIONS.data.readouts.copy())[np.argsort(names)].tolist()
-
-        values = [flux[:, 0]]
-        for name, readout in zip(np.sort(names), sorted_readouts):
-            if readout.flux.value.size == 0:
-                continue
-
-            readout_wavelength = readout.wavelength.value
-            readout_flux, readout_err = readout.flux.value.flatten(), readout.flux.err.flatten()
-            if "HAW" in readout.fits_file.name:
-                indices_high = np.where((readout_wavelength >= 4.55) & (readout_wavelength <= 4.9))
-                indices_low = np.where((readout_wavelength >= 3.1) & (readout_wavelength <= 3.9))
-                indices = np.hstack((indices_high, indices_low))
-                readout_wavelength = readout_wavelength[indices].flatten()
-                readout_flux, readout_err = readout_flux[indices].flatten(), readout_err[indices].flatten()
-
-            lower_err, upper_err = readout_flux - readout_err, readout_flux + readout_err
-            line = ax.plot(readout_wavelength, readout_flux, color=date_to_color[name])
-            ax.fill_between(readout_wavelength, lower_err, upper_err, color=line[0].get_color(), alpha=0.5)
-            values.append(readout_flux)
-
-        ax.plot(wavelength, flux[:, 0], label="Model", color="black")
-
-        max_value = np.concatenate(values).max()
-        ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
-        ax.set_ylabel("Flux (Jy)")
-        ax.set_ylim([0, max_value + 0.1*max_value])
-        handles, labels = ax.get_legend_handles_labels()
-        # custom_handles = [handles[0], handles[1], Line2D([0], [0], color="white", label="..."), handles[-1]]
-        # custom_labels = [labels[0], labels[1], "...", labels[-1]]
-        # ax.legend(custom_handles, custom_labels)
-        ax.legend(loc="upper left")
-        plt.savefig(save_dir / "sed.pdf", format="pdf")
-        plt.close()
 
     vis_data = OPTIONS.data.vis if "vis" in OPTIONS.fit.data\
         else OPTIONS.data.vis2
