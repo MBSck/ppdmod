@@ -80,7 +80,7 @@ def plot_components(components: List[Component], dim: int,
     if save_as_fits:
         wcs = WCS(naxis=2)
         wcs.wcs.crpix = (dim // 2, dim // 2)
-        wcs.wcs.cdelt = (-pixel_size*u.mas.to(u.deg), -pixel_size*u.mas.to(u.deg))
+        wcs.wcs.cdelt = (pixel_size*u.mas.to(u.deg), pixel_size*u.mas.to(u.deg))
         wcs.wcs.crval = (0.0, 0.0)
         hdu = fits.HDUList([fits.PrimaryHDU(image, header=wcs.to_header())])
         hdu.writeto(savefig, overwrite=True)
@@ -91,14 +91,18 @@ def plot_components(components: List[Component], dim: int,
         ax.imshow(image[0], extent=extent,
                   norm=mcolors.PowerNorm(gamma=norm), cmap=cmap)
 
-        def convert_to_au(x):
-            return angular_to_distance(x*u.mas, components[0].dist()).to(u.au).value
+        if any(hasattr(component, "dist") for component in components):
+            dist = [component for component in components if hasattr(component, "dist")][0].dist()
+            def convert_to_au(x):
+                return angular_to_distance(x*u.mas, dist).to(u.au).value
 
-        def convert_to_mas(x):
-            return distance_to_angular(x*u.au, components[0].dist()).value
+            def convert_to_mas(x):
+                return distance_to_angular(x*u.au, dist).value
 
-        top_ax = ax.secondary_xaxis("top", functions=(convert_to_au, convert_to_mas))
-        right_ax = ax.secondary_yaxis("right", functions=(convert_to_au, convert_to_mas))
+            top_ax = ax.secondary_xaxis("top", functions=(convert_to_au, convert_to_mas))
+            right_ax = ax.secondary_yaxis("right", functions=(convert_to_au, convert_to_mas))
+            top_ax.set_xlabel(r"$\alpha$ (au)")
+            right_ax.set_xlabel(r"$\delta$ (au)")
 
         if not no_text:
             ax.text(0.18, 0.95, fr"$\lambda$ = {wavelength} " +r"$\mathrm{\mu}$m",
@@ -110,8 +114,6 @@ def plot_components(components: List[Component], dim: int,
 
         ax.set_xlabel(r"$\alpha$ (mas)")
         ax.set_ylabel(r"$\delta$ (mas)")
-        top_ax.set_xlabel(r"$\alpha$ (au)")
-        right_ax.set_xlabel(r"$\delta$ (au)")
 
         if savefig is not None:
             plt.savefig(savefig, format=Path(savefig).suffix[1:])
@@ -922,6 +924,7 @@ def plot_target(target: str,
         plt.close()
 
 
+# TODO: Make colorscale permanent -> Implement colormap
 def plot_sed(wavelength_range: u.um,
              components: List[Component],
              scaling: Optional[str] = "nu",
@@ -1006,11 +1009,10 @@ def plot_sed(wavelength_range: u.um,
     plt.close()
 
 
-# TODO: Make colorscale permanent -> Implement colormap
-def plot_observables(wavelength_range: u.um,
-                     components: List[Component],
-                     component_labels: List[str],
-                     save_dir: Optional[Path] = None) -> None:
+def plot_interferometric_observables(wavelength_range: u.um,
+                                     components: List[Component],
+                                     component_labels: List[str],
+                                     save_dir: Optional[Path] = None) -> None:
     """Plots the observables of the model.
 
     Parameters
@@ -1034,6 +1036,7 @@ def plot_observables(wavelength_range: u.um,
     effective_baselines, baseline_angles = compute_effective_baselines(
             vis_data.ucoord, vis_data.vcoord,
             components[1].inc(), components[1].pa(), rzero=False)
+    baseline_angles = baseline_angles.to(u.deg)
 
     num_plots = len(effective_baselines)
     cols = int(str(num_plots)[:int(np.floor(np.log10(num_plots)))])
@@ -1076,6 +1079,7 @@ def plot_observables(wavelength_range: u.um,
         effective_baselines, baseline_angles = compute_effective_baselines(
                 OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord,
                 components[1].inc(), components[1].pa(), longest=True, rzero=False)
+        baseline_angles = baseline_angles.to(u.deg)
 
         num_plots = len(effective_baselines)
         cols = int(str(num_plots)[:int(np.floor(np.log10(num_plots)))])
