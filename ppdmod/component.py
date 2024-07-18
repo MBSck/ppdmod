@@ -35,15 +35,21 @@ class Component:
         self.pa = Parameter(**STANDARD_PARAMETERS.pa)
         self.inc = Parameter(**STANDARD_PARAMETERS.inc)
 
-        # TODO: Add here higher orders of modulations
-        self.c1 = Parameter(**STANDARD_PARAMETERS.c)
-        self.s1 = Parameter(**STANDARD_PARAMETERS.s)
+        for i in range(1, OPTIONS.model.modulation + 1):
+            setattr(self, f"c{i}", Parameter(**STANDARD_PARAMETERS.c))
+            setattr(self, f"s{i}", Parameter(**STANDARD_PARAMETERS.s))
 
         if not self.elliptic:
             self.inc.free = self.pa.free = False
 
-        if not self.asymmetric:
-            self.c1.free = self.s1.free = False
+        for i in range(1, OPTIONS.model.modulation + 1):
+            s = getattr(self, f"s{i}")
+            c = getattr(self, f"c{i}")
+            s.name = s.shortname = f"s{i}"
+            c.name = c.shortname = f"c{i}"
+
+            if not self.asymmetric:
+                s.free = c.free = False
 
     @property
     def elliptic(self) -> bool:

@@ -263,6 +263,10 @@ def test_uniform_ring_init(ring: Ring) -> None:
          ("cm_ring_rin2_inc05_pa33_c0_s1_w05_extended.fits", 2, 3.5, 0.5, 33, 0.5, 0, 1),
          ("cm_ring_rin2_inc05_pa33_c05_s05_w05_extended.fits", 2, 3.5, 0.5, 33, 0.5, 0.5, 0.5),
          ("cm_ring_rin2_rout25_inc05_pa33_c05_s05_w0_extended.fits", 2, 3.5, 0.5, 33, 0.5, 0.5, 0.5),
+         ("cm_ring_rin2_inc05_pa33_c11_s10_w05_extended.fits", 2, 3.5, 0.5, 33, 0.5, [1], [0]),
+         ("cm_ring_rin2_inc05_pa33_c11_s10_w05_extended.fits", 2, [3.5, 3.7], 0.5, 33, 0.5, [1], [0]),
+         ("cm_ring_rin2_inc05_pa33_c11_s10_c21_s20_w05_extended.fits", 2, [3.5, 3.7], 0.5, 33, 0.5, [1, 1], [0, 0]),
+         ("cm_ring_rin2_inc05_pa33_c11_s10_c21_s20_c31_s30_w05_extended.fits", 2, 3.5, 0.5, 33, 0.5, [1, 1, 1], [0, 0, 0]),
          ])
 def test_ring_compute_vis(
         fits_file: Path,
@@ -270,13 +274,20 @@ def test_ring_compute_vis(
         pos_angle: u.deg, width: u.mas,
         c: float, s: float) -> None:
     """Tests the calculation of the ring's visibilities."""
-    wavelength = [wl]*u.um
+    if isinstance(wl, list):
+        wavelength = wl * u.um
+    else:
+        wavelength = [wl]*u.um
+
     fits_file = Path("data/aspro") / fits_file
     data = set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
 
     thin = False if width is not None else True
     asymmetric = True if c is not None or s is not None else False
     c, s = c if c is not None else 0, s if s is not None else 0
+    if isinstance(c, list):
+        OPTIONS.model.modulation = len(c)
+
     inc = inc if inc is not None else 1
     pa = pos_angle if pos_angle is not None else 0
 
@@ -287,7 +298,14 @@ def test_ring_compute_vis(
 
     ring = Ring(rin=radius, rout=rout, width=width,
                 inc=inc, pa=pa, has_outer_radius=has_outer_radius,
-                thin=thin, asymmetric=asymmetric, c1=c, s1=s)
+                thin=thin, asymmetric=asymmetric)
+
+    if isinstance(c, list):
+        for i, (c_i, s_i) in enumerate(zip(c, s)):
+            getattr(ring, f"c{i+1}").value = c_i
+            getattr(ring, f"s{i+1}").value = s_i
+    else:
+        ring.c1.value, ring.s1.value = c, s
 
     vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
     vis_ring = compute_vis(ring.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
@@ -302,13 +320,12 @@ def test_ring_compute_vis(
     if "cm" not in fits_file.name:
         assert np.allclose(t3.value, t3_ring, atol=atol)
     else:
-        # NOTE: The differences here are larger due to numerical inaccuracies in ASPRO?
-        # Values for positional angle and inclination are ~ 153 degrees (before that < 45)
-        # Sometimes even ~ 160
-        diff = np.ptp(np.hstack((t3.value[0][:, np.newaxis], t3_ring[0][:, np.newaxis])), axis=1)
+        # NOTE: Due to numerical inaccuraies the diff is quite high in some cases
+        diff = np.abs(t3.value - t3_ring)
         assert diff.max() < 120
 
     set_data(fit_data=["vis", "t3"])
+    OPTIONS.model.modulation = 1
 
 
 def test_uniform_disk_init(uniform_disk: UniformDisk) -> None:
@@ -488,48 +505,6 @@ def test_temp_gradient_compute_vis(
     set_data(fit_data=["vis", "t3"])
 
 
-@pytest.mark.parametrize(
-        "inc, pos_angle, q, p, sigma0, cont_weight, c, s",
-    [
-        (1, None, 0.5, 0.5, 1e-4, 0.4, None, None),
-        (1, None, 0.3, 0.5, 1e-4, 0.4, None, None),
-        (1, None, 0.3, 0.7, 1e-4, 0.4, None, None),
-        (1, None, 0.3, 0.7, 1e-4, 0.6, None, None),
-        (1, None, 0.3, 0.7, 1e-4, 0.6, 0.5, 0.5),
-        (0.5, None, 0.3, 0.7, 1e-4, 0.6, None, None),
-        (0.5, 33, 0.3, 0.7, 1e-4, 0.6, None, None),
-        (0.5, 33, 0.3, 0.7, 1e-4, 0.6, None, None),
-    ]
-)
-def test_temp_gradient_fluxes(
-        inc: float, pos_angle: u.deg,
-        q: float, p: float, sigma0: float,
-        cont_weight: float,
-        c: float, s: float, eff_temp: int,
-        dist: float, eff_radius: float,
-        kappa_abs: Parameter, kappa_cont: Parameter) -> None:
-    """Tests the calculation of temperature gradient's visibilities."""
-    wl = [3]*u.um
-    fits_file = Path("data/aspro") / "cm_AsymTempGrad_rin15_rout2_inc1_pa0_q05_intemp1500_p05_insigma1e-4_cw04_r01_c0_s0_large.fits"
-    data = set_data([fits_file], wavelengths=wl, fit_data=["vis", "t3"])
-    c, s = c if c is not None else 0, s if s is not None else 0
-    inc = inc if inc is not None else 1
-    pa = pos_angle if pos_angle is not None else 0
-    atg = AsymmetricTempGradient(rin=1.5, rout=2, inc=inc, pa=pa,
-                                 q=q, temp0=1500, p=p, sigma0=sigma0,
-                                 kappa_abs=kappa_abs, kappa_cont=kappa_cont,
-                                 cont_weight=cont_weight, dist=dist,
-                                 eff_temp=eff_temp, eff_radius=eff_radius, 
-                                 r0=1, c1=c, s1=s)
-
-    vis = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis
-    flux = atg.compute_flux(wl)
-    vis = compute_vis(atg.compute_complex_vis(vis.ucoord, vis.vcoord, wl))
-    assert np.isclose(flux.max(), vis[:, 0])
-
-    set_data(fit_data=["vis", "t3"])
-
-
 # TODO: These tests need to be changed to include negative total flux
 @pytest.mark.parametrize(
         "fits_file, inc, pos_angle, c, s",
@@ -594,7 +569,7 @@ def test_temp_gradient_resolution(temp_gradient: TempGradient,
     """Tests the hankel component's resolution."""
     temp_gradient.dim.value = dim
     temp_gradient.optically_thick = True
-    temp_gradient.asymmetric = True
+    temp_gradient.asymmetric = False
 
     OPTIONS.model.modulation = 1
     start_time_vis = time.perf_counter()

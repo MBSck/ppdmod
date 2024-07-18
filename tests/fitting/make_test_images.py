@@ -20,11 +20,16 @@ if __name__ == "__main__":
     test_dir = Path("results/test")
     test_dir.mkdir(parents=True, exist_ok=True)
 
+    OPTIONS.model.modulation = 3
     dim, pixel_size, wl = 4096, 0.02, 3.5
     width = 0.5
     inc, pa = 0.5, 33
-    c, s = 1, 1
-    ring = Ring(rin=2, has_outer_radius=False, width=width, inc=0.5, pa=33, thin=True, asymmetric=True, c1=c, s1=s)
+    c1, s1 = 1, 0
+    c2, s2 = 0, 0
+    c3, s3 = 0, 0
+         # ("cm_ring_rin2_rout25_inc05_pa33_c05_s05_w0_extended.fits", 2, 3.5, 0.5, 33, 0.5, [0.5, 1], [0.5, 0]),
+    ring = Ring(rin=2, has_outer_radius=False, width=width, inc=0.5, pa=33,
+                thin=False, asymmetric=True, c1=c1, s1=s1, c2=c2, s2=s2, c3=c3, s3=s3)
     plot_components(ring, dim, pixel_size, wl, zoom=5,
                     savefig=test_dir / f"{ring.shortname}.png", save_as_fits=False, norm=1)
     plot_components(ring, dim, pixel_size, wl, savefig=test_dir / f"{ring.shortname}.fits", save_as_fits=True)

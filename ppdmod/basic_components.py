@@ -1,10 +1,11 @@
 import sys
+from functools import partial
 from typing import Optional, Dict, List
+
 import astropy.units as u
-from matplotlib.pyplot import get
 import numpy as np
 from astropy.modeling.models import BlackBody
-from scipy.special import j0, j1
+from scipy.special import j0, j1, jv
 from scipy.signal import fftconvolve
 
 from .component import Component
@@ -252,16 +253,30 @@ class Ring(Component):
         brightness : astropy.unit.mas
             The radial brightness distribution
         """
-        mod_amp = np.hypot(self.c1(), self.s1())
-        mod_angle = np.arctan2(self.c1(), self.s1())
-        angle_diff = np.angle(np.exp(1j*(baseline_angles - mod_angle).value))
+        mod_amps, cos_diff, bessel_funcs  = [], [], []
+        if self.asymmetric:
+            for i in range(1, OPTIONS.model.modulation + 1):
+                c, s = getattr(self, f"c{i}")(), getattr(self, f"s{i}")()
+                angle_diff = np.angle(np.exp(1j*(baseline_angles - np.arctan2(c, s)).value))
+                mod_amps.append((-1j)**i * np.hypot(c, s))
+                cos_diff.append(np.cos(i*angle_diff))
+                bessel_funcs.append(partial(jv, i))
 
-        # TODO: Check if this is too much overhead
+            mod_amps = np.array(mod_amps)
+            cos_diff = np.array(cos_diff)
+            bessel_funcs = np.array(bessel_funcs)
+
+        # TODO: Check that the calculation for the fluxes is still ok or if there needs to be a different order
+        # due to the wavelengths. Rn the modulation is the first element
         def _vis_func(xx: np.ndarray):
             """Shorthand for the vis calculation."""
+            nonlocal mod_amps, cos_diff, bessel_funcs
+
             vis = j0(xx).astype(complex)
             if self.asymmetric:
-                vis += -1j * mod_amp * np.cos(angle_diff) * j1(xx)
+                bessel_funcs = np.array(list(map(lambda x: x(xx), bessel_funcs)))
+                mod_amps = mod_amps.reshape((mod_amps.shape[0],) + (1,) * (bessel_funcs.ndim - 1))
+                vis += (mod_amps * cos_diff * bessel_funcs).sum(axis=0)
             return vis
 
         if self.thin:
@@ -323,8 +338,12 @@ class Ring(Component):
 
         image = intensity * radial_profile
         if self.asymmetric:
-            polar_angle = np.arctan2(xx, yy)
-            image *= 1 + self.c1() * np.cos(polar_angle) + self.s1() * np.sin(polar_angle)
+            polar_angle, modulations = np.arctan2(xx, yy), []
+            for i in range(1, OPTIONS.model.modulation + 1):
+                c, s = getattr(self, f"c{i}")(), getattr(self, f"s{i}")()
+                modulations.append(c * np.cos(i * polar_angle) + s * np.sin(i * polar_angle))
+
+            image *= 1 + np.sum(modulations, axis=0)
 
         return image.astype(OPTIONS.data.dtype.real)
 
