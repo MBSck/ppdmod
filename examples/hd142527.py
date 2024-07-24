@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from itertools import chain
 from typing import List
 from pathlib import Path
 
@@ -26,7 +27,7 @@ from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 def ptform(theta: List[float]) -> np.ndarray:
     """Transform that constrains the first two parameters to 1 for dynesty."""
     params = fitting.transform_uniform_prior(theta)
-    indices = list(map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels))))
+    indices = list(map(LABELS.index, (filter(lambda x: "rin" in x or "rout" in x, LABELS))))
     for count, index in enumerate(indices):
         if count == len(indices) - 1:
             break
@@ -84,7 +85,7 @@ y = Parameter(**STANDARD_PARAMETERS.y)
 x.free = y.free = True
 # star = {"x": x, "y": y}
 star = {}
-star_labels = [f"st_{label}" for label in star]
+star_labels = [rf"{label}-\star" for label in star]
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
 rout = Parameter(**STANDARD_PARAMETERS.rout)
@@ -107,12 +108,7 @@ rout.free = True
 p.set(min=-10, max=10)
 cont_weight.set(min=0, max=1)
 
-# inner_ring = {"rin": rin, "rout": rout, "c1": c1, "s1": s1,
-#               "sigma0": sigma0, "p": p}
-inner_ring = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0,
-              "cont_weight": cont_weight}
-# inner_ring = {}
-inner_ring_labels = [f"ir_{label}" for label in inner_ring]
+one = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
 rout = Parameter(**STANDARD_PARAMETERS.rout)
@@ -136,13 +132,7 @@ p.set(min=-20, max=20)
 sigma0.set(min=0, max=1e-1)
 cont_weight.set(min=0, max=1)
 
-# outer_ring = {"rin": rin, "c1": c1, "s1": s1, "sigma0": sigma0, "p": p}
-# outer_ring = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0,
-#               "cont_weight": cont_weight}
-outer_ring = {"rin": rin, "p": p, "sigma0": sigma0,
-              "cont_weight": cont_weight}
-# outer_ring = {}
-outer_ring_labels = [f"or_{label}" for label in outer_ring]
+two = {"rin": rin, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
 
 rin.value = 12
 p.value = 0.5
@@ -157,10 +147,7 @@ p.set(min=-10, max=10)
 sigma0.set(min=0, max=1e-1)
 cont_weight.set(min=0, max=1)
 
-last_ring = {"rin": rin, "p": p, "sigma0": sigma0,
-              "cont_weight": cont_weight}
-# last_ring = {}
-last_ring_labels = [f"lr_{label}" for label in last_ring]
+three = {"rin": rin, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
 
 q = Parameter(**STANDARD_PARAMETERS.q)
 temp0 = Parameter(**STANDARD_PARAMETERS.temp0)
@@ -176,20 +163,20 @@ temp0.set(min=300, max=2000)
 pa.set(min=0, max=180)
 inc.set(min=0.3, max=0.95)
 
-OPTIONS.model.shared_params = {# "q": q, "temp0": temp0,
-                               "pa": pa, "inc": inc}
-shared_params_labels = [f"sh_{label}" for label in OPTIONS.model.shared_params]
+OPTIONS.model.shared_params = {"pa": pa, "inc": inc}
+shared_params_labels = [f"{label}-sh" for label in OPTIONS.model.shared_params]
 
 OPTIONS.model.components_and_params = [
     ["Star", star],
-    ["GreyBody", inner_ring],
-    ["GreyBody", outer_ring],
+    ["GreyBody", one],
+    ["GreyBody", two],
     # ["GreyBody", last_ring],
 ]
 
-# labels = star_labels + inner_ring_labels + outer_ring_labels + last_ring_labels
-labels = star_labels + inner_ring_labels + outer_ring_labels
-labels += shared_params_labels
+rings = [[f"{key}-{index}" for key in ring]
+    for index, ring in enumerate([one, two, three], start=1)]
+LABELS = list(chain.from_iterable([star_labels, *rings][:len(OPTIONS.model.components_and_params)]))
+LABELS += shared_params_labels
 component_labels = ["Star", "Inner Ring", "Outer Ring", "Last Ring"]
 component_labels = component_labels[:len(OPTIONS.model.components_and_params)]
 
@@ -247,7 +234,7 @@ if __name__ == "__main__":
         save_dir=result_dir / "post_fit_model.fits",
         object_name="HD142527")
 
-    plot_corner(sampler, labels, **fit_params,
+    plot_corner(sampler, LABELS, **fit_params,
                 savefig=result_dir / "corner.pdf")
-    plot_chains(sampler, labels, **fit_params,
+    plot_chains(sampler, LABELS, **fit_params,
                 savefig=result_dir / "chains.pdf")
