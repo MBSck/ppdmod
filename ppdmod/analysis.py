@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 from astropy.io import fits
 from astropy.table import Table
+from dynesty import NestedSampler, DynamicNestedSampler
 
 from .basic_components import get_component_by_name
 from .component import Component
@@ -90,10 +91,13 @@ def save_fits(components: List[Component],
     hdu.writeto(save_dir, overwrite=True)
 
 
-def retrieve_components_from_fits(fits_file: Path) -> List[Component]:
-    """Retrieves the individual model components from a model (.fits)-file"""
+def restore_from_fits(path: Path, post: Optional[bool] = True):
+    """Retrieves the individual model components from a model (.fits)-file 
+    as well as the component labels and the sampler used.
+    """
     components, component_labels = [], []
-    with fits.open(fits_file, "readonly") as hdul:
+    model_fits = path / f"{'post' if post else 'pre'}_fit_model.fits"
+    with fits.open(model_fits, "readonly") as hdul:
         for card in hdul:
             header = card.header
             if card.name == "PRIMARY":
@@ -106,11 +110,20 @@ def retrieve_components_from_fits(fits_file: Path) -> List[Component]:
 
             params = []
             for name, wavelength, value in zip(param_names, param_wavelength, param_data[1]):
-                param = Parameter(**getattr(STANDARD_PARAMETERS, name))
+                param_name = name
+                if (name[0] == "c" or name[0] == "s") and len(name) <= 2:
+                    param_name = name[0]
+
+                param = Parameter(**getattr(STANDARD_PARAMETERS, param_name))
                 param.wavelength, param.value = wavelength, value
+                param.shortname = param.name = name
                 params.append(param)
 
             component = get_component_by_name(header["COMP"])(**dict(zip(param_names, params)))
             components.append(component)
 
-    return component_labels, components
+    # # TODO: Add here the other samplers and emcee
+    # sampler = DynamicNestedSampler.restore(path / "sampler.save")
+    sampler = None
+
+    return component_labels, components, sampler
