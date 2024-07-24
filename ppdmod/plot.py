@@ -141,6 +141,7 @@ def format_labels(labels: List[str], units: Optional[List[str]] = None) -> List[
                    "c": {"letter": "c", "indices": []},
                    "s": {"letter": "s", "indices": []},
                    "logsigma0": {"letter": r"\Sigma", "indices": [r"\mathrm{in}", "0"]},
+                   "sigma0": {"letter": r"\Sigma", "indices": [r"\mathrm{in}", "0"]},
                    "cont_weight": {"letter": "w", "indices": [r"\mathrm{cont}"]},
                    "pa": {"letter": r"\theta", "indices": []},
                    "inc": {"letter": r"\cos\left(i\right)", "indices": []},

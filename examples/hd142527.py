@@ -83,7 +83,6 @@ OPTIONS.model.constant_params = {
 x = Parameter(**STANDARD_PARAMETERS.x)
 y = Parameter(**STANDARD_PARAMETERS.y)
 x.free = y.free = True
-# star = {"x": x, "y": y}
 star = {}
 star_labels = [rf"{label}-\star" for label in star]
 
@@ -106,17 +105,10 @@ rin.set(min=0, max=30)
 rout.set(min=0, max=30)
 rout.free = True
 p.set(min=-10, max=10)
+sigma0.set(min=0, max=1e-2)
 cont_weight.set(min=0, max=1)
 
 one = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
-
-rin = Parameter(**STANDARD_PARAMETERS.rin)
-rout = Parameter(**STANDARD_PARAMETERS.rout)
-p = Parameter(**STANDARD_PARAMETERS.p)
-sigma0 = Parameter(**STANDARD_PARAMETERS.sigma0)
-c1 = Parameter(**STANDARD_PARAMETERS.c)
-s1 = Parameter(**STANDARD_PARAMETERS.s)
-cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 
 rin.value = 5
 rout.value = 10
@@ -129,7 +121,7 @@ rin.set(min=0, max=30)
 rout.set(min=0, max=50)
 rout.free = True
 p.set(min=-20, max=20)
-sigma0.set(min=0, max=1e-1)
+sigma0.set(min=0, max=1)
 cont_weight.set(min=0, max=1)
 
 two = {"rin": rin, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
@@ -149,17 +141,12 @@ cont_weight.set(min=0, max=1)
 
 three = {"rin": rin, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
 
-q = Parameter(**STANDARD_PARAMETERS.q)
-temp0 = Parameter(**STANDARD_PARAMETERS.temp0)
 pa = Parameter(**STANDARD_PARAMETERS.pa)
 inc = Parameter(**STANDARD_PARAMETERS.inc)
 
-q.value = 0.5
-temp0.value = 1500
 pa.value = 163
 inc.value = 0.5
 
-temp0.set(min=300, max=2000)
 pa.set(min=0, max=180)
 inc.set(min=0.3, max=0.95)
 
@@ -203,16 +190,8 @@ analysis.save_fits(
 
 if __name__ == "__main__":
     ncores = None
-    fit_params_emcee = {"nburnin": 2, "nsteps": 5, "nwalkers": 100}
-    fit_params_dynesty = {"nlive_init": 2000, "ptform": ptform}
-
-    if OPTIONS.fit.method == "emcee":
-        fit_params = fit_params_emcee
-        ncores = fit_params["nwalkers"]//2 if ncores is None else ncores
-        fit_params["discard"] = fit_params["nburnin"]
-    else:
-        ncores = 50 if ncores is None else ncores
-        fit_params = fit_params_dynesty
+    fit_params = {"nlive_init": 2000, "ptform": ptform}
+    ncores = 50 if ncores is None else ncores
 
     sampler = fitting.run_fit(**fit_params, ncores=ncores, method="dynamic",
                               save_dir=result_dir, debug=False)
