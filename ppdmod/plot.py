@@ -45,7 +45,7 @@ def plot_component_mosaic(components: List[Component], dim: int,
     for ax, wavelength in zip(axes.flatten(), wavelengths):
         plot_components(components, dim, pixel_size, wavelength,
                         no_text=True, norm=norm, zoom=zoom, ax=ax, cmap=cmap)
-        ax.text(0.18, 0.95, fr"$\lambda$ = {wavelength} " +r"$\mathrm{\mu}$m",
+        ax.text(0.18, 0.95, fr"$\lambda$ = {wavelength} $\mathrm{{\mu}}$m",
                 transform=ax.transAxes, fontsize=12, color="white", ha="center")
 
     [fig.delaxes(ax) for ax in axes.flatten()[num_plots:]]
@@ -119,6 +119,59 @@ def plot_components(components: List[Component], dim: int,
             plt.savefig(savefig, format=Path(savefig).suffix[1:])
 
 
+def format_labels(labels: List[str], units: Optional[List[str]] = None) -> List[str]:
+    """Formats the labels in LaTeX.
+
+    Parameters
+    ----------
+    labels : list of str
+        The labels.
+    units : list, optional
+        The units. The default is None.
+
+    Returns
+    -------
+    list of str
+        The formatted labels.
+    """
+    nice_labels = {"rin": {"letter": "R", "indices": [r"\mathrm{in}"]},
+                   "rout": {"letter": "R", "indices": [r"\mathrm{out}"]},
+                   "p": {"letter": "p", "indices": []},
+                   "q": {"letter": "q", "indices": []},
+                   "c": {"letter": "c", "indices": []},
+                   "s": {"letter": "s", "indices": []},
+                   "logsigma0": {"letter": r"\Sigma", "indices": [r"\mathrm{in}", "0"]},
+                   "cont_weight": {"letter": "w", "indices": [r"\mathrm{cont}"]},
+                   "pa": {"letter": r"\theta", "indices": []},
+                   "inc": {"letter": r"\cos\left(i\right)", "indices": []},
+                   "temp0": {"letter": "T", "indices": ["0"]},
+                   }
+
+    formatted_labels = []
+    for label in labels:
+        name, index = label.split("-")
+        if name in nice_labels:
+            letter = nice_labels[name]["letter"]
+            if name[0] in ["c", "s"] and len(name) == 2:
+                indices = [name[1], index]
+            elif name == "temp0":
+                indices = nice_labels[name]["indices"]
+            else:
+                indices = [*nice_labels[name]["indices"], fr"\mathrm{{{index}}}"]
+            indices = r",\,".join(indices)
+            formatted_label = f"{letter}_{{{indices}}}"
+            if "log" in label:
+                formatted_label = fr"\log\left({formatted_label}\right)"
+                
+            formatted_labels.append(f"${formatted_label}$")
+        else:
+            formatted_labels.append(label)
+
+    if units is not None:
+        formatted_labels = [f"{label} ({unit})" for label, unit in zip(formatted_labels, units)]
+    return formatted_labels
+
+
 def plot_corner(sampler: np.ndarray, labels: List[str],
                 units: Optional[List[str]] = None,
                 discard: Optional[int] = 0,
@@ -137,8 +190,7 @@ def plot_corner(sampler: np.ndarray, labels: List[str],
     savefig : pathlib.Path, optional
         The save path. The default is None.
     """
-    if units is not None:
-        labels = [f"{label} [{unit}]" for label, unit in zip(labels, units)]
+    labels = format_labels(labels, units)
     quantiles = [x/100 for x in OPTIONS.fit.quantiles]
     if OPTIONS.fit.method == "emcee":
         samples = sampler.get_chain(discard=discard, flat=True)
@@ -179,9 +231,7 @@ def plot_chains(sampler: np.ndarray, labels: List[str],
     savefig : pathlib.Path, optional
         The save path. The default is None.
     """
-    if units is not None:
-        labels = [f"{label} [{unit}]" for label, unit in zip(labels, units)]
-
+    labels = format_labels(labels, units)
     quantiles = [x/100 for x in OPTIONS.fit.quantiles]
     if OPTIONS.fit.method == "emcee":
         samples = sampler.get_chain(discard=discard)
