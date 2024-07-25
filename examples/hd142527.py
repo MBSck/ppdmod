@@ -110,6 +110,14 @@ cont_weight.set(min=0, max=1)
 
 one = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
 
+rin = Parameter(**STANDARD_PARAMETERS.rin)
+rout = Parameter(**STANDARD_PARAMETERS.rout)
+p = Parameter(**STANDARD_PARAMETERS.p)
+sigma0 = Parameter(**STANDARD_PARAMETERS.sigma0)
+c1 = Parameter(**STANDARD_PARAMETERS.c)
+s1 = Parameter(**STANDARD_PARAMETERS.s)
+cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
+
 rin.value = 5
 rout.value = 10
 p.value = 0.5
@@ -125,6 +133,14 @@ sigma0.set(min=0, max=1)
 cont_weight.set(min=0, max=1)
 
 two = {"rin": rin, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
+
+rin = Parameter(**STANDARD_PARAMETERS.rin)
+rout = Parameter(**STANDARD_PARAMETERS.rout)
+p = Parameter(**STANDARD_PARAMETERS.p)
+sigma0 = Parameter(**STANDARD_PARAMETERS.sigma0)
+c1 = Parameter(**STANDARD_PARAMETERS.c)
+s1 = Parameter(**STANDARD_PARAMETERS.s)
+cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 
 rin.value = 12
 p.value = 0.5
