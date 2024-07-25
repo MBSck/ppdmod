@@ -173,7 +173,7 @@ OPTIONS.model.components_and_params = [
     ["Star", star],
     ["GreyBody", one],
     ["GreyBody", two],
-    # ["GreyBody", last_ring],
+    ["GreyBody", three],
 ]
 
 rings = [[f"{key}-{index}" for key in ring]
