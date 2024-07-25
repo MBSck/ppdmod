@@ -132,7 +132,7 @@ p.set(min=-50, max=50)
 sigma0.set(min=0, max=50)
 cont_weight.set(min=0, max=1)
 
-two = {"rin": rin, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
+two = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
 rout = Parameter(**STANDARD_PARAMETERS.rout)
