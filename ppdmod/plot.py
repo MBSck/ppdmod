@@ -14,7 +14,6 @@ import matplotlib.ticker as ticker
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
-from astropy.table import Table
 from astropy.wcs import WCS
 from dynesty import plotting as dyplot
 from matplotlib.gridspec import GridSpec
@@ -169,11 +168,12 @@ def format_labels(labels: List[str], units: Optional[List[str]] = None) -> List[
             formatted_labels.append(label)
 
     if units is not None:
-        formatted_labels = [f"{label} ({unit})" for label, unit in zip(formatted_labels, units)]
+        formatted_labels = [f"{label} ({unit.strip()})" if unit else label for label, unit in zip(formatted_labels, units)]
     return formatted_labels
 
 
-def plot_corner(sampler: np.ndarray, labels: List[str],
+def plot_corner(sampler: np.ndarray,
+                labels: List[str],
                 units: Optional[List[str]] = None,
                 discard: Optional[int] = 0,
                 savefig: Optional[Path] = None,
@@ -897,8 +897,10 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
 
 # TODO: Make colorscale permanent -> Implement colormap
 def plot_sed(wavelength_range: u.um,
-             components: List[Component],
+             components: Optional[List[Component]] = None,
              scaling: Optional[str] = "nu",
+             no_model: Optional[bool] = False,
+             ax: Optional[plt.Axes] = None,
              save_dir: Optional[Path] = None):
     """Plots the observables of the model.
 
@@ -914,13 +916,18 @@ def plot_sed(wavelength_range: u.um,
     save_dir = Path.cwd() if save_dir is None else save_dir
     wavelength = np.linspace(
         wavelength_range[0], wavelength_range[1], OPTIONS.plot.dim)
-    flux, *_ = compute_observables(components, wavelength=wavelength)
+
+    if not no_model:
+        flux, *_ = compute_observables(components, wavelength=wavelength)
     colors = OPTIONS.plot.color.list
 
-    _ = plt.figure(facecolor=OPTIONS.plot.color.background,
-                    tight_layout=True)
-    ax = plt.axes(facecolor=OPTIONS.plot.color.background)
-    set_axes_color(ax, OPTIONS.plot.color.background)
+    if ax is None:
+        fig = plt.figure(facecolor=OPTIONS.plot.color.background,
+                         tight_layout=True)
+        ax = plt.axes(facecolor=OPTIONS.plot.color.background)
+        set_axes_color(ax, OPTIONS.plot.color.background)
+    else:
+        fig = None
 
     names = [re.findall(r"(\d{4}-\d{2}-\d{2})", readout.fits_file.name)[0] for readout in OPTIONS.data.readouts]
     date_to_color = {date: color for date, color in zip(set(names), colors)}
@@ -955,29 +962,30 @@ def plot_sed(wavelength_range: u.um,
         values.append(readout_flux)
 
     flux_label = "$F$ (Jy)"
-    flux = flux[:, 0]
-    if scaling not in ["none", None]:
-        flux = (flux*u.Jy).to(u.erg/u.s/u.Hz/u.cm**2)
-    if scaling == "nu":
-        flux = (flux * (const.c/(wavelength.to(u.m))).to(u.Hz)).value
-        flux_label = r"$F_{\nu}\nu$ (erg s$^{-1}$ cm$^{-2}$)"
-    elif scaling == "lambda":
-        ...
+    if not no_model:
+        flux = flux[:, 0]
+        if scaling not in ["none", None]:
+            flux = (flux*u.Jy).to(u.erg/u.s/u.Hz/u.cm**2)
+        if scaling == "nu":
+            flux = (flux * (const.c/(wavelength.to(u.m))).to(u.Hz)).value
+            flux_label = r"$F_{\nu}\nu$ (erg s$^{-1}$ cm$^{-2}$)"
+        elif scaling == "lambda":
+            ...
 
-    ax.plot(wavelength, flux, label="Model", color="black")
-    ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
-    ax.set_ylabel(flux_label)
+    if not no_model:
+        ax.plot(wavelength, flux, label="Model", color="black")
+        values.append(flux)
 
-    values.append(flux)
-    max_value = np.concatenate(values).max()
-    ax.set_ylim([0, max_value + 0.1*max_value])
-    # handles, labels = ax.get_legend_handles_labels()
-    # custom_handles = [handles[0], handles[1], Line2D([0], [0], color="white", label="..."), handles[-1]]
-    # custom_labels = [labels[0], labels[1], "...", labels[-1]]
-    # ax.legend(custom_handles, custom_labels)
-    ax.legend(loc="upper left")
-    plt.savefig(save_dir / f"sed_scaling_{scaling}.pdf", format="pdf")
-    plt.close()
+    if fig is not None:
+        ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
+        ax.set_ylabel(flux_label)
+        ax.legend(loc="upper left")
+
+        max_value = np.concatenate(values).max()
+        ax.set_ylim([0, max_value + 0.1*max_value])
+
+        plt.savefig(save_dir / f"sed_scaling_{scaling}.pdf", format="pdf")
+        plt.close()
 
 
 def plot_interferometric_observables(wavelength_range: u.um,
@@ -1073,23 +1081,26 @@ def plot_interferometric_observables(wavelength_range: u.um,
         plt.close()
 
 
-# TODO: Finish this function
-def plot_sth(dim: int, wavelength: Optional[u.Quantity[u.um]] = None):
+def plot_intermediate_products(dim: int, wavelength: Optional[u.Quantity[u.um]],
+                               components: List[Component], component_labels: List[str],
+                               save_dir: Optional[Path] = None) -> None:
+    """Plots the intermediate products of the model (temperature, density, etc.)."""
     wavelength = u.Quantity(wavelength, u.um) if wavelength is not None\
         else OPTIONS.fit.wavelengths
 
-    for index, component in enumerate(components):
-        if component.shortname not in ["Star", "Point"]:
-            component.dim.value = dim
-            radius = np.tile(component.compute_internal_grid(), (wavelength.size, 1))
-
-            temperature = component.compute_temperature(radius)
-            surface_density = component.compute_surface_density(radius)
-            optical_depth = component.compute_optical_depth(
-                    radius, wavelength[:, np.newaxis])
-            emissivity = component.compute_emissivity(
-                    radius, wavelength[:, np.newaxis])
-            brightness = component.compute_intensity(
-                    radius, wavelength[:, np.newaxis])
-
+    for component in enumerate(components):
         flux = component.compute_flux(wavelength[:, np.newaxis])
+        if component.shortname in ["Star", "Point"]:
+            continue
+
+        component.dim.value = dim
+        radius = np.tile(component.compute_internal_grid(), (wavelength.size, 1))
+        temperature = component.compute_temperature(radius)
+        surface_density = component.compute_surface_density(radius)
+        optical_depth = component.compute_optical_depth(
+                radius, wavelength[:, np.newaxis])
+        emissivity = component.compute_emissivity(
+                radius, wavelength[:, np.newaxis])
+        brightness = component.compute_intensity(
+                radius, wavelength[:, np.newaxis])
+        breakpoint()

@@ -85,6 +85,7 @@ y = Parameter(**STANDARD_PARAMETERS.y)
 x.free = y.free = True
 star = {}
 star_labels = [rf"{label}-\star" for label in star]
+star_units = [value.unit for value in star.values()]
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
 rout = Parameter(**STANDARD_PARAMETERS.rout)
@@ -167,7 +168,8 @@ pa.set(min=0, max=180)
 inc.set(min=0.3, max=0.95)
 
 OPTIONS.model.shared_params = {"pa": pa, "inc": inc}
-shared_params_labels = [f"{label}-sh" for label in OPTIONS.model.shared_params]
+shared_param_labels = [f"{label}-sh" for label in OPTIONS.model.shared_params]
+shared_param_units = [value.unit for value in OPTIONS.model.shared_params.values()]
 
 OPTIONS.model.components_and_params = [
     ["Star", star],
@@ -176,10 +178,14 @@ OPTIONS.model.components_and_params = [
     # ["GreyBody", three],
 ]
 
-rings = [[f"{key}-{index}" for key in ring]
+ring_labels = [[f"{key}-{index}" for key in ring]
     for index, ring in enumerate([one, two, three], start=1)]
-LABELS = list(chain.from_iterable([star_labels, *rings][:len(OPTIONS.model.components_and_params)]))
-LABELS += shared_params_labels
+ring_units = [[value.unit for value in ring.values()] for ring in [one, two, three]]
+
+LABELS = list(chain.from_iterable([star_labels, *ring_labels][:len(OPTIONS.model.components_and_params)]))
+LABELS += shared_param_labels
+UNITS = list(chain.from_iterable([star_units, *ring_units][:len(OPTIONS.model.components_and_params)]))
+UNITS += shared_param_units
 component_labels = ["Star", "Inner Ring", "Outer Ring", "Last Ring"]
 component_labels = component_labels[:len(OPTIONS.model.components_and_params)]
 
@@ -205,12 +211,9 @@ analysis.save_fits(
 
 
 if __name__ == "__main__":
-    ncores = None
-    fit_params = {"nlive_init": 2000, "ptform": ptform}
-    ncores = 50 if ncores is None else ncores
-
+    ncores, fit_params = 50, {"nlive_init": 2000, "ptform": ptform}
     sampler = fitting.run_fit(**fit_params, ncores=ncores, method="dynamic",
-                              save_dir=result_dir, debug=False)
+                              save_dir=result_dir, debug=True)
 
     # TODO: Check if the parameters are the same as the ones from dynesty
     theta, uncertainties = fitting.get_best_fit(
@@ -229,7 +232,7 @@ if __name__ == "__main__":
         save_dir=result_dir / "post_fit_model.fits",
         object_name="HD142527")
 
-    plot_corner(sampler, LABELS, **fit_params,
+    plot_corner(sampler, LABELS, UNITS, **fit_params,
                 savefig=result_dir / "corner.pdf")
-    plot_chains(sampler, LABELS, **fit_params,
+    plot_chains(sampler, LABELS, UNITS, **fit_params,
                 savefig=result_dir / "chains.pdf")
