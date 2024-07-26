@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple
 from pathlib import Path
 
 import numpy as np
@@ -91,12 +91,12 @@ def save_fits(components: List[Component],
     hdu.writeto(save_dir, overwrite=True)
 
 
-def restore_from_fits(path: Path, post: Optional[bool] = True):
+def restore_from_fits(path: Path) -> Tuple[List[str], List[Component], Optional[NestedSampler]]:
     """Retrieves the individual model components from a model (.fits)-file 
     as well as the component labels and the sampler used.
     """
     components, component_labels = [], []
-    model_fits = path / f"{'post' if post else 'pre'}_fit_model.fits"
+    model_fits = path / "model.fits"
     with fits.open(model_fits, "readonly") as hdul:
         for card in hdul:
             header = card.header

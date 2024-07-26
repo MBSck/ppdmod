@@ -1,4 +1,5 @@
 import re
+from itertools import zip_longest, chain
 from typing import Optional, Dict, List
 from pathlib import Path
 
@@ -161,14 +162,15 @@ def format_labels(labels: List[str], units: Optional[List[str]] = None) -> List[
             indices = r",\,".join(indices)
             formatted_label = f"{letter}_{{{indices}}}"
             if "log" in label:
-                formatted_label = fr"\log\left({formatted_label}\right)"
-                
+                formatted_label = fr"\log_{{10}}\left({formatted_label}\right)"
+
             formatted_labels.append(f"${formatted_label}$")
         else:
             formatted_labels.append(label)
 
     if units is not None:
-        formatted_labels = [f"{label} ({unit.strip()})" if unit else label for label, unit in zip(formatted_labels, units)]
+        formatted_labels = [f"{label} ({str(unit).strip()})" if str(unit)
+            else label for label, unit in zip(formatted_labels, units)]
     return formatted_labels
 
 
@@ -257,105 +259,6 @@ def plot_chains(sampler: np.ndarray, labels: List[str],
         plt.savefig(savefig, format="pdf")
     else:
         plt.show()
-    plt.close()
-
-
-def plot_model(fits_file: Path, data_type: Optional[str] = "image",
-               wavelength: Optional[float] = None,
-               pixel_size: Optional[float] = None,
-               factor: Optional[float] = None,
-               zoom: Optional[int] = 30,
-               colormap: Optional[str] = OPTIONS.plot.color.colormap,
-               title: Optional[str] = None,
-               savefig: Optional[Path] = None) -> None:
-    """Plots the model information stored in the (.fits)-file.
-
-    Parameters
-    ----------
-    fits_file : pathlib.Path
-    data_type : str, optional
-    title : float, optional
-    savefig : pathlib.Path
-    """
-    _ = plt.figure(facecolor=OPTIONS.plot.color.background)
-    ax = plt.axes(facecolor=OPTIONS.plot.color.background)
-    set_axes_color(ax, OPTIONS.plot.color.background)
-    colormap = get_colormap(colormap)
-    with fits.open(fits_file) as hdul:
-        if data_type == "image":
-            if pixel_size is None or wavelength is None:
-                raise ValueError("Pixel_size and Wavelength must be specified"
-                                 "for image plotting.")
-            index = np.where(hdul[1].data["wavelength"] == wavelength)
-            image = np.log(1+hdul[0].data[index][0])
-            extent = [-image.shape[0]*pixel_size/2, image.shape[0]*pixel_size/2,
-                      -image.shape[1]*pixel_size/2, image.shape[1]*pixel_size/2]
-            plt.imshow(image, extent=extent)
-            plt.ylim([-zoom, zoom])
-            plt.xlim([-zoom, zoom])
-            plt.xlabel(r"$\alpha$ (mas)")
-            plt.ylabel(r"$\delta$ (mas)")
-        else:
-            wavelengths = hdul[1].data["wavelength"]
-            radius = hdul["FULL_DISK"].data["radius"][0]
-            if data_type == "temperature":
-                plt.plot(radius, hdul["FULL_DISK"].data["temperature"][0])
-                plt.ylabel(r"Temperature (K)")
-                plt.xlabel(r"Radius (mas)")
-
-            elif data_type == "brightness":
-                for wavelength, data in zip(
-                        wavelengths, hdul["FULL_DISK"].data["brightness"]):
-                    plt.loglog(radius, data, label=wavelength)
-                plt.ylabel(r"Surface Brightness ($\frac{erg}{cm^2rad^2\,s\,Hz}$)")
-                plt.ylim([1e-10, None])
-                legend = plt.legend()
-                set_legend_color(legend, OPTIONS.plot.color.background)
-                plt.xlabel(r"Radius (mas)")
-
-            # TODO: Make this into the full disk
-            elif data_type == "flux":
-                stellar_flux = hdul["STAR"].data["flux"]
-                inner_flux = hdul["INNER_RING"].data["total_flux"]
-                outer_flux = hdul["OUTER_RING"].data["total_flux"]
-                total_flux = stellar_flux+inner_flux+outer_flux
-                plt.plot(wavelengths, total_flux, marker="o")
-                plt.ylabel("Flux (Jy)")
-                plt.xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
-
-            elif data_type == "density":
-                plt.loglog(radius, hdul["FULL_DISK"].data["surface_density"][0])
-                plt.ylabel(r"Surface Density (g/cm$^2$)")
-                plt.xlabel(r"Radius (mas)")
-
-            elif data_type == "emissivity":
-                for wavelength, data in zip(
-                        wavelengths, hdul["FULL_DISK"].data["thickness"]):
-                    plt.loglog(radius, data, label=wavelength)
-                plt.ylabel(r"Emissivity (a.u.)")
-                legend = plt.legend()
-                set_legend_color(legend, OPTIONS.plot.color.background)
-                plt.xlabel(r"Radius (mas)")
-
-            elif data_type == "depth":
-                nwl = len(wavelengths)
-                optical_depth = hdul["FULL_DISK"].data["surface_density"]\
-                        *(hdul["FULL_DISK"].data["kappa_abs"].reshape(nwl, 1)\
-                          +hdul["FULL_DISK"].data["kappa_cont"].reshape(nwl, 1)*factor)
-                for wavelength, data in zip(wavelengths, optical_depth):
-                    plt.plot(radius, -np.log(1-data), label=wavelength)
-                plt.ylabel(r"Optical depth (a.u.)")
-                legend = plt.legend()
-                set_legend_color(legend, OPTIONS.plot.color.background)
-                plt.xscale("log")
-                plt.xlabel(r"Radius (mas)")
-
-    if title is not None:
-        plt.title(title)
-
-    if savefig is not None:
-        plt.savefig(savefig, format=Path(savefig).suffix[1:],
-                    dpi=OPTIONS.plot.dpi)
     plt.close()
 
 
@@ -961,14 +864,14 @@ def plot_sed(wavelength_range: u.um,
         ax.fill_between(readout_wavelength, lower_err, upper_err, color=line[0].get_color(), alpha=0.5)
         values.append(readout_flux)
 
-    flux_label = "$F$ (Jy)"
+    flux_label = r"$F_{\nu}$ (Jy)"
     if not no_model:
         flux = flux[:, 0]
         if scaling not in ["none", None]:
             flux = (flux*u.Jy).to(u.erg/u.s/u.Hz/u.cm**2)
         if scaling == "nu":
             flux = (flux * (const.c/(wavelength.to(u.m))).to(u.Hz)).value
-            flux_label = r"$F_{\nu}\nu$ (erg s$^{-1}$ cm$^{-2}$)"
+            flux_label = r"$\nu F_{\nu}$ (erg s$^{-1}$ cm$^{-2}$)"
         elif scaling == "lambda":
             ...
 
@@ -1087,20 +990,117 @@ def plot_intermediate_products(dim: int, wavelength: Optional[u.Quantity[u.um]],
     """Plots the intermediate products of the model (temperature, density, etc.)."""
     wavelength = u.Quantity(wavelength, u.um) if wavelength is not None\
         else OPTIONS.fit.wavelengths
+    wavelength_str = map(str, wavelength)
+    wavelengths = np.linspace(wavelength[0], wavelength[-1], dim)
+    component_labels = [" ".join(map(str.title, label.split("_"))) for label in component_labels]
 
-    for component in enumerate(components):
-        flux = component.compute_flux(wavelength[:, np.newaxis])
+    def plot_product(points, product, xlabel, ylabel,
+                     save_path=None, ax=None,
+                     axis_format=None, label=None):
+        _ = plt.figure() if ax is None else None
+        ax = plt.axes() if ax is None else ax
+        if product.ndim > 1:
+            for lb, prod in zip(label, product):
+                ax.plot(points, prod, label=lb)
+            ax.legend()
+        else:
+            ax.plot(points, product, label=label)
+
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+
+        if axis_format == "sci":
+            ax.yaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
+            ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+
+        if save_path is not None:
+            plt.savefig(save_path, format=Path(save_path).suffix[1:])
+            plt.close()
+
+    radii, surface_densities, optical_depths = [], [], []
+    fluxes, emissivities, brightnesses = [], [], []
+    _, ax = plt.subplots(figsize=(5, 5))
+    for label, component in zip(component_labels, components):
+        component.dim.value = dim
+        flux = component.compute_flux(wavelengths).squeeze()
+        # plot_product(wavelengths, flux,
+        #              r"$\lambda$ ($\mathrm{\mu}$m)",
+        #              r"$F_{\nu}$ (Jy)",
+        #              ax=ax, label=label)
+        fluxes.append(flux)
+
         if component.shortname in ["Star", "Point"]:
             continue
 
-        component.dim.value = dim
-        radius = np.tile(component.compute_internal_grid(), (wavelength.size, 1))
-        temperature = component.compute_temperature(radius)
-        surface_density = component.compute_surface_density(radius)
-        optical_depth = component.compute_optical_depth(
-                radius, wavelength[:, np.newaxis])
-        emissivity = component.compute_emissivity(
-                radius, wavelength[:, np.newaxis])
-        brightness = component.compute_intensity(
-                radius, wavelength[:, np.newaxis])
-        breakpoint()
+        radius = component.compute_internal_grid()
+        radii.append(radius)
+
+        surface_densities.append(component.compute_surface_density(radius))
+        optical_depths.append(component.compute_optical_depth(
+            radius, wavelength[:, np.newaxis]))
+        emissivities.append(component.compute_emissivity(
+            radius, wavelength[:, np.newaxis]))
+        brightnesses.append(component.compute_intensity(
+            radius, wavelength[:, np.newaxis]))
+
+    surface_densities = u.Quantity(surface_densities)
+    optical_depths = u.Quantity(optical_depths)
+    emissivities = u.Quantity(emissivities)
+    brightnesses = u.Quantity(brightnesses)
+
+    total_flux = sum(fluxes)
+    ax.plot(wavelengths, total_flux, label="Total")
+    ax.legend()
+    plt.savefig(save_dir / "fluxes.pdf", format="pdf")
+    plt.close()
+
+    _, ax = plt.subplots(figsize=(5, 5))
+    for label, flux_ratio in zip(component_labels, fluxes / total_flux * 100):
+        plot_product(wavelengths, flux_ratio,
+                     r"$\lambda$ ($\mathrm{\mu}$m)",
+                     r"$F_{\nu}$ / $F_{\nu,\,\mathrm{tot}}$ (%)",
+                     ax=ax, label=label)
+
+    ax.legend()
+    ax.set_ylim([0, 100])
+    plt.savefig(save_dir / "flux_ratios.pdf", format="pdf")
+    plt.close()
+
+    radii_bounds = [(prev[-1], current[0]) for prev, current in zip(radii[:-1], radii[1:])]
+    fill_radii = [np.linspace(lower, upper, dim) for lower, upper in radii_bounds]
+    merged_radii = list(chain.from_iterable(zip_longest(radii, fill_radii)))[:-1]
+    radii = u.Quantity(np.concatenate(merged_radii, axis=0))
+    fill_zeros = np.zeros((len(fill_radii), wavelength.size, dim))
+
+    surface_densities = u.Quantity(list(chain.from_iterable(
+        zip_longest(surface_densities, fill_zeros[:, 0, :] * u.g / u.cm**2)))[:-1])
+    surface_densities = np.concatenate(surface_densities, axis=0)
+    optical_depths = u.Quantity(list(chain.from_iterable(
+        zip_longest(optical_depths, fill_zeros)))[:-1])
+    optical_depths = np.hstack(optical_depths)
+    emissivities = u.Quantity(list(chain.from_iterable(
+        zip_longest(emissivities, fill_zeros)))[:-1])
+    emissivities = np.hstack(emissivities)
+    brightnesses = u.Quantity(list(chain.from_iterable(
+        zip_longest(brightnesses, fill_zeros * u.erg / u.cm**2 / u.s / u.Hz / u.sr)))[:-1])
+    brightnesses = np.hstack(brightnesses)
+
+    temperatures = components[-1].compute_temperature(radii)
+    plot_product(radii.value, temperatures.value, "$R$ (au)", "$T$ (K)",
+                 save_path=save_dir / "temperatures.pdf")
+    plot_product(radii.value, surface_densities.value,
+                 "$R$ (au)", r"$\Sigma$ (g cm$^{-2}$)",
+                 save_path=save_dir / "surface_densities.pdf",
+                 axis_format="sci")
+    plot_product(radii.value, optical_depths.value,
+                 "$R$ (au)", r"$\tau_{\nu}$",
+                 save_path=save_dir / "optical_depths.pdf",
+                 label=wavelength_str)
+    plot_product(radii.value, emissivities.value,
+                 "$R$ (au)", r"$\epsilon_{\nu}$",
+                 save_path=save_dir / "emissivities.pdf",
+                 label=wavelength_str)
+    plot_product(radii.value, brightnesses.value,
+                 "$R$ (au)", r"$I_{\nu}$ (erg s$^{-1}$ cm$^{-2}$ Hz$^{-1}$ sr$^{-1}$)",
+                 save_path=save_dir / "brightnesses.pdf",
+                 label=wavelength_str)

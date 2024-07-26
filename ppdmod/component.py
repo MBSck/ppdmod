@@ -138,8 +138,8 @@ class Component:
 
     def translate_vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad) -> np.ndarray:
         """Translates a coordinate shift in image space to Fourier space."""
-        uv_coords = self.x()*np.cos(baseline_angles) + self.y()*np.sin(baseline_angles)
-        translation = np.exp(2*1j*np.pi*baselines*uv_coords.to(u.rad))
+        uv_coords = self.x() * np.cos(baseline_angles) + self.y() * np.sin(baseline_angles)
+        translation = np.exp(2j * np.pi * baselines * uv_coords.to(u.rad))
         return translation.value.astype(OPTIONS.data.dtype.complex)
 
     def flux_func(self, wavelength: u.um) -> np.ndarray:
@@ -171,7 +171,7 @@ class Component:
         if self.shortname != "Point":
             vis *= self.fr()
 
-        return (vis*shift).astype(OPTIONS.data.dtype.complex)
+        return (vis * shift).astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
         """Calculates the image."""
@@ -188,14 +188,14 @@ class Component:
         pixel_size = pixel_size if isinstance(pixel_size, u.Quantity)\
             else u.Quantity(pixel_size, u.mas)
         
-        xx = np.linspace(-0.5, 0.5, dim)*pixel_size*dim
+        xx = np.linspace(-0.5, 0.5, dim) * pixel_size * dim
         xx, yy = self.translate_image_func(*np.meshgrid(xx, xx))
 
         if self.elliptic:
             pa_rad = self.pa().to(u.rad)
-            xr = xx*np.cos(pa_rad)-yy*np.sin(pa_rad)
-            yr = xx*np.sin(pa_rad)+yy*np.cos(pa_rad)
-            xx, yy = xr*(1/self.inc()), yr
+            xr = xx * np.cos(pa_rad) - yy * np.sin(pa_rad)
+            yr = xx * np.sin(pa_rad) + yy * np.cos(pa_rad)
+            xx, yy = xr * (1/self.inc()), yr
 
         image = self.image_func(xx, yy, pixel_size, wavelength)
-        return (self.fr()*image).value.astype(OPTIONS.data.dtype.real)
+        return (self.fr() * image).value.astype(OPTIONS.data.dtype.real)
