@@ -621,14 +621,14 @@ class TempGradient(Ring):
         else:
             r0 = OPTIONS.model.reference_radius if self.r0.value == 0 else self.r0()
             r0_angular = distance_to_angular(r0, self.dist())
-            temperature = self.temp0() * (radius / r0_angular) ** -self.q()
+            temperature = self.temp0() * (radius / r0_angular) ** self.q()
         return temperature.astype(OPTIONS.data.dtype.real)
 
     def compute_surface_density(self, radius: u.mas) -> u.one:
         """Computes a 1D-surface density profile."""
         r0 = OPTIONS.model.reference_radius if self.r0.value == 0 else self.r0()
         r0_angular = distance_to_angular(r0, self.dist())
-        surface_density = self.sigma0() * (radius / r0_angular) ** -self.p()
+        surface_density = self.sigma0() * (radius / r0_angular) ** self.p()
         return surface_density.astype(OPTIONS.data.dtype.real)
 
     def compute_optical_depth(self, radius: u.mas, wavelength: u.um) -> u.one:
