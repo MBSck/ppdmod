@@ -204,11 +204,6 @@ rchi_sq = fitting.compute_observable_chi_sq(
         *fitting.compute_observables(components), reduced=True)
 print(f"rchi_sq: {rchi_sq}")
 
-analysis.save_fits(
-    components, component_labels,
-    save_dir=result_dir / "pre_fit_model.fits",
-    object_name="HD142527")
-
 
 if __name__ == "__main__":
     ncores, fit_params = 50, {"nlive_init": 2000, "ptform": ptform}
@@ -229,7 +224,7 @@ if __name__ == "__main__":
     analysis.save_fits(
         components, component_labels,
         fit_hyperparameters=fit_params, ncores=ncores,
-        save_dir=result_dir / "post_fit_model.fits",
+        save_dir=result_dir / "model.fits",
         object_name="HD142527")
 
     plot_corner(sampler, LABELS, UNITS, **fit_params,

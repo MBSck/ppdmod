@@ -11,7 +11,7 @@ from scipy.signal import fftconvolve
 from .component import Component
 from .parameter import Parameter
 from .options import STANDARD_PARAMETERS, OPTIONS
-from .utils import distance_to_angular
+from .utils import distance_to_angular, angular_to_distance
 
 
 class PointSource(Component):
@@ -236,7 +236,7 @@ class Ring(Component):
             radius = np.linspace(rin, rout, self.dim())
         else:
             radius = np.logspace(np.log10(rin), np.log10(rout), self.dim())
-        return radius.astype(OPTIONS.data.dtype.real) * u.mas
+        return radius.astype(OPTIONS.data.dtype.real) * self.rin.unit
 
     def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
@@ -284,9 +284,13 @@ class Ring(Component):
         else:
             intensity_func = kwargs.pop("intensity_func", None)
             radius = self.compute_internal_grid()
+
             if intensity_func is not None:
                 intensity = intensity_func(radius, wavelength).to(u.erg/(u.rad**2 * u.cm**2 * u.s * u.Hz))
                 intensity = intensity[:, np.newaxis]
+
+            if radius.unit not in [u.rad, u.mas]:
+                radius = distance_to_angular(radius, self.dist())
 
             radius = radius.to(u.rad)
             vis = _vis_func(2 * np.pi * radius * baselines)
@@ -322,7 +326,6 @@ class Ring(Component):
         image : astropy.units.Jy
         """
         radius = np.hypot(xx, yy)[np.newaxis, ...]
-
         dx = np.max([np.diff(xx), np.diff(yy)])*u.mas
         if not self.thin:
             dx = self.rout() - self.rin() if self.has_outer_radius else self.width()
@@ -575,6 +578,7 @@ class TempGradient(Ring):
         """The class's constructor."""
         super().__init__(**kwargs)
 
+        self.rin.unit = self.rout.unit = u.au
         self.dist = Parameter(**STANDARD_PARAMETERS.dist)
         self.eff_temp = Parameter(**STANDARD_PARAMETERS.eff_temp)
         self.eff_radius = Parameter(**STANDARD_PARAMETERS.eff_radius)
@@ -597,8 +601,6 @@ class TempGradient(Ring):
 
         self.eval(**kwargs)
 
-        self.stellar_radius_angular = distance_to_angular(self.eff_radius(), self.dist())
-
     def get_opacity(self, wavelength: u.um) -> u.cm**2 / u.g:
         """Set the opacity from wavelength."""
         kappa_abs = self.kappa_abs(wavelength)
@@ -614,30 +616,28 @@ class TempGradient(Ring):
 
         return opacity
 
-    def compute_temperature(self, radius: u.mas) -> u.K:
+    def compute_temperature(self, radius: u.au) -> u.K:
         """Computes a 1D-temperature profile."""
         if self.const_temperature:
-            temperature = np.sqrt(self.stellar_radius_angular / (2.0 * radius)) * self.eff_temp()
+            temperature = np.sqrt(self.eff_radius().to(u.au) / (2.0 * radius)) * self.eff_temp()
         else:
             r0 = OPTIONS.model.reference_radius if self.r0.value == 0 else self.r0()
-            r0_angular = distance_to_angular(r0, self.dist())
-            temperature = self.temp0() * (radius / r0_angular) ** self.q()
+            temperature = self.temp0() * (radius / r0) ** self.q()
         return temperature.astype(OPTIONS.data.dtype.real)
 
-    def compute_surface_density(self, radius: u.mas) -> u.one:
+    def compute_surface_density(self, radius: u.au) -> u.one:
         """Computes a 1D-surface density profile."""
         r0 = OPTIONS.model.reference_radius if self.r0.value == 0 else self.r0()
-        r0_angular = distance_to_angular(r0, self.dist())
-        surface_density = self.sigma0() * (radius / r0_angular) ** self.p()
+        surface_density = self.sigma0() * (radius / r0) ** self.p()
         return surface_density.astype(OPTIONS.data.dtype.real)
 
-    def compute_optical_depth(self, radius: u.mas, wavelength: u.um) -> u.one:
+    def compute_optical_depth(self, radius: u.au, wavelength: u.um) -> u.one:
         """Computes a 1D-optical depth profile."""
         surface_density = self.compute_surface_density(radius)
         optical_depth = surface_density * self.get_opacity(wavelength)
         return optical_depth.astype(OPTIONS.data.dtype.real)
 
-    def compute_emissivity(self, radius: u.mas, wavelength: u.um) -> u.one:
+    def compute_emissivity(self, radius: u.au, wavelength: u.um) -> u.one:
         """Computes a 1D-emissivity profile."""
         if wavelength.shape == ():
             wavelength.reshape((wavelength.size,))
@@ -649,7 +649,7 @@ class TempGradient(Ring):
         emissivity = 1 - np.exp(-optical_depth / self.inc())
         return emissivity.astype(OPTIONS.data.dtype.real)
 
-    def compute_intensity(self, radius: u.mas, wavelength: u.um) -> u.Jy:
+    def compute_intensity(self, radius: u.au, wavelength: u.um) -> u.Jy:
         """Computes a 1D-brightness profile from a dust-surface density- and
         temperature profile.
 
@@ -693,11 +693,12 @@ class TempGradient(Ring):
         vis : numpy.ndarray
             The correlated fluxes.
         """
-        # TODO: Check if a factor of 2*np.pi is required in front of the integration
         return super().vis_func(*args, intensity_func=self.compute_intensity)
 
     def image_func(self, *args) -> np.ndarray:
         """Computes the image."""
+        args[0] = angular_to_distance(args[0], self.dist())
+        args[1] = angular_to_distance(args[1], self.dist())
         return super().image_func(*args, intensity_func=self.compute_intensity)
 
 
