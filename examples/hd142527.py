@@ -101,6 +101,8 @@ sigma0.value = 1e-3
 p.value = 0.5
 c1.value = s1.value = 0.5
 cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass fractions
+rin.unit = rout.unit = u.au
+rout.free = True
 
 rin.set(min=0, max=30)
 rout.set(min=0, max=30)
@@ -125,6 +127,8 @@ p.value = 0.5
 sigma0.value = 1e-3
 c1.value = s1.value = 0.5
 cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass fractions
+rin.unit = rout.unit = u.au
+rout.free = True
 
 rin.set(min=0, max=30)
 rout.set(min=0, max=50)
@@ -148,6 +152,8 @@ p.value = 0.5
 sigma0.value = 1e-3
 c1.value = s1.value = 0.5
 cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass fractions
+rin.unit = rout.unit = u.au
+rout.free = True
 
 rin.set(min=0, max=30)
 rout.set(min=0, max=50)

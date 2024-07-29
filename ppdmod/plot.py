@@ -62,8 +62,6 @@ def plot_component_mosaic(components: List[Component], dim: int,
     plt.close()
 
 
-# TODO: Add here the text in the top left corner for the wavelength
-# and a scale for the au
 def plot_components(components: List[Component], dim: int,
                     pixel_size: u.mas, wavelength: u.um,
                     norm: Optional[float] = 0.5,
@@ -76,6 +74,12 @@ def plot_components(components: List[Component], dim: int,
     """Plots a component."""
     components = [components] if not isinstance(components, list) else components
     image = sum([comp.compute_image(dim, pixel_size, wavelength) for comp in components])
+
+    pixel_size *= u.mas
+    if any(hasattr(component, "dist") for component in components):
+        dist = [component for component in components if hasattr(component, "dist")][0].dist()
+        pixel_size = angular_to_distance(pixel_size, dist).to(u.au).value
+
     extent = [sign * dim * pixel_size / 2 for sign in [-1, 1, 1, -1]]
     if save_as_fits:
         wcs = WCS(naxis=2)
@@ -99,8 +103,8 @@ def plot_components(components: List[Component], dim: int,
             def convert_to_mas(x):
                 return distance_to_angular(x*u.au, dist).value
 
-            top_ax = ax.secondary_xaxis("top", functions=(convert_to_au, convert_to_mas))
-            right_ax = ax.secondary_yaxis("right", functions=(convert_to_au, convert_to_mas))
+            top_ax = ax.secondary_xaxis("top", functions=(convert_to_mas, convert_to_au))
+            right_ax = ax.secondary_yaxis("right", functions=(convert_to_mas, convert_to_au))
             top_ax.set_xlabel(r"$\alpha$ (au)")
             right_ax.set_xlabel(r"$\delta$ (au)")
 
@@ -1023,10 +1027,10 @@ def plot_intermediate_products(dim: int, wavelength: Optional[u.Quantity[u.um]],
     for label, component in zip(component_labels, components):
         component.dim.value = dim
         flux = component.compute_flux(wavelengths).squeeze()
-        # plot_product(wavelengths, flux,
-        #              r"$\lambda$ ($\mathrm{\mu}$m)",
-        #              r"$F_{\nu}$ (Jy)",
-        #              ax=ax, label=label)
+        plot_product(wavelengths, flux,
+                     r"$\lambda$ ($\mathrm{\mu}$m)",
+                     r"$F_{\nu}$ (Jy)",
+                     ax=ax, label=label)
         fluxes.append(flux)
 
         if component.shortname in ["Star", "Point"]:

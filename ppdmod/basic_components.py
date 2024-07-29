@@ -325,8 +325,12 @@ class Ring(Component):
         -------
         image : astropy.units.Jy
         """
+        if self.rin.unit == u.au:
+            xx = angular_to_distance(xx, self.dist()).to(u.au)
+            yy = angular_to_distance(yy, self.dist()).to(u.au)
+
         radius = np.hypot(xx, yy)[np.newaxis, ...]
-        dx = np.max([np.diff(xx), np.diff(yy)])*u.mas
+        dx = np.max([np.diff(xx), np.diff(yy)]) * self.rin.unit
         if not self.thin:
             dx = self.rout() - self.rin() if self.has_outer_radius else self.width()
 
@@ -671,6 +675,9 @@ class TempGradient(Ring):
         """Computes the total flux from the hankel transformation."""
         radius = self.compute_internal_grid()
         intensity = self.compute_intensity(radius, wavelength[:, np.newaxis])
+        if self.rin.unit == u.au:
+            radius = distance_to_angular(radius, self.dist())
+
         flux = 2 * np.pi * self.inc() * np.trapz(radius * intensity, radius).to(u.Jy)
         return flux.value.reshape((flux.shape[0], 1)).astype(OPTIONS.data.dtype.real)
 
@@ -697,8 +704,6 @@ class TempGradient(Ring):
 
     def image_func(self, *args) -> np.ndarray:
         """Computes the image."""
-        args[0] = angular_to_distance(args[0], self.dist())
-        args[1] = angular_to_distance(args[1], self.dist())
         return super().image_func(*args, intensity_func=self.compute_intensity)
 
 
