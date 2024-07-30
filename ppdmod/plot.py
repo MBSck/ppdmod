@@ -62,6 +62,7 @@ def plot_component_mosaic(components: List[Component], dim: int,
     plt.close()
 
 
+# TODO: Make this function work properly again and also more concise.
 def plot_components(components: List[Component], dim: int,
                     pixel_size: u.mas, wavelength: u.um,
                     norm: Optional[float] = 0.5,
@@ -84,7 +85,7 @@ def plot_components(components: List[Component], dim: int,
     if save_as_fits:
         wcs = WCS(naxis=2)
         wcs.wcs.crpix = (dim // 2, dim // 2)
-        wcs.wcs.cdelt = (pixel_size*u.mas.to(u.deg), pixel_size*u.mas.to(u.deg))
+        wcs.wcs.cdelt = (pixel_size * u.mas.to(u.deg), pixel_size * u.mas.to(u.deg))
         wcs.wcs.crval = (0.0, 0.0)
         hdu = fits.HDUList([fits.PrimaryHDU(image, header=wcs.to_header())])
         hdu.writeto(savefig, overwrite=True)
@@ -98,15 +99,15 @@ def plot_components(components: List[Component], dim: int,
         if any(hasattr(component, "dist") for component in components):
             dist = [component for component in components if hasattr(component, "dist")][0].dist()
             def convert_to_au(x):
-                return angular_to_distance(x*u.mas, dist).to(u.au).value
+                return angular_to_distance(x * u.mas, dist).to(u.au).value
 
             def convert_to_mas(x):
-                return distance_to_angular(x*u.au, dist).value
+                return distance_to_angular(x * u.au, dist).value
 
             top_ax = ax.secondary_xaxis("top", functions=(convert_to_mas, convert_to_au))
             right_ax = ax.secondary_yaxis("right", functions=(convert_to_mas, convert_to_au))
-            top_ax.set_xlabel(r"$\alpha$ (au)")
-            right_ax.set_xlabel(r"$\delta$ (au)")
+            top_ax.set_xlabel(r"$\alpha$ (mas)")
+            right_ax.set_xlabel(r"$\delta$ (mas)")
 
         if not no_text:
             ax.text(0.18, 0.95, fr"$\lambda$ = {wavelength} " +r"$\mathrm{\mu}$m",
@@ -116,8 +117,8 @@ def plot_components(components: List[Component], dim: int,
             ax.set_xlim([zoom, -zoom])
             ax.set_ylim([-zoom, zoom])
 
-        ax.set_xlabel(r"$\alpha$ (mas)")
-        ax.set_ylabel(r"$\delta$ (mas)")
+        ax.set_xlabel(r"$\alpha$ (au)")
+        ax.set_ylabel(r"$\delta$ (au)")
 
         if savefig is not None:
             plt.savefig(savefig, format=Path(savefig).suffix[1:])
@@ -198,7 +199,7 @@ def plot_corner(sampler: np.ndarray,
         The save path. The default is None.
     """
     labels = format_labels(labels, units)
-    quantiles = [x/100 for x in OPTIONS.fit.quantiles]
+    quantiles = [x / 100 for x in OPTIONS.fit.quantiles]
     if OPTIONS.fit.method == "emcee":
         samples = sampler.get_chain(discard=discard, flat=True)
         corner.corner(samples, show_titles=True,
@@ -847,37 +848,42 @@ def plot_sed(wavelength_range: u.um,
 
         readout_wavelength = readout.wavelength.value
         readout_flux, readout_err = readout.flux.value.flatten(), readout.flux.err.flatten()
-        if "HAW" in readout.fits_file.name:
-            indices_high = np.where((readout_wavelength >= 4.55) & (readout_wavelength <= 4.9))
-            indices_low = np.where((readout_wavelength >= 3.1) & (readout_wavelength <= 3.9))
-            indices = np.hstack((indices_high, indices_low))
-            readout_wavelength = readout_wavelength[indices].flatten()
-            readout_flux, readout_err = readout_flux[indices].flatten(), readout_err[indices].flatten()
-
         readout_err_percentage = readout_err/readout_flux
-        if scaling not in ["none", None]:
-            readout_flux = (readout_flux*u.Jy).to(u.erg/u.s/u.Hz/u.cm**2)
-        if scaling == "nu":
-            readout_flux = (readout_flux * (const.c/((readout_wavelength*u.um).to(u.m))).to(u.Hz)).value
-        elif scaling == "lambda":
-            ...
+
+        if scaling is None:
+            readout_flux = readout_flux
+        elif scaling == "nu":
+            readout_flux = (readout_flux * u.Jy).to(u.erg/u.s/u.cm**2/u.Hz)
+            readout_flux = ((readout_flux * u.Jy) * (const.c/((readout_wavelength*u.um).to(u.m))).to(u.Hz)).value
 
         readout_err = readout_err_percentage * readout_flux
         lower_err, upper_err = readout_flux - readout_err, readout_flux + readout_err
-        line = ax.plot(readout_wavelength, readout_flux, color=date_to_color[name])
-        ax.fill_between(readout_wavelength, lower_err, upper_err, color=line[0].get_color(), alpha=0.5)
-        values.append(readout_flux)
+        if "HAW" in readout.fits_file.name:
+            indices_high = np.where((readout_wavelength >= 4.55) & (readout_wavelength <= 4.9))
+            indices_low = np.where((readout_wavelength >= 3.1) & (readout_wavelength <= 3.9))
+            for indices in [indices_high, indices_low]:
+                line = ax.plot(readout_wavelength[indices],
+                               readout_flux[indices], color=date_to_color[name])
+                ax.fill_between(readout_wavelength[indices],
+                                lower_err[indices], upper_err[indices],
+                                color=line[0].get_color(), alpha=0.5)
+            value_indices = np.hstack([indices_high, indices_low])
+            lim_values = readout_flux[value_indices].flatten()
+        else:
+            line = ax.plot(readout_wavelength, readout_flux, color=date_to_color[name])
+            ax.fill_between(readout_wavelength, lower_err, upper_err, color=line[0].get_color(), alpha=0.5)
+            lim_values = readout_flux
+        values.append(lim_values)
 
     flux_label = r"$F_{\nu}$ (Jy)"
     if not no_model:
         flux = flux[:, 0]
-        if scaling not in ["none", None]:
-            flux = (flux*u.Jy).to(u.erg/u.s/u.Hz/u.cm**2)
-        if scaling == "nu":
+        if scaling is None:
+            flux = flux
+        elif scaling == "nu":
+            flux = (flux * u.Jy).to(u.erg/u.s/u.cm**2/u.Hz)
             flux = (flux * (const.c/(wavelength.to(u.m))).to(u.Hz)).value
             flux_label = r"$\nu F_{\nu}$ (erg s$^{-1}$ cm$^{-2}$)"
-        elif scaling == "lambda":
-            ...
 
     if not no_model:
         ax.plot(wavelength, flux, label="Model", color="black")
@@ -988,6 +994,38 @@ def plot_interferometric_observables(wavelength_range: u.um,
         plt.close()
 
 
+def plot_product(points, product, xlabel, ylabel,
+                 save_path=None, ax=None, 
+                 scale=None, label=None):
+    if ax is None:
+        fig, ax = plt.subplots()
+    else:
+        fig = ax.figure
+
+    if product.ndim > 1:
+        for lb, prod in zip(label, product):
+            ax.plot(points, prod, label=lb)
+        ax.legend()
+    else:
+        ax.plot(points, product, label=label)
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+
+    if scale == "log":
+        ax.set_yscale("log")
+    elif scale == "loglog":
+        ax.set_yscale("log")
+        ax.set_xscale("log")
+    elif scale == "sci":
+        ax.yaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
+        ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+
+    if save_path is not None:
+        fig.savefig(save_path, format=Path(save_path).suffix[1:])
+        plt.close(fig)
+
+
 def plot_intermediate_products(dim: int, wavelength: Optional[u.Quantity[u.um]],
                                components: List[Component], component_labels: List[str],
                                save_dir: Optional[Path] = None) -> None:
@@ -997,30 +1035,6 @@ def plot_intermediate_products(dim: int, wavelength: Optional[u.Quantity[u.um]],
     wavelength_str = map(str, wavelength)
     wavelengths = np.linspace(wavelength[0], wavelength[-1], dim)
     component_labels = [" ".join(map(str.title, label.split("_"))) for label in component_labels]
-
-    def plot_product(points, product, xlabel, ylabel,
-                     save_path=None, ax=None,
-                     axis_format=None, label=None):
-        _ = plt.figure() if ax is None else None
-        ax = plt.axes() if ax is None else ax
-        if product.ndim > 1:
-            for lb, prod in zip(label, product):
-                ax.plot(points, prod, label=lb)
-            ax.legend()
-        else:
-            ax.plot(points, product, label=label)
-
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
-
-        if axis_format == "sci":
-            ax.yaxis.set_major_formatter(ticker.ScalarFormatter(useMathText=True))
-            ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
-
-        if save_path is not None:
-            plt.savefig(save_path, format=Path(save_path).suffix[1:])
-            plt.close()
-
     radii, surface_densities, optical_depths = [], [], []
     fluxes, emissivities, brightnesses = [], [], []
     _, ax = plt.subplots(figsize=(5, 5))
@@ -1094,12 +1108,11 @@ def plot_intermediate_products(dim: int, wavelength: Optional[u.Quantity[u.um]],
                  save_path=save_dir / "temperatures.pdf")
     plot_product(radii.value, surface_densities.value,
                  "$R$ (au)", r"$\Sigma$ (g cm$^{-2}$)",
-                 save_path=save_dir / "surface_densities.pdf",
-                 axis_format="sci")
+                 save_path=save_dir / "surface_densities.pdf", scale="sci")
     plot_product(radii.value, optical_depths.value,
-                 "$R$ (au)", r"$\tau_{\nu}$",
+                 "$R$ (au)", r"$\log_{10}\left(\tau_{\nu}\right)$",
                  save_path=save_dir / "optical_depths.pdf",
-                 label=wavelength_str)
+                 scale="log", label=wavelength_str)
     plot_product(radii.value, emissivities.value,
                  "$R$ (au)", r"$\epsilon_{\nu}$",
                  save_path=save_dir / "emissivities.pdf",
@@ -1107,4 +1120,4 @@ def plot_intermediate_products(dim: int, wavelength: Optional[u.Quantity[u.um]],
     plot_product(radii.value, brightnesses.value,
                  "$R$ (au)", r"$I_{\nu}$ (erg s$^{-1}$ cm$^{-2}$ Hz$^{-1}$ sr$^{-1}$)",
                  save_path=save_dir / "brightnesses.pdf",
-                 label=wavelength_str)
+                 scale="log", label=wavelength_str)
