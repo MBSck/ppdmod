@@ -1,6 +1,5 @@
 import os
 from datetime import datetime
-from functools import partial
 from itertools import chain
 from typing import List
 from pathlib import Path
@@ -107,8 +106,8 @@ cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass f
 rin.unit = rout.unit = u.au
 rout.free = True
 
-rin.set(min=0, max=30)
-rout.set(min=0, max=30)
+rin.set(min=0, max=10)
+rout.set(min=0, max=10)
 rout.free = True
 p.set(min=-10, max=10)
 sigma0.set(min=0, max=1e-2)
@@ -133,8 +132,8 @@ cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass f
 rin.unit = rout.unit = u.au
 rout.free = True
 
-rin.set(min=0, max=30)
-rout.set(min=0, max=50)
+rin.set(min=0, max=10)
+rout.set(min=0, max=10)
 rout.free = True
 p.set(min=-10, max=10)
 sigma0.set(min=0, max=1e-1)
@@ -158,8 +157,8 @@ cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass f
 rin.unit = rout.unit = u.au
 rout.free = True
 
-rin.set(min=0, max=30)
-rout.set(min=0, max=50)
+rin.set(min=0, max=10)
+rout.set(min=0, max=10)
 rout.free = True
 p.set(min=-10, max=10)
 sigma0.set(min=0, max=1e-1)
