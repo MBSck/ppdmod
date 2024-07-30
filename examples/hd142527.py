@@ -195,11 +195,9 @@ LABELS = list(chain.from_iterable([star_labels, *ring_labels][:len(OPTIONS.model
 LABELS += shared_param_labels
 UNITS = list(chain.from_iterable([star_units, *ring_units][:len(OPTIONS.model.components_and_params)]))
 UNITS += shared_param_units
-np.save("labels.npy", LABELS)
-breakpoint()
+
 component_labels = ["Star", "Inner Ring", "Outer Ring", "Last Ring"]
 component_labels = component_labels[:len(OPTIONS.model.components_and_params)]
-
 OPTIONS.fit.method = "dynesty"
 
 model_result_dir = Path("../model_results/")
@@ -207,6 +205,8 @@ day_dir = model_result_dir / str(datetime.now().date())
 dir_name = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 result_dir = day_dir / dir_name
 result_dir.mkdir(parents=True, exist_ok=True)
+np.save(result_dir / "labels.npy", LABELS)
+np.save(result_dir / "units.npy", UNITS)
 
 components = basic_components.assemble_components(
         OPTIONS.model.components_and_params,
