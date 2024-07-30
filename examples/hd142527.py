@@ -38,7 +38,7 @@ def ptform(theta: List[float]) -> np.ndarray:
 
 
 DATA_DIR = Path("../tests/data")
-wavelengths = {"hband": [1.6]*u.um,
+wavelengths = {"hband": [1.7]*u.um,
                "kband": [2.25]*u.um,
                "lband": [3.2]*u.um,
                "mband": [4.7]*u.um,
@@ -46,7 +46,9 @@ wavelengths = {"hband": [1.6]*u.um,
 
 OPTIONS.model.output = "non-normed"
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
-wavelength = np.concatenate((wavelengths["lband"], wavelengths["mband"], wavelengths["nband"]))
+wavelength = np.concatenate((wavelengths["hband"],
+                             wavelengths["lband"],
+                             wavelengths["mband"], wavelengths["nband"]))
 # wavelength = wavelengths["lband"]
 data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis"])
 
@@ -214,7 +216,7 @@ print(f"rchi_sq: {rchi_sq}")
 if __name__ == "__main__":
     ncores, fit_params = 50, {"nlive_init": 2000, "ptform": ptform}
     sampler = fitting.run_fit(**fit_params, ncores=ncores, method="dynamic",
-                              save_dir=result_dir, debug=True)
+                              save_dir=result_dir, debug=False)
 
     # TODO: Check if the parameters are the same as the ones from dynesty
     theta, uncertainties = fitting.get_best_fit(

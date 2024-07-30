@@ -126,8 +126,6 @@ class ReadoutFits:
         numpy.ndarray
             The data for the given wavelengths.
         """
-        # TODO: Check that the binning works proplerly for all input files
-        # test it with the pionier data (for three channels)
         indices = get_indices(wavelength, array=self.wavelength,
                               window=OPTIONS.data.binning)
 
@@ -139,10 +137,10 @@ class ReadoutFits:
 
         if key == "flux":
             if OPTIONS.data.binning is None:
-                wl_data = [[data.squeeze()[index] if index.size != 0
+                wl_data = [[data.flatten()[index] if index.size != 0
                            else np.full((data.shape[0],), np.nan)] for index in indices]
             else:
-                wl_data = [[data.squeeze()[index].mean()] for index in indices]
+                wl_data = [[data.flatten()[index].mean()] for index in indices]
         else:
             if OPTIONS.data.binning is None:
                 wl_data = [data[:, index] if index.size != 0
