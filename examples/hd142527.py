@@ -210,7 +210,7 @@ components = basic_components.assemble_components(
         OPTIONS.model.shared_params)
 rchi_sq = fitting.compute_observable_chi_sq(
         *fitting.compute_observables(components), reduced=True)
-print(f"rchi_sq: {rchi_sq}")
+print(f"rchi_sq: {rchi_sq:.2f}")
 
 
 if __name__ == "__main__":
@@ -227,7 +227,7 @@ if __name__ == "__main__":
             components_and_params, shared_params)
     rchi_sq = fitting.compute_observable_chi_sq(
             *fitting.compute_observables(components), reduced=True)
-    print(f"rchi_sq: {rchi_sq}")
+    print(f"rchi_sq: {rchi_sq:.2f}")
 
     analysis.save_fits(
         components, component_labels,
