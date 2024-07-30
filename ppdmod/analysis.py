@@ -122,8 +122,7 @@ def restore_from_fits(path: Path) -> Tuple[List[str], List[Component], Optional[
             component = get_component_by_name(header["COMP"])(**dict(zip(param_names, params)))
             components.append(component)
 
-    # # TODO: Add here the other samplers and emcee
-    # sampler = DynamicNestedSampler.restore(path / "sampler.save")
-    sampler = None
+    # TODO: Add here the other samplers and emcee
+    sampler = DynamicNestedSampler.restore(path / "sampler.save")
 
     return component_labels, components, sampler

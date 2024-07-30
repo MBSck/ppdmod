@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from functools import partial
 from itertools import chain
 from typing import List
 from pathlib import Path
@@ -15,7 +16,8 @@ import numpy as np
 
 from ppdmod import analysis
 from ppdmod import basic_components
-from ppdmod import fitting
+from ppdmod.fitting import run_fit, get_best_fit, compute_observables, \
+  compute_observable_chi_sq, set_params_from_theta, transform_uniform_prior
 from ppdmod import utils
 from ppdmod.data import set_data, get_all_wavelengths
 from ppdmod.parameter import Parameter
@@ -23,10 +25,9 @@ from ppdmod.plot import plot_corner, plot_chains
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 
-
-def ptform(theta: List[float]) -> np.ndarray:
-    """Transform that constrains the first two parameters to 1 for dynesty."""
-    params = fitting.transform_uniform_prior(theta)
+def ptform_radii(theta: List[float]) -> np.ndarray:
+    """Transform that constrains the radii to be smaller than the next one."""
+    params = transform_uniform_prior(theta)
     indices = list(map(LABELS.index, (filter(lambda x: "rin" in x or "rout" in x, LABELS))))
     for count, index in enumerate(indices):
         if count == len(indices) - 1:
@@ -194,6 +195,8 @@ LABELS = list(chain.from_iterable([star_labels, *ring_labels][:len(OPTIONS.model
 LABELS += shared_param_labels
 UNITS = list(chain.from_iterable([star_units, *ring_units][:len(OPTIONS.model.components_and_params)]))
 UNITS += shared_param_units
+np.save("labels.npy", LABELS)
+breakpoint()
 component_labels = ["Star", "Inner Ring", "Outer Ring", "Last Ring"]
 component_labels = component_labels[:len(OPTIONS.model.components_and_params)]
 
@@ -208,25 +211,23 @@ result_dir.mkdir(parents=True, exist_ok=True)
 components = basic_components.assemble_components(
         OPTIONS.model.components_and_params,
         OPTIONS.model.shared_params)
-rchi_sq = fitting.compute_observable_chi_sq(
-        *fitting.compute_observables(components), reduced=True)
+rchi_sq = compute_observable_chi_sq(
+        *compute_observables(components), reduced=True)
 print(f"rchi_sq: {rchi_sq:.2f}")
 
 
 if __name__ == "__main__":
-    ncores, fit_params = 50, {"nlive_init": 2000, "ptform": ptform}
-    sampler = fitting.run_fit(**fit_params, ncores=ncores, method="dynamic",
+    ncores = 50
+    fit_params = {"nlive_init": 2000, "ptform": ptform_radii}
+    sampler = run_fit(**fit_params, ncores=ncores, method="dynamic",
                               save_dir=result_dir, debug=False)
 
-    # TODO: Check if the parameters are the same as the ones from dynesty
-    theta, uncertainties = fitting.get_best_fit(
-            sampler, **fit_params, method="quantile")
-
-    components_and_params, shared_params = fitting.set_params_from_theta(theta)
+    theta, uncertainties = get_best_fit(sampler, **fit_params)
+    components_and_params, shared_params = set_params_from_theta(theta)
     components = basic_components.assemble_components(
             components_and_params, shared_params)
-    rchi_sq = fitting.compute_observable_chi_sq(
-            *fitting.compute_observables(components), reduced=True)
+    rchi_sq = compute_observable_chi_sq(
+            *compute_observables(components), reduced=True)
     print(f"rchi_sq: {rchi_sq:.2f}")
 
     analysis.save_fits(

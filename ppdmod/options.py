@@ -189,7 +189,7 @@ plot = SimpleNamespace(dim=4096, dpi=300, color=color,
 weights = SimpleNamespace(flux=1, t3=1, vis=1)
 fit = SimpleNamespace(weights=weights,
                       data=["flux", "vis", "t3"],
-                      method="emcee",
+                      method="dynesty",
                       wavelengths=None,
                       quantiles=[16, 50, 84])
 

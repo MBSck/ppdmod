@@ -3,6 +3,7 @@ from typing import Optional, List, Dict, Tuple, Union
 from pathlib import Path
 
 import astropy.units as u
+import dynesty.utils as dyutils
 import emcee
 import numpy as np
 from dynesty import DynamicNestedSampler, NestedSampler
@@ -272,6 +273,7 @@ def transform_uniform_prior(theta: List[float]) -> float:
     return priors[:, 0] + (priors[:, 1] - priors[:, 0])*theta
 
 
+
 def lnprior(components_and_params: List[List[Dict]],
             shared_params: Optional[Dict[str, float]] = None) -> float:
     """Checks if the priors are in bounds.
@@ -487,9 +489,18 @@ def get_best_fit(
         elif method == "maximum":
             params = samples[np.argmax(probability)]
         return params, uncertainties
-    else:
-        if method == "quantile":
-            samples = sampler.results.samples
-            quantiles = np.percentile(samples, OPTIONS.fit.quantiles, axis=0)
-            uncertainties = np.diff(quantiles, axis=0).T
-        return quantiles[1], uncertainties
+
+    results = sampler.results
+    if method == "quantile":
+      samples = results.samples
+      weights = results.importance_weights()
+
+      quantiles, uncertainties = [], []
+      for i in range(samples.shape[1]):
+          quantile = dyutils.quantile(
+              samples[:, i], np.array(OPTIONS.fit.quantiles) / 100,
+              weights=weights)
+          quantiles.append(quantile[1])
+          uncertainties.append(np.diff(quantile))
+
+    return quantiles[1], uncertainties
