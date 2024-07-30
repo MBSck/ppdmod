@@ -488,19 +488,17 @@ def get_best_fit(
             params, uncertainties = map(np.array, (params, uncertainties))
         elif method == "maximum":
             params = samples[np.argmax(probability)]
-        return params, uncertainties
+    else:
+        results = sampler.results
+        if method == "quantile":
+            samples = results.samples
+            weights = results.importance_weights()
 
-    results = sampler.results
-    if method == "quantile":
-      samples = results.samples
-      weights = results.importance_weights()
+            for i in range(samples.shape[1]):
+                quantiles = dyutils.quantile(
+                    samples[:, i], np.array(OPTIONS.fit.quantiles) / 100,
+                    weights=weights)
+                params.append(quantiles[1])
+                uncertainties.append(np.diff(quantiles))
 
-      params, uncertainties = [], []
-      for i in range(samples.shape[1]):
-          quantiles = dyutils.quantile(
-              samples[:, i], np.array(OPTIONS.fit.quantiles) / 100,
-              weights=weights)
-          params.append(quantiles)
-          uncertainties.append(np.diff(quantiles))
-
-    return quantiles, uncertainties
+    return params, uncertainties
