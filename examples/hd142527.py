@@ -14,7 +14,7 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 import astropy.units as u
 import numpy as np
 
-from ppdmod import analysis
+from ppdmod.analysis import save_fits
 from ppdmod import basic_components
 from ppdmod.fitting import run_fit, get_best_fit, compute_observables, \
   compute_observable_chi_sq, set_params_from_theta, transform_uniform_prior
@@ -230,7 +230,7 @@ if __name__ == "__main__":
             *compute_observables(components), reduced=True)
     print(f"rchi_sq: {rchi_sq:.2f}")
 
-    analysis.save_fits(
+    save_fits(
         components, component_labels,
         fit_hyperparameters=fit_params, ncores=ncores,
         save_dir=result_dir / "model.fits",
