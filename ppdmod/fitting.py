@@ -495,12 +495,12 @@ def get_best_fit(
       samples = results.samples
       weights = results.importance_weights()
 
-      quantiles, uncertainties = [], []
+      params, uncertainties = [], []
       for i in range(samples.shape[1]):
-          quantile = dyutils.quantile(
+          quantiles = dyutils.quantile(
               samples[:, i], np.array(OPTIONS.fit.quantiles) / 100,
               weights=weights)
-          quantiles.append(quantile[1])
-          uncertainties.append(np.diff(quantile))
+          params.append(quantiles)
+          uncertainties.append(np.diff(quantiles))
 
-    return quantiles[1], uncertainties
+    return quantiles, uncertainties
