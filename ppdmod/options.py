@@ -191,7 +191,7 @@ fit = SimpleNamespace(weights=weights,
                       data=["flux", "vis", "t3"],
                       method="dynesty",
                       wavelengths=None,
-                      quantiles=[16, 50, 84])
+                      quantiles=[2.5, 50, 97.5])
 
 # NOTE: All options
 OPTIONS = SimpleNamespace(data=data, model=model,

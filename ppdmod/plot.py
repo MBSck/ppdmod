@@ -20,7 +20,7 @@ from dynesty import plotting as dyplot
 from matplotlib.gridspec import GridSpec
 
 from .component import Component
-from .fitting import compute_observables
+from .fitting import compute_observables, get_best_fit
 from .options import OPTIONS, get_colormap
 from .utils import compute_effective_baselines, restrict_phase, \
         set_legend_color, set_axes_color, angular_to_distance, distance_to_angular
@@ -62,7 +62,6 @@ def plot_component_mosaic(components: List[Component], dim: int,
     plt.close()
 
 
-# TODO: Make this function work properly again and also more concise.
 def plot_components(components: List[Component], dim: int,
                     pixel_size: u.mas, wavelength: u.um,
                     norm: Optional[float] = 0.5,
@@ -145,8 +144,8 @@ def format_labels(labels: List[str], units: Optional[List[str]] = None) -> List[
                    "q": {"letter": "q", "indices": []},
                    "c": {"letter": "c", "indices": []},
                    "s": {"letter": "s", "indices": []},
-                   "logsigma0": {"letter": r"\Sigma", "indices": [r"\mathrm{in}", "0"]},
-                   "sigma0": {"letter": r"\Sigma", "indices": [r"\mathrm{in}", "0"]},
+                   "logsigma0": {"letter": r"\Sigma", "indices": ["0"]},
+                   "sigma0": {"letter": r"\Sigma", "indices": ["0"]},
                    "cont_weight": {"letter": "w", "indices": [r"\mathrm{cont}"]},
                    "pa": {"letter": r"\theta", "indices": []},
                    "inc": {"letter": r"\cos\left(i\right)", "indices": []},
@@ -174,15 +173,40 @@ def format_labels(labels: List[str], units: Optional[List[str]] = None) -> List[
             formatted_labels.append(label)
 
     if units is not None:
-        formatted_labels = [f"{label} ({str(unit).strip()})" if str(unit)
-            else label for label, unit in zip(formatted_labels, units)]
+        reformatted_units = []
+        for unit in units:
+            if unit == u.g/u.cm**2:
+                unit = r"\frac{g}{cm^2}"
+            elif unit == u.deg:
+                unit = r"^{\circ}"
+            reformatted_units.append(unit)
+
+        formatted_labels = [rf"{label} $\left(\mathrm{{{str(unit).strip()}}}\right)$" if str(unit)
+            else label for label, unit in zip(formatted_labels, reformatted_units)]
     return formatted_labels
+
+
+def needs_sci_notation(ax):
+    x_min, x_max = ax.get_xlim()
+    y_min, y_max = ax.get_ylim()
+    return (abs(x_min) <= 1e-3 or abs(x_max) <= 1e-3 or
+            abs(y_min) <= 1e-3 or abs(y_max) <= 1e-3)
+
+
+def get_exponent(num):
+    if num == 0:
+        raise ValueError("Number must be non-zero")
+
+    exponent_10 = np.floor(np.log10(abs(num)))
+    normalized_num = num / (10 ** exponent_10)
+    return np.floor(np.log10(normalized_num) - np.log10(10 ** exponent_10)).astype(int)
 
 
 def plot_corner(sampler: np.ndarray,
                 labels: List[str],
                 units: Optional[List[str]] = None,
                 discard: Optional[int] = 0,
+                fontsize: Optional[int] = 12,
                 savefig: Optional[Path] = None,
                 **kwargs) -> None:
     """Plots the corner of the posterior spread.
@@ -195,6 +219,8 @@ def plot_corner(sampler: np.ndarray,
         The parameter labels.
     units : list of str, optional
     discard : int, optional
+    fontsize : int, optional
+        The fontsize. The default is 12.
     savefig : pathlib.Path, optional
         The save path. The default is None.
     """
@@ -202,22 +228,44 @@ def plot_corner(sampler: np.ndarray,
     quantiles = [x / 100 for x in OPTIONS.fit.quantiles]
     if OPTIONS.fit.method == "emcee":
         samples = sampler.get_chain(discard=discard, flat=True)
-        corner.corner(samples, show_titles=True,
-                      labels=labels, plot_datapoints=True,
-                      quantiles=quantiles, title_kwargs={"fontsize": 12})
+        _, axarr = corner.corner(
+            samples, show_titles=True,
+            labels=labels, plot_datapoints=True,
+            quantiles=quantiles, title_kwargs={"fontsize": fontsize})
     else:
         results = sampler.results
-        dyplot.cornerplot(results, color='blue',
-                          truths=np.zeros(len(labels)),
-                          labels=labels, truth_color='black',
-                          show_titles=True, max_n_ticks=3,
-                          title_quantiles=quantiles,
-                          quantiles=quantiles)
+        _, axarr = dyplot.cornerplot(
+            results, color="blue",
+            truths=np.zeros(len(labels)),
+            labels=labels, truth_color="black",
+            show_titles=True, max_n_ticks=3,
+            title_quantiles=quantiles,
+            quantiles=quantiles)
+
+    params, uncertainties = get_best_fit(sampler)
+    for index, row in enumerate(axarr):
+        for ax in row:
+            if ax is not None:
+                if needs_sci_notation(ax):
+                    if "Sigma" in ax.get_xlabel():
+                        ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+                        ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0))
+
+                    if "Sigma" in ax.get_ylabel():
+                        ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
+                        ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+                        ax.yaxis.get_offset_text().set_position((-0.2, 0))
+
+                title = ax.get_title()
+                if title and np.abs(params[index]) < 1e-3:
+                    exponent = get_exponent(params[index])
+                    factor = 10 ** exponent
+                    formatted_title = rf"${params[index] * factor:.1f}_{{-{uncertainties[index][0] * factor:.2f}}}" \
+                        rf"^{{+{uncertainties[index][1] * factor:.2f}}}\,1\mathrm{{e}}-{exponent}$"
+                    ax.set_title(f"{labels[index]} = {formatted_title}", fontsize=fontsize-2)
 
     if savefig is not None:
         plt.savefig(savefig, format="pdf")
-    else:
-        plt.show()
     plt.close()
 
 
@@ -853,8 +901,8 @@ def plot_sed(wavelength_range: u.um,
         if scaling is None:
             readout_flux = readout_flux
         elif scaling == "nu":
-            readout_flux = (readout_flux * u.Jy).to(u.erg/u.s/u.cm**2/u.Hz)
-            readout_flux = ((readout_flux * u.Jy) * (const.c/((readout_wavelength*u.um).to(u.m))).to(u.Hz)).value
+            readout_flux = (readout_flux * u.Jy).to(u.W/u.m**2/u.Hz)
+            readout_flux = (readout_flux * (const.c/((readout_wavelength*u.um).to(u.m))).to(u.Hz)).value
 
         readout_err = readout_err_percentage * readout_flux
         lower_err, upper_err = readout_flux - readout_err, readout_flux + readout_err
@@ -881,9 +929,9 @@ def plot_sed(wavelength_range: u.um,
         if scaling is None:
             flux = flux
         elif scaling == "nu":
-            flux = (flux * u.Jy).to(u.erg/u.s/u.cm**2/u.Hz)
+            flux = (flux * u.Jy).to(u.W/u.m**2/u.Hz)
             flux = (flux * (const.c/(wavelength.to(u.m))).to(u.Hz)).value
-            flux_label = r"$\nu F_{\nu}$ (erg s$^{-1}$ cm$^{-2}$)"
+            flux_label = r"$\nu F_{\nu}$ (W m$^{-2}$)"
 
     if not no_model:
         ax.plot(wavelength, flux, label="Model", color="black")
@@ -892,10 +940,10 @@ def plot_sed(wavelength_range: u.um,
     if fig is not None:
         ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
         ax.set_ylabel(flux_label)
-        ax.legend(loc="upper left")
+        ax.legend()
 
         max_value = np.concatenate(values).max()
-        ax.set_ylim([0, max_value + 0.1*max_value])
+        ax.set_ylim([0, max_value + 0.1 * max_value])
 
         plt.savefig(save_dir / f"sed_scaling_{scaling}.pdf", format="pdf")
         plt.close()
@@ -1044,7 +1092,7 @@ def plot_intermediate_products(dim: int, wavelength: Optional[u.Quantity[u.um]],
         plot_product(wavelengths, flux,
                      r"$\lambda$ ($\mathrm{\mu}$m)",
                      r"$F_{\nu}$ (Jy)",
-                     ax=ax, label=label)
+                     scale="log", ax=ax, label=label)
         fluxes.append(flux)
 
         if component.shortname in ["Star", "Point"]:
@@ -1068,6 +1116,8 @@ def plot_intermediate_products(dim: int, wavelength: Optional[u.Quantity[u.um]],
 
     total_flux = sum(fluxes)
     ax.plot(wavelengths, total_flux, label="Total")
+    ax.set_yscale("log")
+    ax.set_ylim([1e-1, None])
     ax.legend()
     plt.savefig(save_dir / "fluxes.pdf", format="pdf")
     plt.close()
@@ -1101,16 +1151,16 @@ def plot_intermediate_products(dim: int, wavelength: Optional[u.Quantity[u.um]],
     emissivities = np.hstack(emissivities)
     brightnesses = u.Quantity(list(chain.from_iterable(
         zip_longest(brightnesses, fill_zeros * u.erg / u.cm**2 / u.s / u.Hz / u.sr)))[:-1])
-    brightnesses = np.hstack(brightnesses)
+    brightnesses = np.hstack(brightnesses).to(u.W / u.m**2 / u.Hz / u.sr)
 
     temperatures = components[-1].compute_temperature(radii)
     plot_product(radii.value, temperatures.value, "$R$ (au)", "$T$ (K)",
-                 save_path=save_dir / "temperatures.pdf")
+                 save_path=save_dir / "temperature.pdf")
     plot_product(radii.value, surface_densities.value,
                  "$R$ (au)", r"$\Sigma$ (g cm$^{-2}$)",
-                 save_path=save_dir / "surface_densities.pdf", scale="sci")
+                 save_path=save_dir / "surface_density.pdf", scale="sci")
     plot_product(radii.value, optical_depths.value,
-                 "$R$ (au)", r"$\log_{10}\left(\tau_{\nu}\right)$",
+                 "$R$ (au)", r"$\tau_{\nu}$",
                  save_path=save_dir / "optical_depths.pdf",
                  scale="log", label=wavelength_str)
     plot_product(radii.value, emissivities.value,
@@ -1118,6 +1168,6 @@ def plot_intermediate_products(dim: int, wavelength: Optional[u.Quantity[u.um]],
                  save_path=save_dir / "emissivities.pdf",
                  label=wavelength_str)
     plot_product(radii.value, brightnesses.value,
-                 "$R$ (au)", r"$I_{\nu}$ (erg s$^{-1}$ cm$^{-2}$ Hz$^{-1}$ sr$^{-1}$)",
+                 "$R$ (au)", r"$I_{\nu}$ (W m$^{-2}$ Hz$^{-1}$ sr$^{-1}$)",
                  save_path=save_dir / "brightnesses.pdf",
                  scale="log", label=wavelength_str)
