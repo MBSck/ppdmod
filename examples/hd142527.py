@@ -231,8 +231,3 @@ if __name__ == "__main__":
         fit_hyperparameters=fit_params, ncores=ncores,
         save_dir=result_dir / "model.fits",
         object_name="HD142527")
-
-    plot_corner(sampler, LABELS, UNITS, **fit_params,
-                savefig=result_dir / "corner.pdf")
-    plot_chains(sampler, LABELS, UNITS, **fit_params,
-                savefig=result_dir / "chains.pdf")

@@ -9,12 +9,14 @@ from dynesty import NestedSampler, DynamicNestedSampler
 
 from .basic_components import get_component_by_name
 from .component import Component
+from .fitting import compute_observables, compute_observable_chi_sq
 from .options import OPTIONS, STANDARD_PARAMETERS
 from .parameter import Parameter
 
 
 # TODO: Include showing dynamic fitting
 KEYWORD_DESCRIPTIONS = {
+    "chisqr": "The reduced chi square of the fit",
     "data": "The data sets used for fitting",
     "date": "Creation date",
     "discard": "Chain discarded until element for emcee",
@@ -47,12 +49,13 @@ def save_fits(components: List[Component],
     header = fits.Header()
     header["OBJECT"] = (object_name, KEYWORD_DESCRIPTIONS["object"])
     header["FITMETH"] = (OPTIONS.fit.method, KEYWORD_DESCRIPTIONS["fitmeth"])
+
+    rchi_sq = compute_observable_chi_sq(
+            *compute_observables(components), reduced=True)
+    header["CHISQR"] = (np.round(rchi_sq, 2), KEYWORD_DESCRIPTIONS["chisqr"])
     # header["QUANTILES"[:8]] = (OPTIONS.fit.quantiles, KEYWORD_DESCRIPTIONS["quantiles"])
     # header["WAVELENGTH"[:8]] = (OPTIONS.fit.wavelengths, KEYWORD_DESCRIPTIONS["wavelengths"])
 
-    # TODO: Add here the chi square values as well?
-    # TODO: And the flux ratios as well? There should be as much info as possible?
-    
     for key in OPTIONS.fit.data:
         key = "vis" if key == "vis2" else key
         description = f"The weight for the {key.upper()} data set"
