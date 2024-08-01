@@ -152,7 +152,7 @@ def test_get_indices(wavelengths: u.um,
                      wavelength_solutions: u.um) -> None:
     """Tests the get_closest_indices function."""
     index = utils.get_indices(wavelengths[0], array=wavelength_solutions[0],
-                              window=OPTIONS.data.binning)
+                              window=OPTIONS.data.binning.unknown)
     assert index[0].size >= 1
 
     for window in [None, 0.1]:

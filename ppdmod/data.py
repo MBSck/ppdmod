@@ -7,7 +7,7 @@ import astropy.units as u
 import numpy as np
 from astropy.io import fits
 
-from .utils import get_indices
+from .utils import get_indices, get_band
 from .options import OPTIONS
 
 
@@ -25,6 +25,7 @@ class ReadoutFits:
         """The class's constructor."""
         self.fits_file = Path(fits_file)
         self.wavelength_range = wavelength_range
+        self.band = "unknown"
         self.read_file()
 
     def read_file(self) -> None:
@@ -47,13 +48,14 @@ class ReadoutFits:
             wl_index = 1 if instrument == "gravity" else None
             self.wavelength = (hdul["oi_wavelength", sci_index]
                                .data["eff_wave"]*u.m).to(u.um)[wl_index:]
-            
+            self.band = get_band(self.wavelength)
+
             indices = slice(None)
             if self.wavelength_range is not None:
                 indices = (self.wavelength_range[0] < self.wavelength) \
                     & (self.wavelength_range[1] > self.wavelength)
                 self.wavelength = self.wavelength[indices]
-                
+
             self.flux = self.read_into_namespace(
                     hdul, "flux", sci_index, wl_index, indices)
             self.t3 = self.read_into_namespace(
@@ -126,8 +128,9 @@ class ReadoutFits:
         numpy.ndarray
             The data for the given wavelengths.
         """
-        indices = get_indices(wavelength, array=self.wavelength,
-                              window=OPTIONS.data.binning)
+        window = getattr(OPTIONS.data.binning, self.band)
+        indices = get_indices(
+            wavelength, array=self.wavelength, window=window)
 
         data = getattr(getattr(self, key), subkey)
         if all(index.size == 0 for index in indices):
@@ -135,6 +138,7 @@ class ReadoutFits:
                 return np.full((wavelength.size, 1), np.nan)
             return np.full((wavelength.size, data.shape[0]), np.nan)
 
+        # TODO: Fix the no binning case again
         if key == "flux":
             if OPTIONS.data.binning is None:
                 wl_data = [[data.flatten()[index] if index.size != 0
@@ -147,6 +151,7 @@ class ReadoutFits:
                            else np.full((data.shape[0],), np.nan) for index in indices]
             else:
                 wl_data = [data[:, index].mean(-1) for index in indices]
+
         return np.array(wl_data).astype(OPTIONS.data.dtype.real)
 
 

@@ -45,8 +45,9 @@ class Parameter:
             if self.interpolate:
                 value = np.interp(wavelength, self.wavelength*u.um, self.value)
             else:
-                indices = get_indices(wavelength, array=self.wavelength,
-                                      window=OPTIONS.data.binning)
+                window = getattr(OPTIONS.data.binning, get_band(self.wavelength))
+                indices = get_indices(
+                    wavelength, array=self.wavelength, window=window)
 
                 value = [self.value[index].mean() for index in indices]
         return u.Quantity(value, unit=self.unit, dtype=self.dtype)

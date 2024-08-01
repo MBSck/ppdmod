@@ -16,6 +16,22 @@ from scipy.special import j1
 from .options import OPTIONS
 
 
+def get_band(wavelength: u.um) -> str:
+    """Gets the band of the (.fits)-file."""
+    wavelength = wavelength.value if isinstance(wavelength, u.Quantity) \
+        else wavelength
+    wl_min, wl_max = wavelength.min(), wavelength.max()
+    if wl_min > 1.5 and wl_max < 1.9:
+        return "hband"
+    if wl_min > 2.1 and wl_max < 2.4:
+        return "kband"
+    if wl_min > 2.5 and wl_max < 6:
+        return "lmband"
+    if wl_min > 7.5 and wl_max < 15:
+        return "nband"
+    return "unknown"
+
+
 def rebin_and_interpolate1D(
         interpolation_points: np.ndarray, points: np.ndarray,
         values: np.ndarray, factor: int) -> np.ndarray:
@@ -92,7 +108,7 @@ def get_indices(values, array: np.ndarray,
         else:
             index = np.where(array == value)[0]
 
-        indices.append(index.astype(int).squeeze())
+        indices.append(index.astype(int).flatten())
     return indices
 
 
