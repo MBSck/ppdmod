@@ -72,13 +72,20 @@ kappa_abs.value, kappa_abs.wavelength = opacity, wl_opacity
 kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
 kappa_cont.value, kappa_cont.wavelength = cont_opacity, wl_cont
 
+pa = Parameter(**STANDARD_PARAMETERS.pa)
+inc = Parameter(**STANDARD_PARAMETERS.inc)
+
+pa.value = 15.44
+inc.value = 0.915
+pa.free = inc.free = False
+
 dim, distance, eff_temp = 32, 158.51, 6500
 eff_radius = utils.compute_stellar_radius(10**1.35, eff_temp).value
 OPTIONS.model.constant_params = {
     "dim": dim, "dist": distance,
     "f": star_flux, "kappa_abs": kappa_abs,
     "eff_temp": eff_temp, "eff_radius": eff_radius,
-    "kappa_cont": kappa_cont}
+    "kappa_cont": kappa_cont, "pa": pa, "inc": inc}
 
 x = Parameter(**STANDARD_PARAMETERS.x)
 y = Parameter(**STANDARD_PARAMETERS.y)
@@ -164,16 +171,8 @@ cont_weight.set(min=0, max=1)
 
 three = {"rin": rin, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
 
-pa = Parameter(**STANDARD_PARAMETERS.pa)
-inc = Parameter(**STANDARD_PARAMETERS.inc)
-
-pa.value = 163
-inc.value = 0.5
-
-pa.set(min=0, max=180)
-inc.set(min=0.3, max=0.95)
-
-OPTIONS.model.shared_params = {"pa": pa, "inc": inc}
+# OPTIONS.model.shared_params = {"pa": pa, "inc": inc}
+OPTIONS.model.shared_params = {}
 shared_param_labels = [f"{label}-sh" for label in OPTIONS.model.shared_params]
 shared_param_units = [value.unit for value in OPTIONS.model.shared_params.values()]
 
@@ -217,7 +216,7 @@ if __name__ == "__main__":
     ncores = 50
     fit_params = {"nlive_init": 2000, "ptform": ptform_radii}
     sampler = run_fit(**fit_params, ncores=ncores, method="dynamic",
-                              save_dir=result_dir, debug=False)
+                              save_dir=result_dir, debug=True)
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
     components_and_params, shared_params = set_params_from_theta(theta)
