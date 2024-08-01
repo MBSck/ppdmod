@@ -235,8 +235,7 @@ class Ring(Component):
         if OPTIONS.model.gridtype == "linear":
             radius = np.linspace(rin, rout, self.dim())
         else:
-            log_rin = np.log10(rin) if rin > 0 else 0.0
-            radius = np.logspace(log_rin, np.log10(rout), self.dim())
+            radius = np.logspace(np.log10(rin), np.log10(rout), self.dim())
         return radius.astype(OPTIONS.data.dtype.real) * self.rin.unit
 
     def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,

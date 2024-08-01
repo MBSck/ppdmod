@@ -53,19 +53,24 @@ def set_params_from_theta(
     shared_params = OPTIONS.model.shared_params
 
     new_shared_params = {}
-    if shared_params is not None:
+    if shared_params not in [None, {}]:
         for key, param in zip(shared_params.keys(),
                               theta[-len(shared_params):]):
             new_shared_params[key] = param
 
-    lower, upper = None, None
-    new_components_and_params, lower = [], None
-    for (component, params) in components_and_params:
-        if component == components_and_params[-1][0]:
-            upper = -len(shared_params) if shared_params is not None else None
+    lower, upper = None, 0
+    new_components_and_params = []
+    for index, (component, params) in enumerate(components_and_params):
+        upper += len(params)
+
+        if index == (len(components_and_params) - 1):
+            upper = -len(shared_params) if shared_params not in [None, {}] else upper
+
         new_components_and_params.append(
             [component, dict(zip(params.keys(), theta[lower:upper]))])
+
         lower = lower + len(params) if lower is not None else len(params)
+
     return new_components_and_params, new_shared_params
 
 
