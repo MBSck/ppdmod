@@ -20,7 +20,6 @@ from ppdmod.fitting import run_fit, get_best_fit, compute_observables, \
 from ppdmod import utils
 from ppdmod.data import set_data, get_all_wavelengths
 from ppdmod.parameter import Parameter
-from ppdmod.plot import plot_corner, plot_chains
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 
@@ -54,7 +53,7 @@ wl_flux, flux = utils.load_data(DATA_DIR / "flux" / "hd142527" / "HD142527_stell
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
 star_flux.wavelength, star_flux.value = wl_flux, flux
 
-weights = np.array([73.2, 8.6, 0.6, 14.2, 2.4, 1.0])/100
+weights = np.array([73.2, 8.6, 0.6, 14.2, 2.4, 1.0]) / 100
 names = ["pyroxene", "forsterite", "enstatite", "silica"]
 # fmaxs = [1.0, 1.0, 1.0, None]
 sizes = [[1.5], [0.1], [0.1, 1.5], [0.1, 1.5]]
@@ -103,8 +102,8 @@ cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass f
 rin.unit = rout.unit = u.au
 rout.free = True
 
-rin.set(min=0, max=10)
-rout.set(min=0, max=10)
+rin.set(min=0, max=30)
+rout.set(min=0, max=30)
 rout.free = True
 p.set(min=-10, max=10)
 sigma0.set(min=0, max=1e-2)
@@ -129,11 +128,11 @@ cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass f
 rin.unit = rout.unit = u.au
 rout.free = True
 
-rin.set(min=0, max=10)
-rout.set(min=0, max=10)
+rin.set(min=0, max=30)
+rout.set(min=0, max=30)
 rout.free = True
 p.set(min=-10, max=10)
-sigma0.set(min=0, max=1e-1)
+sigma0.set(min=0, max=1)
 cont_weight.set(min=0, max=1)
 
 two = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
@@ -154,8 +153,8 @@ cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass f
 rin.unit = rout.unit = u.au
 rout.free = True
 
-rin.set(min=0, max=10)
-rout.set(min=0, max=10)
+rin.set(min=0, max=30)
+rout.set(min=0, max=30)
 rout.free = True
 p.set(min=-10, max=10)
 sigma0.set(min=0, max=1e-1)
