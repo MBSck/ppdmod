@@ -39,7 +39,9 @@ def ptform_radii(theta: List[float]) -> np.ndarray:
 DATA_DIR = Path("../tests/data")
 wavelengths = {"hband": [1.7]*u.um, "kband": [2.25]*u.um,
                "lband": [3.2]*u.um, "mband": [4.7]*u.um,
-               "nband": [8., 8.5, 9., 9.5, 10., 10.5, 11.3, 11.7, 12.5]*u.um}
+               "nband": np.linspace(8, 13, 35) * u.um,
+               }
+               # "nband": [8., 8.5, 9., 9.5, 10., 10.5, 11.3, 11.7, 12.5]*u.um}
 
 OPTIONS.model.output = "non-normed"
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
@@ -215,7 +217,7 @@ if __name__ == "__main__":
     ncores = 50
     fit_params = {"nlive_init": 2000, "ptform": ptform_radii}
     sampler = run_fit(**fit_params, ncores=ncores, method="dynamic",
-                              save_dir=result_dir, debug=True)
+                              save_dir=result_dir, debug=False)
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
     components_and_params, shared_params = set_params_from_theta(theta)
