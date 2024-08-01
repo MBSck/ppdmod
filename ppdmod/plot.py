@@ -370,6 +370,7 @@ def plot_datapoints(
         norm: Optional[np.ndarray] = None,
         wavelength_range: Optional[List[float]] = None,
         plot_nan: Optional[bool] = False,
+        rotation_ticks: Optional[int] = 0,
         colormap: Optional[str] = OPTIONS.plot.color.colormap) -> None:
     """Plots the deviation of a model from real data of an object for
     total flux, visibilities and closure phases.
@@ -495,7 +496,8 @@ def plot_datapoints(
     if "flux" in data_to_plot:
         axarr["flux"][0].set_xticks(wavelengths.value)
         axarr["flux"][1].set_xticks(wavelengths.value)
-        axarr["flux"][1].set_xticklabels(wavelengths.value, rotation=0)
+        axarr["flux"][1].set_xticklabels(
+            wavelengths.value, rotation=rotation_ticks)
     errorbar_params.color = None
 
 
@@ -506,6 +508,7 @@ def plot_fit(components: Optional[List] = None,
              wavelength_range: Optional[List[float]] = None,
              plot_nan: Optional[bool] = False,
              title: Optional[str] = None,
+             rotation_ticks: Optional[int] = 0,
              savefig: Optional[Path] = None):
     """Plots the deviation of a model from real data of an object for
     total flux, visibilities and closure phases.
@@ -553,7 +556,8 @@ def plot_fit(components: Optional[List] = None,
     plot_datapoints(axarr, wavelengths, components=components,
                     wavelength_range=wavelength_range,
                     norm=norm, data_to_plot=data_to_plot,
-                    plot_nan=plot_nan, colormap=cmap)
+                    plot_nan=plot_nan, colormap=cmap,
+                    rotation_ticks=rotation_ticks)
 
     sm = cm.ScalarMappable(cmap=get_colormap(cmap), norm=norm)
     sm.set_array([])
@@ -674,6 +678,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
                   raxis: Optional[bool] = False,
                   inclination: Optional[float] = None,
                   pos_angle: Optional[float] = None,
+                  rotation_ticks: Optional[int] = 0,
                   savefig: Optional[Path] = None) -> None:
     """Plots an overview over the total data for baselines [Mlambda].
 
@@ -761,7 +766,8 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
 
     if "flux" in data_to_plot:
         axarr["flux"].set_xticks(wavelengths.value)
-        axarr["flux"].set_xticklabels(wavelengths.value, rotation=0)
+        axarr["flux"].set_xticklabels(
+            wavelengths.value, rotation=rotation_ticks)
 
     errorbar_params.color = None
 
@@ -1163,11 +1169,11 @@ def plot_intermediate_products(dim: int, wavelength: Optional[u.Quantity[u.um]],
                  "$R$ (au)", r"$\tau_{\nu}$",
                  save_path=save_dir / "optical_depths.pdf",
                  scale="log", label=wavelength_str)
-    plot_product(radii.value, emissivities.value,
-                 "$R$ (au)", r"$\epsilon_{\nu}$",
-                 save_path=save_dir / "emissivities.pdf",
-                 label=wavelength_str)
-    plot_product(radii.value, brightnesses.value,
-                 "$R$ (au)", r"$I_{\nu}$ (W m$^{-2}$ Hz$^{-1}$ sr$^{-1}$)",
-                 save_path=save_dir / "brightnesses.pdf",
-                 scale="log", label=wavelength_str)
+    # plot_product(radii.value, emissivities.value,
+    #              "$R$ (au)", r"$\epsilon_{\nu}$",
+    #              save_path=save_dir / "emissivities.pdf",
+    #              label=wavelength_str)
+    # plot_product(radii.value, brightnesses.value,
+    #              "$R$ (au)", r"$I_{\nu}$ (W m$^{-2}$ Hz$^{-1}$ sr$^{-1}$)",
+    #              save_path=save_dir / "brightnesses.pdf",
+    #              scale="log", label=wavelength_str)
