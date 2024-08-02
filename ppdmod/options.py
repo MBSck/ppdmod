@@ -176,8 +176,8 @@ model = SimpleNamespace(components_and_params=None,
 
 # NOTE: Plot
 color = SimpleNamespace(background="white",
-                        colormap="tab20", number=100,
-                        list=get_colorlist("tab20", 100))
+                        colormap="plasma", number=100,
+                        list=get_colorlist("plasma", 100))
 errorbar = SimpleNamespace(color=None,
                            markeredgecolor="black",
                            markeredgewidth=0.2,
@@ -185,8 +185,9 @@ errorbar = SimpleNamespace(color=None,
                            ecolor="gray", zorder=2)
 scatter = SimpleNamespace(color="", edgecolor="black",
                           linewidths=0.2, zorder=3)
-plot = SimpleNamespace(dim=4096, dpi=300, color=color,
-                       errorbar=errorbar, scatter=scatter)
+plot = SimpleNamespace(dim=4096, dpi=300,
+                       ticks=[1.7, 3.2, 4.7, 8., 9., 10., 11., 12., 13.],
+                       color=color, errorbar=errorbar, scatter=scatter)
 
 # NOTE: Fitting
 weights = SimpleNamespace(flux=1, t3=1, vis=1)
