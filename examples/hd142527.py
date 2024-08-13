@@ -37,16 +37,16 @@ def ptform_radii(theta: List[float]) -> np.ndarray:
 
 
 DATA_DIR = Path("../tests/data")
-wavelengths = {"hband": [1.7]*u.um, "kband": [2.25]*u.um,
-               "lband": [3.2]*u.um, "mband": [4.7]*u.um,
+wavelengths = {"hband": [1.7] * u.um, "kband": [2.15] * u.um,
+               "lband": [3.2] * u.um, "mband": [4.7] * u.um,
                "nband": np.linspace(8, 13, 35) * u.um,
                }
                # "nband": [8., 8.5, 9., 9.5, 10., 10.5, 11.3, 11.7, 12.5]*u.um}
 
 OPTIONS.model.output = "non-normed"
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
-wavelength = np.concatenate((wavelengths["hband"], wavelengths["lband"],
-                             wavelengths["mband"], wavelengths["nband"]))
+wavelength = np.concatenate((wavelengths["hband"], wavelengths["kband"],
+                             wavelengths["lband"], wavelengths["mband"], wavelengths["nband"]))
 # wavelength = wavelengths["lband"]
 data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis"])
 
