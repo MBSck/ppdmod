@@ -22,13 +22,12 @@ def get_priors() -> np.ndarray:
     priors = []
     for _, params in OPTIONS.model.components_and_params:
         for param in params.values():
-            if param.free:
-                priors.append([param.min, param.max])
+            priors.append([param.min, param.max])
 
     if OPTIONS.model.shared_params is not None:
         for param in OPTIONS.model.shared_params.values():
-            if param.free:
-                priors.append([param.min, param.max])
+            priors.append([param.min, param.max])
+
     return np.array(priors)
 
 
@@ -275,7 +274,7 @@ def compute_observable_chi_sq(
 def transform_uniform_prior(theta: List[float]) -> float:
     """Prior transform for uniform priors."""
     priors = get_priors()
-    return priors[:, 0] + (priors[:, 1] - priors[:, 0])*theta
+    return priors[:, 0] + (priors[:, 1] - priors[:, 0]) * theta
 
 
 

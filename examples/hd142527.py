@@ -38,7 +38,8 @@ def ptform_radii(theta: List[float]) -> np.ndarray:
 
 DATA_DIR = Path("../tests/data")
 wavelengths = {"hband": [1.7] * u.um, "kband": [2.15] * u.um,
-               "lband": [3.2] * u.um, "mband": [4.7] * u.um,
+               "lband": np.linspace(3.3, 3.8, 5) * u.um,
+               "mband": np.linspace(4.6, 4.9, 3) * u.um,
                "nband": np.linspace(8, 13, 35) * u.um,
                }
                # "nband": [8., 8.5, 9., 9.5, 10., 10.5, 11.3, 11.7, 12.5]*u.um}
@@ -85,7 +86,7 @@ OPTIONS.model.constant_params = {
     "dim": dim, "dist": distance,
     "f": star_flux, "kappa_abs": kappa_abs,
     "eff_temp": eff_temp, "eff_radius": eff_radius,
-    "kappa_cont": kappa_cont, "pa": pa, "inc": inc}
+    "kappa_cont": kappa_cont, "pa": pa}
 
 x = Parameter(**STANDARD_PARAMETERS.x)
 y = Parameter(**STANDARD_PARAMETERS.y)
@@ -171,8 +172,7 @@ cont_weight.set(min=0, max=1)
 
 three = {"rin": rin, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
 
-# OPTIONS.model.shared_params = {"pa": pa, "inc": inc}
-OPTIONS.model.shared_params = {}
+OPTIONS.model.shared_params = {"inc": inc}
 shared_param_labels = [f"{label}-sh" for label in OPTIONS.model.shared_params]
 shared_param_units = [value.unit for value in OPTIONS.model.shared_params.values()]
 
