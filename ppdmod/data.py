@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Optional, List, Union, Tuple
+from typing import Optional, List, Union
 from types import SimpleNamespace
 from pathlib import Path
 

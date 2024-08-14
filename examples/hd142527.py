@@ -23,8 +23,18 @@ from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 
-def ptform_radii(theta: List[float]) -> np.ndarray:
-    """Transform that constrains the radii to be smaller than the next one."""
+def ptform_one_disc(theta: List[float]) -> np.ndarray:
+    """Transform that hard constrains the model to one continous disc by
+    setting the outer radius of the first component to the inner of the second."""
+    params = transform_uniform_prior(theta)
+    indices = list(map(LABELS.index, (filter(lambda x: "rin" in x or "rout" in x, LABELS))))
+    params[indices[2]] = params[indices[1]]
+    return params
+
+
+# TODO: Change this into a soft constraint.
+def ptform_radii_sequence(theta: List[float]) -> np.ndarray:
+    """Transform that soft constrains successive radii to be smaller than the one before."""
     params = transform_uniform_prior(theta)
     indices = list(map(LABELS.index, (filter(lambda x: "rin" in x or "rout" in x, LABELS))))
     for count, index in enumerate(indices):
@@ -34,6 +44,12 @@ def ptform_radii(theta: List[float]) -> np.ndarray:
         params[next_index] = params[next_index] if params[index] <= params[next_index] else params[index]
 
     return params
+
+
+def ptform(theta: List[float]) -> np.ndarray:
+    test = ptform_one_disc(theta)
+    breakpoint()
+    return test
 
 
 DATA_DIR = Path("../tests/data")
@@ -214,9 +230,10 @@ print(f"rchi_sq: {rchi_sq:.2f}")
 
 if __name__ == "__main__":
     ncores = 50
-    fit_params = {"nlive_init": 2000, "ptform": ptform_radii}
-    sampler = run_fit(**fit_params, ncores=ncores, method="dynamic",
-                      save_dir=result_dir, debug=False)
+    fit_params = {"nlive_init": 2000, "ptform": ptform}
+    sampler = run_fit(**fit_params, ncores=ncores,
+                      method="dynamic", save_dir=result_dir,
+                      debug=True)
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
     components_and_params, shared_params = set_params_from_theta(theta)
