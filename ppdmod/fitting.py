@@ -279,7 +279,12 @@ def transform_uniform_prior(theta: List[float]) -> float:
 
 def ptform_one_disc(theta: List[float], labels: List[str]) -> np.ndarray:
     """Transform that hard constrains the model to one continous disc by
-    setting the outer radius of the first component to the inner of the second."""
+    setting the outer radius of the first component to the inner of the second.
+
+    NOTES
+    -----
+    Only works with two components.
+    """
     params = transform_uniform_prior(theta)
     indices = list(map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels))))
     params[indices[2]] = params[indices[1]]
@@ -297,7 +302,7 @@ def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray
         current_radius, next_radius = params[index], params[indices[count + 1]]
         if next_radius <= current_radius:
             next_theta, next_priors = theta[indices[count + 1]], priors[indices[count + 1]]
-            updated_radius = current_radius + np.diff(next_priors) * next_theta
+            updated_radius = current_radius + np.diff(next_priors)[0] * next_theta
 
             if updated_radius > next_priors[1]:
                 updated_radius = next_priors[1]
