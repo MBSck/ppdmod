@@ -56,8 +56,8 @@ sizes = [[1.5], [0.1], [0.1, 1.5], [0.1, 1.5]]
 wl_opacity, opacity = utils.get_opacity(
     DATA_DIR, weights, sizes, names, "boekel")
 
-cont_opacity_file = DATA_DIR / "qval" / "Q_amorph_c_rv0.1.dat"
-# cont_opacity_file = DATA_DIR / "qval" / "Q_iron_0.10um_dhs_0.7.dat",
+# cont_opacity_file = DATA_DIR / "qval" / "Q_amorph_c_rv0.1.dat"
+cont_opacity_file = DATA_DIR / "qval" / "Q_iron_0.10um_dhs_0.7.dat",
 wl_cont, cont_opacity = utils.load_data(cont_opacity_file, load_func=utils.qval_to_opacity)
 
 kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
