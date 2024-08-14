@@ -16,7 +16,8 @@ import numpy as np
 from ppdmod.analysis import save_fits
 from ppdmod import basic_components
 from ppdmod.fitting import run_fit, get_best_fit, compute_observables, \
-    compute_observable_chi_sq, set_params_from_theta, ptform_sequential_radii
+    compute_observable_chi_sq, set_params_from_theta, ptform_sequential_radii, \
+    ptform_one_disc
 from ppdmod import utils
 from ppdmod.data import set_data, get_all_wavelengths
 from ppdmod.parameter import Parameter
@@ -24,7 +25,7 @@ from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 
 def ptform(theta: List[float]) -> np.ndarray:
-    return ptform_sequential_radii(theta, LABELS)
+    return ptform_one_disc(theta, LABELS)
 
 
 DATA_DIR = Path("../tests/data")

@@ -285,9 +285,12 @@ def ptform_one_disc(theta: List[float], labels: List[str]) -> np.ndarray:
     -----
     Only works with two components.
     """
-    params = transform_uniform_prior(theta)
+    params, priors = transform_uniform_prior(theta), get_priors()
     indices = list(map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels))))
     params[indices[2]] = params[indices[1]]
+    params[indices[-1]] = params[indices[2]] + np.diff(priors[indices[-1]])[0] * theta[indices[-1]]
+    if params[indices[-2]] > priors[indices[-2]][1]:
+        params[indices[-2]] = priors[indices[-2]][1]
     return params
 
 
