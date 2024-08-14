@@ -16,47 +16,15 @@ import numpy as np
 from ppdmod.analysis import save_fits
 from ppdmod import basic_components
 from ppdmod.fitting import run_fit, get_best_fit, compute_observables, \
-    compute_observable_chi_sq, set_params_from_theta, transform_uniform_prior, \
-    get_priors
+    compute_observable_chi_sq, set_params_from_theta, ptform_sequential_radii
 from ppdmod import utils
 from ppdmod.data import set_data, get_all_wavelengths
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 
-def ptform_one_disc(theta: List[float]) -> np.ndarray:
-    """Transform that hard constrains the model to one continous disc by
-    setting the outer radius of the first component to the inner of the second."""
-    params = transform_uniform_prior(theta)
-    indices = list(map(LABELS.index, (filter(lambda x: "rin" in x or "rout" in x, LABELS))))
-    params[indices[2]] = params[indices[1]]
-    return params
-
-
-def ptform_sequential_radii(theta: List[float]) -> np.ndarray:
-    """Transform that soft constrains successive radii to be smaller than the one before."""
-    params, priors = transform_uniform_prior(theta), get_priors()
-    indices = list(map(LABELS.index, (filter(lambda x: "rin" in x or "rout" in x, LABELS))))
-    for count, index in enumerate(indices):
-        if count == len(indices) - 1:
-            break
-
-        current_radius, next_radius = params[index], params[indices[count + 1]]
-        if next_radius <= current_radius:
-            next_theta, next_priors = theta[indices[count + 1]], priors[indices[count + 1]]
-            updated_radius = current_radius + np.diff(next_priors) * next_theta
-
-            if updated_radius > next_priors[1]:
-                updated_radius = next_priors[1]
-
-            params[indices[count + 1]] = updated_radius
-
-    return params
-
-
 def ptform(theta: List[float]) -> np.ndarray:
-    test = ptform_sequential_radii(theta)
-    return test
+    return ptform_sequential_radii(theta, LABELS)
 
 
 DATA_DIR = Path("../tests/data")
@@ -240,7 +208,7 @@ if __name__ == "__main__":
     fit_params = {"nlive_init": 2000, "ptform": ptform}
     sampler = run_fit(**fit_params, ncores=ncores,
                       method="dynamic", save_dir=result_dir,
-                      debug=True)
+                      debug=False)
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
     components_and_params, shared_params = set_params_from_theta(theta)

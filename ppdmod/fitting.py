@@ -277,6 +277,35 @@ def transform_uniform_prior(theta: List[float]) -> float:
     return priors[:, 0] + (priors[:, 1] - priors[:, 0]) * theta
 
 
+def ptform_one_disc(theta: List[float], labels: List[str]) -> np.ndarray:
+    """Transform that hard constrains the model to one continous disc by
+    setting the outer radius of the first component to the inner of the second."""
+    params = transform_uniform_prior(theta)
+    indices = list(map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels))))
+    params[indices[2]] = params[indices[1]]
+    return params
+
+
+def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray:
+    """Transform that soft constrains successive radii to be smaller than the one before."""
+    params, priors = transform_uniform_prior(theta), get_priors()
+    indices = list(map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels))))
+    for count, index in enumerate(indices):
+        if count == len(indices) - 1:
+            break
+
+        current_radius, next_radius = params[index], params[indices[count + 1]]
+        if next_radius <= current_radius:
+            next_theta, next_priors = theta[indices[count + 1]], priors[indices[count + 1]]
+            updated_radius = current_radius + np.diff(next_priors) * next_theta
+
+            if updated_radius > next_priors[1]:
+                updated_radius = next_priors[1]
+
+            params[indices[count + 1]] = updated_radius
+
+    return params
+
 
 def lnprior(components_and_params: List[List[Dict]],
             shared_params: Optional[Dict[str, float]] = None) -> float:
