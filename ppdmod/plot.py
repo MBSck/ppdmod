@@ -878,23 +878,25 @@ def plot_sed(wavelength_range: u.um,
         If "none" the flux is in Jy.
         The default is "nu".
     """
+    color = OPTIONS.plot.color
     save_dir = Path.cwd() if save_dir is None else save_dir
     wavelength = np.linspace(
         wavelength_range[0], wavelength_range[1], OPTIONS.plot.dim)
 
     if not no_model:
         flux, *_ = compute_observables(components, wavelength=wavelength)
-    colors = OPTIONS.plot.color.list
 
     if ax is None:
-        fig = plt.figure(facecolor=OPTIONS.plot.color.background,
-                         tight_layout=True)
-        ax = plt.axes(facecolor=OPTIONS.plot.color.background)
-        set_axes_color(ax, OPTIONS.plot.color.background)
+        fig = plt.figure(facecolor=color.background, tight_layout=True)
+        ax = plt.axes(facecolor=color.background)
+        set_axes_color(ax, color.background)
     else:
         fig = None
 
     names = [re.findall(r"(\d{4}-\d{2}-\d{2})", readout.fits_file.name)[0] for readout in OPTIONS.data.readouts]
+    cmap = plt.get_cmap(color.colormap)
+    norm = mcolors.LogNorm(vmin=1, vmax=len(set(names)))
+    colors = [cmap(norm(i)) for i in range(1, len(set(names)) + 1)]
     date_to_color = {date: color for date, color in zip(set(names), colors)}
     sorted_readouts = np.array(OPTIONS.data.readouts.copy())[np.argsort(names)].tolist()
 
