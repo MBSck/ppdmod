@@ -80,8 +80,9 @@ class ReadoutFits:
 
         if key == "flux":
             try:
-                return SimpleNamespace(value=data.data["fluxdata"][:, indices],
-                                       err=data.data["fluxerr"][:, indices])
+                return SimpleNamespace(
+                    value=data.data["fluxdata"][:, indices][:, wl_index:],
+                    err=data.data["fluxerr"][:, indices][:, wl_index:])
             except KeyError:
                 return SimpleNamespace(value=np.array([]), err=np.array([]))
         elif key in ["vis", "vis2"]:

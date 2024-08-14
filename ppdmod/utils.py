@@ -23,7 +23,7 @@ def get_band(wavelength: u.um) -> str:
     wl_min, wl_max = wavelength.min(), wavelength.max()
     if wl_min > 1.5 and wl_max < 1.9:
         return "hband"
-    if wl_min > 2.1 and wl_max < 2.4:
+    if wl_min > 1.8 and wl_max < 2.4:
         return "kband"
     if wl_min > 2.5 and wl_max < 6:
         return "lmband"
