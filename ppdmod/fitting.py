@@ -281,16 +281,27 @@ def ptform_one_disc(theta: List[float], labels: List[str]) -> np.ndarray:
     """Transform that hard constrains the model to one continous disc by
     setting the outer radius of the first component to the inner of the second.
 
+    Also makes a smooth continous transition of the surface density profiles.
+
     NOTES
     -----
-    Only works with two components.
+    Only works with two components (as of now - could be extended).
     """
     params, priors = transform_uniform_prior(theta), get_priors()
-    indices = list(map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels))))
-    params[indices[2]] = params[indices[1]]
-    params[indices[-1]] = params[indices[2]] + np.diff(priors[indices[-1]])[0] * theta[indices[-1]]
-    if params[indices[-2]] > priors[indices[-2]][1]:
-        params[indices[-2]] = priors[indices[-2]][1]
+    indices_radii = list(map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels))))
+    params[indices_radii[2]] = params[indices_radii[1]]
+    params[indices_radii[-1]] = params[indices_radii[2]] + np.diff(priors[indices_radii[-1]])[0] * theta[indices_radii[-1]]
+    if params[indices_radii[-2]] > priors[indices_radii[-2]][1]:
+        params[indices_radii[-2]] = priors[indices_radii[-2]][1]
+
+    indices_sigma0 = list(map(labels.index, (filter(lambda x: "sigma0" in x, labels))))
+    indices_p = list(map(labels.index, (filter(lambda x: "p" in x, labels))))
+    r0 = OPTIONS.model.reference_radius.value
+    radius = np.logspace(np.log10(0.5), np.log10(3), 1000)
+    surface_density = params[indices_sigma0[0]] * (radius / r0) ** params[indices_p[0]]
+    sigma0_second_segment = np.interp(r0, radius, surface_density)
+    params[indices_sigma0[1]] = sigma0_second_segment
+
     return params
 
 
