@@ -16,8 +16,7 @@ import numpy as np
 from ppdmod.analysis import save_fits
 from ppdmod import basic_components
 from ppdmod.fitting import run_fit, get_best_fit, compute_observables, \
-    compute_observable_chi_sq, set_params_from_theta, ptform_sequential_radii, \
-    ptform_one_disc
+    compute_observable_chi_sq, set_params_from_theta, ptform_sequential_radii
 from ppdmod import utils
 from ppdmod.data import set_data, get_all_wavelengths
 from ppdmod.parameter import Parameter
@@ -25,7 +24,7 @@ from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 
 def ptform(theta: List[float]) -> np.ndarray:
-    return ptform_one_disc(theta, LABELS)
+    return ptform_sequential_radii(theta, LABELS)
 
 
 DATA_DIR = Path("../tests/data")
@@ -41,7 +40,7 @@ fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
 wavelength = np.concatenate((wavelengths["hband"], wavelengths["kband"],
                              wavelengths["lband"], wavelengths["mband"], wavelengths["nband"]))
 # wavelength = wavelengths["lband"]
-data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis"])
+data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis", "t3"])
 
 all_wavelengths = get_all_wavelengths()
 wl_flux, flux = utils.load_data(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt")
@@ -56,8 +55,8 @@ sizes = [[1.5], [0.1], [0.1, 1.5], [0.1, 1.5]]
 wl_opacity, opacity = utils.get_opacity(
     DATA_DIR, weights, sizes, names, "boekel")
 
-# cont_opacity_file = DATA_DIR / "qval" / "Q_amorph_c_rv0.1.dat"
-cont_opacity_file = DATA_DIR / "qval" / "Q_iron_0.10um_dhs_0.70.dat"
+cont_opacity_file = DATA_DIR / "qval" / "Q_amorph_c_rv0.1.dat"
+# cont_opacity_file = DATA_DIR / "qval" / "Q_iron_0.10um_dhs_0.70.dat"
 wl_cont, cont_opacity = utils.load_data(cont_opacity_file, load_func=utils.qval_to_opacity)
 
 kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
