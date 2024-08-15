@@ -297,10 +297,8 @@ def ptform_one_disc(theta: List[float], labels: List[str]) -> np.ndarray:
     indices_sigma0 = list(map(labels.index, (filter(lambda x: "sigma0" in x, labels))))
     indices_p = list(map(labels.index, (filter(lambda x: "p" in x, labels))))
     r0 = OPTIONS.model.reference_radius.value
-    radius = np.logspace(np.log10(0.5), np.log10(3), 1000)
-    surface_density = params[indices_sigma0[0]] * (radius / r0) ** params[indices_p[0]]
-    sigma0_second_segment = np.interp(r0, radius, surface_density)
-    params[indices_sigma0[1]] = sigma0_second_segment
+    sigma01, p1, p2 = params[indices_sigma0[0]], params[indices_p[0]], params[indices_p[1]]
+    params[indices_sigma0[1]] = sigma01 * (params[indices_radii[1]] / r0) ** (p1 - p2)
 
     return params
 
