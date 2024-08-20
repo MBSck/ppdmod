@@ -18,10 +18,10 @@ from ppdmod import basic_components
 from ppdmod.fitting import run_fit, get_best_fit, compute_observables, \
     compute_observable_chi_sq, set_params_from_theta, ptform_sequential_radii, \
     ptform_one_disc
-from ppdmod import utils
 from ppdmod.data import set_data, get_all_wavelengths
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
+from ppdmod.utils import get_opacity, load_data, qval_to_opacity
 
 
 def ptform(theta: List[float]) -> np.ndarray:
@@ -41,24 +41,17 @@ fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
 wavelength = np.concatenate((wavelengths["hband"], wavelengths["kband"],
                              wavelengths["lband"], wavelengths["mband"], wavelengths["nband"]))
 # wavelength = wavelengths["lband"]
-data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis"])
+data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis", "t3"])
 
 all_wavelengths = get_all_wavelengths()
-wl_flux, flux = utils.load_data(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt")
+wl_flux, flux = load_data(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt")
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
 star_flux.wavelength, star_flux.value = wl_flux, flux
 
-weights = np.array([73.2, 8.6, 0.6, 14.2, 2.4, 1.0]) / 100
-names = ["pyroxene", "forsterite", "enstatite", "silica"]
-# fmaxs = [1.0, 1.0, 1.0, None]
-sizes = [[1.5], [0.1], [0.1, 1.5], [0.1, 1.5]]
-
-wl_opacity, opacity = utils.get_opacity(
-    DATA_DIR, weights, sizes, names, "boekel")
-
-cont_opacity_file = DATA_DIR / "qval" / "Q_amorph_c_rv0.1.dat"
-# cont_opacity_file = DATA_DIR / "qval" / "Q_iron_0.10um_dhs_0.70.dat"
-wl_cont, cont_opacity = utils.load_data(cont_opacity_file, load_func=utils.qval_to_opacity)
+wl_op, silicate_opacity = np.load(DATA_DIR / "opacities" / "hd142527_boekel_qval_silicates.npy")
+cont_opacity_file = DATA_DIR / "opacities" / "qval" / "Q_amorph_c_rv0.1.dat"
+# cont_opacity_file = DATA_DIR / "opacities" / "qval" / "Q_iron_0.10um_dhs_0.70.dat"
+wl_cont, cont_opacity = load_data(cont_opacity_file, load_func=qval_to_opacity)
 
 kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
 kappa_abs.value, kappa_abs.wavelength = opacity, wl_opacity
@@ -73,11 +66,10 @@ inc.value = 0.915
 pa.free = inc.free = False
 
 dim, distance, eff_temp = 32, 158.51, 6500
-eff_radius = utils.compute_stellar_radius(10**1.35, eff_temp).value
 OPTIONS.model.constant_params = {
     "dim": dim, "dist": distance,
     "f": star_flux, "kappa_abs": kappa_abs,
-    "eff_temp": eff_temp, "eff_radius": eff_radius,
+    "eff_temp": eff_temp, "eff_radius": 3.46,
     "kappa_cont": kappa_cont, "pa": pa}
 
 x = Parameter(**STANDARD_PARAMETERS.x)
@@ -209,7 +201,7 @@ if __name__ == "__main__":
     fit_params = {"nlive_init": 2000, "ptform": ptform}
     sampler = run_fit(**fit_params, ncores=ncores,
                       method="dynamic", save_dir=result_dir,
-                      debug=False)
+                      debug=True)
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
     components_and_params, shared_params = set_params_from_theta(theta)
