@@ -25,7 +25,7 @@ from ppdmod.utils import get_opacity, load_data, qval_to_opacity
 
 
 def ptform(theta: List[float]) -> np.ndarray:
-    return ptform_one_disc(theta, LABELS)
+    return ptform_sequential_radii(theta, LABELS)
 
 
 DATA_DIR = Path("../tests/data")
@@ -41,7 +41,7 @@ fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
 wavelength = np.concatenate((wavelengths["hband"], wavelengths["kband"],
                              wavelengths["lband"], wavelengths["mband"], wavelengths["nband"]))
 # wavelength = wavelengths["lband"]
-data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis", "t3"])
+data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis"])
 
 all_wavelengths = get_all_wavelengths()
 wl_flux, flux = load_data(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt")
