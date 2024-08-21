@@ -21,7 +21,7 @@ from ppdmod.fitting import run_fit, get_best_fit, compute_observables, \
 from ppdmod.data import set_data, get_all_wavelengths
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
-from ppdmod.utils import get_opacity, load_data, qval_to_opacity
+from ppdmod.utils import load_data, qval_to_opacity
 
 
 def ptform(theta: List[float]) -> np.ndarray:
@@ -54,7 +54,7 @@ cont_opacity_file = DATA_DIR / "opacities" / "qval" / "Q_amorph_c_rv0.1.dat"
 wl_cont, cont_opacity = load_data(cont_opacity_file, load_func=qval_to_opacity)
 
 kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
-kappa_abs.value, kappa_abs.wavelength = opacity, wl_opacity
+kappa_abs.value, kappa_abs.wavelength = silicate_opacity, wl_op
 kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
 kappa_cont.value, kappa_cont.wavelength = cont_opacity, wl_cont
 
@@ -201,7 +201,7 @@ if __name__ == "__main__":
     fit_params = {"nlive_init": 2000, "ptform": ptform}
     sampler = run_fit(**fit_params, ncores=ncores,
                       method="dynamic", save_dir=result_dir,
-                      debug=True)
+                      debug=False)
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
     components_and_params, shared_params = set_params_from_theta(theta)
