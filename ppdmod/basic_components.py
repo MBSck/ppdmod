@@ -628,7 +628,7 @@ class TempGradient(Ring):
             if self.temps is None:
                 temperature = np.sqrt(self.eff_radius().to(u.au) / (2 * radius)) * self.eff_temp()
             else:
-                cont_temps = interp1d(self.temps.weights, self.temps.temperatures, axis=0)(self.cont_weight().value)
+                cont_temps = interp1d(self.temps.weights, self.temps.values, axis=0)(self.cont_weight().value)
                 temperature = np.interp(radius.value, self.temps.radii, cont_temps) * u.K
         else:
             r0 = OPTIONS.model.reference_radius if self.r0.value == 0 else self.r0()
