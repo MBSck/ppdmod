@@ -1,4 +1,5 @@
 import os
+import pickle
 from datetime import datetime
 from itertools import chain
 from typing import List
@@ -65,9 +66,12 @@ pa.value = 15.44
 inc.value = 0.915
 pa.free = inc.free = False
 
+with open(DATA_DIR / "flux" / "hd142527" / "hd142527_dust_temperatures.npy", "rb") as save_file:
+    temps = pickle.load(save_file)
+
 dim, distance, eff_temp = 32, 158.51, 6500
 OPTIONS.model.constant_params = {
-    "dim": dim, "dist": distance,
+    "dim": dim, "dist": distance, "temps": temps,
     "f": star_flux, "kappa_abs": kappa_abs,
     "eff_temp": eff_temp, "eff_radius": 3.46,
     "kappa_cont": kappa_cont, "pa": pa}

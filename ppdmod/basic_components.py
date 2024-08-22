@@ -590,6 +590,7 @@ class TempGradient(Ring):
         self.r0 = Parameter(**STANDARD_PARAMETERS.r0)
         self.q = Parameter(**STANDARD_PARAMETERS.q)
         self.temp0 = Parameter(**STANDARD_PARAMETERS.temp0)
+        self.temps = None
         self.p = Parameter(**STANDARD_PARAMETERS.p)
         self.sigma0 = Parameter(**STANDARD_PARAMETERS.sigma0)
 
@@ -623,7 +624,11 @@ class TempGradient(Ring):
     def compute_temperature(self, radius: u.au) -> u.K:
         """Computes a 1D-temperature profile."""
         if self.const_temperature:
-            temperature = np.sqrt(self.eff_radius().to(u.au) / (2.0 * radius)) * self.eff_temp()
+            if self.temps is None:
+                temperature = np.sqrt(self.eff_radius().to(u.au) / (2 * radius)) * self.eff_temp()
+            else:
+                cont_index = np.where(self.temps.weights == np.round(self.cont_weight(), 2).value)
+                temperature = np.interp(radius.value, self.temps.radii, self.temps.temperatures[cont_index][0]) * u.K
         else:
             r0 = OPTIONS.model.reference_radius if self.r0.value == 0 else self.r0()
             temperature = self.temp0() * (radius / r0) ** self.q()
