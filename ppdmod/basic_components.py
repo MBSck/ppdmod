@@ -7,6 +7,7 @@ import numpy as np
 from astropy.modeling.models import BlackBody
 from scipy.special import j0, j1, jv
 from scipy.signal import fftconvolve
+from scipy.interpolate import interp1d
 
 from .component import Component
 from .parameter import Parameter
@@ -627,8 +628,8 @@ class TempGradient(Ring):
             if self.temps is None:
                 temperature = np.sqrt(self.eff_radius().to(u.au) / (2 * radius)) * self.eff_temp()
             else:
-                cont_index = np.where(self.temps.weights == np.round(self.cont_weight(), 2).value)
-                temperature = np.interp(radius.value, self.temps.radii, self.temps.temperatures[cont_index][0]) * u.K
+                cont_temps = interp1d(self.temps.weights, self.temps.temperatures, axis=0)(self.cont_weight().value)
+                temperature = np.interp(radius.value, self.temps.radii, cont_temps) * u.K
         else:
             r0 = OPTIONS.model.reference_radius if self.r0.value == 0 else self.r0()
             temperature = self.temp0() * (radius / r0) ** self.q()
