@@ -80,9 +80,9 @@ def save_fits(components: List[Component],
 
         # TODO: Also save if it is thin or asymmetric here?
         for parameter in component.get_params().values():
-            wavelength = np.full(parameter().shape, np.nan) \
+            grid = np.full(parameter().shape, np.nan) \
                 if parameter.grid is None else parameter.grid
-            data[parameter.shortname] = (wavelength, parameter().value)
+            data[parameter.shortname] = (grid, parameter().value)
 
         table = fits.BinTableHDU(
                 Table(data=data), header=table_header,
@@ -110,17 +110,17 @@ def restore_from_fits(path: Path) -> Tuple[List[str], List[Component], Optional[
 
             component_labels.append(card.name)
             param_names, param_data = card.data.columns.names, card.data.tolist()
-            param_wavelength = [value if not np.all(np.isnan(value)) else None
-                                for value in param_data[0]]
+            param_grid = [value if not np.all(np.isnan(value)) else None
+                          for value in param_data[0]]
 
             params = []
-            for name, wavelength, value in zip(param_names, param_wavelength, param_data[1]):
+            for name, grid, value in zip(param_names, param_grid, param_data[1]):
                 param_name = name
                 if (name[0] == "c" or name[0] == "s") and len(name) <= 2:
                     param_name = name[0]
 
                 param = Parameter(**getattr(STANDARD_PARAMETERS, param_name))
-                param.grid, param.value = wavelength, value
+                param.grid, param.value = grid, value
                 param.shortname = param.name = name
                 params.append(param)
 
