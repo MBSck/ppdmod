@@ -1115,7 +1115,8 @@ def plot_intermediate_products(dim: int, wavelength: Optional[u.Quantity[u.um]],
     wavelengths = np.linspace(wavelength[0], wavelength[-1], dim)
     component_labels = [" ".join(map(str.title, label.split("_"))) for label in component_labels]
     radii, surface_densities, optical_depths = [], [], []
-    fluxes, emissivities, brightnesses = [], [], []
+    fluxes, temperatures, emissivities, brightnesses = [], [], [], []
+
     _, ax = plt.subplots(figsize=(5, 5))
     for label, component in zip(component_labels, components):
         component.dim.value = dim
@@ -1132,6 +1133,7 @@ def plot_intermediate_products(dim: int, wavelength: Optional[u.Quantity[u.um]],
         radius = component.compute_internal_grid()
         radii.append(radius)
 
+        temperatures.append(component.compute_temperature(radius))
         surface_densities.append(component.compute_surface_density(radius))
         optical_depths.append(component.compute_optical_depth(
             radius, wavelength[:, np.newaxis]))
@@ -1140,6 +1142,7 @@ def plot_intermediate_products(dim: int, wavelength: Optional[u.Quantity[u.um]],
         brightnesses.append(component.compute_intensity(
             radius, wavelength[:, np.newaxis]))
 
+    temperatures = u.Quantity(temperatures)
     surface_densities = u.Quantity(surface_densities)
     optical_depths = u.Quantity(optical_depths)
     emissivities = u.Quantity(emissivities)
@@ -1171,6 +1174,11 @@ def plot_intermediate_products(dim: int, wavelength: Optional[u.Quantity[u.um]],
     radii = u.Quantity(np.concatenate(merged_radii, axis=0))
     fill_zeros = np.zeros((len(fill_radii), wavelength.size, dim))
 
+    # TODO: Make it so that the temperatures are somehow continous in the plot? (Maybe check for self.temps in the models?)
+    # or interpolate smoothly somehow (see the one youtube video?) :D
+    temperatures = u.Quantity(list(chain.from_iterable(
+        zip_longest(temperatures, fill_zeros[:, 0, :] * u.K)))[:-1])
+    temperatures = np.concatenate(temperatures, axis=0)
     surface_densities = u.Quantity(list(chain.from_iterable(
         zip_longest(surface_densities, fill_zeros[:, 0, :] * u.g / u.cm**2)))[:-1])
     surface_densities = np.concatenate(surface_densities, axis=0)
@@ -1184,7 +1192,6 @@ def plot_intermediate_products(dim: int, wavelength: Optional[u.Quantity[u.um]],
         zip_longest(brightnesses, fill_zeros * u.erg / u.cm**2 / u.s / u.Hz / u.sr)))[:-1])
     brightnesses = np.hstack(brightnesses).to(u.W / u.m**2 / u.Hz / u.sr)
 
-    temperatures = components[-1].compute_temperature(radii)
     plot_product(radii.value, temperatures.value, "$R$ (au)", "$T$ (K)",
                  save_path=save_dir / "temperature.pdf")
     plot_product(radii.value, surface_densities.value,
