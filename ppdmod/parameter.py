@@ -21,7 +21,7 @@ class Parameter:
     min: Optional[float] = None
     max: Optional[float] = None
     dtype: Optional[type] = None
-    grid: Optional[List[float]] = None
+    grid: Optional[np.ndarray] = None
 
     def __setattr__(self, key: str, value: Any):
         """Sets an attribute."""
@@ -35,7 +35,7 @@ class Parameter:
         self.value = self._set_to_numpy_array(self.value)
         self.grid = self._set_to_numpy_array(self.grid)
 
-    def __call__(self, points: Optional[List[float]] = None) -> np.ndarray:
+    def __call__(self, points: Optional[u.Quantity] = None) -> np.ndarray:
         """Gets the value for the parameter or the corresponding
         values for some points."""
         if points is None or self.grid is None:
@@ -52,20 +52,23 @@ class Parameter:
             message += f" with its limits being {self.min}-{self.max}"
         return message
 
-    def _set_to_numpy_array(self,
-                            array: Optional[ArrayLike] = None,
-                            retain_value: Optional[bool] = False
-                            ) -> Union[Any, np.ndarray]:
+    def _set_to_numpy_array(
+        self, array: Optional[ArrayLike] = None,
+        retain_value: Optional[bool] = False) -> Union[Any, np.ndarray]:
         """Converts a value to a numpy array."""
         if array is None:
             return
+
         if isinstance(array, u.Quantity) and retain_value:
             return array
+
         if not isinstance(array, np.ndarray):
             if isinstance(array, (tuple, list)):
                 return np.array(array)
+
         return array
 
+    # TODO: One can make this modular, maybe cool for oimodeler?
     def set(self, min: Optional[float] = None,
             max: Optional[float] = None) -> None:
         """Sets the limits of the parameters."""
