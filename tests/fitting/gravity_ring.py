@@ -74,7 +74,7 @@ fs.free = True
 wavelength = data.get_all_wavelengths()
 ks = Parameter(**STANDARD_PARAMETERS.exp)
 ks.value = compute_photometric_slope(wavelength, 6500)
-ks.wavelength = wavelength
+ks.grid = wavelength
 ks.free = False
 
 kc = Parameter(**STANDARD_PARAMETERS.exp)

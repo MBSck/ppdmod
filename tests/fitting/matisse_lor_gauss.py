@@ -38,12 +38,12 @@ fc.free = True
 
 wl, flux_ratio = np.load(Path("../data/flux/hd142527/hd142527_flux_ratio.npy"))
 fs = Parameter(**STANDARD_PARAMETERS.fr)
-fs.value, fs.wavelength = flux_ratio, wl
+fs.value, fs.grid = flux_ratio, wl
 fs.interpolate, fs.free = True, False
 
 wl, k = np.load(Path("../data/flux/hd142527/hd142527_slope.npy"))
 ks = Parameter(**STANDARD_PARAMETERS.exp)
-ks.value, ks.wavelength = k, wl
+ks.value, ks.grid = k, wl
 ks.interpolate, ks.free = True, False
 
 kc = Parameter(**STANDARD_PARAMETERS.exp)

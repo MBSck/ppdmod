@@ -1,12 +1,12 @@
 from dataclasses import dataclass
-from typing import Union, Optional, Any
+from typing import Union, Optional, Any, List
 
 import astropy.units as u
 import numpy as np
 from numpy.typing import ArrayLike
 
 from .options import OPTIONS
-from .utils import get_indices
+from .utils import get_indices, get_band
 
 
 @dataclass()
@@ -21,8 +21,7 @@ class Parameter:
     min: Optional[float] = None
     max: Optional[float] = None
     dtype: Optional[type] = None
-    wavelength: Optional[u.Quantity[u.um]] = None
-    interpolate: Optional[bool] = True
+    grid: Optional[List[float]] = None
 
     def __setattr__(self, key: str, value: Any):
         """Sets an attribute."""
@@ -34,22 +33,16 @@ class Parameter:
     def __post_init__(self):
         """Post initialisation actions."""
         self.value = self._set_to_numpy_array(self.value)
-        self.wavelength = self._set_to_numpy_array(self.wavelength)
+        self.grid = self._set_to_numpy_array(self.grid)
 
-    def __call__(self, wavelength: Optional[u.Quantity[u.um]] = None) -> np.ndarray:
+    def __call__(self, points: Optional[List[float]] = None) -> np.ndarray:
         """Gets the value for the parameter or the corresponding
-        values for the wavelengths."""
-        if wavelength is None or self.wavelength is None:
+        values for some points."""
+        if points is None or self.grid is None:
             value = self.value
         else:
-            if self.interpolate:
-                value = np.interp(wavelength, self.wavelength*u.um, self.value)
-            else:
-                window = getattr(OPTIONS.data.binning, get_band(self.wavelength))
-                indices = get_indices(
-                    wavelength, array=self.wavelength, window=window)
+            value = np.interp(points.value, self.grid, self.value)
 
-                value = [self.value[index].mean() for index in indices]
         return u.Quantity(value, unit=self.unit, dtype=self.dtype)
 
     def __str__(self):

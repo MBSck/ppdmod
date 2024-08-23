@@ -49,7 +49,7 @@ def test_individual_wavelength_calling(
         x: Parameter, wavelength: float, expected: int) -> None:
     """Tests the __call__ of the Parameter class for
     singular wavelengths."""
-    x.value, x.wavelength = VALUE, WAVELENGTH
+    x.value, x.grid = VALUE, WAVELENGTH
     assert x(wavelength) == expected
 
 
@@ -60,12 +60,12 @@ def test_interpolation(
         x: Parameter, wavelength: u.um, expected: u.mas) -> None:
     """Tests the interpolation function."""
     x.interpolate = True
-    x.value, x.wavelength = VALUE, WAVELENGTH
+    x.value, x.grid = VALUE, WAVELENGTH
     assert x(wavelength) == expected
 
 
 def test_multiple_wavelength_calling(x: Parameter) -> None:
     """Tests the __call__ of the Parameter class for
     multiple wavelengths."""
-    x.value, x.wavelength = VALUE, WAVELENGTH
+    x.value, x.grid = VALUE, WAVELENGTH
     assert np.allclose(x(WAVELENGTH), VALUE)

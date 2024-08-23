@@ -33,7 +33,7 @@ utils.make_workbook(
 
 @pytest.fixture
 def wavelength() -> u.m:
-    """A wavelenght grid."""
+    """A wavelength grid."""
     return [12.5]*u.um
 
 
@@ -111,7 +111,7 @@ def kappa_abs() -> Parameter:
     wl_opacity, opacity = get_opacity(
         data_dir, weights, sizes, names, "boekel")
     kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
-    kappa_abs.wavelength, kappa_abs.value = wl_opacity, opacity
+    kappa_abs.grid, kappa_abs.value = wl_opacity, opacity
     return kappa_abs
 
 
@@ -123,7 +123,7 @@ def kappa_cont() -> Parameter:
     wl_cont, cont_opacity = load_data(cont_opacity_file, load_func=qval_to_opacity)
 
     kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
-    kappa_cont.value, kappa_cont.wavelength = cont_opacity, wl_cont
+    kappa_cont.value, kappa_cont.grid = cont_opacity, wl_cont
     return kappa_cont
 
 
@@ -132,7 +132,7 @@ def star_flux() -> Parameter:
     data_dir = Path("data")
     wl_flux, flux = load_data(data_dir / "flux" / "hd142527" / "HD142527_stellar_model.txt")
     star_flux = Parameter(**STANDARD_PARAMETERS.f)
-    star_flux.wavelength, star_flux.value = wl_flux, flux
+    star_flux.grid, star_flux.value = wl_flux, flux
     return star_flux
 
 

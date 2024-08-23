@@ -118,6 +118,9 @@ STANDARD_PARAMETERS = SimpleNamespace(
     temp0={"name": "temp0", "shortname": "temp0",
            "value": 0, "unit": u.K, "free": True,
            "min": 0, "max": 3000, "description": "The temperature at a reference radius"},
+    temps={"name": "temps", "shortname": "temps",
+           "value": None, "unit": u.K, "free": False,
+           "min": None, "max": None, "description": "A grid of temperatures"},
     q={"name": "q", "shortname": "q", "value": 0,
        "min": 0, "max": 1, "unit": u.one, "free": True,
        "description": "The power-law exponent for a temperature profile"},
@@ -186,7 +189,7 @@ errorbar = SimpleNamespace(color=None,
 scatter = SimpleNamespace(color="", edgecolor="black",
                           linewidths=0.2, zorder=3)
 plot = SimpleNamespace(dim=4096, dpi=300,
-                       ticks=[1.7, 3.2, 4.7, 8., 9., 10., 11., 12., 13.],
+                       ticks=[1.7, 2.15, 3.2, 4.7, 8., 9., 10., 11., 12., 13.],
                        color=color, errorbar=errorbar, scatter=scatter)
 
 # NOTE: Fitting

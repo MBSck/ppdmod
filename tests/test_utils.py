@@ -543,7 +543,7 @@ def test_compute_t3(fits_files: List[Path],
     """Tests the calculation of the closure phase."""
     set_data(fits_files, wavelengths=wavelength, fit_data=["t3"])
     fr = Parameter(**STANDARD_PARAMETERS.fr)
-    fr.value, fr.wavelength = np.array([0.2]*wavelength.size), wavelength
+    fr.value, fr.grid = np.array([0.2]*wavelength.size), wavelength
 
     params = {"dim": 512, "fwhm": 0.5,
               "rin": 0.5, "q": 0.5, "temp0": 1500,
@@ -572,7 +572,7 @@ def test_compute_vis(fits_files: List[Path],
     """Tests the calculation of the visibility."""
     set_data(fits_files, wavelengths=wavelength, fit_data=["vis2"])
     fr = Parameter(**STANDARD_PARAMETERS.fr)
-    fr.value, fr.wavelength = np.array([0.2]*wavelength.size), wavelength
+    fr.value, fr.grid = np.array([0.2]*wavelength.size), wavelength
 
     params = {"dim": 512, "fwhm": 0.5,
               "rin": 0.5, "q": 0.5, "temp0": 1500,
