@@ -591,7 +591,7 @@ class TempGradient(Ring):
         self.r0 = Parameter(**STANDARD_PARAMETERS.r0)
         self.q = Parameter(**STANDARD_PARAMETERS.q)
         self.temp0 = Parameter(**STANDARD_PARAMETERS.temp0)
-        self.temps = None
+        self.temps = Parameter(**STANDARD_PARAMETERS.temps)
         self.p = Parameter(**STANDARD_PARAMETERS.p)
         self.sigma0 = Parameter(**STANDARD_PARAMETERS.sigma0)
 
@@ -606,6 +606,11 @@ class TempGradient(Ring):
             self.cont_weight.free = False
 
         self.eval(**kwargs)
+
+        if "temps" in OPTIONS.model.constant_params:
+            temps = OPTIONS.model.constant_params["temps"]
+            cont_temps = interp1d(temps.weights, temps.values, axis=0)(self.cont_weight().value)
+            self.temps.grid, self.temps.value = temps.radii, cont_temps
 
     def get_opacity(self, wavelength: u.um) -> u.cm**2 / u.g:
         """Set the opacity from wavelength."""
@@ -625,11 +630,10 @@ class TempGradient(Ring):
     def compute_temperature(self, radius: u.au) -> u.K:
         """Computes a 1D-temperature profile."""
         if self.const_temperature:
-            if self.temps is None:
+            if self.temps.value is None:
                 temperature = np.sqrt(self.eff_radius().to(u.au) / (2 * radius)) * self.eff_temp()
             else:
-                cont_temps = interp1d(self.temps.weights, self.temps.values, axis=0)(self.cont_weight().value)
-                temperature = np.interp(radius.value, self.temps.radii, cont_temps) * u.K
+                temperature = self.temps(radius)
         else:
             r0 = OPTIONS.model.reference_radius if self.r0.value == 0 else self.r0()
             temperature = self.temp0() * (radius / r0) ** self.q()
