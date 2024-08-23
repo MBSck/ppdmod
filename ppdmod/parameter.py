@@ -5,8 +5,7 @@ import astropy.units as u
 import numpy as np
 from numpy.typing import ArrayLike
 
-from .options import OPTIONS
-from .utils import get_indices, get_band
+from .utils import smooth_interpolation
 
 
 @dataclass()
@@ -22,6 +21,7 @@ class Parameter:
     max: Optional[float] = None
     dtype: Optional[type] = None
     grid: Optional[np.ndarray] = None
+    smooth: Optional[bool] = False
 
     def __setattr__(self, key: str, value: Any):
         """Sets an attribute."""
@@ -41,7 +41,10 @@ class Parameter:
         if points is None or self.grid is None:
             value = self.value
         else:
-            value = np.interp(points.value, self.grid, self.value)
+            if self.smooth:
+                value = smooth_interpolation(points.value, self.grid, self.value)
+            else:
+                value = np.interp(points.value, self.grid, self.value)
 
         return u.Quantity(value, unit=self.unit, dtype=self.dtype)
 

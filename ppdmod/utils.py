@@ -10,7 +10,6 @@ from astropy.modeling.models import BlackBody
 from matplotlib.axes import Axes
 from matplotlib.legend import Legend
 from openpyxl import Workbook, load_workbook
-from scipy.interpolate import interp1d
 from scipy.special import j1
 
 from .options import OPTIONS
@@ -32,9 +31,10 @@ def get_band(wavelength: u.um) -> str:
     return "unknown"
 
 
-def rebin_and_interpolate1D(
-        interpolation_points: np.ndarray, points: np.ndarray,
-        values: np.ndarray, factor: int) -> np.ndarray:
+# TODO: Maybe sample this even finer with np.linspace in the interpolation?
+def smooth_interpolation(
+        interpolation_points: np.ndarray,
+        grid: np.ndarray, values: np.ndarray) -> np.ndarray:
     """Rebins the grid to a higher factor and then interpolates and averages
     to the original grid.
 
@@ -46,18 +46,12 @@ def rebin_and_interpolate1D(
         The points to interpolate from.
     values : numpy.ndarray
         The values to interpolate.
-    factor : int
-        The factor to sample and then rebin.
     """
-    finer_interpolation_points = np.linspace(
-        interpolation_points[0], interpolation_points[-1],
-        factor*interpolation_points.size)
-
-    interpolator = interp1d(points, values, kind='cubic')
-    interpolated_data = interpolator(finer_interpolation_points)
-
-    breakpoint()
-    return np.mean(interpolated_data.reshape(-1, factor), axis=1)
+    points = interpolation_points.flatten()
+    windows = np.array([getattr(OPTIONS.data.binning, get_band(point)).value 
+                        for point in points])
+    interpolation_grid = (np.linspace(-1, 1, OPTIONS.data.binning.dim) * windows[:, np.newaxis]).T + points
+    return np.interp(interpolation_grid, grid, values).mean(axis=0).reshape(interpolation_points.shape)
 
 
 def take_time_average(func: Callable, *args,

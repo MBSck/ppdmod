@@ -607,10 +607,11 @@ class TempGradient(Ring):
 
         self.eval(**kwargs)
 
-        if "temps" in OPTIONS.model.constant_params:
-            temps = OPTIONS.model.constant_params["temps"]
-            cont_temps = interp1d(temps.weights, temps.values, axis=0)(self.cont_weight().value)
-            self.temps.grid, self.temps.value = temps.radii, cont_temps
+        if OPTIONS.model.constant_params is not None:
+            if "temps" in OPTIONS.model.constant_params:
+                temps = OPTIONS.model.constant_params["temps"]
+                cont_temps = interp1d(temps.weights, temps.values, axis=0)(self.cont_weight().value)
+                self.temps.grid, self.temps.value = temps.radii, cont_temps
 
     def get_opacity(self, wavelength: u.um) -> u.cm**2 / u.g:
         """Set the opacity from wavelength."""

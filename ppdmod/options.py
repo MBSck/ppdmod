@@ -42,7 +42,7 @@ STANDARD_PARAMETERS = SimpleNamespace(
        "unit": u.mas, "free": False},
     f={"name": "flux", "shortname": "f",
        "value": None, "description": "The flux",
-       "min": 0, "max": 10,
+       "min": 0, "max": 10, "smooth": True,
        "unit": u.Jy, "free": False},
     fr={"name": "flux_ratio", "shortname": "fr",
         "value": 1, "description": "The flux ratio",
@@ -131,10 +131,10 @@ STANDARD_PARAMETERS = SimpleNamespace(
             "value": 0, "unit": u.g/u.cm**2, "free": True,
             "min": 0, "max": 1e-2, "description": "The surface density at a reference radius"},
     kappa_abs={"name": "kappa_abs", "shortname": "kappa_abs",
-               "value": 0, "unit": u.cm**2/u.g, "free": False,
+               "value": 0, "unit": u.cm**2/u.g, "free": False, "smooth": True,
                "description": "The dust mass absorption coefficient"},
     kappa_cont={"name": "kappa_cont", "shortname": "kappa_cont",
-                "value": 0, "unit": u.cm**2/u.g, "free": False,
+                "value": 0, "unit": u.cm**2/u.g, "free": False, "smooth": True,
                 "description": "The continuum dust mass absorption coefficient"},
     cont_weight={"name": "cont_weight", "shortname": "cont_weight",
                  "value": 0, "unit": u.one, "free": True,
@@ -166,7 +166,8 @@ gravity = SimpleNamespace(index=20)
 dtype = SimpleNamespace(complex=np.complex64, real=np.float32)
 binning = SimpleNamespace(
     unknown=0.1 * u.um, kband=0.1 * u.um,
-    hband=0.1 * u.um, lmband=0.05 * u.um, nband=0.05 * u.um)
+    hband=0.1 * u.um, lmband=0.05 * u.um,
+    nband=0.05 * u.um, dim=10)
 data = SimpleNamespace(readouts=[], flux=flux, vis=vis,
                        vis2=vis2, t3=t3, gravity=gravity,
                        binning=binning, dtype=dtype)
