@@ -70,11 +70,11 @@ pa.free = False
 with open(DATA_DIR / "flux" / "hd142527" / "hd142527_dust_temperatures.npy", "rb") as save_file:
     temps = pickle.load(save_file)
 
-dim, distance, eff_temp = 32, 158.51, 6500
 OPTIONS.model.constant_params = {
-    "dim": dim, "dist": distance, "temps": temps,
-    "f": star_flux, "kappa_abs": kappa_abs,
-    "eff_temp": eff_temp, "eff_radius": 3.46,
+    "dim": 32, "dist": 158.51,
+    "eff_temp": 6500, "eff_radius": 3.46,
+    "temps": temps, "f": star_flux,
+    "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont, "pa": pa}
 
 x = Parameter(**STANDARD_PARAMETERS.x)
@@ -206,7 +206,7 @@ if __name__ == "__main__":
     fit_params = {"nlive_init": 2000, "ptform": ptform}
     sampler = run_fit(**fit_params, ncores=ncores,
                       method="dynamic", save_dir=result_dir,
-                      debug=True)
+                      debug=False)
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
     components_and_params, shared_params = set_params_from_theta(theta)
