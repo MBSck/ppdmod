@@ -126,19 +126,19 @@ def compute_chi_sq(data: u.Quantity, error: u.Quantity,
     chi_sq : float
     """
     if lnf is None:
-        inv_sigma_squared = 1 / error ** 2
+        sigma_squared = error ** 2
     else:
-        inv_sigma_squared = 1 / (error ** 2 + model_data ** 2 * np.exp(2 * lnf))
+        sigma_squared = error ** 2 + model_data ** 2 * np.exp(2 * lnf)
 
     diff = data-model_data
     if diff_method != "linear":
         diff = np.angle(np.exp(diff * u.deg.to(u.rad) * 1j), deg=True)
 
-    square_term = diff ** 2 * inv_sigma_squared
+    square_term = diff ** 2 / sigma_squared
     if func_method == "default":
         return square_term.sum()
 
-    return -0.5 * (square_term + np.log(2 * np.pi * 1/inv_sigma_squared)).sum()
+    return -0.5 * (square_term + np.log(2 * np.pi * sigma_squared)).sum()
 
 
 # TODO: Write tests (ASPRO) that tests multiple components with the total flux
