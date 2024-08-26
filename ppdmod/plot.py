@@ -1,13 +1,12 @@
 import re
 from itertools import zip_longest, chain
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Tuple
 from pathlib import Path
 
 import astropy.units as u
 import astropy.constants as const
 import corner
 import matplotlib
-from matplotlib.axes import Axes
 import matplotlib.colors as mcolors
 import matplotlib.cm as cm
 import matplotlib.lines as mlines
@@ -17,15 +16,42 @@ import numpy as np
 from astropy.io import fits
 from astropy.wcs import WCS
 from dynesty import plotting as dyplot
+from matplotlib.axes import Axes
 from matplotlib.gridspec import GridSpec
+from matplotlib.legend import Legend
 
 from .component import Component
 from .fitting import compute_observables, get_best_fit
 from .options import OPTIONS, get_colormap
 from .utils import compute_effective_baselines, restrict_phase, \
-        set_legend_color, set_axes_color, angular_to_distance, distance_to_angular
+    angular_to_distance, distance_to_angular
 
 matplotlib.use("Agg")
+
+
+def set_axes_color(ax: Axes, background_color: str,
+                   set_label: Optional[bool] = True,
+                   direction: Optional[str] = None) -> None:
+    """Sets all the axes' facecolor."""
+    opposite_color = "white" if background_color == "black" else "black"
+    ax.set_facecolor(background_color)
+    ax.spines["bottom"].set_color(opposite_color)
+    ax.spines["top"].set_color(opposite_color)
+    ax.spines["right"].set_color(opposite_color)
+    ax.spines["left"].set_color(opposite_color)
+
+    if set_label:
+        ax.xaxis.label.set_color(opposite_color)
+        ax.yaxis.label.set_color(opposite_color)
+
+    ax.tick_params(axis="both", colors=opposite_color, direction=direction)
+
+
+def set_legend_color(legend: Legend, background_color: str) -> None:
+    """Sets the legend's facecolor."""
+    opposite_color = "white" if background_color == "black" else "black"
+    plt.setp(legend.get_texts(), color=opposite_color)
+    legend.get_frame().set_facecolor(background_color)
 
 
 def plot_component_mosaic(components: List[Component], dim: int,
@@ -36,23 +62,38 @@ def plot_component_mosaic(components: List[Component], dim: int,
                           cmap: Optional[str] = "inferno",
                           savefig: Optional[Path] = None) -> None:
     """Plots a mosaic of components for the different wavelengths."""
-    wavelengths = OPTIONS.plot.ticks[:-1] * u.um
+    wavelengths = OPTIONS.plot.ticks * u.um
     num_plots = np.array(wavelengths).size
-    rows = int(np.ceil(num_plots/cols))
+    rows = int(np.ceil(num_plots / cols))
     fig, axes = plt.subplots(
         rows, cols, figsize=(20, 8), gridspec_kw={"hspace": 0, "wspace": 0},
         facecolor=OPTIONS.plot.color.background)
 
-    for ax, wavelength in zip(axes.flatten(), wavelengths.value):
-        plot_components(components, dim, pixel_size, wavelength,
-                        no_text=True, norm=norm, zoom=zoom, ax=ax, cmap=cmap)
+    images = []
+    for index, (ax, wavelength) in enumerate(zip(axes.flatten(), wavelengths.value)):
+        _, top_ax, right_ax, image = plot_components(
+            components, dim, pixel_size, wavelength,
+            no_text=True, norm=norm, zoom=zoom, ax=ax, cmap=cmap)
+
+        # set_axes_color(ax, "black", set_label=False, direction="in")
+        # set_axes_color(top_ax, "black", set_label=False, direction="in")
+        # set_axes_color(right_ax, "black", set_label=False, direction="in")
+
+        # if index // cols != 0:
+        #     top_ax.tick_params(top=False)
+        # if index // cols != (wavelength.size // cols) - 1:
+        #     ax.tick_params(bottom=False)
+        # if rows:
+            # ax.tick_params(labelbottom=False)
+
+        images.append(image)
+
         ax.text(0.18, 0.95, fr"$\lambda$ = {wavelength} $\mathrm{{\mu}}$m",
                 transform=ax.transAxes, fontsize=12, color="white", ha="center")
 
-    [fig.delaxes(ax) for ax in axes.flatten()[num_plots:]]
+    images = np.array(images)
 
-    # for ax in axs[:-1]:
-    #     ax.label_outer()
+    [fig.delaxes(ax) for ax in axes.flatten()[num_plots:]]
 
     plt.tight_layout()
 
@@ -71,7 +112,7 @@ def plot_components(components: List[Component], dim: int,
                     ax: Optional[Axes] = None,
                     cmap: Optional[str] = "inferno",
                     no_text: Optional[bool] = False,
-                    savefig: Optional[Path] = None) -> None:
+                    savefig: Optional[Path] = None) -> Tuple[Axes]:
     """Plots a component."""
     components = [components] if not isinstance(components, list) else components
     image = sum([comp.compute_image(dim, pixel_size, wavelength) for comp in components])
@@ -96,6 +137,7 @@ def plot_components(components: List[Component], dim: int,
         ax.imshow(image[0], extent=extent,
                   norm=mcolors.PowerNorm(gamma=norm), cmap=cmap)
 
+        top_ax, right_ax = None, None
         if any(hasattr(component, "dist") for component in components):
             dist = [component for component in components if hasattr(component, "dist")][0].dist()
             def convert_to_au(x):
@@ -122,6 +164,8 @@ def plot_components(components: List[Component], dim: int,
 
         if savefig is not None:
             plt.savefig(savefig, format=Path(savefig).suffix[1:])
+
+        return ax, top_ax, right_ax, image
 
 
 def format_labels(labels: List[str], units: Optional[List[str]] = None) -> List[str]:

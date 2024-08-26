@@ -4,11 +4,8 @@ from typing import Callable, Optional, Dict, Tuple, List
 
 import astropy.units as u
 import astropy.constants as const
-import matplotlib.pyplot as plt
 import numpy as np
 from astropy.modeling.models import BlackBody
-from matplotlib.axes import Axes
-from matplotlib.legend import Legend
 from openpyxl import Workbook, load_workbook
 from scipy.special import j1
 
@@ -565,27 +562,6 @@ def linearly_combine_data(data: np.ndarray, weights: u.one) -> np.ndarray:
     numpy.ndarray
     """
     return np.sum(data*weights[:, np.newaxis], axis=0)
-
-
-def set_axes_color(ax: Axes, background_color: str) -> None:
-    """Sets all the axes' facecolor."""
-    opposite_color = "white" if background_color == "black" else "black"
-    ax.set_facecolor(background_color)
-    ax.spines["bottom"].set_color(opposite_color)
-    ax.spines["top"].set_color(opposite_color)
-    ax.spines["right"].set_color(opposite_color)
-    ax.spines["left"].set_color(opposite_color)
-    ax.xaxis.label.set_color(opposite_color)
-    ax.yaxis.label.set_color(opposite_color)
-    ax.tick_params(axis="x", colors=opposite_color)
-    ax.tick_params(axis="y", colors=opposite_color)
-
-
-def set_legend_color(legend: Legend, background_color: str) -> None:
-    """Sets the legend's facecolor."""
-    opposite_color = "white" if background_color == "black" else "black"
-    plt.setp(legend.get_texts(), color=opposite_color)
-    legend.get_frame().set_facecolor(background_color)
 
 
 # TODO: Remove the check for the ucoord here
