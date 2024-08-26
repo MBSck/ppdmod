@@ -74,7 +74,8 @@ OPTIONS.model.constant_params = {
     "eff_temp": 6500, "eff_radius": 3.46,
     "temps": temps, "f": star_flux,
     "kappa_abs": kappa_abs,
-    "kappa_cont": kappa_cont, "pa": pa}
+    "kappa_cont": kappa_cont,
+    "pa": pa, "cont_weight": 0.33}
 
 x = Parameter(**STANDARD_PARAMETERS.x)
 y = Parameter(**STANDARD_PARAMETERS.y)
@@ -107,7 +108,8 @@ p.set(min=-10, max=10)
 sigma0.set(min=0, max=1e-2)
 cont_weight.set(min=0, max=1)
 
-one = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
+# one = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
+one = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0}
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
 rout = Parameter(**STANDARD_PARAMETERS.rout)
@@ -133,7 +135,8 @@ p.set(min=-10, max=10)
 sigma0.set(min=0, max=1)
 cont_weight.set(min=0, max=1)
 
-two = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
+# two = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
+two = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0}
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
 rout = Parameter(**STANDARD_PARAMETERS.rout)
@@ -158,6 +161,7 @@ p.set(min=-10, max=10)
 sigma0.set(min=0, max=1e-1)
 cont_weight.set(min=0, max=1)
 
+# three = {"rin": rin, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
 three = {"rin": rin, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
 
 OPTIONS.model.shared_params = {"inc": inc}
