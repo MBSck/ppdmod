@@ -97,6 +97,7 @@ def init_randomly(nwalkers: Optional[int] = None) -> np.ndarray:
     return np.array([[np.random.uniform(param.min, param.max)
                       for param in params] for _ in range(nwalkers)])
 
+
 def compute_chi_sq(data: u.Quantity, error: u.Quantity,
                    model_data: u.Quantity,
                    diff_method: Optional[str] = "linear",
@@ -125,18 +126,19 @@ def compute_chi_sq(data: u.Quantity, error: u.Quantity,
     chi_sq : float
     """
     if lnf is None:
-        inv_sigma_squared = 1./error**2
+        inv_sigma_squared = 1 / error ** 2
     else:
-        inv_sigma_squared = 1./(error**2 + model_data**2*np.exp(2*lnf))
+        inv_sigma_squared = 1 / (error ** 2 + model_data ** 2 * np.exp(2 * lnf))
 
     diff = data-model_data
     if diff_method != "linear":
-        diff = np.angle(np.exp(diff*u.deg.to(u.rad)*1j), deg=True)
+        diff = np.angle(np.exp(diff * u.deg.to(u.rad) * 1j), deg=True)
 
-    square_term = diff**2*inv_sigma_squared
+    square_term = diff ** 2 * inv_sigma_squared
     if func_method == "default":
         return square_term.sum()
-    return -0.5*(square_term + np.log(inv_sigma_squared)).sum()
+
+    return -0.5 * (square_term + np.log(2 * np.pi * 1/inv_sigma_squared)).sum()
 
 
 # TODO: Write tests (ASPRO) that tests multiple components with the total flux
@@ -216,7 +218,6 @@ def compute_observables(components: List[Component],
     return flux_model, vis_model, t3_model
 
 
-# TODO: Finish the split functionality.
 def compute_observable_chi_sq(
         flux_model: np.ndarray,
         vis_model: np.ndarray,
@@ -264,11 +265,11 @@ def compute_observable_chi_sq(
     chi_sqs = np.array(chi_sqs).astype(float)
     ndata, nfree_params = get_counts_data(), get_priors().shape[0]
     if reduced:
-        chi_sq = chi_sqs.sum() / (ndata.sum() - nfree_params)
-    else:
-        chi_sq = chi_sqs.sum()
+        chi_sqs = np.append(chi_sqs, [0] * (3 - chi_sqs.size))
+        rchi_sq = chi_sqs.sum() / (ndata.sum() - nfree_params)
+        return np.abs([rchi_sq, *chi_sqs / (ndata - nfree_params)]) if split else rchi_sq
 
-    return chi_sq
+    return [chi_sqs.sum(), *chi_sqs] if split else chi_sqs.sum()
 
 
 def transform_uniform_prior(theta: List[float]) -> float:
