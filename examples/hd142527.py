@@ -66,7 +66,7 @@ inc.value = 0.915
 inc.free = True
 pa.free = False
 
-with open(DATA_DIR / "flux" / "hd142527" / "hd142527_dust_temperatures.npy", "rb") as save_file:
+with open(DATA_DIR / "flux" / "hd142527" / "hd142527_dust_temperatures.pkl", "rb") as save_file:
     temps = pickle.load(save_file)
 
 OPTIONS.model.constant_params = {
@@ -201,7 +201,7 @@ print(f"rchi_sq: {rchi_sq:.2f}")
 
 
 if __name__ == "__main__":
-    ncores = 100
+    ncores = 70
     fit_params = {"nlive_init": 2000, "ptform": ptform}
     sampler = run_fit(**fit_params, ncores=ncores,
                       method="dynamic", save_dir=result_dir,
