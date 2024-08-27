@@ -167,10 +167,13 @@ dtype = SimpleNamespace(complex=np.complex64, real=np.float32)
 binning = SimpleNamespace(
     unknown=0.1 * u.um, kband=0.1 * u.um,
     hband=0.1 * u.um, lmband=0.05 * u.um,
-    nband=0.05 * u.um, dim=10)
+    nband=0.05 * u.um)
+interpolation = SimpleNamespace(
+    dim=10, kind="linear", fill_value=None)
 data = SimpleNamespace(readouts=[], flux=flux, vis=vis,
                        vis2=vis2, t3=t3, gravity=gravity,
-                       binning=binning, dtype=dtype)
+                       binning=binning, dtype=dtype,
+                       interpolation=interpolation)
 
 # NOTE: Model
 model = SimpleNamespace(components_and_params=None,

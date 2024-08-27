@@ -8,6 +8,7 @@ import numpy as np
 from astropy.modeling.models import BlackBody
 from openpyxl import Workbook, load_workbook
 from scipy.special import j1
+from scipy.interpolate import interp1d
 
 from .options import OPTIONS
 
@@ -28,10 +29,11 @@ def get_band(wavelength: u.um) -> str:
     return "unknown"
 
 
-# TODO: Maybe sample this even finer with np.linspace in the interpolation?
 def smooth_interpolation(
         interpolation_points: np.ndarray,
-        grid: np.ndarray, values: np.ndarray) -> np.ndarray:
+        grid: np.ndarray, values: np.ndarray,
+        kind: Optional[str] = None,
+        fill_value: Optional[str] = None) -> np.ndarray:
     """Rebins the grid to a higher factor and then interpolates and averages
     to the original grid.
 
@@ -44,6 +46,8 @@ def smooth_interpolation(
     values : numpy.ndarray
         The values to interpolate.
     """
+    kind = OPTIONS.data.interpolation.kind if kind is None else kind
+    fill_value = OPTIONS.data.interpolation.fill_value if fill_value is None else fill_value
     points = interpolation_points.flatten()
     windows = np.array([getattr(OPTIONS.data.binning, get_band(point)).value 
                         for point in points])
@@ -451,7 +455,8 @@ def get_opacity(source_dir: Path, weights: np.ndarray,
                 names: List[str], method: str,
                 wavelength_grid: Optional[np.ndarray] = None,
                 fmaxs: Optional[List[float]] = None,
-                individual: Optional[bool] = False) -> Tuple[np.ndarray]:
+                individual: Optional[bool] = False,
+                **kwargs) -> Tuple[np.ndarray]:
     """Gets the opacity from input parameters."""
     qval_dict = {"olivine": "Q_Am_Mgolivine_Jae_DHS",
                  "pyroxene": "Q_Am_Mgpyroxene_Dor_DHS",
@@ -483,7 +488,7 @@ def get_opacity(source_dir: Path, weights: np.ndarray,
             files.append(source_dir / method / file_name)
 
     load_func = qval_to_opacity if method == "qval" else None
-    wl, opacity = load_data(files, load_func=load_func)
+    wl, opacity = load_data(files, load_func=load_func, **kwargs)
 
     if individual:
         return wl, opacity
@@ -495,10 +500,13 @@ def get_opacity(source_dir: Path, weights: np.ndarray,
 
 
 def load_data(files: List[Path],
-              wavelength_range: Optional[u.Quantity[u.um]] = [0.5, 15],
               load_func: Optional[Callable] = None,
               comments: Optional[str] = "#",
               skiprows: Optional[int] = 1,
+              usecols: Optional[Tuple[int, int]] = (0, 1),
+              method: Optional[str] = "shortest",
+              kind: Optional[str] = None,
+              fill_value: Optional[str] = None,
               ) -> Tuple[np.ndarray, np.ndarray]:
     """Loads data from a file.
 
@@ -509,40 +517,66 @@ def load_data(files: List[Path],
     Parameters
     ----------
     files : list of pathlib.Path
-    wavelength_range : tuple of float, optional
+        The files to load the data from.
     load_func : callable, optional
+        The function to load the data with.
     comments : str, optional
+        Comment identifier.
     skiprows : str, optional
+        The rows to skip.
+    usecols : tuple of int, optional
+        The columns to use.
+    method : str, optional
+        The grid to interpolate/extrapolate the data on.
+        Default is 'shortest'. Other option is 'longest' or
+        'median'.
+    kind : str, optional
+        The interpolation kind.
+        Default is 'cubic'.
+    fill_value : str, optional
+        If "extrapolate", the data is extrapolated.
+        Default is None.
 
     Returns
     -------
     wavelength_grid : numpy.ndarray
     data : numpy.ndarray
     """
+    kind = OPTIONS.data.interpolation.kind if kind is None else kind
+    fill_value = OPTIONS.data.interpolation.fill_value if fill_value is None else fill_value
+
     files = files if isinstance(files, list) else [files]
-    wavelength_grid, data = np.array([]), []
+    wavelength_grids, contents = [], []
     for file in files:
         if load_func is not None:
             wavelengths, content = load_func(file)
         else:
             wavelengths, content = np.loadtxt(
-                file, skiprows=skiprows, usecols=(0, 1),
+                file, skiprows=skiprows, usecols=usecols,
                 comments=comments, unpack=True)
 
         if isinstance(wavelengths, u.Quantity):
             wavelengths = wavelengths.value
             content = content.value
 
-        if wavelength_range is not None:
-            wavelengths, content = restrict_wavelength(
-                    wavelengths, content, wavelength_range)
+        wavelength_grids.append(wavelengths)
+        contents.append(content)
 
-        if wavelength_grid.size == 0:
-            wavelength_grid = wavelengths
-        else:
-            content = np.interp(wavelength_grid, wavelengths, content)
+    sizes = [np.size(wl) for wl in wavelength_grids]
+    if method == "longest":
+        wavelength_grid = wavelength_grids[np.argmax(sizes)]
+    elif method == "shortest":
+        wavelength_grid = wavelength_grids[np.argmin(sizes)]
+    else:
+        wavelength_grid = wavelength_grids[np.median(sizes).astype(int) == wavelength_grids]
 
-        data.append(content)
+    data = []
+    for wavelengths, content in zip(wavelength_grids, contents):
+        if np.array_equal(wavelengths, wavelength_grid):
+            data.append(content)
+            continue
+
+        data.append(interp1d(wavelengths, content, kind=kind, fill_value=fill_value)(wavelength_grid))
 
     return wavelength_grid.squeeze(), np.array(data).squeeze()
 
