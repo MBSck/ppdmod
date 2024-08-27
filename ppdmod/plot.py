@@ -20,7 +20,7 @@ from matplotlib.axes import Axes
 from matplotlib.gridspec import GridSpec
 from matplotlib.legend import Legend
 
-from .component import Component
+from .component import FourierComponent
 from .fitting import compute_observables, get_best_fit
 from .options import OPTIONS, get_colormap
 from .utils import compute_effective_baselines, restrict_phase, \
@@ -54,7 +54,7 @@ def set_legend_color(legend: Legend, background_color: str) -> None:
     legend.get_frame().set_facecolor(background_color)
 
 
-def plot_component_mosaic(components: List[Component], dim: int,
+def plot_component_mosaic(components: List[FourierComponent], dim: int,
                           pixel_size: u.mas,
                           norm: Optional[float] = 0.5,
                           zoom: Optional[float] = None,
@@ -104,7 +104,7 @@ def plot_component_mosaic(components: List[Component], dim: int,
     plt.close()
 
 
-def plot_components(components: List[Component], dim: int,
+def plot_components(components: List[FourierComponent], dim: int,
                     pixel_size: u.mas, wavelength: u.um,
                     norm: Optional[float] = 0.5,
                     save_as_fits: Optional[bool] = False,
@@ -906,7 +906,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
 
 # TODO: Make colorscale permanent -> Implement colormap
 def plot_sed(wavelength_range: u.um,
-             components: Optional[List[Component]] = None,
+             components: Optional[List[FourierComponent]] = None,
              scaling: Optional[str] = "nu",
              no_model: Optional[bool] = False,
              ax: Optional[plt.Axes] = None,
@@ -1005,7 +1005,7 @@ def plot_sed(wavelength_range: u.um,
 
 
 def plot_interferometric_observables(wavelength_range: u.um,
-                                     components: List[Component],
+                                     components: List[FourierComponent],
                                      component_labels: List[str],
                                      save_dir: Optional[Path] = None) -> None:
     """Plots the observables of the model.
@@ -1151,7 +1151,7 @@ def plot_product(points, product, xlabel, ylabel,
 
 
 def plot_intermediate_products(dim: int, wavelength: Optional[u.Quantity[u.um]],
-                               components: List[Component], component_labels: List[str],
+                               components: List[FourierComponent], component_labels: List[str],
                                save_dir: Optional[Path] = None) -> None:
     """Plots the intermediate products of the model (temperature, density, etc.)."""
     wavelength = u.Quantity(wavelength, u.um) if wavelength is not None\

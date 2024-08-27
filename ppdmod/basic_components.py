@@ -9,13 +9,13 @@ from scipy.special import j0, j1, jv
 from scipy.signal import fftconvolve
 from scipy.interpolate import interp1d
 
-from .component import Component
+from .component import FourierComponent
 from .parameter import Parameter
 from .options import STANDARD_PARAMETERS, OPTIONS
 from .utils import distance_to_angular, angular_to_distance
 
 
-class PointSource(Component):
+class PointSource(FourierComponent):
     """A point source that can contain a relative flux contribution.
 
     Parameters
@@ -91,7 +91,7 @@ class PointSource(Component):
         return image
 
 
-class Star(Component):
+class Star(FourierComponent):
     """Star defined as component.
 
     Parameters
@@ -185,7 +185,7 @@ class Star(Component):
         return image
 
 
-class Ring(Component):
+class Ring(FourierComponent):
     """A ring.
 
     Parameters
@@ -356,7 +356,7 @@ class Ring(Component):
         return image.astype(OPTIONS.data.dtype.real)
 
 
-class UniformDisk(Component):
+class UniformDisk(FourierComponent):
     name = "Uniform Disk"
     shortname = "UniformDisk"
     description = "A uniform disk."
@@ -405,7 +405,7 @@ class UniformDisk(Component):
         return (radius <= self.diam() / 2).astype(OPTIONS.data.dtype.real)
 
 
-class Gaussian(Component):
+class Gaussian(FourierComponent):
     name = "Gaussian"
     shortname = "Gaussian"
     description = "A simple 2D Gaussian."
@@ -454,7 +454,7 @@ class Gaussian(Component):
         return image.value.astype(OPTIONS.data.dtype.real)
 
 
-class Lorentzian(Component):
+class Lorentzian(FourierComponent):
     name = "Lorentzian"
     shortname = "Lorentzian"
     description = "A simple 2D Lorentzian."
@@ -502,7 +502,7 @@ class Lorentzian(Component):
         return image.value.astype(OPTIONS.data.dtype.real)
 
 
-class GaussLorentzian(Component):
+class GaussLorentzian(FourierComponent):
     name = "Gauss-Lorentzian"
     shortname = "GaussLorentzian"
     description = "A simple 2D Gaussian combined with a Lorentzian."
@@ -744,7 +744,7 @@ class AsymmetricGreyBody(GreyBody):
     shortname = "AsymmetricGreyBody"
     asymmetric = True
 
-class StarHaloGauss(Component):
+class StarHaloGauss(FourierComponent):
     """A star, a disk and a halo model with a Gauss profile.
 
     From Lazareff+2017.
@@ -863,14 +863,14 @@ class StarHaloRing(StarHaloGaussLor):
     has_ring = True
 
 
-def get_component_by_name(name: str) -> Component:
+def get_component_by_name(name: str) -> FourierComponent:
     """Gets the component by its name."""
     return getattr(sys.modules[__name__], name)
 
 
 def assemble_components(parameters: Dict[str, Dict],
                         shared_params: Optional[Dict[str, Parameter]] = None
-                        ) -> List[Component]:
+                        ) -> List[FourierComponent]:
     """Assembles a model from a dictionary of parameters."""
     shared_params = shared_params if shared_params is not None else {}
     if OPTIONS.model.constant_params is None:

@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 
 from ppdmod import utils
-from ppdmod.component import Component
+from ppdmod.component import FourierComponent
 from ppdmod.basic_components import AsymmetricGreyBody, PointSource, Star, Ring, UniformDisk, \
     Gaussian, TempGradient, GreyBody, AsymmetricTempGradient, assemble_components
 from ppdmod.data import ReadoutFits, set_data

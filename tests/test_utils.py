@@ -8,7 +8,7 @@ import pytest
 from scipy.special import j1
 
 from ppdmod import utils
-from ppdmod.component import Component
+from ppdmod.component import FourierComponent
 from ppdmod.data import ReadoutFits, set_data, get_all_wavelengths
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
@@ -539,7 +539,7 @@ def test_broadcast_baselines(fits_files: List[Path], wavelength: u.um) -> None:
         [(comp, wl) for wl in [[10]*u.um, [10, 12.5]*u.um]
          for comp in [PointSource, Star, Gaussian, TempGradient]])
 def test_compute_t3(fits_files: List[Path],
-                    wavelength: u.um, component: Component) -> None:
+                    wavelength: u.um, component: FourierComponent) -> None:
     """Tests the calculation of the closure phase."""
     set_data(fits_files, wavelengths=wavelength, fit_data=["t3"])
     fr = Parameter(**STANDARD_PARAMETERS.fr)
@@ -568,7 +568,7 @@ def test_compute_t3(fits_files: List[Path],
         [(comp, wl) for wl in [[10]*u.um, [10, 12.5]*u.um]
          for comp in [PointSource, Star, Gaussian, TempGradient]])
 def test_compute_vis(fits_files: List[Path],
-                     wavelength: u.um, component: Component) -> None:
+                     wavelength: u.um, component: FourierComponent) -> None:
     """Tests the calculation of the visibility."""
     set_data(fits_files, wavelengths=wavelength, fit_data=["vis2"])
     fr = Parameter(**STANDARD_PARAMETERS.fr)

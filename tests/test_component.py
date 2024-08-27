@@ -5,7 +5,7 @@ import astropy.units as u
 import numpy as np
 import pytest
 
-from ppdmod.component import Component
+from ppdmod.component import FourierComponent
 from ppdmod.basic_components import Star, Ring, Gaussian
 from ppdmod.data import ReadoutFits, set_data
 from ppdmod.options import OPTIONS, STANDARD_PARAMETERS
@@ -26,9 +26,9 @@ def wavelength() -> u.um:
 
 
 @pytest.fixture
-def component() -> Component:
+def component() -> FourierComponent:
     """Initializes a component."""
-    return Component()
+    return FourierComponent()
 
 
 @pytest.fixture
@@ -49,7 +49,7 @@ def gaussian() -> Gaussian:
     return Gaussian(**{"dim": 512, "fwhm": 0.5})
 
 
-def test_component(component: Component) -> None:
+def test_component(component: FourierComponent) -> None:
     """Tests if the initialization of the component works."""
     assert component.pa.free and component.inc.free
 
@@ -72,7 +72,7 @@ def test_component(component: Component) -> None:
     OPTIONS.model.modulation = 1
 
 
-def test_eval(component: Component) -> None:
+def test_eval(component: FourierComponent) -> None:
     """Tests if the evaulation of the parameters works."""
     x = Parameter(**STANDARD_PARAMETERS.fov)
     params = {"x": x, "y": 10, "dim": 512}
@@ -84,7 +84,7 @@ def test_eval(component: Component) -> None:
 
 
 # TODO: Finish this test
-def test_get_params(component: Component):
+def test_get_params(component: FourierComponent):
     """Tests the fetching of params from a component."""
     params = component.get_params()
     params_free = component.get_params(free=True)
@@ -92,7 +92,7 @@ def test_get_params(component: Component):
 
 
 # TODO: Needs better test
-def test_translate_coordinates(component: Component) -> None:
+def test_translate_coordinates(component: FourierComponent) -> None:
     """Tests if the translation of the coordinates works."""
     component.x.value = 10*u.mas
     component.y.value = 10*u.mas

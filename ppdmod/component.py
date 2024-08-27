@@ -9,7 +9,57 @@ from .utils import compute_effective_baselines, broadcast_baselines
 
 
 class Component:
-    """The base class for the component.
+    """The base class for the component."""
+    name = "Generic component"
+    shortname = "GenComp"
+    description = "This is base component are derived."
+
+    def eval(self, **kwargs) -> None:
+        """Sets the parameters (values) from the keyword arguments."""
+        for key, value in kwargs.items():
+            if hasattr(self, key):
+                if isinstance(value, Parameter):
+                    setattr(self, key, value)
+                else:
+                    if isinstance(getattr(self, key), Parameter):
+                        getattr(self, key).value = value
+                    else:
+                        setattr(self, key, value)
+
+    def get_params(self, free: Optional[bool] = False):
+        """Gets all the parameters of a component.
+
+        Parameters
+        ----------
+        component : Component
+            The component for which the parameters should be fetched.
+        only_free : bool, optional
+            If only the free parameters should be returned, by default False
+
+        Returns
+        -------
+        params : dict of Parameter
+        """
+        params = {}
+        for attribute in dir(self):
+            value = getattr(self, attribute)
+            if isinstance(value, Parameter):
+                if free and not value.free:
+                    continue
+                params[attribute] = value
+        return params
+
+    def flux_func(self, wavelength: u.um) -> np.ndarray:
+        """Calculates the flux."""
+        return np.array([]).astype(OPTIONS.data.dtype.real)
+
+    def compute_flux(self, wavelength: u.um) -> np.ndarray:
+        """Computes the fluxes."""
+        return np.abs(self.flux_func(wavelength)).astype(OPTIONS.data.dtype.real)
+
+
+class FourierComponent(Component):
+    """The base class for the Fourier (analytical) component.
 
     Parameters
     ----------
@@ -18,11 +68,11 @@ class Component:
     yy : float
         The x-coordinate of the component.
     dim : float
-        The dimension [px].
+        The dimension (px).
     """
-    name = "Generic component"
-    shortname = "GenComp"
-    description = "This is the class from which all components are derived."
+    name = "Fourier component"
+    shortname = "FourierComp"
+    description = "The component from which all analytical components are derived."
     _elliptic = True
     _asymmetric = False
 
@@ -31,9 +81,9 @@ class Component:
         self.fr = Parameter(**STANDARD_PARAMETERS.fr)
         self.x = Parameter(**STANDARD_PARAMETERS.x)
         self.y = Parameter(**STANDARD_PARAMETERS.y)
-        self.dim = Parameter(**STANDARD_PARAMETERS.dim)
         self.pa = Parameter(**STANDARD_PARAMETERS.pa)
         self.inc = Parameter(**STANDARD_PARAMETERS.inc)
+        self.dim = Parameter(**STANDARD_PARAMETERS.dim)
 
         for i in range(1, OPTIONS.model.modulation + 1):
             setattr(self, f"c{i}", Parameter(**STANDARD_PARAMETERS.c))
@@ -73,45 +123,9 @@ class Component:
         if elliptic is set."""
         self._asymmetric = self.c1.free = self.s1.free = value
 
-    def eval(self, **kwargs) -> None:
-        """Sets the parameters (values) from the keyword arguments."""
-        for key, value in kwargs.items():
-            if hasattr(self, key):
-                if isinstance(value, Parameter):
-                    setattr(self, key, value)
-                else:
-                    if isinstance(getattr(self, key), Parameter):
-                        getattr(self, key).value = value
-                    else:
-                        setattr(self, key, value)
-
-
-    def get_params(self, free: Optional[bool] = False):
-        """Gets all the parameters of a component.
-
-        Parameters
-        ----------
-        component : Component
-            The component for which the parameters should be fetched.
-        only_free : bool, optional
-            If only the free parameters should be returned, by default False
-
-        Returns
-        -------
-        params : dict of Parameter
-        """
-        params = {}
-        for attribute in dir(self):
-            value = getattr(self, attribute)
-            if isinstance(value, Parameter):
-                if free and not value.free:
-                    continue
-                params[attribute] = value
-        return params
-
     def compute_internal_grid(
-            self, dim: int, pixel_size: u.mas
-            ) -> Tuple[u.Quantity[u.mas], u.Quantity[u.mas]]:
+            self, dim: int, pixel_size: u.au
+            ) -> Tuple[u.Quantity[u.au], u.Quantity[u.au]]:
         """Calculates the model grid.
 
         Parameters
@@ -121,12 +135,13 @@ class Component:
 
         Returns
         -------
-        xx : astropy.units.mas
+        xx : astropy.units.au
             The x-coordinate grid.
-        yy : astropy.units.mas
+        yy : astropy.units.au
             The y-coordinate grid.
         """
-        return np.array([])*u.mas, np.array([])*u.mas
+        return np.array([]) * u.au, np.array([]) * u.au
+
 
     def translate_image_func(
             self, xx: u.mas, yy: u.mas
@@ -142,18 +157,10 @@ class Component:
         translation = np.exp(2j * np.pi * baselines * uv_coords.to(u.rad))
         return translation.value.astype(OPTIONS.data.dtype.complex)
 
-    def flux_func(self, wavelength: u.um) -> np.ndarray:
-        """Calculates the total flux from the hankel transformation."""
-        return np.array([]).astype(OPTIONS.data.dtype.real)
-
     def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
                  wavelength: u.um, **kwargs) -> np.ndarray:
         """Computes the correlated fluxes."""
         return np.array([]).astype(OPTIONS.data.dtype.complex)
-
-    def compute_flux(self, wavelength: u.um) -> np.ndarray:
-        """Computes the total fluxes."""
-        return np.abs(self.flux_func(wavelength)).astype(OPTIONS.data.dtype.real)
 
     def compute_complex_vis(self, ucoord: u.m, vcoord: u.m,
                             wavelength: u.um, **kwargs) -> np.ndarray:
@@ -187,7 +194,7 @@ class Component:
             wavelength = wavelength[np.newaxis, np.newaxis]
         pixel_size = pixel_size if isinstance(pixel_size, u.Quantity)\
             else u.Quantity(pixel_size, u.mas)
-        
+
         xx = np.linspace(-0.5, 0.5, dim) * pixel_size * dim
         xx, yy = self.translate_image_func(*np.meshgrid(xx, xx))
 
