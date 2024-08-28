@@ -9,10 +9,71 @@ from scipy.special import j0, j1, jv
 from scipy.signal import fftconvolve
 from scipy.interpolate import interp1d
 
-from .component import FourierComponent
+from .component import Component, FourierComponent
 from .parameter import Parameter
 from .options import STANDARD_PARAMETERS, OPTIONS
 from .utils import distance_to_angular, angular_to_distance
+
+
+class SED(Component):
+    name = "SED"
+    shortname = "SED"
+    description = "A model for the SED of a star."
+
+    def __init__(self, **kwargs):
+        """The class's constructor."""
+        self.tempc = Parameter(**STANDARD_PARAMETERS.temp0)
+        self.tempc.shortname = self.tempc.name = "tempc"
+        self.tempc.description = "The temperature of the black body"
+
+        self.pah = Parameter(**STANDARD_PARAMETERS.pah)
+        self.pah_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
+        self.pah_weight.shortname = self.pah_weight.name = "pah_weight"
+        self.pah_weight.description = "The mass fraction for the PAHs"
+
+        self.kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
+        self.cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
+
+        self.materials = ["oliv", "pyrox", "forst", "enst", "sil"]
+
+        for key in self.materials:
+            for size in ["small", "large"]:
+                param_name = f"kappa_{key}_{size}"
+                param = Parameter(**STANDARD_PARAMETERS.kappa_abs)
+                param.shortname = param.name = param_name
+                param.description = f"The dust mass absorption coefficient for {size} {key}"
+                setattr(self, param_name, param)
+
+                weight_name = f"{key}_{size}_weight"
+                weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
+                weight.shortname = weight.name = weight_name
+                weight.description = f"The mass fraction for {size} {key}"
+                setattr(self, weight_name, weight)
+
+        self.eval(**kwargs)
+
+    def get_opacity(self, wavelength: u.um) -> u.cm**2 / u.g:
+        """Set the opacity from wavelength."""
+        # TODO: Rewrite this so it can be done in numpy directly. More efficient?
+        opacities = []
+        for key in self.materials:
+            for size in ["small", "large"]:
+                kappa = getattr(self, f"kappa_{key}_{size}")(wavelength)
+                weight = getattr(self, f"{key}_{size}_weight")
+                opacities.append(weight * kappa)
+
+        kappa_abs = u.Quantity(np.sum(opacities, axis=0), unit=opacities[0].unit)
+        cont_weight, kappa_cont = self.cont_weight(), self.kappa_cont(wavelength)
+        opacity = (1 - cont_weight) * kappa_abs + cont_weight * kappa_cont
+        return opacity.astype(OPTIONS.data.dtype.real)
+
+    def flux_func(self, wavelength: u.um) -> np.ndarray:
+        """Returns the flux weight of the point source."""
+        bb = BlackBody(temperature=self.tempc())(wavelength)
+        opacity = self.get_opacity(wavelength).value
+        pah = self.pah_weight() * self.pah(wavelength)
+        flux = (bb * opacity * u.sr).to(u.Jy) + pah
+        return flux.value.reshape((wavelength.size, 1))
 
 
 class PointSource(FourierComponent):

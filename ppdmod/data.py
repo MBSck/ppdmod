@@ -108,7 +108,8 @@ class ReadoutFits:
 
     def get_data_for_wavelength(
             self, wavelength: u.Quantity,
-            key: str, subkey: str) -> np.ndarray:
+            key: str, subkey: str,
+            no_binning: Optional[bool] = False) -> np.ndarray:
         """Gets the data for the given wavelengths.
 
         If there is no data for the given wavelengths,
@@ -123,13 +124,19 @@ class ReadoutFits:
             The key (header) of the data to be returned.
         subkey : str
             The subkey of the data to be returned.
+        no_binning : bool, optional
+            If the data should be binned or not.
 
         Returns
         -------
         numpy.ndarray
             The data for the given wavelengths.
         """
-        window = getattr(OPTIONS.data.binning, self.band)
+        if not no_binning:
+            window = getattr(OPTIONS.data.binning, self.band)
+        else:
+            window = None
+
         indices = get_indices(
             wavelength, array=self.wavelength, window=window)
 
@@ -139,15 +146,14 @@ class ReadoutFits:
                 return np.full((wavelength.size, 1), np.nan)
             return np.full((wavelength.size, data.shape[0]), np.nan)
 
-        # TODO: Fix the no binning case again
         if key == "flux":
-            if OPTIONS.data.binning is None:
-                wl_data = [[data.flatten()[index] if index.size != 0
+            if no_binning:
+                wl_data = [[data.flatten()[index[0]] if index.size != 0
                            else np.full((data.shape[0],), np.nan)] for index in indices]
             else:
                 wl_data = [[data.flatten()[index].mean()] for index in indices]
         else:
-            if OPTIONS.data.binning is None:
+            if no_binning:
                 wl_data = [data[:, index] if index.size != 0
                            else np.full((data.shape[0],), np.nan) for index in indices]
             else:
@@ -264,9 +270,10 @@ def set_data(fits_files: Optional[List[Path]] = None,
         return
 
     OPTIONS.data.readouts = list(map(partial(ReadoutFits, wavelength_range=wavelength_range), fits_files))
+    no_binning = False
     if wavelengths == "all":
         wavelengths = get_all_wavelengths(OPTIONS.data.readouts)
-        OPTIONS.data.binning = None
+        no_binning = True
     elif wavelengths is None:
         raise ValueError("No wavelengths given and/or not 'all' specified!")
 
@@ -275,8 +282,8 @@ def set_data(fits_files: Optional[List[Path]] = None,
         for key in fit_data:
             data = getattr(OPTIONS.data, key)
             data_readout = getattr(readout, key)
-            value = readout.get_data_for_wavelength(wavelengths, key, "value")
-            err = readout.get_data_for_wavelength(wavelengths, key, "err")
+            value = readout.get_data_for_wavelength(wavelengths, key, "value", no_binning)
+            err = readout.get_data_for_wavelength(wavelengths, key, "err", no_binning)
 
             if key in ["vis", "vis2", "t3"]:
                 ind = np.where(np.abs(err/value) < min_err)

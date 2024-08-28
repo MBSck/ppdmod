@@ -130,7 +130,7 @@ def compute_chi_sq(data: u.Quantity, error: u.Quantity,
     else:
         sigma_squared = error ** 2 + model_data ** 2 * np.exp(2 * lnf)
 
-    diff = data-model_data
+    diff = data - model_data
     if diff_method != "linear":
         diff = np.angle(np.exp(diff * u.deg.to(u.rad) * 1j), deg=True)
 
@@ -139,6 +139,21 @@ def compute_chi_sq(data: u.Quantity, error: u.Quantity,
         return square_term.sum()
 
     return -0.5 * (square_term + np.log(2 * np.pi * sigma_squared)).sum()
+
+
+def compute_sed(components: List[Component],
+                wavelength: Optional[np.ndarray] = None) -> np.ndarray:
+    """Computes the SED from the model.
+
+    Parameters
+    ----------
+    components : list of Component
+        The components to be used in the model.
+        Only the 0th component is choosen as the SED.
+    wavelength : numpy.ndarray, optional
+        The wavelengths to be used in the model.
+    """
+    return np.array(components[0].compute_flux(wavelength))
 
 
 # TODO: Write tests (ASPRO) that tests multiple components with the total flux
@@ -384,6 +399,34 @@ def lnprob(theta: np.ndarray) -> float:
     return compute_observable_chi_sq(*compute_observables(components))
 
 
+def lnprob_sed(theta: np.ndarray) -> float:
+    """Takes theta vector and the x, y and the yerr of the theta.
+    Returns a number corresponding to how good of a fit the model is to your
+    data for a given set of parameters, weighted by the data points.
+
+    This is the analytical 1D implementation.
+
+    Parameters
+    ----------
+    theta: np.ndarray
+        The parameters that ought to be fitted.
+
+    Returns
+    -------
+    float
+        The log of the probability.
+    """
+    parameters, shared_params = set_params_from_theta(theta)
+
+    if OPTIONS.fit.method == "emcee":
+        if np.isinf(lnprior(parameters, shared_params)):
+            return -np.inf
+
+    components = assemble_components(parameters, shared_params)
+    model_fluxes = compute_sed(components, OPTIONS.fit.wavelengths)
+    return compute_chi_sq(
+        OPTIONS.data.flux.value, OPTIONS.data.flux.err, model_fluxes)
+
 def run_mcmc(nwalkers: int,
              nburnin: Optional[int] = 0,
              nsteps: Optional[int] = 100,
@@ -481,7 +524,8 @@ def run_dynesty(sample: Optional[str] = "rwalk",
     print(f"Executing Dynesty.\n{'':-^50}")
     ptform = kwargs.pop("ptform", transform_uniform_prior)
     sampler = samplers[method](
-        lnprob, ptform, ndim, **general_kwargs, **sampler_kwargs[method])
+        kwargs.pop("lnprob", lnprob), ptform, ndim,
+        **general_kwargs, **sampler_kwargs[method])
     sampler.run_nested(**run_kwargs[method], print_progress=True,
                        checkpoint_file=str(checkpoint_file))
 

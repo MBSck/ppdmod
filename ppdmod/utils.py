@@ -51,7 +51,7 @@ def smooth_interpolation(
     points = interpolation_points.flatten()
     windows = np.array([getattr(OPTIONS.data.binning, get_band(point)).value 
                         for point in points])
-    interpolation_grid = (np.linspace(-1, 1, OPTIONS.data.binning.dim) * windows[:, np.newaxis]).T + points
+    interpolation_grid = (np.linspace(-1, 1, OPTIONS.data.interpolation.dim) * windows[:, np.newaxis]).T + points
     return np.interp(interpolation_grid, grid, values).mean(axis=0).reshape(interpolation_points.shape)
 
 
