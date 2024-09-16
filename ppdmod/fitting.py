@@ -424,8 +424,9 @@ def lnprob_sed(theta: np.ndarray) -> float:
 
     components = assemble_components(parameters, shared_params)
     model_fluxes = compute_sed(components, OPTIONS.fit.wavelengths)
-    return compute_chi_sq(
-        OPTIONS.data.flux.value, OPTIONS.data.flux.err, model_fluxes)
+    flux, flux_err = map(lambda x: (x * u.Jy).to(u.erg/u.s/u.Hz/u.cm**2).value,
+                        [OPTIONS.data.flux.value, OPTIONS.data.flux.err])
+    return compute_chi_sq(flux, flux_err, model_fluxes)
 
 def run_mcmc(nwalkers: int,
              nburnin: Optional[int] = 0,

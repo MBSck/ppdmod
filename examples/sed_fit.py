@@ -8,6 +8,7 @@ os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
+import astropy.units as u
 import numpy as np
 
 from ppdmod.analysis import save_fits
@@ -55,12 +56,12 @@ tempc.description = "The temperature of the black body"
 tempc.value = 900
 
 cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
-cont_weight.set(min=0, max=1e30)
+cont_weight.set(min=0, max=1e3)
 
 pah_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 pah_weight.shortname = pah_weight.name = "pah_weight"
 pah_weight.description = "The mass fraction for the PAHs"
-pah_weight.set(min=0, max=1e30)
+pah_weight.set(min=0, max=1e3)
 
 sed = {"tempc": tempc, "pah_weight": pah_weight, "cont_weight": cont_weight}
 for key in NAMES.keys():
@@ -69,7 +70,7 @@ for key in NAMES.keys():
         weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
         weight.shortname = weight.name = weight_name
         weight.description = f"The mass fraction for {size} {key}"
-        weight.set(min=0, max=1e30)
+        weight.set(min=0, max=1e3)
         sed[weight_name] = weight
 
 
@@ -91,8 +92,10 @@ components = basic_components.assemble_components(
         OPTIONS.model.shared_params)
 
 model_fluxes = compute_sed(components, all_wavelengths)
+flux, flux_err = map(lambda x: (x * u.Jy).to(u.erg/u.s/u.Hz/u.cm**2).value,
+                     [data.flux.value, data.flux.err])
 chi_sq = compute_chi_sq(
-    data.flux.value, data.flux.err, model_fluxes, func_method="default")
+    flux, flux_err, model_fluxes, func_method="default")
 nfree_params = len(get_priors())
 rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
 print(f"rchi_sq: {rchi_sq:.2f}")
@@ -103,7 +106,7 @@ if __name__ == "__main__":
     fit_params = {"nlive_init": 2000, "lnprob": lnprob_sed}
     sampler = run_fit(**fit_params, ncores=ncores,
                       method="dynamic", save_dir=result_dir,
-                      debug=False)
+                      debug=True)
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
     components_and_params, shared_params = set_params_from_theta(theta)
@@ -111,7 +114,7 @@ if __name__ == "__main__":
             components_and_params, shared_params)
     model_fluxes = compute_sed(components, all_wavelengths)
     chi_sq = compute_chi_sq(
-        data.flux.value, data.flux.err, model_fluxes, func_method="default")
+        flux, flux_err, model_fluxes, func_method="default")
     rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
     print(f"rchi_sq: {rchi_sq:.2f}")
 
