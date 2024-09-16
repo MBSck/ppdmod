@@ -93,8 +93,8 @@ components = basic_components.assemble_components(
 model_fluxes = compute_sed(components, all_wavelengths)
 chi_sq = compute_chi_sq(
     data.flux.value, data.flux.err, model_fluxes, func_method="default")
-params = len(get_priors())
-rchi_sq = chi_sq / (data.flux.value.size - params)
+nfree_params = len(get_priors())
+rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
 print(f"rchi_sq: {rchi_sq:.2f}")
 
 
@@ -112,8 +112,7 @@ if __name__ == "__main__":
     model_fluxes = compute_sed(components, all_wavelengths)
     chi_sq = compute_chi_sq(
         data.flux.value, data.flux.err, model_fluxes, func_method="default")
-    params = len(get_priors())
-    rchi_sq = chi_sq / (data.flux.value.size - params)
+    rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
     print(f"rchi_sq: {rchi_sq:.2f}")
 
     save_fits(
