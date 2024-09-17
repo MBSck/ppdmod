@@ -113,7 +113,7 @@ if __name__ == "__main__":
             components_and_params, shared_params)
     model_flux = compute_sed(components, all_wavelengths)
     chi_sq = compute_chi_sq(
-        flux, flux_err, model_flux, func_method="default")
+        data.flux.value, data.flux.err, model_flux, func_method="default")
     rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
     print(f"rchi_sq: {rchi_sq:.2f}")
 
