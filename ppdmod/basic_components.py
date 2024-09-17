@@ -54,7 +54,6 @@ class SED(Component):
 
     def get_opacity(self, wavelength: u.um) -> u.cm**2 / u.g:
         """Set the opacity from wavelength."""
-        # TODO: Rewrite this so it can be done in numpy directly. More efficient?
         opacities = []
         for key in self.materials:
             for size in ["small", "large"]:
@@ -64,15 +63,15 @@ class SED(Component):
 
         kappa_abs = u.Quantity(np.sum(opacities, axis=0), unit=opacities[0].unit)
         cont_weight, kappa_cont = self.cont_weight(), self.kappa_cont(wavelength)
-        opacity = (1 - cont_weight) * kappa_abs + cont_weight * kappa_cont
+        opacity = kappa_abs + cont_weight * kappa_cont
         return opacity.astype(OPTIONS.data.dtype.real)
 
     def flux_func(self, wavelength: u.um) -> np.ndarray:
         """Returns the flux weight of the point source."""
         bb = BlackBody(temperature=self.tempc())(wavelength)
-        opacity = self.get_opacity(wavelength).value
+        opacity = self.get_opacity(wavelength)
         pah = self.pah_weight() * self.pah(wavelength)
-        flux = bb * opacity * u.sr + pah.to(u.erg/u.s/u.Hz/u.cm**2)
+        flux = (bb * opacity.value * u.sr).to(u.Jy) + pah
         return flux.value.reshape((wavelength.size, 1))
 
 

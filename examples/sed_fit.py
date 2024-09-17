@@ -56,12 +56,14 @@ tempc.description = "The temperature of the black body"
 tempc.value = 900
 
 cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
-cont_weight.set(min=0, max=1e3)
+cont_weight.set(min=0, max=1)
+cont_weight.value = 1e-10
 
 pah_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 pah_weight.shortname = pah_weight.name = "pah_weight"
 pah_weight.description = "The mass fraction for the PAHs"
-pah_weight.set(min=0, max=1e3)
+pah_weight.set(min=0, max=1)
+pah_weight.value = 0.25
 
 sed = {"tempc": tempc, "pah_weight": pah_weight, "cont_weight": cont_weight}
 for key in NAMES.keys():
@@ -70,7 +72,8 @@ for key in NAMES.keys():
         weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
         weight.shortname = weight.name = weight_name
         weight.description = f"The mass fraction for {size} {key}"
-        weight.set(min=0, max=1e3)
+        weight.set(min=0, max=1)
+        weight.value = 1e-10
         sed[weight_name] = weight
 
 
@@ -91,11 +94,9 @@ components = basic_components.assemble_components(
         OPTIONS.model.components_and_params,
         OPTIONS.model.shared_params)
 
-model_fluxes = compute_sed(components, all_wavelengths)
-flux, flux_err = map(lambda x: (x * u.Jy).to(u.erg/u.s/u.Hz/u.cm**2).value,
-                     [data.flux.value, data.flux.err])
+model_flux = compute_sed(components, all_wavelengths)
 chi_sq = compute_chi_sq(
-    flux, flux_err, model_fluxes, func_method="default")
+    data.flux.value, data.flux.err, model_flux, func_method="default")
 nfree_params = len(get_priors())
 rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
 print(f"rchi_sq: {rchi_sq:.2f}")
@@ -112,9 +113,9 @@ if __name__ == "__main__":
     components_and_params, shared_params = set_params_from_theta(theta)
     components = basic_components.assemble_components(
             components_and_params, shared_params)
-    model_fluxes = compute_sed(components, all_wavelengths)
+    model_flux = compute_sed(components, all_wavelengths)
     chi_sq = compute_chi_sq(
-        flux, flux_err, model_fluxes, func_method="default")
+        flux, flux_err, model_flux, func_method="default")
     rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
     print(f"rchi_sq: {rchi_sq:.2f}")
 
