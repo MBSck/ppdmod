@@ -8,7 +8,6 @@ os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
-import astropy.units as u
 import numpy as np
 
 from ppdmod.analysis import save_fits
@@ -56,7 +55,7 @@ tempc.description = "The temperature of the black body"
 tempc.value = 900
 
 cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
-cont_weight.set(min=0, max=1)
+cont_weight.set(min=0, max=1e-5)
 cont_weight.value = 1e-10
 
 pah_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
@@ -72,10 +71,9 @@ for key in NAMES.keys():
         weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
         weight.shortname = weight.name = weight_name
         weight.description = f"The mass fraction for {size} {key}"
-        weight.set(min=0, max=1)
+        weight.set(min=0, max=1e-5)
         weight.value = 1e-10
         sed[weight_name] = weight
-
 
 OPTIONS.model.components_and_params = [["SED", sed]]
 LABELS, UNITS = [key for key in sed], [value.unit for value in sed.values()]
@@ -107,7 +105,7 @@ if __name__ == "__main__":
     fit_params = {"nlive_init": 2000, "lnprob": lnprob_sed}
     sampler = run_fit(**fit_params, ncores=ncores,
                       method="dynamic", save_dir=result_dir,
-                      debug=True)
+                      debug=False)
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
     components_and_params, shared_params = set_params_from_theta(theta)

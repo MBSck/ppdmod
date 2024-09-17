@@ -53,12 +53,13 @@ def save_fits(components: List[Component],
     header["OBJECT"] = (object_name, KEYWORD_DESCRIPTIONS["object"])
     header["FITMETH"] = (OPTIONS.fit.method, KEYWORD_DESCRIPTIONS["fitmeth"])
 
-    rchi_sq_tot, rchi_sq_flux, rchi_sq_vis, rchi_sq_cp = compute_observable_chi_sq(
-        *compute_observables(components), reduced=True, split=True)
-    header["RCHISQ"] = (np.round(rchi_sq_tot, 2), KEYWORD_DESCRIPTIONS["rchisq"])
-    header["RCHISQF"] = (np.round(rchi_sq_flux, 2), KEYWORD_DESCRIPTIONS["rchisqf"])
-    header["RCHISQV"] = (np.round(rchi_sq_vis, 2), KEYWORD_DESCRIPTIONS["rchisqv"])
-    header["RCHISQC"] = (np.round(rchi_sq_cp, 2), KEYWORD_DESCRIPTIONS["rchisqc"])
+    # TODO: Make this work with the SED fit as well
+    # rchi_sq_tot, rchi_sq_flux, rchi_sq_vis, rchi_sq_cp = compute_observable_chi_sq(
+    #     *compute_observables(components), reduced=True, split=True)
+    # header["RCHISQ"] = (np.round(rchi_sq_tot, 2), KEYWORD_DESCRIPTIONS["rchisq"])
+    # header["RCHISQF"] = (np.round(rchi_sq_flux, 2), KEYWORD_DESCRIPTIONS["rchisqf"])
+    # header["RCHISQV"] = (np.round(rchi_sq_vis, 2), KEYWORD_DESCRIPTIONS["rchisqv"])
+    # header["RCHISQC"] = (np.round(rchi_sq_cp, 2), KEYWORD_DESCRIPTIONS["rchisqc"])
     # header["QUANTILES"[:8]] = (OPTIONS.fit.quantiles, KEYWORD_DESCRIPTIONS["quantiles"])
     # header["WAVELENGTH"[:8]] = (OPTIONS.fit.wavelengths, KEYWORD_DESCRIPTIONS["wavelengths"])
 
