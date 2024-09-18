@@ -17,7 +17,7 @@ from ppdmod.fitting import run_fit, compute_sed, get_best_fit, \
     compute_chi_sq, set_params_from_theta, get_priors, lnprob_sed
 from ppdmod.data import set_data, get_all_wavelengths
 from ppdmod.parameter import Parameter
-from ppdmod.plot import plot_corner
+from ppdmod.plot import plot_corner, plot_sed
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 
