@@ -34,6 +34,11 @@ class SED(Component):
         self.kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
         self.cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 
+        self.factor = Parameter(**STANDARD_PARAMETERS.f)
+        self.factor.name = self.factor.shortname = "factor"
+        self.factor.unit = u.one
+        self.factor.description = "The factor to scale the black body"
+
         self.materials = ["oliv", "pyrox", "forst", "enst", "sil"]
 
         for key in self.materials:
@@ -71,7 +76,7 @@ class SED(Component):
         bb = BlackBody(temperature=self.tempc())(wavelength)
         opacity = self.get_opacity(wavelength)
         pah = self.pah_weight() * self.pah(wavelength)
-        flux = (bb * opacity.value * u.sr).to(u.Jy) + pah
+        flux = (bb * opacity.value * u.sr * self.factor()).to(u.Jy) + pah
         return flux.value.reshape((wavelength.size, 1))
 
 

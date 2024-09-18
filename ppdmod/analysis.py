@@ -70,7 +70,7 @@ def save_fits(components: List[Component],
 
     if fit_hyperparameters is not None:
         for key, value in fit_hyperparameters.items():
-            if key in ["ptform"]:
+            if key in ["ptform", "lnprob"]:
                 continue
             header[key.upper()[:8]] = (value, KEYWORD_DESCRIPTIONS[key.lower()])
 

@@ -8,6 +8,7 @@ os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
+import astropy.units as u
 import numpy as np
 
 from ppdmod.analysis import save_fits
@@ -32,7 +33,13 @@ GRF_DIR = OPACITY_DIR / "grf"
 NAMES = {"enst": "Enstatite", "forst": "Forsterite",
          "oliv": "Olivine", "sil": "Silica", "pyrox": "MgPyroxene"}
 
-OPTIONS.model.constant_params = {}
+factor = Parameter(**STANDARD_PARAMETERS.f)
+factor.name = factor.shortname = "factor"
+factor.unit = u.one
+factor.description = "The factor to scale the black body"
+factor.value = 1e-19
+
+OPTIONS.model.constant_params = {"factor": factor}
 for shortname, name in NAMES.items():
     for size, value in {"small": 0.1, "large": 2.0}.items():
         wl, kappa = np.loadtxt(GRF_DIR / f"{name}{value}.Combined.Kappa", usecols=(0, 2), unpack=True)
@@ -55,8 +62,8 @@ tempc.description = "The temperature of the black body"
 tempc.value = 900
 
 cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
-cont_weight.set(min=0, max=1e-5)
-cont_weight.value = 1e-10
+cont_weight.set(min=0, max=1)
+cont_weight.value = 0.5
 
 pah_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 pah_weight.shortname = pah_weight.name = "pah_weight"
@@ -71,8 +78,8 @@ for key in NAMES.keys():
         weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
         weight.shortname = weight.name = weight_name
         weight.description = f"The mass fraction for {size} {key}"
-        weight.set(min=0, max=1e-5)
-        weight.value = 1e-10
+        weight.set(min=0, max=1)
+        weight.value = 0.5
         sed[weight_name] = weight
 
 OPTIONS.model.components_and_params = [["SED", sed]]
@@ -98,6 +105,7 @@ chi_sq = compute_chi_sq(
 nfree_params = len(get_priors())
 rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
 print(f"rchi_sq: {rchi_sq:.2f}")
+breakpoint()
 
 
 if __name__ == "__main__":
