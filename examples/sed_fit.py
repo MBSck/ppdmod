@@ -34,12 +34,7 @@ GRF_DIR = OPACITY_DIR / "grf"
 NAMES = {"enst": "Enstatite", "forst": "Forsterite",
          "oliv": "Olivine", "sil": "Silica", "pyrox": "MgPyroxene"}
 
-factor = Parameter(**STANDARD_PARAMETERS.f)
-factor.name = factor.shortname = "factor"
-factor.description = "The factor to scale the black body"
-factor.unit, factor.value = u.one, 19
-
-OPTIONS.model.constant_params = {"factor": factor}
+OPTIONS.model.constant_params = {}
 for shortname, name in NAMES.items():
     for size, value in {"small": 0.1, "large": 2.0}.items():
         wl, kappa = np.loadtxt(GRF_DIR / f"{name}{value}.Combined.Kappa", usecols=(0, 2), unpack=True)
@@ -71,7 +66,14 @@ pah_weight.description = "The mass fraction for the PAHs"
 pah_weight.set(min=0, max=10)
 pah_weight.value = 0.25
 
-sed = {"tempc": tempc, "pah_weight": pah_weight, "cont_weight": cont_weight}
+factor = Parameter(**STANDARD_PARAMETERS.f)
+factor.name = factor.shortname = "factor"
+factor.description = "The factor to scale the black body"
+factor.unit, factor.value = u.one, 19
+factor.set(min=18, max=22)
+
+sed = {"tempc": tempc, "pah_weight": pah_weight,
+       "cont_weight": cont_weight, "factor": factor}
 for key in NAMES.keys():
     for size in ["small", "large"]:
         weight_name = f"{key}_{size}_weight"
