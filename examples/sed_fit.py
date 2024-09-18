@@ -57,7 +57,7 @@ tempc.description = "The temperature of the black body"
 tempc.value = 900
 
 cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
-cont_weight.set(min=0, max=5e3)
+cont_weight.set(min=0, max=1e5)
 cont_weight.value = 0.5
 
 pah_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
@@ -80,7 +80,7 @@ for key in NAMES.keys():
         weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
         weight.shortname = weight.name = weight_name
         weight.description = f"The mass fraction for {size} {key}"
-        weight.set(min=0, max=1e3)
+        weight.set(min=0, max=1e5)
         weight.value = 0.5
         sed[weight_name] = weight
 
