@@ -195,19 +195,29 @@ def format_labels(labels: List[str], units: Optional[List[str]] = None) -> List[
                    "pa": {"letter": r"\theta", "indices": []},
                    "inc": {"letter": r"\cos\left(i\right)", "indices": []},
                    "temp0": {"letter": "T", "indices": ["0"]},
+                   "tempc": {"letter": "T", "indices": [r"\mathrm{c}"]},
                    }
 
     formatted_labels = []
     for label in labels:
-        name, index = label.split("-")
+        if "-" in label:
+            name, index = label.split("-")
+        else:
+            name, index = label, ""
+
         if name in nice_labels:
             letter = nice_labels[name]["letter"]
             if name[0] in ["c", "s"] and len(name) == 2:
-                indices = [name[1], index]
-            elif name == "temp0":
+                indices = [name[1]]
+                if index:
+                    indices.append(index)
+            elif name in ["temp0", "tempc"]:
                 indices = nice_labels[name]["indices"]
             else:
-                indices = [*nice_labels[name]["indices"], fr"\mathrm{{{index}}}"]
+                indices = [*nice_labels[name]["indices"]]
+                if index:
+                    indices.append(fr"\mathrm{{{index}}}")
+
             indices = r",\,".join(indices)
             formatted_label = f"{letter}_{{{indices}}}"
             if "log" in label:
@@ -215,7 +225,27 @@ def format_labels(labels: List[str], units: Optional[List[str]] = None) -> List[
 
             formatted_labels.append(f"${formatted_label}$")
         else:
-            formatted_labels.append(label)
+            if "weight" in name:
+                name, letter = name.replace("weight", ""), "w"
+
+                indices = []
+                if "small" in name:
+                    name = name.replace("small", "")
+                    indices = [r"\mathrm{small}"]
+                elif "large" in name:
+                    name = name.replace("large", "")
+                    indices = [r"\mathrm{large}"]
+                name = name.replace("_", "")
+                indices.append(rf"\mathrm{{{name}}}")
+
+                indices = r",\,".join(indices)
+                formatted_label = f"{letter}_{{{indices}}}"
+                if "log" in label:
+                    formatted_label = fr"\log_{{10}}\left({formatted_label}\right)"
+            else:
+                formatted_label = label
+
+            formatted_labels.append(f"${formatted_label}$")
 
     if units is not None:
         reformatted_units = []

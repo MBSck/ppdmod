@@ -22,9 +22,7 @@ class SED(Component):
 
     def __init__(self, **kwargs):
         """The class's constructor."""
-        self.tempc = Parameter(**STANDARD_PARAMETERS.temp0)
-        self.tempc.shortname = self.tempc.name = "tempc"
-        self.tempc.description = "The temperature of the black body"
+        self.tempc = Parameter(**STANDARD_PARAMETERS.tempc)
 
         self.pah = Parameter(**STANDARD_PARAMETERS.pah)
         self.pah_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
@@ -76,7 +74,7 @@ class SED(Component):
         bb = BlackBody(temperature=self.tempc())(wavelength)
         opacity = self.get_opacity(wavelength)
         pah = self.pah_weight() * self.pah(wavelength)
-        flux = (bb * opacity.value * u.sr * self.factor()).to(u.Jy) + pah
+        flux = (bb * opacity.value * u.sr * 10 ** -self.factor()).to(u.Jy) + pah
         return flux.value.reshape((wavelength.size, 1))
 
 

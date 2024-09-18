@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Tuple
 from pathlib import Path
 
+import astropy.units as u
 import numpy as np
 from astropy.io import fits
 from astropy.table import Table
@@ -126,13 +127,23 @@ def restore_from_fits(path: Path) -> Tuple[List[str], List[Component], Optional[
                 if (name[0] == "c" or name[0] == "s") and len(name) <= 2:
                     param_name = name[0]
 
-                param = Parameter(**getattr(STANDARD_PARAMETERS, param_name))
+                if param_name not in vars(STANDARD_PARAMETERS):
+                    if "weight" in param_name:
+                        param = Parameter(**STANDARD_PARAMETERS.cont_weight)
+                    if "factor" == param_name:
+                        param = Parameter(**STANDARD_PARAMETERS.f)
+                        param.unit = u.one
+                else:
+                    param = Parameter(**getattr(STANDARD_PARAMETERS, param_name))
+
                 param.grid, param.value = grid, value
                 param.shortname = param.name = name
                 params.append(param)
 
             component = get_component_by_name(header["COMP"])(**dict(zip(param_names, params)))
             components.append(component)
+
+    OPTIONS.model.components_and_params = [[label.lower(), component.get_params()] for label, component in zip(component_labels, components)]
 
     # TODO: Add here the other samplers and emcee
     sampler = DynamicNestedSampler.restore(path / "sampler.save")
