@@ -105,7 +105,6 @@ chi_sq = compute_chi_sq(
 nfree_params = len(get_priors())
 rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
 print(f"rchi_sq: {rchi_sq:.2f}")
-breakpoint()
 
 
 if __name__ == "__main__":
