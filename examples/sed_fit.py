@@ -124,12 +124,13 @@ if __name__ == "__main__":
     rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
     print(f"rchi_sq: {rchi_sq:.2f}")
 
-    plot_corner(sampler, LABELS, UNITS, savefig=result_dir / "corner.pdf")
-    plot_sed([7.9, 13.9] * u.um, components, scaling="nu", save_dir=result_dir)
-    plot_sed([7.9, 13.9] * u.um, components, scaling=None, save_dir=result_dir)
-
     save_fits(
         components, component_labels,
         fit_hyperparameters=fit_params, ncores=ncores,
         save_dir=result_dir / "model.fits",
         object_name="HD142527")
+
+    plot_corner(sampler, LABELS, UNITS, savefig=result_dir / "corner.pdf")
+    plot_sed([7.9, 13.9] * u.um, components, scaling="nu", save_dir=result_dir)
+    plot_sed([7.9, 13.9] * u.um, components, scaling=None, save_dir=result_dir)
+
