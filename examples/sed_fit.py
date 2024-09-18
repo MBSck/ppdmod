@@ -105,7 +105,6 @@ chi_sq = compute_chi_sq(
 nfree_params = len(get_priors())
 rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
 print(f"rchi_sq: {rchi_sq:.2f}")
-breakpoint()
 
 
 if __name__ == "__main__":
@@ -124,6 +123,10 @@ if __name__ == "__main__":
         data.flux.value, data.flux.err, model_flux, func_method="default")
     rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
     print(f"rchi_sq: {rchi_sq:.2f}")
+
+    plot_corner(sampler, LABELS, UNITS, savefig=result_dir / "corner.pdf")
+    plot_sed([7.9, 13.9] * u.um, components, scaling="nu", save_dir=result_dir)
+    plot_sed([7.9, 13.9] * u.um, components, scaling=None, save_dir=result_dir)
 
     save_fits(
         components, component_labels,
