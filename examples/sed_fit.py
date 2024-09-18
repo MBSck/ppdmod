@@ -62,7 +62,7 @@ tempc.description = "The temperature of the black body"
 tempc.value = 900
 
 cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
-cont_weight.set(min=0, max=1e4)
+cont_weight.set(min=0, max=5e3)
 cont_weight.value = 0.5
 
 pah_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
@@ -78,7 +78,7 @@ for key in NAMES.keys():
         weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
         weight.shortname = weight.name = weight_name
         weight.description = f"The mass fraction for {size} {key}"
-        weight.set(min=0, max=1e4)
+        weight.set(min=0, max=1e3)
         weight.value = 0.5
         sed[weight_name] = weight
 
@@ -105,6 +105,7 @@ chi_sq = compute_chi_sq(
 nfree_params = len(get_priors())
 rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
 print(f"rchi_sq: {rchi_sq:.2f}")
+breakpoint()
 
 
 if __name__ == "__main__":
