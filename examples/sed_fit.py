@@ -17,6 +17,7 @@ from ppdmod.fitting import run_fit, compute_sed, get_best_fit, \
     compute_chi_sq, set_params_from_theta, get_priors, lnprob_sed
 from ppdmod.data import set_data, get_all_wavelengths
 from ppdmod.parameter import Parameter
+from ppdmod.plot import plot_corner
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 
@@ -56,7 +57,7 @@ tempc.description = "The temperature of the black body"
 tempc.value = 900
 
 cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
-cont_weight.set(min=0, max=100)
+cont_weight.set(min=0, max=1e4)
 cont_weight.value = 0.5
 
 pah_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
@@ -123,6 +124,8 @@ if __name__ == "__main__":
         data.flux.value, data.flux.err, model_flux, func_method="default")
     rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
     print(f"rchi_sq: {rchi_sq:.2f}")
+
+    plot_corner(sampler, LABELS, UNITS, savefig=result_dir / "corner.pdf")
 
     save_fits(
         components, component_labels,
