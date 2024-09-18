@@ -71,7 +71,7 @@ pah_weight.description = "The mass fraction for the PAHs"
 pah_weight.set(min=0, max=10)
 pah_weight.value = 0.25
 
-sed = {"tempc": tempc, "pah_weight": pah_weight, "cont_weight": cont_weight, "factor": factor}
+sed = {"tempc": tempc, "pah_weight": pah_weight, "cont_weight": cont_weight}
 for key in NAMES.keys():
     for size in ["small", "large"]:
         weight_name = f"{key}_{size}_weight"
