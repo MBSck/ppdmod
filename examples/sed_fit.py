@@ -34,7 +34,12 @@ GRF_DIR = OPACITY_DIR / "grf"
 NAMES = {"enst": "Enstatite", "forst": "Forsterite",
          "oliv": "Olivine", "sil": "Silica", "pyrox": "MgPyroxene"}
 
-OPTIONS.model.constant_params = {}
+factor = Parameter(**STANDARD_PARAMETERS.f)
+factor.name = factor.shortname = "factor"
+factor.description = "The factor to scale the black body"
+factor.unit, factor.value = u.one, 19
+
+OPTIONS.model.constant_params = {"factor": factor}
 for shortname, name in NAMES.items():
     for size, value in {"small": 0.1, "large": 2.0}.items():
         wl, kappa = np.loadtxt(GRF_DIR / f"{name}{value}.Combined.Kappa", usecols=(0, 2), unpack=True)
@@ -63,14 +68,8 @@ cont_weight.value = 0.5
 pah_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 pah_weight.shortname = pah_weight.name = "pah_weight"
 pah_weight.description = "The mass fraction for the PAHs"
-pah_weight.set(min=0, max=100)
+pah_weight.set(min=0, max=10)
 pah_weight.value = 0.25
-
-factor = Parameter(**STANDARD_PARAMETERS.f)
-factor.name = factor.shortname = "factor"
-factor.description = "The factor to scale the black body"
-factor.unit, factor.value = u.one, 19
-factor.set(min=0, max=30)
 
 sed = {"tempc": tempc, "pah_weight": pah_weight, "cont_weight": cont_weight, "factor": factor}
 for key in NAMES.keys():
@@ -79,7 +78,7 @@ for key in NAMES.keys():
         weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
         weight.shortname = weight.name = weight_name
         weight.description = f"The mass fraction for {size} {key}"
-        weight.set(min=0, max=100)
+        weight.set(min=0, max=1e4)
         weight.value = 0.5
         sed[weight_name] = weight
 
@@ -124,8 +123,6 @@ if __name__ == "__main__":
         data.flux.value, data.flux.err, model_flux, func_method="default")
     rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
     print(f"rchi_sq: {rchi_sq:.2f}")
-
-    plot_corner(sampler, LABELS, UNITS, savefig=result_dir / "corner.pdf")
 
     save_fits(
         components, component_labels,

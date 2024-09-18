@@ -958,7 +958,15 @@ def plot_sed(wavelength_range: u.um,
         wavelength_range[0], wavelength_range[1], OPTIONS.plot.dim)
 
     if not no_model:
-        flux, *_ = compute_observables(components, wavelength=wavelength)
+        wavelength = OPTIONS.fit.wavelengths if wavelength is None else wavelength
+
+        flux = []
+        for component in [comp for comp in components if comp.name != "Point Source"]:
+            flux.append(component.compute_flux(wavelength))
+
+        flux = np.sum(flux, axis=0)
+        if flux.size > 0:
+            flux = np.tile(flux, (len(OPTIONS.data.readouts))).real
 
     if ax is None:
         fig = plt.figure(facecolor=color.background, tight_layout=True)
@@ -967,7 +975,11 @@ def plot_sed(wavelength_range: u.um,
     else:
         fig = None
 
-    names = [re.findall(r"(\d{4}-\d{2}-\d{2})", readout.fits_file.name)[0] for readout in OPTIONS.data.readouts]
+    if len(OPTIONS.data.readouts) > 1:
+        names = [re.findall(r"(\d{4}-\d{2}-\d{2})", readout.fits_file.name)[0] for readout in OPTIONS.data.readouts]
+    else:
+        names = [OPTIONS.data.readouts[0].fits_file.name]
+
     cmap = plt.get_cmap(color.colormap)
     norm = mcolors.LogNorm(vmin=1, vmax=len(set(names)))
     colors = [cmap(norm(i)) for i in range(1, len(set(names)) + 1)]
@@ -996,7 +1008,7 @@ def plot_sed(wavelength_range: u.um,
             indices_low = np.where((readout_wavelength >= 3.1) & (readout_wavelength <= 3.9))
             for indices in [indices_high, indices_low]:
                 line = ax.plot(readout_wavelength[indices],
-                               readout_flux[indices], color=date_to_color[name])
+                            readout_flux[indices], color=date_to_color[name])
                 ax.fill_between(readout_wavelength[indices],
                                 lower_err[indices], upper_err[indices],
                                 color=line[0].get_color(), alpha=0.5)
