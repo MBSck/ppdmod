@@ -36,8 +36,8 @@ class SED(Component):
 
         self.factor = Parameter(**STANDARD_PARAMETERS.f)
         self.factor.name = self.factor.shortname = "factor"
-        self.factor.unit = u.one
         self.factor.description = "The factor to scale the black body"
+        self.factor.unit = u.one
 
         self.materials = ["oliv", "pyrox", "forst", "enst", "sil"]
 

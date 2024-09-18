@@ -35,9 +35,8 @@ NAMES = {"enst": "Enstatite", "forst": "Forsterite",
 
 factor = Parameter(**STANDARD_PARAMETERS.f)
 factor.name = factor.shortname = "factor"
-factor.unit = u.one
 factor.description = "The factor to scale the black body"
-factor.value = 1e-19
+factor.unit, factor.value = u.one, 1e-19
 
 OPTIONS.model.constant_params = {"factor": factor}
 for shortname, name in NAMES.items():
