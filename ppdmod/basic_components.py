@@ -74,7 +74,7 @@ class SED(Component):
         bb = BlackBody(temperature=self.tempc())(wavelength)
         opacity = self.get_opacity(wavelength)
         pah = self.pah_weight() * self.pah(wavelength)
-        flux = (bb * opacity.value * u.sr * 10 ** -self.factor()).to(u.Jy) + pah
+        flux = (bb * opacity.value * u.sr * 10. ** -self.factor()).to(u.Jy) + pah
         return flux.value.reshape((wavelength.size, 1))
 
 
