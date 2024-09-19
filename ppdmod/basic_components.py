@@ -37,7 +37,8 @@ class SED(Component):
         self.factor.description = "The factor to scale the black body"
         self.factor.unit = u.one
 
-        self.materials = ["enst", "forst", "oliv", "sil", "pyrox"]
+        # TODO: Is the order here important for the fit?
+        self.materials = ["pyrox", "enst", "forst", "sil", "oliv"]
 
         for key in self.materials:
             for size in ["small", "large"]:

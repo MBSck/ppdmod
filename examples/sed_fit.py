@@ -35,8 +35,10 @@ all_wavelengths = get_all_wavelengths()
 OPACITY_DIR = DATA_DIR / "opacities"
 GRF_DIR = OPACITY_DIR / "grf"
 
-NAMES = {"enst": "Enstatite", "forst": "Forsterite",
-         "oliv": "Olivine", "sil": "Silica", "pyrox": "MgPyroxene"}
+# TODO: Order of these might be important for the fit -> Check that
+SHORTNAMES = ["pyrox", "enst", "forst", "sil", "oliv"]
+NAMES = ["MgPyroxene", "Enstatite", "Forsterite", "Silica", "Olivine"]
+NAMES = dict(zip(SHORTNAMES, NAMES))
 
 OPTIONS.model.constant_params = {}
 for shortname, name in NAMES.items():
@@ -108,13 +110,16 @@ components = basic_components.assemble_components(
 model_flux = compute_sed(components, all_wavelengths)
 chi_sq = compute_chi_sq(
     data.flux.value, data.flux.err, model_flux, func_method="default")
-nfree_params = len(get_priors())
+
+# NOTE: The +1 here is due to the fact that the last parameter is constrained
+# by the others and not really fitted
+nfree_params = len(get_priors()) + 1
 rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
 print(f"rchi_sq: {rchi_sq:.2f}")
 
 
 if __name__ == "__main__":
-    ncores = 50
+    ncores = 70
     fit_params = {"nlive_init": 2000, "lnprob": lnprob_sed, "ptform": ptform}
     sampler = run_fit(**fit_params, ncores=ncores,
                       method="dynamic", save_dir=result_dir,
