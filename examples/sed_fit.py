@@ -29,8 +29,9 @@ DATA_DIR = Path("../tests/data")
 
 OPTIONS.model.output = "non-normed"
 fits_file = [DATA_DIR / "fits" / "hd142527" / "sed_fit" / "hd142527_average_sed.fits"]
-data = set_data(fits_file, wavelengths="all", fit_data=["flux"])
-all_wavelengths = get_all_wavelengths()
+data = set_data(fits_file, wavelengths="all",
+                fit_data=["flux"], wavelength_range=[8., 13.1] * u.um)
+wavelengths = get_all_wavelengths()
 
 OPACITY_DIR = DATA_DIR / "opacities"
 GRF_DIR = OPACITY_DIR / "grf"
@@ -107,7 +108,7 @@ components = basic_components.assemble_components(
         OPTIONS.model.components_and_params,
         OPTIONS.model.shared_params)
 
-model_flux = compute_sed(components, all_wavelengths)
+model_flux = compute_sed(components, wavelengths)
 chi_sq = compute_chi_sq(
     data.flux.value, data.flux.err, model_flux, func_method="default")
 
@@ -129,7 +130,7 @@ if __name__ == "__main__":
     components_and_params, shared_params = set_params_from_theta(theta)
     components = basic_components.assemble_components(
             components_and_params, shared_params)
-    model_flux = compute_sed(components, all_wavelengths)
+    model_flux = compute_sed(components, wavelengths)
     chi_sq = compute_chi_sq(
         data.flux.value, data.flux.err, model_flux, func_method="default")
     rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
@@ -142,6 +143,6 @@ if __name__ == "__main__":
         object_name="HD142527")
 
     plot_corner(sampler, LABELS, UNITS, savefig=result_dir / "corner.pdf")
-    plot_sed([7.9, 13.3] * u.um, components, scaling="nu", save_dir=result_dir)
-    plot_sed([7.9, 13.3] * u.um, components, scaling=None, save_dir=result_dir)
+    plot_sed([7.9, 13.15] * u.um, components, scaling="nu", save_dir=result_dir)
+    plot_sed([7.9, 13.15] * u.um, components, scaling=None, save_dir=result_dir)
 
