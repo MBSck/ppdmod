@@ -142,6 +142,6 @@ if __name__ == "__main__":
         object_name="HD142527")
 
     plot_corner(sampler, LABELS, UNITS, savefig=result_dir / "corner.pdf")
-    plot_sed([7.9, 13.9] * u.um, components, scaling="nu", save_dir=result_dir)
-    plot_sed([7.9, 13.9] * u.um, components, scaling=None, save_dir=result_dir)
+    plot_sed([7.9, 13.3] * u.um, components, scaling="nu", save_dir=result_dir)
+    plot_sed([7.9, 13.3] * u.um, components, scaling=None, save_dir=result_dir)
 
