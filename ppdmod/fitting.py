@@ -310,8 +310,8 @@ def ptform_one_disc(theta: List[float], labels: List[str]) -> np.ndarray:
     if params[indices_radii[-2]] > priors[indices_radii[-2]][1]:
         params[indices_radii[-2]] = priors[indices_radii[-2]][1]
 
-    indices_sigma0 = list(map(labels.index, (filter(lambda x: "sigma0" in x, labels))))
-    indices_p = list(map(labels.index, (filter(lambda x: "p" in x, labels))))
+    indices_sigma0 = list(map(labels.index, filter(lambda x: "sigma0" in x, labels)))
+    indices_p = list(map(labels.index, filter(lambda x: "p" in x, labels)))
     r0 = OPTIONS.model.reference_radius.value
     sigma01, p1, p2 = params[indices_sigma0[0]], params[indices_p[0]], params[indices_p[1]]
     params[indices_sigma0[1]] = sigma01 * (params[indices_radii[1]] / r0) ** (p1 - p2)
@@ -337,6 +337,19 @@ def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray
 
             params[indices[count + 1]] = updated_radius
 
+    return params
+
+
+def ptform_sed(theta: List[float], labels: List[str]) -> np.ndarray:
+    """Transform that soft constrains successive radii to be smaller than the one before."""
+    params, remainder = transform_uniform_prior(theta), 1
+    indices = list(map(labels.index, filter(lambda x: "weight" in x and "pah" not in x, labels)))
+
+    for index in indices[:-1]:
+        params[index] *= remainder
+        remainder -= params[index]
+
+    params[-1] = remainder
     return params
 
 

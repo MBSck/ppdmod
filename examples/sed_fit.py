@@ -14,11 +14,15 @@ import numpy as np
 from ppdmod.analysis import save_fits
 from ppdmod import basic_components
 from ppdmod.fitting import run_fit, compute_sed, get_best_fit, \
-    compute_chi_sq, set_params_from_theta, get_priors, lnprob_sed
+    compute_chi_sq, set_params_from_theta, get_priors, lnprob_sed, ptform_sed
 from ppdmod.data import set_data, get_all_wavelengths
 from ppdmod.parameter import Parameter
 from ppdmod.plot import plot_corner, plot_sed
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
+
+
+def ptform(theta):
+    return ptform_sed(theta, LABELS)
 
 
 DATA_DIR = Path("../tests/data")
@@ -57,20 +61,20 @@ tempc.description = "The temperature of the black body"
 tempc.value = 900
 
 cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
-cont_weight.set(min=0, max=1e5)
+cont_weight.set(min=0, max=1)
 cont_weight.value = 0.5
 
 pah_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 pah_weight.shortname = pah_weight.name = "pah_weight"
 pah_weight.description = "The mass fraction for the PAHs"
-pah_weight.set(min=0, max=10)
+pah_weight.set(min=0, max=5)
 pah_weight.value = 0.25
 
 factor = Parameter(**STANDARD_PARAMETERS.f)
 factor.name = factor.shortname = "factor"
 factor.description = "The factor to scale the black body"
 factor.unit, factor.value = u.one, 19
-factor.set(min=18, max=22)
+factor.set(min=15, max=25)
 
 sed = {"tempc": tempc, "pah_weight": pah_weight,
        "cont_weight": cont_weight, "factor": factor}
@@ -80,7 +84,7 @@ for key in NAMES.keys():
         weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
         weight.shortname = weight.name = weight_name
         weight.description = f"The mass fraction for {size} {key}"
-        weight.set(min=0, max=1e5)
+        weight.set(min=0, max=1)
         weight.value = 0.5
         sed[weight_name] = weight
 
@@ -110,8 +114,8 @@ print(f"rchi_sq: {rchi_sq:.2f}")
 
 
 if __name__ == "__main__":
-    ncores = 70
-    fit_params = {"nlive_init": 2000, "lnprob": lnprob_sed}
+    ncores = 50
+    fit_params = {"nlive_init": 2000, "lnprob": lnprob_sed, "ptform": ptform}
     sampler = run_fit(**fit_params, ncores=ncores,
                       method="dynamic", save_dir=result_dir,
                       debug=False)

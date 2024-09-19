@@ -37,7 +37,7 @@ class SED(Component):
         self.factor.description = "The factor to scale the black body"
         self.factor.unit = u.one
 
-        self.materials = ["oliv", "pyrox", "forst", "enst", "sil"]
+        self.materials = ["enst", "forst", "oliv", "sil", "pyrox"]
 
         for key in self.materials:
             for size in ["small", "large"]:
@@ -55,18 +55,11 @@ class SED(Component):
 
         self.eval(**kwargs)
 
-    def get_opacity(self, wavelength: u.um) -> u.cm**2 / u.g:
+    def get_opacity(self, wavelength: u.um) -> np.ndarray:
         """Set the opacity from wavelength."""
-        opacities = []
-        for key in self.materials:
-            for size in ["small", "large"]:
-                kappa = getattr(self, f"kappa_{key}_{size}")(wavelength)
-                weight = getattr(self, f"{key}_{size}_weight")
-                opacities.append(weight * kappa)
-
-        kappa_abs = u.Quantity(np.sum(opacities, axis=0), unit=opacities[0].unit)
-        cont_weight, kappa_cont = self.cont_weight(), self.kappa_cont(wavelength)
-        opacity = kappa_abs + cont_weight * kappa_cont
+        opacity = np.sum([getattr(self, f"{key}_{size}_weight")() * getattr(self, f"kappa_{key}_{size}")(wavelength)
+                          for size in ["small", "large"] for key in self.materials], axis=0)
+        opacity += (self.cont_weight() * self.kappa_cont(wavelength)).value
         return opacity.astype(OPTIONS.data.dtype.real)
 
     def flux_func(self, wavelength: u.um) -> np.ndarray:
@@ -74,7 +67,7 @@ class SED(Component):
         bb = BlackBody(temperature=self.tempc())(wavelength)
         opacity = self.get_opacity(wavelength)
         pah = self.pah_weight() * self.pah(wavelength)
-        flux = (bb * opacity.value * u.sr * 10. ** -self.factor()).to(u.Jy) + pah
+        flux = (bb * opacity * u.sr * 10. ** -self.factor()).to(u.Jy) + pah
         return flux.value.reshape((wavelength.size, 1))
 
 
