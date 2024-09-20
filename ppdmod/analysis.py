@@ -133,11 +133,8 @@ def restore_from_fits(path: Path) -> Tuple[List[str], List[Component], Optional[
                 if param_name not in vars(STANDARD_PARAMETERS):
                     if "kappa" in param_name:
                         param = Parameter(**STANDARD_PARAMETERS.kappa_abs)
-                    if "weight" in param_name:
+                    if "weight" in param_name or "factor" == param_name:
                         param = Parameter(**STANDARD_PARAMETERS.cont_weight)
-                    if "factor" == param_name:
-                        param = Parameter(**STANDARD_PARAMETERS.f)
-                        param.unit = u.one
                 else:
                     param = Parameter(**getattr(STANDARD_PARAMETERS, param_name))
 
