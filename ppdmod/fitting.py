@@ -141,21 +141,6 @@ def compute_chi_sq(data: u.Quantity, error: u.Quantity,
     return -0.5 * (square_term + np.log(2 * np.pi * sigma_squared)).sum()
 
 
-def compute_sed(components: List[Component],
-                wavelength: Optional[np.ndarray] = None) -> np.ndarray:
-    """Computes the SED from the model.
-
-    Parameters
-    ----------
-    components : list of Component
-        The components to be used in the model.
-        Only the 0th component is choosen as the SED.
-    wavelength : numpy.ndarray, optional
-        The wavelengths to be used in the model.
-    """
-    return np.array(components[0].compute_flux(wavelength))
-
-
 # TODO: Write tests (ASPRO) that tests multiple components with the total flux
 # TODO: Make it so that both point source and star can be used at the same time
 def compute_observables(components: List[Component],
@@ -436,7 +421,7 @@ def lnprob_sed(theta: np.ndarray) -> float:
             return -np.inf
 
     components = assemble_components(parameters, shared_params)
-    model_fluxes = compute_sed(components, OPTIONS.fit.wavelengths)
+    model_fluxes = components[0].compute_flux(components, OPTIONS.fit.wavelengths)
     return compute_chi_sq(OPTIONS.data.flux.value, OPTIONS.data.flux.err, model_fluxes)
 
 def run_mcmc(nwalkers: int,

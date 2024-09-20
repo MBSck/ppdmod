@@ -86,10 +86,13 @@ def save_fits(components: List[Component],
         table_header, data = fits.Header(), {}
         table_header["COMP"] = component.shortname
 
-        # TODO: Also save if it is thin or asymmetric here?
         for parameter in component.get_params().values():
-            grid = np.full(parameter().shape, np.nan) \
-                if parameter.grid is None else parameter.grid
+            if parameter.grid is None:
+                grid = np.full(parameter().shape, np.nan)
+            else:
+                print(parameter.shortname, parameter.name)
+                grid = parameter.grid
+
             data[parameter.shortname] = (grid, parameter().value)
 
         table = fits.BinTableHDU(
@@ -128,6 +131,8 @@ def restore_from_fits(path: Path) -> Tuple[List[str], List[Component], Optional[
                     param_name = name[0]
 
                 if param_name not in vars(STANDARD_PARAMETERS):
+                    if "kappa" in param_name:
+                        param = Parameter(**STANDARD_PARAMETERS.kappa_abs)
                     if "weight" in param_name:
                         param = Parameter(**STANDARD_PARAMETERS.cont_weight)
                     if "factor" == param_name:

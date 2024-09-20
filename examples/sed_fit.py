@@ -12,12 +12,11 @@ import astropy.units as u
 import numpy as np
 
 from ppdmod.analysis import save_fits
-from ppdmod import basic_components
-from ppdmod.fitting import run_fit, compute_sed, get_best_fit, \
+from ppdmod.basic_components import assemble_components
+from ppdmod.fitting import run_fit, get_best_fit, \
     compute_chi_sq, set_params_from_theta, get_priors, lnprob_sed, ptform_sed
 from ppdmod.data import set_data, get_all_wavelengths
 from ppdmod.parameter import Parameter
-from ppdmod.plot import plot_corner, plot_sed
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
 
@@ -30,7 +29,7 @@ DATA_DIR = Path("../tests/data")
 OPTIONS.model.output = "non-normed"
 fits_file = [DATA_DIR / "fits" / "hd142527" / "sed_fit" / "hd142527_average_sed.fits"]
 data = set_data(fits_file, wavelengths="all",
-                fit_data=["flux"], wavelength_range=[8., 13.1] * u.um)
+                wavelength_range=[8., 13.1] * u.um, fit_data=["flux"])
 wavelengths = get_all_wavelengths()
 
 OPACITY_DIR = DATA_DIR / "opacities"
@@ -104,11 +103,11 @@ result_dir.mkdir(parents=True, exist_ok=True)
 np.save(result_dir / "labels.npy", LABELS)
 np.save(result_dir / "units.npy", UNITS)
 
-components = basic_components.assemble_components(
+components = assemble_components(
         OPTIONS.model.components_and_params,
         OPTIONS.model.shared_params)
 
-model_flux = compute_sed(components, wavelengths)
+model_flux = components[0].compute_flux(wavelengths)
 chi_sq = compute_chi_sq(
     data.flux.value, data.flux.err, model_flux, func_method="default")
 
@@ -117,6 +116,7 @@ chi_sq = compute_chi_sq(
 nfree_params = len(get_priors()) + 1
 rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
 print(f"rchi_sq: {rchi_sq:.2f}")
+breakpoint()
 
 
 if __name__ == "__main__":
@@ -124,13 +124,13 @@ if __name__ == "__main__":
     fit_params = {"nlive_init": 2000, "lnprob": lnprob_sed, "ptform": ptform}
     sampler = run_fit(**fit_params, ncores=ncores,
                       method="dynamic", save_dir=result_dir,
-                      debug=False)
+                      debug=True)
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
     components_and_params, shared_params = set_params_from_theta(theta)
-    components = basic_components.assemble_components(
+    components = assemble_components(
             components_and_params, shared_params)
-    model_flux = compute_sed(components, wavelengths)
+    model_flux = components[0].compute_flux(wavelengths)
     chi_sq = compute_chi_sq(
         data.flux.value, data.flux.err, model_flux, func_method="default")
     rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
@@ -141,8 +141,3 @@ if __name__ == "__main__":
         fit_hyperparameters=fit_params, ncores=ncores,
         save_dir=result_dir / "model.fits",
         object_name="HD142527")
-
-    plot_corner(sampler, LABELS, UNITS, savefig=result_dir / "corner.pdf")
-    plot_sed([7.9, 13.15] * u.um, components, scaling="nu", save_dir=result_dir)
-    plot_sed([7.9, 13.15] * u.um, components, scaling=None, save_dir=result_dir)
-

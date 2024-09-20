@@ -49,10 +49,11 @@ class Parameter:
         return u.Quantity(value, unit=self.unit, dtype=self.dtype)
 
     def __str__(self):
-        message = f"Parameter: {self.name} has the value {self.value} and "\
-                f"is {'free' if self.free else 'not free'}"
+        message = f"Parameter: {self.name} has the value "\
+            f"{np.round(self.value, 2)} and "\
+            f"is {'free' if self.free else 'fixed'}"
         if self.max is not None:
-            message += f" with its limits being {self.min}-{self.max}"
+            message += f" with its limits being {self.min:.1f}-{self.max:.1f}"
         return message
 
     def _set_to_numpy_array(
