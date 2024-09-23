@@ -218,13 +218,52 @@ def compute_observables(components: List[Component],
     return flux_model, vis_model, t3_model
 
 
+def compute_sed_chi_sq(flux_model: np.ndarray,
+                       reduced: Optional[bool] = False) -> float:
+    """Calculates the sed model's chi square from the observables.
+
+    Parameters
+    ----------
+    flux_model : numpy.ndarray
+        The model's total flux.
+    vis_model : numpy.ndarray
+        Either the model's correlated fluxes or the model's
+        visibilities (depends on the OPTIONS.fit.data).
+    t3_model : numpy.ndarray
+        The model's closure phase.
+    reduced : bool, optional
+        Whether to return the reduced chi square.
+    split : bool, optional
+        Whether to return the individual components.
+
+    Returns
+    -------
+    chi_sq : float
+        The chi square.
+    """
+    flux = OPTIONS.data.flux
+    nan_indices = np.isnan(flux.value)
+    func_method = "default" if reduced else "logarithmic"
+    chi_sq = compute_chi_sq(flux.value[~nan_indices],
+                            flux.err[~nan_indices],
+                            flux_model.flatten(),
+                            func_method=func_method)
+
+    # NOTE: The -1 here indicates that one of the parameters is actually fixed
+    if reduced:
+        nfree_params = len(get_priors()) - 1
+        return chi_sq / (flux.value.size - nfree_params)
+
+    return chi_sq
+
+
 def compute_observable_chi_sq(
         flux_model: np.ndarray,
         vis_model: np.ndarray,
         t3_model: np.ndarray,
         reduced: Optional[bool] = False,
         split: Optional[bool] = False):
-    """Calculates the model's observables.
+    """Calculates the disc model's chi square from the observables.
 
     Parameters
     ----------
@@ -421,9 +460,7 @@ def lnprob_sed(theta: np.ndarray) -> float:
             return -np.inf
 
     components = assemble_components(parameters, shared_params)
-    model_fluxes = components[0].compute_flux(OPTIONS.fit.wavelengths)
-
-    return compute_chi_sq(OPTIONS.data.flux.value, OPTIONS.data.flux.err, model_fluxes)
+    return compute_sed_chi_sq(components[0].compute_flux(OPTIONS.fit.wavelengths))
 
 def run_mcmc(nwalkers: int,
              nburnin: Optional[int] = 0,

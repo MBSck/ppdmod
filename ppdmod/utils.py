@@ -25,7 +25,13 @@ def resample_wavelengths() -> None:
     wavelengths = OPTIONS.fit.wavelengths
 
     bands = np.array(list(map(get_band, wavelengths)))
+    # TODO: For the lm and n band just increase the sampling by a factor of 2 then convolve, try
+    # try this out with a simple grid and a simple kernel, to see what needs to be done
     for band in set(bands):
+        # match band:
+        #     case "lmband" or "nband":
+        #         return
+
         wl = wavelengths[np.where(band == bands)]
         resampled_band = np.linspace(wl.min(), wl.max(), len(wl) * sampling_factor)
         breakpoint()

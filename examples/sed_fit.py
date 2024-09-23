@@ -14,7 +14,7 @@ import numpy as np
 from ppdmod.analysis import save_fits
 from ppdmod.basic_components import assemble_components
 from ppdmod.fitting import run_fit, get_best_fit, \
-    compute_chi_sq, set_params_from_theta, get_priors, lnprob_sed, ptform_sed
+    compute_sed_chi_sq, set_params_from_theta, get_priors, lnprob_sed, ptform_sed
 from ppdmod.data import set_data, get_all_wavelengths
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
@@ -27,10 +27,10 @@ def ptform(theta):
 DATA_DIR = Path("../tests/data")
 
 OPTIONS.model.output = "non-normed"
-fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit"
+# fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit"
 # fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "downsampled"
 # fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "only_high"
-# fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "only_low"
+fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "only_low"
 
 wavelength_range = None
 # wavelength_range = [8., 13.1] * u.um
@@ -113,12 +113,8 @@ components = assemble_components(
         OPTIONS.model.components_and_params,
         OPTIONS.model.shared_params)
 
-model_flux = components[0].compute_flux(wavelengths)
-chi_sq = compute_chi_sq(
-    data.flux.value, data.flux.err, model_flux, func_method="default")
-
-nfree_params = len(get_priors()) - 1
-rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
+rchi_sq = compute_sed_chi_sq(
+    components[0].compute_flux(wavelengths), reduced=True)
 print(f"rchi_sq: {rchi_sq:.2f}")
 
 
@@ -133,10 +129,8 @@ if __name__ == "__main__":
     components_and_params, shared_params = set_params_from_theta(theta)
     components = assemble_components(
             components_and_params, shared_params)
-    model_flux = components[0].compute_flux(wavelengths)
-    chi_sq = compute_chi_sq(
-        data.flux.value, data.flux.err, model_flux, func_method="default")
-    rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
+    rchi_sq = compute_sed_chi_sq(
+        components[0].compute_flux(wavelengths), reduced=True)
     print(f"rchi_sq: {rchi_sq:.2f}")
 
     save_fits(

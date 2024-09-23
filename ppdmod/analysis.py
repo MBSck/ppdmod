@@ -90,7 +90,6 @@ def save_fits(components: List[Component],
             if parameter.grid is None:
                 grid = np.full(parameter().shape, np.nan)
             else:
-                print(parameter.shortname, parameter.name)
                 grid = parameter.grid
 
             data[parameter.shortname] = (grid, parameter().value)

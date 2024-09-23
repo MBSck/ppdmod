@@ -152,7 +152,7 @@ class ReadoutFits:
         if key == "flux":
             if no_binning:
                 wl_data = [[data.flatten()[index[0]] if index.size != 0
-                           else np.full((data.shape[0],), np.nan)] for index in indices]
+                           else np.full((data.shape[0],), np.nan).tolist()[0]] for index in indices]
             else:
                 wl_data = [[data.flatten()[index].mean()] for index in indices]
         else:
