@@ -27,9 +27,15 @@ def ptform(theta):
 DATA_DIR = Path("../tests/data")
 
 OPTIONS.model.output = "non-normed"
-fits_file = [DATA_DIR / "fits" / "hd142527" / "sed_fit" / "hd142527_average_sed.fits"]
-data = set_data(fits_file, wavelengths="all",
-                wavelength_range=[8., 13.1] * u.um, fit_data=["flux"])
+fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit"
+# fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "downsampled"
+# fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "only_high"
+# fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "only_low"
+
+wavelength_range = None
+# wavelength_range = [8., 13.1] * u.um
+data = set_data(list(fits_dir.glob("*fits")), wavelengths="all",
+                wavelength_range=wavelength_range, fit_data=["flux"])
 wavelengths = get_all_wavelengths()
 
 OPACITY_DIR = DATA_DIR / "opacities"
