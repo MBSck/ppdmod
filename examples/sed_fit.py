@@ -111,12 +111,9 @@ model_flux = components[0].compute_flux(wavelengths)
 chi_sq = compute_chi_sq(
     data.flux.value, data.flux.err, model_flux, func_method="default")
 
-# NOTE: The +1 here is due to the fact that the last parameter is constrained
-# by the others and not really fitted
-nfree_params = len(get_priors()) + 1
+nfree_params = len(get_priors()) - 1
 rchi_sq = chi_sq / (data.flux.value.size - nfree_params)
 print(f"rchi_sq: {rchi_sq:.2f}")
-breakpoint()
 
 
 if __name__ == "__main__":

@@ -174,18 +174,22 @@ binning = SimpleNamespace(
     unknown=0.1 * u.um, kband=0.1 * u.um,
     hband=0.1 * u.um, lmband=0.05 * u.um,
     nband=0.05 * u.um)
+resolution = SimpleNamespace(
+    kband=None, hband=None, lmband=None, nband=None)
 interpolation = SimpleNamespace(
     dim=10, kind="linear", fill_value=None)
 data = SimpleNamespace(readouts=[], flux=flux, vis=vis,
                        vis2=vis2, t3=t3, gravity=gravity,
                        binning=binning, dtype=dtype,
+                       resolution=resolution,
                        interpolation=interpolation)
 
 # NOTE: Model
 model = SimpleNamespace(components_and_params=None,
                         constant_params=None, shared_params=None,
                         output="normed", reference_radius=1*u.au,
-                        gridtype="logarithmic", modulation=1)
+                        nyquist_sampling=2, gridtype="logarithmic",
+                        modulation=1)
 
 # NOTE: Plot
 color = SimpleNamespace(background="white",
@@ -208,6 +212,7 @@ fit = SimpleNamespace(weights=weights,
                       data=["flux", "vis", "t3"],
                       method="dynesty",
                       wavelengths=None,
+                      resampled_wavelengths=None,
                       quantiles=[2.5, 50, 97.5])
 
 # NOTE: All options

@@ -5,12 +5,35 @@ from typing import Callable, Optional, Dict, Tuple, List
 import astropy.units as u
 import astropy.constants as const
 import numpy as np
+from astropy.io import fits
 from astropy.modeling.models import BlackBody
 from openpyxl import Workbook, load_workbook
 from scipy.special import j1
 from scipy.interpolate import interp1d
 
 from .options import OPTIONS
+
+
+# TODO: How to deal with filtering?
+# TODO: When to determine the convolving? As with multiple files the data size changes?
+# TODO: Go throught the wavelengths and treat it in a per band manner
+def resample_wavelengths() -> None:
+    """This function resamples the wavelengths to a multiple of the Nyquist sampling
+    in order to ensure proper convolution with the instrument later on.
+    """
+    sampling_factor = OPTIONS.model.nyquist_sampling * 2
+    wavelengths = OPTIONS.fit.wavelengths
+
+    bands = np.array(list(map(get_band, wavelengths)))
+    for band in set(bands):
+        wl = wavelengths[np.where(band == bands)]
+        resampled_band = np.linspace(wl.min(), wl.max(), len(wl) * sampling_factor)
+        breakpoint()
+
+
+
+def convolve_model_data_to_instrument(wavelengths: u.um):
+    ...
 
 
 def get_band(wavelength: u.um) -> str:
@@ -27,6 +50,33 @@ def get_band(wavelength: u.um) -> str:
     if wl_min > 7.5 and wl_max < 15:
         return "nband"
     return "unknown"
+
+
+def get_resolution(header: fits.Header, band: str, wavelengths: u.um) -> int:
+    """Gets the resolution of the band from the header."""
+    RESOLUTIONS = {
+        "hband": {"low": 5, "high": 30},
+        "kband": {"low": 22},
+        "lband": {"low": 34, "med": 506, "high": 959},
+        "nband": {"low": 30, "high": 218}
+    }
+
+    match band:
+        case "hband":
+            key = ...
+            breakpoint()
+        case "kband":
+            key = ...
+            breakpoint()
+        case "lmband":
+            key = "HIERARCH ESO INS DIN ID"
+        case "nband":
+            key = "HIERARCH ESO INS DIN ID"
+            breakpoint()
+        case _:
+            # TODO: Make estimation of resolution from wavelengths
+            key = None
+    return
 
 
 def smooth_interpolation(

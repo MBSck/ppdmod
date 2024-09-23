@@ -14,7 +14,7 @@ from .component import Component
 from .data import get_counts_data
 from .parameter import Parameter
 from .options import OPTIONS
-from .utils import compute_vis, compute_t3
+from .utils import compute_vis, compute_t3, resample_wavelengths
 
 
 def get_priors() -> np.ndarray:
@@ -421,7 +421,11 @@ def lnprob_sed(theta: np.ndarray) -> float:
             return -np.inf
 
     components = assemble_components(parameters, shared_params)
-    model_fluxes = components[0].compute_flux(components, OPTIONS.fit.wavelengths)
+    model_fluxes = components[0].compute_flux(OPTIONS.fit.resampled_wavelengths)
+
+    # TODO: Convolve the resampled wavelenghts here
+    ...
+
     return compute_chi_sq(OPTIONS.data.flux.value, OPTIONS.data.flux.err, model_fluxes)
 
 def run_mcmc(nwalkers: int,

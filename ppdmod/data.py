@@ -7,8 +7,8 @@ import astropy.units as u
 import numpy as np
 from astropy.io import fits
 
-from .utils import get_indices, get_band
 from .options import OPTIONS
+from .utils import get_indices, get_band, get_resolution, resample_wavelengths
 
 
 class ReadoutFits:
@@ -26,6 +26,7 @@ class ReadoutFits:
         self.fits_file = Path(fits_file)
         self.wavelength_range = wavelength_range
         self.band = "unknown"
+        self.resolution = None
         self.read_file()
 
     def read_file(self) -> None:
@@ -49,6 +50,8 @@ class ReadoutFits:
             self.wavelength = (hdul["oi_wavelength", sci_index]
                                .data["eff_wave"]*u.m).to(u.um)[wl_index:]
             self.band = get_band(self.wavelength)
+            # self.resolution = get_resolution(
+            #     hdul[0].header, self.band, self.wavelength)
 
             indices = slice(None)
             if self.wavelength_range is not None:
@@ -270,6 +273,7 @@ def set_data(fits_files: Optional[List[Path]] = None,
         return
 
     OPTIONS.data.readouts = list(map(partial(ReadoutFits, wavelength_range=wavelength_range), fits_files))
+
     no_binning = False
     if wavelengths == "all":
         wavelengths = get_all_wavelengths(OPTIONS.data.readouts)
