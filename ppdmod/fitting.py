@@ -421,10 +421,7 @@ def lnprob_sed(theta: np.ndarray) -> float:
             return -np.inf
 
     components = assemble_components(parameters, shared_params)
-    model_fluxes = components[0].compute_flux(OPTIONS.fit.resampled_wavelengths)
-
-    # TODO: Convolve the resampled wavelenghts here
-    ...
+    model_fluxes = components[0].compute_flux(OPTIONS.fit.wavelengths)
 
     return compute_chi_sq(OPTIONS.data.flux.value, OPTIONS.data.flux.err, model_fluxes)
 
