@@ -19,8 +19,10 @@ from dynesty import plotting as dyplot
 from matplotlib.axes import Axes
 from matplotlib.gridspec import GridSpec
 from matplotlib.legend import Legend
+from pylatex import Document, Section, Tabular
+from pylatex.utils import NoEscape
 
-from .component import FourierComponent
+from .component import Component, FourierComponent
 from .fitting import compute_observables, get_best_fit
 from .options import OPTIONS, get_colormap
 from .utils import compute_effective_baselines, restrict_phase, \
@@ -1295,3 +1297,35 @@ def plot_intermediate_products(dim: int, wavelength: Optional[u.Quantity[u.um]],
     #              "$R$ (au)", r"$I_{\nu}$ (W m$^{-2}$ Hz$^{-1}$ sr$^{-1}$)",
     #              save_path=save_dir / "brightnesses.pdf",
     #              scale="log", label=wavelength)
+
+
+def plot_fit_parameters(components: List[Component], savefig: Optional[Path] = None):
+    """Make a (.pdf) file containing a table of the fit parameters."""
+    if len(components) == 1:
+        params = components[0].get_params(free=True)
+    else:
+        ...
+        # TODO: This needs to be finished
+        # params = {}
+        # for index, component in enumerate(components, start=1):
+        #     test = component.get_params(free=True)
+
+    labels = list(params.keys())
+    values = np.round(list(map(lambda x: x.value, params.values())), 2)
+    units = list(map(lambda x: x.unit, params.values()))
+    labels = format_labels(labels, units)
+
+    doc = Document()
+    with doc.create(Section("Fit Parameters")):
+        with doc.create(Tabular("c | c | c")) as table:
+            table.add_hline()
+            table.add_row(("Parameter", "Unit", "Value"))
+            table.add_hline()
+
+            for label, unit, value in zip(labels, units, values):
+                table.add_row((NoEscape(label), unit, value))
+
+            table.add_hline()
+
+    if savefig is not None:
+        doc.generate_pdf(savefig, clean_tex=True)
