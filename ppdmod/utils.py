@@ -14,8 +14,6 @@ from scipy.interpolate import interp1d
 from .options import OPTIONS, SPECTRAL_RESOLUTIONS, CENTRAL_WAVELENGTHS
 
 
-# TODO: When to determine the convolving? As with multiple files the data size changes?
-# TODO: Go throught the wavelengths and treat it in a per band manner
 def resample_wavelengths() -> None:
     """This function resamples the wavelengths to a multiple of the Nyquist sampling
     in order to ensure proper convolution with the instrument later on.
@@ -63,23 +61,25 @@ def get_band(wavelength: u.um) -> str:
 
 def get_resolution(header: fits.Header, band: str, wavelengths: u.um) -> int:
     """Gets the resolution of the band from the header."""
+    wavelength_difference = np.diff(wavelengths)
     match band:
         case "hband":
             # NOTE: This is an estimation from the data I saw
-            res = 22
+            res, res_grid = 22, CENTRAL_WAVELENGTHS["hband"] / wavelength_difference
         case "kband":
             # NOTE: This is the resolution of the fringe tracker, which we use
-            res = 22
+            res, res_grid = 22, CENTRAL_WAVELENGTHS["kband"] / wavelength_difference
         case "lmband":
             res = SPECTRAL_RESOLUTIONS["lmband"][header["HIERARCH ESO INS DIN ID"].lower()]
+            indices_lband = np.where((wavelengths >= 3.1 * u.um) & (wavelengths <= 3.9 * u.um))
+            indices_mband = np.where((wavelengths >= 4.55 * u.um) & (wavelengths <= 4.9 * u.um))
+            res_grid_lband = -CENTRAL_WAVELENGTHS["lband"] / np.diff(wavelengths[indices_lband])
+            res_grid_mband = -CENTRAL_WAVELENGTHS["mband"] / np.diff(wavelengths[indices_mband])
+            res_grid = [res_grid_lband, res_grid_mband]
         case "nband":
             res = SPECTRAL_RESOLUTIONS["nband"][header["HIERARCH ESO INS DIN ID"].lower()]
-            print(CENTRAL_WAVELENGTHS["nband"] / np.diff(wavelengths))
-            print(CENTRAL_WAVELENGTHS["nband"] / np.diff(wavelengths).mean())
-        case _:
-            # NOTE: Should this be the median or the mean?
-            res = np.round(wavelengths.mean() / np.diff(wavelengths).mean(), 0)
-    return res
+            res_grid = CENTRAL_WAVELENGTHS["nband"] / wavelength_difference
+    return res, res_grid
 
 
 def smooth_interpolation(

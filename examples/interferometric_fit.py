@@ -42,8 +42,8 @@ wavelength = np.concatenate((wavelengths["hband"], wavelengths["kband"],
                              wavelengths["lband"], wavelengths["mband"], wavelengths["nband"]))
 # wavelength = wavelengths["lband"]
 data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis"])
-
 all_wavelengths = get_all_wavelengths()
+
 wl_flux, flux = load_data(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt", usecols=(0, 2))
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
 star_flux.grid, star_flux.value = wl_flux, flux
