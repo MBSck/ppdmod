@@ -13,12 +13,10 @@ build/
 cython_src/*.c
 
 # Sensitive Data
-tests/data/fits
-tests/data/flux
-tests/data/grf
-tests/data/qval
-tests/data/boekel
-tests/data/gravity
+data/fits
+data/flux
+data/opacities
+data/gravity
 
 # Results of tests
 fluxes/

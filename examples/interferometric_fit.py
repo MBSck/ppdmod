@@ -29,7 +29,7 @@ def ptform(theta: List[float]) -> np.ndarray:
     return ptform_sequential_radii(theta, LABELS)
 
 
-DATA_DIR = Path("../tests/data")
+DATA_DIR = Path("../data")
 wavelengths = {"hband": [1.7] * u.um, "kband": [2.15] * u.um,
                "lband": np.linspace(3.3, 3.8, 5) * u.um,
                "mband": np.linspace(4.6, 4.9, 3) * u.um,
@@ -209,7 +209,7 @@ if __name__ == "__main__":
     fit_params = {"nlive_init": 2000, "ptform": ptform}
     sampler = run_fit(**fit_params, ncores=ncores,
                       method="dynamic", save_dir=result_dir,
-                      debug=False)
+                      debug=True)
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
     components_and_params, shared_params = set_params_from_theta(theta)

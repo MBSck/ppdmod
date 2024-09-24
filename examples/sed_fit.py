@@ -14,7 +14,7 @@ import numpy as np
 from ppdmod.analysis import save_fits
 from ppdmod.basic_components import assemble_components
 from ppdmod.fitting import run_fit, get_best_fit, \
-    compute_sed_chi_sq, set_params_from_theta, get_priors, lnprob_sed, ptform_sed
+    compute_sed_chi_sq, set_params_from_theta, lnprob_sed, ptform_sed
 from ppdmod.data import set_data, get_all_wavelengths
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
@@ -24,16 +24,16 @@ def ptform(theta):
     return ptform_sed(theta, LABELS)
 
 
-DATA_DIR = Path("../tests/data")
+DATA_DIR = Path("../data")
 
 OPTIONS.model.output = "non-normed"
 # fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit"
-# fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "downsampled"
+fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "downsampled"
 # fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "only_high"
-fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "only_low"
+# fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "only_low"
 
-wavelength_range = None
-# wavelength_range = [8., 13.1] * u.um
+# wavelength_range = None
+wavelength_range = [8., 13.1] * u.um
 data = set_data(list(fits_dir.glob("*fits")), wavelengths="all",
                 wavelength_range=wavelength_range, fit_data=["flux"])
 wavelengths = get_all_wavelengths()
