@@ -1299,7 +1299,7 @@ def plot_intermediate_products(dim: int, wavelength: Optional[u.Quantity[u.um]],
     #              scale="log", label=wavelength)
 
 
-def plot_fit_parameters(components: List[Component], savefig: Optional[Path] = None):
+def plot_fit_parameters(components: List[Component], savefig: Path) -> None:
     """Make a (.pdf) file containing a table of the fit parameters."""
     if len(components) == 1:
         params = components[0].get_params(free=True)
@@ -1311,7 +1311,7 @@ def plot_fit_parameters(components: List[Component], savefig: Optional[Path] = N
         #     test = component.get_params(free=True)
 
     labels = list(params.keys())
-    values = np.round(list(map(lambda x: x.value, params.values())), 2)
+    values = np.round(list(map(lambda x: x.value, params.values())), 4)
     units = list(map(lambda x: x.unit, params.values()))
     labels = format_labels(labels, units)
 
@@ -1327,5 +1327,4 @@ def plot_fit_parameters(components: List[Component], savefig: Optional[Path] = N
 
             table.add_hline()
 
-    if savefig is not None:
-        doc.generate_pdf(savefig, clean_tex=True)
+    doc.generate_pdf(savefig, clean_tex=False)
