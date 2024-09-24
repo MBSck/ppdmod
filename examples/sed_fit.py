@@ -82,6 +82,7 @@ factor = Parameter(**STANDARD_PARAMETERS.f)
 factor.name = factor.shortname = "factor"
 factor.description = "The factor to scale the black body"
 factor.unit, factor.value = u.one, 19
+factor.free = True
 factor.set(min=15, max=25)
 
 sed = {"tempc": tempc, "pah_weight": pah_weight,
