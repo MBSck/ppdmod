@@ -30,6 +30,21 @@ def get_colorlist(colormap: str, ncolors: Optional[int] = 10) -> List[str]:
     return [get_colormap(colormap)(i) for i in range(ncolors)]
 
 
+SPECTRAL_RESOLUTIONS = {
+    "hband": {"low": 5, "high": 30},
+    "lmband": {"low": 34, "med": 506, "high": 959},
+    "nband": {"low": 30, "high": 218}
+}
+
+# NOTE: The MATISSE values are only approximate -> Figure out the correct ones
+CENTRAL_WAVELENGTHS = {"hband": 1.68 * u.um,
+                       "kband": 2.15 * u.um,
+                       "lband": 3.5 * u.um,
+                       "mband": 4.8 * u.um,
+                       "nband": 10.5 * u.um
+                       }
+
+
 # NOTE: A list of standard parameters to be used when defining new components.
 STANDARD_PARAMETERS = SimpleNamespace(
     x={"name": "x", "shortname": "x",
@@ -174,14 +189,12 @@ binning = SimpleNamespace(
     unknown=0.1 * u.um, kband=0.1 * u.um,
     hband=0.1 * u.um, lmband=0.05 * u.um,
     nband=0.05 * u.um)
-resolution = SimpleNamespace(
-    kband=None, hband=None, lmband=None, nband=None)
 interpolation = SimpleNamespace(
     dim=10, kind="linear", fill_value=None)
-data = SimpleNamespace(readouts=[], flux=flux, vis=vis,
+data = SimpleNamespace(readouts=[], bands=[],
+                       resolutions=[], flux=flux, vis=vis,
                        vis2=vis2, t3=t3, gravity=gravity,
                        binning=binning, dtype=dtype,
-                       resolution=resolution,
                        interpolation=interpolation)
 
 # NOTE: Model

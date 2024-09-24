@@ -50,8 +50,8 @@ class ReadoutFits:
             self.wavelength = (hdul["oi_wavelength", sci_index]
                                .data["eff_wave"]*u.m).to(u.um)[wl_index:]
             self.band = get_band(self.wavelength)
-            # self.resolution = get_resolution(
-            #     hdul[0].header, self.band, self.wavelength)
+            self.resolution = get_resolution(
+                hdul[0].header, self.band, self.wavelength)
 
             indices = slice(None)
             if self.wavelength_range is not None:
@@ -272,7 +272,10 @@ def set_data(fits_files: Optional[List[Path]] = None,
     if fits_files is None:
         return
 
-    OPTIONS.data.readouts = list(map(partial(ReadoutFits, wavelength_range=wavelength_range), fits_files))
+    OPTIONS.data.readouts = list(map(partial(
+        ReadoutFits, wavelength_range=wavelength_range), fits_files))
+    OPTIONS.data.bands = list(map(lambda x: x.band, OPTIONS.data.readouts))
+    OPTIONS.data.resolutions = list(map(lambda x: x.resolution, OPTIONS.data.readouts))
 
     no_binning = False
     if wavelengths == "all":

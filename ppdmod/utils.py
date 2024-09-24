@@ -11,10 +11,9 @@ from openpyxl import Workbook, load_workbook
 from scipy.special import j1
 from scipy.interpolate import interp1d
 
-from .options import OPTIONS
+from .options import OPTIONS, SPECTRAL_RESOLUTIONS, CENTRAL_WAVELENGTHS
 
 
-# TODO: How to deal with filtering?
 # TODO: When to determine the convolving? As with multiple files the data size changes?
 # TODO: Go throught the wavelengths and treat it in a per band manner
 def resample_wavelengths() -> None:
@@ -28,9 +27,13 @@ def resample_wavelengths() -> None:
     # TODO: For the lm and n band just increase the sampling by a factor of 2 then convolve, try
     # try this out with a simple grid and a simple kernel, to see what needs to be done
     for band in set(bands):
-        # match band:
-        #     case "lmband" or "nband":
-        #         return
+        if band in ["lmband", "nband"]:
+            # TODO: Think of how to properly oversample this twice
+            ...
+        elif band == "hband":
+            ...
+        elif band == "kband":
+            ...
 
         wl = wavelengths[np.where(band == bands)]
         resampled_band = np.linspace(wl.min(), wl.max(), len(wl) * sampling_factor)
@@ -60,29 +63,23 @@ def get_band(wavelength: u.um) -> str:
 
 def get_resolution(header: fits.Header, band: str, wavelengths: u.um) -> int:
     """Gets the resolution of the band from the header."""
-    RESOLUTIONS = {
-        "hband": {"low": 5, "high": 30},
-        "kband": {"low": 22},
-        "lband": {"low": 34, "med": 506, "high": 959},
-        "nband": {"low": 30, "high": 218}
-    }
-
     match band:
         case "hband":
-            key = ...
-            breakpoint()
+            # NOTE: This is an estimation from the data I saw
+            res = 22
         case "kband":
-            key = ...
-            breakpoint()
+            # NOTE: This is the resolution of the fringe tracker, which we use
+            res = 22
         case "lmband":
-            key = "HIERARCH ESO INS DIN ID"
+            res = SPECTRAL_RESOLUTIONS["lmband"][header["HIERARCH ESO INS DIN ID"].lower()]
         case "nband":
-            key = "HIERARCH ESO INS DIN ID"
-            breakpoint()
+            res = SPECTRAL_RESOLUTIONS["nband"][header["HIERARCH ESO INS DIN ID"].lower()]
+            print(CENTRAL_WAVELENGTHS["nband"] / np.diff(wavelengths))
+            print(CENTRAL_WAVELENGTHS["nband"] / np.diff(wavelengths).mean())
         case _:
-            # TODO: Make estimation of resolution from wavelengths
-            key = None
-    return
+            # NOTE: Should this be the median or the mean?
+            res = np.round(wavelengths.mean() / np.diff(wavelengths).mean(), 0)
+    return res
 
 
 def smooth_interpolation(
@@ -105,8 +102,7 @@ def smooth_interpolation(
     kind = OPTIONS.data.interpolation.kind if kind is None else kind
     fill_value = OPTIONS.data.interpolation.fill_value if fill_value is None else fill_value
     points = interpolation_points.flatten()
-    windows = np.array([getattr(OPTIONS.data.binning, get_band(point)).value 
-                        for point in points])
+    windows = np.array([getattr(OPTIONS.data.binning, get_band(point)).value for point in points])
     interpolation_grid = (np.linspace(-1, 1, OPTIONS.data.interpolation.dim) * windows[:, np.newaxis]).T + points
     return np.interp(interpolation_grid, grid, values).mean(axis=0).reshape(interpolation_points.shape)
 
