@@ -15,6 +15,8 @@ from .options import STANDARD_PARAMETERS, OPTIONS
 from .utils import distance_to_angular, angular_to_distance
 
 
+# TODO: Think about changing the weights to percentages directly.
+# Better intuition of what is happening
 class SED(Component):
     name = "SED"
     shortname = "SED"
@@ -366,8 +368,7 @@ class Ring(FourierComponent):
             else:
                 vis *= 2 * np.pi * self.inc()
 
-            vis = vis[..., np.newaxis]
-        return vis.value.astype(OPTIONS.data.dtype.complex)
+        return vis[..., np.newaxis].value.astype(OPTIONS.data.dtype.complex)
 
     def image_func(self, xx: u.mas, yy: u.mas,
                    pixel_size: u.mas, wavelength: u.um,

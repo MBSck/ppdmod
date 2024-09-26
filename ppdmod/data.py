@@ -8,7 +8,7 @@ import numpy as np
 from astropy.io import fits
 
 from .options import OPTIONS
-from .utils import get_indices, get_band, get_resolution
+from .utils import get_indices, get_band, get_resolution, resample_wavelengths
 
 
 class ReadoutFits:
@@ -51,8 +51,7 @@ class ReadoutFits:
             self.wavelength = (hdul["oi_wavelength", sci_index]
                                .data["eff_wave"]*u.m).to(u.um)[wl_index:]
             self.band = get_band(self.wavelength)
-            self.resolution, self.resolution_grid = get_resolution(
-                hdul[0].header, self.band, self.wavelength)
+            self.resolution = get_resolution(hdul[0].header, self.band)
 
             indices = slice(None)
             if self.wavelength_range is not None:
@@ -158,7 +157,7 @@ class ReadoutFits:
                 wl_data = [[data.flatten()[index].mean()] for index in indices]
         else:
             if no_binning:
-                wl_data = [data[:, index] if index.size != 0
+                wl_data = [data[:, index].flatten() if index.size != 0
                            else np.full((data.shape[0],), np.nan) for index in indices]
             else:
                 wl_data = [data[:, index].mean(-1) for index in indices]
@@ -291,8 +290,25 @@ def set_data(fits_files: Optional[List[Path]] = None,
         for key in fit_data:
             data = getattr(OPTIONS.data, key)
             data_readout = getattr(readout, key)
-            value = readout.get_data_for_wavelength(wavelengths, key, "value", no_binning)
-            err = readout.get_data_for_wavelength(wavelengths, key, "err", no_binning)
+
+            # NOTE: This keeps both the windowing for the h and k band
+            # and the convolution for the lm and n band
+            if not no_binning and OPTIONS.model.convolve:
+                bands = np.array(list(map(get_band, wavelengths)))
+                hkband_cond = (bands == "hband") | (bands == "kband")
+                value_hkband = readout.get_data_for_wavelength(
+                    wavelengths[np.where(hkband_cond)], key, "value", False)
+                err_hkband = readout.get_data_for_wavelength(
+                    wavelengths[np.where(hkband_cond)], key, "err", False)
+                value_other = readout.get_data_for_wavelength(
+                        wavelengths[np.where(~hkband_cond)], key, "value", True)
+                err_other = readout.get_data_for_wavelength(
+                        wavelengths[np.where(~hkband_cond)], key, "err", True)
+                value = np.vstack((value_hkband, value_other))
+                err = np.vstack((err_hkband, err_other))
+            else:
+                value = readout.get_data_for_wavelength(wavelengths, key, "value", no_binning)
+                err = readout.get_data_for_wavelength(wavelengths, key, "err", no_binning)
 
             if key in ["vis", "vis2", "t3"]:
                 ind = np.where(np.abs(err/value) < min_err)
@@ -325,4 +341,9 @@ def set_data(fits_files: Optional[List[Path]] = None,
                             (data.v123coord, data_readout.v123coord))
 
     set_fit_weights(weights)
+    if OPTIONS.model.convolve:
+        OPTIONS.model.wavelengths = resample_wavelengths(wavelengths.value) * wavelengths.unit
+    else:
+        OPTIONS.model.wavelengths = wavelengths
+
     return OPTIONS.data

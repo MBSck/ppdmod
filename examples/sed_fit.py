@@ -15,9 +15,10 @@ from ppdmod.analysis import save_fits
 from ppdmod.basic_components import assemble_components
 from ppdmod.fitting import run_fit, get_best_fit, \
     compute_sed_chi_sq, set_params_from_theta, lnprob_sed, ptform_sed
-from ppdmod.data import set_data, get_all_wavelengths
+from ppdmod.data import set_data
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
+from ppdmod.utils import convolve_with_lsf
 
 
 def ptform(theta):
@@ -25,8 +26,6 @@ def ptform(theta):
 
 
 DATA_DIR = Path("../data")
-
-OPTIONS.model.output = "non-normed"
 # fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit"
 fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "downsampled"
 # fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "only_high"
@@ -36,7 +35,6 @@ fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "downsampled"
 wavelength_range = [8., 13.1] * u.um
 data = set_data(list(fits_dir.glob("*fits")), wavelengths="all",
                 wavelength_range=wavelength_range, fit_data=["flux"])
-wavelengths = get_all_wavelengths()
 
 OPACITY_DIR = DATA_DIR / "opacities"
 GRF_DIR = OPACITY_DIR / "grf"
@@ -114,8 +112,11 @@ components = assemble_components(
         OPTIONS.model.components_and_params,
         OPTIONS.model.shared_params)
 
-rchi_sq = compute_sed_chi_sq(
-    components[0].compute_flux(wavelengths), reduced=True)
+model_flux = components[0].compute_flux(OPTIONS.model.wavelengths)
+if OPTIONS.model.convolve:
+    model_flux = convolve_with_lsf(model_flux)
+
+rchi_sq = compute_sed_chi_sq(model_flux, reduced=True)
 print(f"rchi_sq: {rchi_sq:.2f}")
 
 
@@ -130,8 +131,11 @@ if __name__ == "__main__":
     components_and_params, shared_params = set_params_from_theta(theta)
     components = assemble_components(
             components_and_params, shared_params)
-    rchi_sq = compute_sed_chi_sq(
-        components[0].compute_flux(wavelengths), reduced=True)
+
+    model_flux = components[0].compute_flux(OPTIONS.model.wavelengths)
+    if OPTIONS.model.convolve:
+        model_flux = convolve_with_lsf(model_flux)
+    rchi_sq = compute_sed_chi_sq(model_flux, reduced=True)
     print(f"rchi_sq: {rchi_sq:.2f}")
 
     save_fits(

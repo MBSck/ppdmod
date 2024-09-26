@@ -36,7 +36,6 @@ wavelengths = {"hband": [1.7] * u.um, "kband": [2.15] * u.um,
                "nband": np.linspace(8, 13, 35) * u.um,
                }
 
-OPTIONS.model.output = "non-normed"
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
 wavelength = np.concatenate((wavelengths["hband"], wavelengths["kband"],
                              wavelengths["lband"], wavelengths["mband"], wavelengths["nband"]))

@@ -31,18 +31,20 @@ def get_colorlist(colormap: str, ncolors: Optional[int] = 10) -> List[str]:
 
 
 SPECTRAL_RESOLUTIONS = {
-    "hband": {"low": 5, "high": 30},
     "lmband": {"low": 34, "med": 506, "high": 959},
     "nband": {"low": 30, "high": 218}
 }
 
 # NOTE: The MATISSE values are only approximate -> Figure out the correct ones
-CENTRAL_WAVELENGTHS = {"hband": 1.68 * u.um,
-                       "kband": 2.15 * u.um,
-                       "lband": 3.5 * u.um,
-                       "mband": 4.8 * u.um,
-                       "nband": 10.5 * u.um
-                       }
+CENTRAL_WAVELENGTHS = {
+    "hband": 1.68 * u.um,
+    "kband": 2.15 * u.um,
+
+    # NOTE: All central wavelengths for MATISSE are approximate
+    "lband": 3.5 * u.um,
+    "mband": 4.8 * u.um,
+    "nband": 10.5 * u.um
+}
 
 
 # NOTE: A list of standard parameters to be used when defining new components.
@@ -200,8 +202,11 @@ data = SimpleNamespace(readouts=[], bands=[],
 # NOTE: Model
 model = SimpleNamespace(components_and_params=None,
                         constant_params=None, shared_params=None,
-                        output="normed", reference_radius=1*u.au,
-                        nyquist_sampling=2, gridtype="logarithmic",
+                        output="non-normed", convolve=True,
+                        reference_radius=1 * u.au,
+                        wavelengths=None, oversampling=512,
+                        convolution_tolerance=0.3,
+                        stddevs={}, gridtype="logarithmic",
                         modulation=1)
 
 # NOTE: Plot
@@ -225,7 +230,6 @@ fit = SimpleNamespace(weights=weights,
                       data=["flux", "vis", "t3"],
                       method="dynesty",
                       wavelengths=None,
-                      resampled_wavelengths=None,
                       quantiles=[2.5, 50, 97.5])
 
 # NOTE: All options

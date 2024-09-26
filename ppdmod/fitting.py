@@ -14,7 +14,7 @@ from .component import Component
 from .data import get_counts_data
 from .parameter import Parameter
 from .options import OPTIONS
-from .utils import compute_vis, compute_t3, resample_wavelengths
+from .utils import compute_vis, compute_t3, convolve_with_lsf
 
 
 def get_priors() -> np.ndarray:
@@ -163,7 +163,7 @@ def compute_observables(components: List[Component],
     rraw : bool, optional
         Whether to return the raw observables.
     """
-    wavelength = OPTIONS.fit.wavelengths if wavelength is None else wavelength
+    wavelength = OPTIONS.model.wavelengths if wavelength is None else wavelength
     vis = OPTIONS.data.vis2 if "vis2" in OPTIONS.fit.data else OPTIONS.data.vis
 
     complex_vis_comps, complex_t3_comps = [], []
@@ -174,6 +174,10 @@ def compute_observables(components: List[Component],
             OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord, wavelength))
 
     complex_vis_comps = np.array(complex_vis_comps)
+    complex_t3_comps = np.array(complex_t3_comps)
+    if OPTIONS.model.convolve:
+        complex_vis_comps = convolve_with_lsf(complex_vis_comps)
+        complex_t3_comps = convolve_with_lsf(complex_t3_comps)
 
     # TODO: Make this implementation work again
     # for comp in components:
@@ -189,8 +193,10 @@ def compute_observables(components: List[Component],
     #         # complex_t3_model += stellar_flux
     #         break
 
+    # TODO: This summation is done twice, can it be reduced to once?
     flux_model = complex_vis_comps[..., 0].sum(axis=0).reshape(-1, 1)
-    t3_model = compute_t3(np.sum(complex_t3_comps, axis=0))
+    t3_model = compute_t3(complex_t3_comps.sum(axis=0))
+
     if OPTIONS.model.output == "normed":
         complex_vis_comps /= flux_model
 
@@ -213,6 +219,7 @@ def compute_observables(components: List[Component],
         vis_comps = compute_vis(complex_vis_comps)
         if "vis2" in OPTIONS.fit.data:
             vis_comps *= vis_comps
+
         return flux_model, vis_model, t3_model, vis_comps
 
     return flux_model, vis_model, t3_model
@@ -460,7 +467,12 @@ def lnprob_sed(theta: np.ndarray) -> float:
             return -np.inf
 
     components = assemble_components(parameters, shared_params)
-    return compute_sed_chi_sq(components[0].compute_flux(OPTIONS.fit.wavelengths))
+    model_flux = components[0].compute_flux(OPTIONS.model.wavelenghts)
+
+    if OPTIONS.model.convolve:
+        model_flux = convolve_with_lsf(model_flux)
+
+    return compute_sed_chi_sq(model_flux)
 
 def run_mcmc(nwalkers: int,
              nburnin: Optional[int] = 0,
