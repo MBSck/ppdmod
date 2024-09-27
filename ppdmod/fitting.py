@@ -163,7 +163,7 @@ def compute_observables(components: List[Component],
     rraw : bool, optional
         Whether to return the raw observables.
     """
-    wavelength = OPTIONS.model.wavelengths if wavelength is None else wavelength
+    wavelength = OPTIONS.fit.wavelengths if wavelength is None else wavelength
     vis = OPTIONS.data.vis2 if "vis2" in OPTIONS.fit.data else OPTIONS.data.vis
 
     complex_vis_comps, complex_t3_comps = [], []
@@ -172,12 +172,6 @@ def compute_observables(components: List[Component],
             vis.ucoord, vis.vcoord, wavelength))
         complex_t3_comps.append(component.compute_complex_vis(
             OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord, wavelength))
-
-    complex_vis_comps = np.array(complex_vis_comps)
-    complex_t3_comps = np.array(complex_t3_comps)
-    if OPTIONS.model.convolve:
-        complex_vis_comps = convolve_with_lsf(complex_vis_comps)
-        complex_t3_comps = convolve_with_lsf(complex_t3_comps)
 
     # TODO: Make this implementation work again
     # for comp in components:
@@ -467,12 +461,7 @@ def lnprob_sed(theta: np.ndarray) -> float:
             return -np.inf
 
     components = assemble_components(parameters, shared_params)
-    model_flux = components[0].compute_flux(OPTIONS.model.wavelengths)
-
-    if OPTIONS.model.convolve:
-        model_flux = convolve_with_lsf(model_flux)
-
-    return compute_sed_chi_sq(model_flux)
+    return compute_sed_chi_sq(components[0].compute_flux(OPTIONS.fit.wavelengths))
 
 def run_mcmc(nwalkers: int,
              nburnin: Optional[int] = 0,

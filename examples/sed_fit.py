@@ -112,11 +112,8 @@ components = assemble_components(
         OPTIONS.model.components_and_params,
         OPTIONS.model.shared_params)
 
-model_flux = components[0].compute_flux(OPTIONS.model.wavelengths)
-if OPTIONS.model.convolve:
-    model_flux = convolve_with_lsf(model_flux)
-
-rchi_sq = compute_sed_chi_sq(model_flux, reduced=True)
+rchi_sq = compute_sed_chi_sq(
+    components[0].compute_flux(OPTIONS.fit.wavelengths), reduced=True)
 print(f"rchi_sq: {rchi_sq:.2f}")
 
 
@@ -132,10 +129,8 @@ if __name__ == "__main__":
     components = assemble_components(
             components_and_params, shared_params)
 
-    model_flux = components[0].compute_flux(OPTIONS.model.wavelengths)
-    if OPTIONS.model.convolve:
-        model_flux = convolve_with_lsf(model_flux)
-    rchi_sq = compute_sed_chi_sq(model_flux, reduced=True)
+    rchi_sq = compute_sed_chi_sq(
+        components[0].compute_flux(OPTIONS.fit.wavelengths), reduced=True)
     print(f"rchi_sq: {rchi_sq:.2f}")
 
     save_fits(

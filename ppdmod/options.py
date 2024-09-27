@@ -193,8 +193,7 @@ binning = SimpleNamespace(
     nband=0.05 * u.um)
 interpolation = SimpleNamespace(
     dim=10, kind="linear", fill_value=None)
-data = SimpleNamespace(readouts=[], bands=[],
-                       resolutions=[], flux=flux, vis=vis,
+data = SimpleNamespace(readouts=[], flux=flux, vis=vis,
                        vis2=vis2, t3=t3, gravity=gravity,
                        binning=binning, dtype=dtype,
                        interpolation=interpolation)
@@ -202,12 +201,8 @@ data = SimpleNamespace(readouts=[], bands=[],
 # NOTE: Model
 model = SimpleNamespace(components_and_params=None,
                         constant_params=None, shared_params=None,
-                        output="non-normed", convolve=True,
-                        reference_radius=1 * u.au,
-                        wavelengths=None, oversampling=512,
-                        convolution_tolerance=0.3,
-                        stddevs={}, gridtype="logarithmic",
-                        modulation=1)
+                        output="non-normed", reference_radius=1 * u.au,
+                        gridtype="logarithmic", modulation=1)
 
 # NOTE: Plot
 color = SimpleNamespace(background="white",

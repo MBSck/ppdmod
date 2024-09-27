@@ -16,7 +16,8 @@ from .options import OPTIONS, SPECTRAL_RESOLUTIONS
 
 
 # TODO: Check that the logarithmic grid samples all the previous points properly
-def resample_wavelengths(wavelengths: u.um) -> u.um:
+# TODO: Change this function so it convolves immediately to the wavelenght grid
+def resample_wavelengths(wavelengths: u.um, sampling_factor: int) -> u.um:
     """This function resamples the wavelengths in such a way that the
     convolution can be done with a kernel of constant resolution.
     """
@@ -28,10 +29,6 @@ def resample_wavelengths(wavelengths: u.um) -> u.um:
         resampled_wavelengths.extend(wavelengths[np.where(bands == "hband")])
         unique_bands.remove("hband")
 
-    if "kband" in unique_bands:
-        resampled_wavelengths.extend(wavelengths[np.where(bands == "kband")])
-        unique_bands.remove("kband")
-
     for band in np.sort(list(unique_bands)):
         wl = wavelengths[np.where(band == bands)]
         wl_min = wl.min() - OPTIONS.model.convolution_tolerance
@@ -41,7 +38,6 @@ def resample_wavelengths(wavelengths: u.um) -> u.um:
         fine_resolution = sub_grid[0] / np.diff(sub_grid)[0]
 
         # HACK: Only get the resolution of one dataset and assume all are the same
-        # NOTE: Calculate the kernel size ahead of time (and once)
         indices = np.where(np.array(OPTIONS.data.bands) == ("lmband" if band in ["lband", "mband"] else band))[0][0]
         fwhm = fine_resolution / np.array(OPTIONS.data.resolutions)[indices]
         OPTIONS.model.stddevs[band] = fwhm / np.sqrt(8 * np.log(2))
@@ -114,8 +110,6 @@ def convolve_with_lsf(data: u.um):
     return np.array(convolved_data)
 
 
-
-
 def get_band(wavelength: u.um) -> str:
     """Gets the band of the (.fits)-file."""
     wavelength = wavelength.value if isinstance(wavelength, u.Quantity) \
@@ -125,9 +119,9 @@ def get_band(wavelength: u.um) -> str:
         return "hband"
     if wl_min > 1.8 and wl_max < 2.4:
         return "kband"
-    if wl_min > 2.5 and wl_max <= 4.2:
+    if wl_min > 2.5 and wl_max < 4.0:
         return "lband"
-    if wl_min >= 4.3 and wl_max < 6:
+    if wl_min >= 4.0 and wl_max < 6:
         return "mband"
     if wl_min > 2.5 and wl_max < 6:
         return "lmband"
@@ -139,7 +133,6 @@ def get_band(wavelength: u.um) -> str:
 def get_resolution(header: fits.Header, band: str) -> int:
     """Gets the resolution of the band from the header."""
     match band:
-        # TODO: Implement the convolution for H and K band at some point
         case "hband" | "kband":
             res = 22
         case "lmband":

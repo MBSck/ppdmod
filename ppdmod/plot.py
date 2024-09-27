@@ -960,16 +960,13 @@ def plot_sed(wavelength_range: u.um,
         wavelength_range[0], wavelength_range[1], OPTIONS.plot.dim)
 
     if not no_model:
-        wavelength = OPTIONS.model.wavelengths if wavelength is None else wavelength
+        wavelength = OPTIONS.fit.wavelengths if wavelength is None else wavelength
 
         flux = []
         for component in [comp for comp in components if comp.name != "Point Source"]:
             flux.append(component.compute_flux(wavelength))
 
         flux = np.sum(flux, axis=0)
-        if OPTIONS.model.convolve:
-            flux = convolve_with_lsf(flux)
-
         if flux.size > 0:
             flux = np.tile(flux, (len(OPTIONS.data.readouts))).real
 

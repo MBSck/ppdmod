@@ -42,48 +42,10 @@ class Parameter:
         if points is None or self.grid is None:
             value = self.value
         else:
-            # HACK: Split the bands as the convolution is only done for LM and N band
-            # Temps are not in this scheme and should also not be convolved (they are
-            # smoothly interpolated)
-            if OPTIONS.model.convolve and self.name != "temps":
-                bands = np.array(list(map(get_band, points)))
-                if "hband" in bands and "kband" in bands:
-                    condition = (bands == "hband") | (bands == "kband")
-                if "hband" in bands:
-                    condition = bands == "hband"
-                elif "kband" in bands:
-                    condition = bands == "kband"
-                else:
-                    condition = None
-
-                value = None
-                if condition is not None:
-                    points_hkband = points[np.where(condition)]
-
-                    if self.smooth:
-                        value = smooth_interpolation(
-                            points_hkband.value, self.grid, self.value)
-                    else:
-                        value = np.interp(
-                            points_hkband.value, self.grid, self.value)
-
-                if condition is not None:
-                    points_other = points[np.where(~condition)]
-                else:
-                    points_other = points
-
-                convolved_value = np.interp(
-                    points_other.value, self.grid, self.value)
-
-                if value is not None:
-                    value = np.vstack((value, convolved_value))
-                else:
-                    value = convolved_value
+            if self.smooth:
+                value = smooth_interpolation(points.value, self.grid, self.value)
             else:
-                if self.smooth:
-                    value = smooth_interpolation(points.value, self.grid, self.value)
-                else:
-                    value = np.interp(points.value, self.grid, self.value)
+                value = np.interp(points.value, self.grid, self.value)
 
         return u.Quantity(value, unit=self.unit, dtype=self.dtype)
 
