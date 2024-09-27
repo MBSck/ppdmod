@@ -19,10 +19,10 @@ from ppdmod import basic_components
 from ppdmod.fitting import run_fit, get_best_fit, compute_observables, \
     compute_observable_chi_sq, set_params_from_theta, ptform_sequential_radii, \
     ptform_one_disc
-from ppdmod.data import set_data, get_all_wavelengths
+from ppdmod.data import set_data
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
-from ppdmod.utils import load_data, qval_to_opacity
+from ppdmod.utils import load_data, qval_to_opacity, resample_and_convolve
 
 
 def ptform(theta: List[float]) -> np.ndarray:
@@ -39,23 +39,21 @@ wavelengths = {"hband": [1.7] * u.um, "kband": [2.15] * u.um,
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
 wavelength = np.concatenate((wavelengths["hband"], wavelengths["kband"],
                              wavelengths["lband"], wavelengths["mband"], wavelengths["nband"]))
-# wavelength = wavelengths["lband"]
 data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis"])
-all_wavelengths = get_all_wavelengths()
 
-wl_flux, flux = load_data(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt", usecols=(0, 2))
+wl, value = load_data(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt", usecols=(0, 2))
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
-star_flux.grid, star_flux.value = wl_flux, flux
+star_flux.grid, star_flux.value = resample_and_convolve(OPTIONS.fit.wavelengths.value, wl, value)
 
-wl_op, silicate_opacity = np.load(DATA_DIR / "opacities" / "hd142527_boekel_qval_silicates.npy")
+wl, value = np.load(DATA_DIR / "opacities" / "hd142527_boekel_qval_silicates.npy")
+kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
+kappa_abs.value, kappa_abs.grid = resample_and_convolve(OPTIONS.fit.wavelengths.value, wl, value)
+
 cont_opacity_file = DATA_DIR / "opacities" / "qval" / "Q_amorph_c_rv0.1.dat"
 # cont_opacity_file = DATA_DIR / "opacities" / "qval" / "Q_iron_0.10um_dhs_0.70.dat"
-wl_cont, cont_opacity = load_data(cont_opacity_file, load_func=qval_to_opacity)
-
-kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
-kappa_abs.value, kappa_abs.grid = silicate_opacity, wl_op
+wl, value = load_data(cont_opacity_file, load_func=qval_to_opacity)
 kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
-kappa_cont.value, kappa_cont.grid = cont_opacity, wl_cont
+kappa_cont.value, kappa_cont.grid = resample_and_convolve(OPTIONS.fit.wavelengths.value, wl, value)
 
 pa = Parameter(**STANDARD_PARAMETERS.pa)
 inc = Parameter(**STANDARD_PARAMETERS.inc)

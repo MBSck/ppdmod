@@ -15,99 +15,65 @@ from scipy.interpolate import interp1d
 from .options import OPTIONS, SPECTRAL_RESOLUTIONS
 
 
-# TODO: Check that the logarithmic grid samples all the previous points properly
-# TODO: Change this function so it convolves immediately to the wavelenght grid
-def resample_wavelengths(wavelengths: u.um, sampling_factor: int) -> u.um:
+def resample_and_convolve(
+        wavelengths: np.ndarray,
+        wavelengths_data: np.ndarray, data: np.ndarray,
+        sampling_dim: Optional[int] = 8192,
+        padding: Optional[u.um] = 1) -> u.um:
     """This function resamples the wavelengths in such a way that the
     convolution can be done with a kernel of constant resolution.
+
+    Parameters
+    ----------
+    wavelengths : astropy.units.um
+        The wavelengths to be resampled to.
+    wavelengths_data : astropy.units.um
+        The wavelengths of the data.
+    data : numpy.ndarray
+        The data to be convolved and resampled.
+    sampling_dim : int
+        The dimension to resample the data with.
+    padding : astropy.units.um
+        The padding to add to the data (some spacing left and right)
+        to avoid edge effects.
+
+    Returns
+    -------
+    convolved_data : numpy.ndarray
     """
-    bands = np.array(list(map(get_band, wavelengths)))
-    unique_bands = set(bands)
+    # HACK: Only possible to sort due to alphabetic order
+    unique_bands = np.sort(list(set(np.array(list(map(get_band, wavelengths))))))
+    data_resolutions = np.array([np.array(OPTIONS.data.resolutions)
+                                [np.where(np.array(OPTIONS.data.bands) == (band if band not in ["lband", "mband"] else "lmband"))[0][0]]
+                                for band in unique_bands])
 
-    resampled_wavelengths = []
-    if "hband" in unique_bands:
-        resampled_wavelengths.extend(wavelengths[np.where(bands == "hband")])
-        unique_bands.remove("hband")
+    mock_grids = [np.linspace(*limit, 200) for limit in map(get_band_limits, unique_bands)]
+    sub_grids = [np.logspace(np.log10(wl_min - padding), np.log10(wl_max + padding), sampling_dim)
+                 for wl_min, wl_max in map(get_band_limits, unique_bands)]
+    sub_data = [np.interp(sub_grid, wavelengths_data, data) for sub_grid in sub_grids]
 
-    for band in np.sort(list(unique_bands)):
-        wl = wavelengths[np.where(band == bands)]
-        wl_min = wl.min() - OPTIONS.model.convolution_tolerance
-        wl_max = wl.max() + OPTIONS.model.convolution_tolerance
-        sub_grid = np.logspace(np.log10(wl_min), np.log10(wl_max), OPTIONS.model.oversampling)
-        resampled_wavelengths.extend(sub_grid)
-        fine_resolution = sub_grid[0] / np.diff(sub_grid)[0]
-
-        # HACK: Only get the resolution of one dataset and assume all are the same
-        indices = np.where(np.array(OPTIONS.data.bands) == ("lmband" if band in ["lband", "mband"] else band))[0][0]
-        fwhm = fine_resolution / np.array(OPTIONS.data.resolutions)[indices]
-        OPTIONS.model.stddevs[band] = fwhm / np.sqrt(8 * np.log(2))
-
-    return np.array(resampled_wavelengths)
+    fine_resolutions = np.array([sub_grid[0] / np.diff(sub_grid)[0] for sub_grid in sub_grids])
+    kernels = list(map(lambda x: Gaussian1DKernel(stddev=x / np.sqrt(8 * np.log(2))),
+                       fine_resolutions / data_resolutions))
+    convolved_data = [convolve_fft(sub_data, kernel) for sub_data, kernel in zip(sub_data, kernels)]
+    interpolated_data = np.concatenate([np.interp(mock_grid, sub_grid, conv_data)
+                                        for mock_grid, sub_grid, conv_data in zip(mock_grids, sub_grids, convolved_data)])
+    return np.concatenate(mock_grids), interpolated_data
 
 
-def convolve_with_lsf(data: u.um):
-    """Convolves the data with the line spread function."""
-    wavelengths = OPTIONS.model.wavelengths
-    bands = np.array(list(map(get_band, wavelengths)))
-    convolve_bands = np.sort([band for band in set(bands) if band not in ["hband", "kband"]])
-
-    original_wavelengths = OPTIONS.fit.wavelengths
-    original_bands = np.array(list(map(get_band, original_wavelengths)))
-
-    original_wls = [original_wavelengths[np.where(original_bands == band)] for band in convolve_bands]
-    band_wls = [wavelengths[np.where(band == bands)] for band in convolve_bands]
-    kernels = list(map(lambda x: Gaussian1DKernel(stddev=OPTIONS.model.stddevs[x]), convolve_bands))
-
-    if len(data.shape) == 2:
-        temp_data = data.flatten()
-
-        convolved_data = []
-        if "hband" in bands:
-            convolved_data.extend(data[np.where(bands == "hband")])
-        if "kband" in bands:
-            convolved_data.extend(data[np.where(bands == "kband")])
-
-        band_data = [temp_data[np.where(bands == band)] for band in convolve_bands]
-        convolved_band_data = [convolve_fft(data, kernel) for data, kernel in zip(band_data, kernels)]
-        interp_band_data = [np.interp(original_wl, band_wl, conv_data)
-            for original_wl, band_wl, conv_data in zip(original_wls, band_wls, convolved_band_data)]
-
-        return np.concatenate([convolved_data, np.concatenate((interp_band_data))]).reshape(-1, 1)
-
-    convolved_data = []
-    for component_data in data:
-        temp_data = component_data.T
-
-        convolved_comp_data = []
-        if "hband" in bands:
-            convolved_comp_data.extend(component_data[np.where(bands == "hband")])
-        if "kband" in bands:
-            convolved_comp_data.extend(component_data[np.where(bands == "kband")])
-
-        for index, band in enumerate(convolve_bands):
-            convolved_band = []
-
-            if len(data.shape) == 3:
-                baseline_data = temp_data[:, np.where(bands == band)[0]]
-            else:
-                baseline_data = temp_data[:, :, np.where(bands == band)[0]]
-
-            for baseline in baseline_data:
-                if len(data.shape) == 4:
-                    triangles = []
-                    for triangle in baseline:
-                        triangles.append(np.interp(
-                            original_wls[index], band_wls[index], convolve_fft(triangle, kernels[index])))
-                    convolved_band.append(np.array(triangles))
-                else:
-                    convolved_band.append(np.interp(
-                        original_wls[index], band_wls[index], convolve_fft(baseline, kernels[index])))
-
-            convolved_comp_data.extend(np.array(convolved_band).T)
-
-        convolved_data.append(np.array(convolved_comp_data))
-
-    return np.array(convolved_data)
+def get_band_limits(band: str) -> Tuple:
+    """Gets the limits of the respective band"""
+    match band:
+        case "hband":
+            return 1.5, 1.9
+        case "kband":
+            return 1.8, 2.4
+        case "lband":
+            return 2.5, 4.0
+        case "mband":
+            return 4.0, 6.0
+        case "nband":
+            return 7.5, 15.0
 
 
 def get_band(wavelength: u.um) -> str:
@@ -133,13 +99,14 @@ def get_band(wavelength: u.um) -> str:
 def get_resolution(header: fits.Header, band: str) -> int:
     """Gets the resolution of the band from the header."""
     match band:
-        case "hband" | "kband":
-            res = 22
+        case "hband":
+            return 30
+        case "kband":
+            return 22
         case "lmband":
-            res = SPECTRAL_RESOLUTIONS["lmband"][header["HIERARCH ESO INS DIL ID"].lower()]
+            return SPECTRAL_RESOLUTIONS["lmband"][header["HIERARCH ESO INS DIL ID"].lower()]
         case "nband":
-            res = SPECTRAL_RESOLUTIONS["nband"][header["HIERARCH ESO INS DIN ID"].lower()]
-    return res
+            return SPECTRAL_RESOLUTIONS["nband"][header["HIERARCH ESO INS DIN ID"].lower()]
 
 
 def smooth_interpolation(

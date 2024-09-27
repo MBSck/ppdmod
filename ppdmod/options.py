@@ -31,6 +31,7 @@ def get_colorlist(colormap: str, ncolors: Optional[int] = 10) -> List[str]:
 
 
 SPECTRAL_RESOLUTIONS = {
+    "hband": 30, "kband": 22,
     "lmband": {"low": 34, "med": 506, "high": 959},
     "nband": {"low": 30, "high": 218}
 }
@@ -193,10 +194,10 @@ binning = SimpleNamespace(
     nband=0.05 * u.um)
 interpolation = SimpleNamespace(
     dim=10, kind="linear", fill_value=None)
-data = SimpleNamespace(readouts=[], flux=flux, vis=vis,
-                       vis2=vis2, t3=t3, gravity=gravity,
-                       binning=binning, dtype=dtype,
-                       interpolation=interpolation)
+data = SimpleNamespace(readouts=[], bands=[], resolutions=[],
+                       flux=flux, vis=vis, vis2=vis2, t3=t3,
+                       gravity=gravity, binning=binning,
+                       dtype=dtype, interpolation=interpolation)
 
 # NOTE: Model
 model = SimpleNamespace(components_and_params=None,

@@ -14,7 +14,7 @@ from .component import Component
 from .data import get_counts_data
 from .parameter import Parameter
 from .options import OPTIONS
-from .utils import compute_vis, compute_t3, convolve_with_lsf
+from .utils import compute_vis, compute_t3
 
 
 def get_priors() -> np.ndarray:

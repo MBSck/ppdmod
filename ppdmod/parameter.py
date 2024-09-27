@@ -5,8 +5,7 @@ import astropy.units as u
 import numpy as np
 from numpy.typing import ArrayLike
 
-from .options import OPTIONS
-from .utils import smooth_interpolation, get_band
+from .utils import smooth_interpolation
 
 
 @dataclass()
