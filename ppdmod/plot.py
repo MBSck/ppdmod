@@ -25,7 +25,7 @@ from pylatex.utils import NoEscape
 from .component import Component, FourierComponent
 from .fitting import compute_observables, get_best_fit
 from .options import OPTIONS, get_colormap
-from .utils import compute_effective_baselines, restrict_phase, \
+from .utils import compute_effective_baselines, convolve_with_lsf, restrict_phase, \
     angular_to_distance, distance_to_angular
 
 matplotlib.use("Agg")
@@ -960,13 +960,16 @@ def plot_sed(wavelength_range: u.um,
         wavelength_range[0], wavelength_range[1], OPTIONS.plot.dim)
 
     if not no_model:
-        wavelength = OPTIONS.fit.wavelengths if wavelength is None else wavelength
+        wavelength = OPTIONS.model.wavelengths if wavelength is None else wavelength
 
         flux = []
         for component in [comp for comp in components if comp.name != "Point Source"]:
             flux.append(component.compute_flux(wavelength))
 
         flux = np.sum(flux, axis=0)
+        if OPTIONS.model.convolve:
+            flux = convolve_with_lsf(flux)
+
         if flux.size > 0:
             flux = np.tile(flux, (len(OPTIONS.data.readouts))).real
 
