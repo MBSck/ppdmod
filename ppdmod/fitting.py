@@ -467,7 +467,7 @@ def lnprob_sed(theta: np.ndarray) -> float:
             return -np.inf
 
     components = assemble_components(parameters, shared_params)
-    model_flux = components[0].compute_flux(OPTIONS.model.wavelenghts)
+    model_flux = components[0].compute_flux(OPTIONS.model.wavelengths)
 
     if OPTIONS.model.convolve:
         model_flux = convolve_with_lsf(model_flux)
