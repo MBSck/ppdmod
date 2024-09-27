@@ -43,8 +43,8 @@ class Parameter:
             value = self.value
         else:
             # HACK: Split the bands as the convolution is only done for LM and N band
-            # Temps are not in this scheme and should also not be convolved
-            # TODO: Check if the temps are binned
+            # Temps are not in this scheme and should also not be convolved (they are
+            # smoothly interpolated)
             if OPTIONS.model.convolve and self.name != "temps":
                 bands = np.array(list(map(get_band, points)))
                 if "hband" in bands and "kband" in bands:
