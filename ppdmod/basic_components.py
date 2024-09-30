@@ -32,6 +32,7 @@ class SED(Component):
         self.kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
         self.cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
         self.cont_weight.set(min=0, max=100)
+        self.cont_weight.unit = u.pct
 
         self.factor = Parameter(**STANDARD_PARAMETERS.f)
         self.factor.name = self.factor.shortname = "factor"
@@ -54,6 +55,7 @@ class SED(Component):
                 weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
                 weight.shortname = weight.name = weight_name
                 weight.description = f"The mass fraction for {size} {key}"
+                weight.unit = u.pct
                 weight.set(min=0, max=100)
                 setattr(self, weight_name, weight)
 

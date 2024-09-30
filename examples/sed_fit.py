@@ -70,6 +70,7 @@ tempc.value = 900
 
 cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 cont_weight.set(min=0, max=100)
+cont_weight.unit = u.pct
 cont_weight.value = 50
 
 pah_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
@@ -94,6 +95,7 @@ for key in NAMES.keys():
         weight.shortname = weight.name = weight_name
         weight.description = f"The mass fraction for {size} {key}"
         weight.set(min=0, max=100)
+        weight.unit = u.pct
         weight.value = 50
         sed[weight_name] = weight
 

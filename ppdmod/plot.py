@@ -256,6 +256,8 @@ def format_labels(labels: List[str], units: Optional[List[str]] = None) -> List[
                 unit = r"\frac{g}{cm^2}"
             elif unit == u.deg:
                 unit = r"^{\circ}"
+            elif unit == u.pct:
+                unit = r"\%"
             reformatted_units.append(unit)
 
         formatted_labels = [rf"{label} $\left(\mathrm{{{str(unit).strip()}}}\right)$" if str(unit)
