@@ -69,8 +69,8 @@ tempc.description = "The temperature of the black body"
 tempc.value = 900
 
 cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
-cont_weight.set(min=0, max=1)
-cont_weight.value = 0.5
+cont_weight.set(min=0, max=100)
+cont_weight.value = 50
 
 pah_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 pah_weight.shortname = pah_weight.name = "pah_weight"
@@ -93,8 +93,8 @@ for key in NAMES.keys():
         weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
         weight.shortname = weight.name = weight_name
         weight.description = f"The mass fraction for {size} {key}"
-        weight.set(min=0, max=1)
-        weight.value = 0.5
+        weight.set(min=0, max=100)
+        weight.value = 50
         sed[weight_name] = weight
 
 OPTIONS.model.components_and_params = [["SED", sed]]

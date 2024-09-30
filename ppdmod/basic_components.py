@@ -15,8 +15,6 @@ from .options import STANDARD_PARAMETERS, OPTIONS
 from .utils import distance_to_angular, angular_to_distance
 
 
-# TODO: Think about changing the weights to percentages directly.
-# Better intuition of what is happening
 class SED(Component):
     name = "SED"
     shortname = "SED"
@@ -33,6 +31,7 @@ class SED(Component):
 
         self.kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
         self.cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
+        self.cont_weight.set(min=0, max=100)
 
         self.factor = Parameter(**STANDARD_PARAMETERS.f)
         self.factor.name = self.factor.shortname = "factor"
@@ -55,6 +54,7 @@ class SED(Component):
                 weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
                 weight.shortname = weight.name = weight_name
                 weight.description = f"The mass fraction for {size} {key}"
+                weight.set(min=0, max=100)
                 setattr(self, weight_name, weight)
 
         self.eval(**kwargs)
@@ -64,7 +64,9 @@ class SED(Component):
         opacity = np.sum([getattr(self, f"{key}_{size}_weight")() * getattr(self, f"kappa_{key}_{size}")(wavelength)
                           for size in ["small", "large"] for key in self.materials], axis=0)
         opacity += (self.cont_weight() * self.kappa_cont(wavelength)).value
-        return opacity.astype(OPTIONS.data.dtype.real)
+
+        # NOTE: The 1e2 term is to be able to fit the weights as percentages
+        return opacity.astype(OPTIONS.data.dtype.real) / 1e2
 
     def flux_func(self, wavelength: u.um) -> np.ndarray:
         """Returns the flux weight of the point source."""
