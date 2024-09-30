@@ -25,7 +25,7 @@ from pylatex.utils import NoEscape
 from .component import Component, FourierComponent
 from .fitting import compute_observables, get_best_fit
 from .options import OPTIONS, get_colormap
-from .utils import compute_effective_baselines, convolve_with_lsf, restrict_phase, \
+from .utils import compute_effective_baselines, restrict_phase, \
     angular_to_distance, distance_to_angular
 
 matplotlib.use("Agg")
