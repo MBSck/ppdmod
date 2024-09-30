@@ -75,7 +75,7 @@ cont_weight.value = 50
 pah_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 pah_weight.shortname = pah_weight.name = "pah_weight"
 pah_weight.description = "The mass fraction for the PAHs"
-pah_weight.set(min=0, max=5)
+pah_weight.set(min=0, max=20)
 pah_weight.value = 0.25
 
 factor = Parameter(**STANDARD_PARAMETERS.f)
