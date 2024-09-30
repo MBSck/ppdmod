@@ -26,7 +26,7 @@ def ptform(theta):
 
 
 DATA_DIR = Path("../data")
-# fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit"
+# fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "averaged"
 fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "downsampled"
 # fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "only_high"
 # fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "only_low"
