@@ -19,7 +19,7 @@ def resample_and_convolve(
         wavelengths: np.ndarray,
         wavelengths_data: np.ndarray, data: np.ndarray,
         sampling_dim: Optional[int] = 8192,
-        padding: Optional[u.um] = 1) -> u.um:
+        padding: Optional[float] = 1) -> u.um:
     """This function resamples the wavelengths in such a way that the
     convolution can be done with a kernel of constant resolution.
 
