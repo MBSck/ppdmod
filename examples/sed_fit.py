@@ -19,7 +19,6 @@ from ppdmod.data import set_data
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 from ppdmod.utils import resample_and_convolve
-from ppdmod.plot import plot_sed, plot_corner
 
 
 def ptform(theta):
@@ -142,11 +141,3 @@ if __name__ == "__main__":
         fit_hyperparameters=fit_params, ncores=ncores,
         save_dir=result_dir / "model.fits",
         object_name="HD142527")
-
-    indices = list(map(LABELS.index, filter(lambda x: "weight" in x and "pah" not in x, LABELS)))
-    print(f"Normed sum: {np.array(theta)[indices].sum()}")
-
-    plot_corner(sampler, LABELS, UNITS, savefig=result_dir / f"corner_{dir_name}.pdf")
-    plot_sed([7.9, 13.15] * u.um, components, scaling="nu", save_dir=result_dir)
-    plot_sed([7.9, 13.15] * u.um, components, scaling=None, save_dir=result_dir)
-

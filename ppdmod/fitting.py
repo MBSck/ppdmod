@@ -368,14 +368,15 @@ def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray
 def ptform_sed(theta: List[float], labels: List[str]) -> np.ndarray:
     """Transform that soft constrains successive radii to be smaller than the one before."""
     indices = list(map(labels.index, filter(lambda x: "weight" in x and "pah" not in x, labels)))
+    params = transform_uniform_prior(theta)
 
-    remainder = 1.
+    remainder = 100
     for index in indices[:-1]:
-        theta[index] *= remainder
-        remainder -= theta[index]
+        params[index] *= remainder / 1e2
+        remainder = max(0, remainder - params[index])
 
-    theta[indices[-1]] = remainder
-    return transform_uniform_prior(theta)
+    params[indices[-1]] = remainder if remainder > 1e-5 else 0
+    return params
 
 
 def lnprior(components_and_params: List[List[Dict]],

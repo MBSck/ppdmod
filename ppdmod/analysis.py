@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import Optional, List, Dict, Tuple
 from pathlib import Path
 
-import astropy.units as u
 import numpy as np
 from astropy.io import fits
 from astropy.table import Table
@@ -10,7 +9,6 @@ from dynesty import NestedSampler, DynamicNestedSampler
 
 from .basic_components import get_component_by_name
 from .component import Component
-from .fitting import compute_observables, compute_observable_chi_sq
 from .options import OPTIONS, STANDARD_PARAMETERS
 from .parameter import Parameter
 
@@ -84,7 +82,7 @@ def save_fits(components: List[Component],
     tables = []
     for index, component in enumerate(components):
         table_header, data = fits.Header(), {}
-        table_header["COMP"] = component.shortname
+        table_header["COMP"] = component.shortname.upper()
 
         for parameter in component.get_params().values():
             if parameter.grid is None:
