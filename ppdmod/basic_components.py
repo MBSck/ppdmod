@@ -40,7 +40,6 @@ class SED(Component):
         self.factor.unit = u.one
         self.factor.free = True
 
-        # TODO: Is the order here important for the fit?
         self.materials = ["pyrox", "enst", "forst", "sil", "oliv"]
 
         for key in self.materials:

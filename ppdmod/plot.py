@@ -1325,6 +1325,8 @@ def plot_fit_parameters(components: List[Component], savefig: Path) -> None:
             table.add_hline()
 
             for label, unit, value in zip(labels, units, values):
+                if unit == u.pct:
+                    unit = r"\%"
                 table.add_row((NoEscape(label), unit, value))
 
             table.add_hline()

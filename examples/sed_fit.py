@@ -19,6 +19,7 @@ from ppdmod.data import set_data
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 from ppdmod.utils import resample_and_convolve
+from ppdmod.plot import plot_sed, plot_corner
 
 
 def ptform(theta):
@@ -39,7 +40,6 @@ data = set_data(list(fits_dir.glob("*fits")), wavelengths="all",
 OPACITY_DIR = DATA_DIR / "opacities"
 GRF_DIR = OPACITY_DIR / "grf"
 
-# TODO: Order of these might be important for the fit -> Check that
 SHORTNAMES = ["pyrox", "enst", "forst", "sil", "oliv"]
 NAMES = ["MgPyroxene", "Enstatite", "Forsterite", "Silica", "Olivine"]
 NAMES = dict(zip(SHORTNAMES, NAMES))
@@ -142,3 +142,11 @@ if __name__ == "__main__":
         fit_hyperparameters=fit_params, ncores=ncores,
         save_dir=result_dir / "model.fits",
         object_name="HD142527")
+
+    indices = list(map(LABELS.index, filter(lambda x: "weight" in x and "pah" not in x, LABELS)))
+    print(f"Normed sum: {np.array(theta)[indices].sum()}")
+
+    plot_corner(sampler, LABELS, UNITS, savefig=result_dir / f"corner_{dir_name}.pdf")
+    plot_sed([7.9, 13.15] * u.um, components, scaling="nu", save_dir=result_dir)
+    plot_sed([7.9, 13.15] * u.um, components, scaling=None, save_dir=result_dir)
+
