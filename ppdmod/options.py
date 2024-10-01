@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List, Optional
 from types import SimpleNamespace
 
@@ -34,6 +35,11 @@ SPECTRAL_RESOLUTIONS = {
     "hband": 30, "kband": 22,
     "lmband": {"low": 34, "med": 506, "high": 959},
     "nband": {"low": 30, "high": 218}
+}
+
+RES_GRID_DIR = Path("../data/resolution_grids")
+RESOLUTION_GRIDS = {
+    "nband": {30: np.load(RES_GRID_DIR / "nband_low.npy")}
 }
 
 # NOTE: The MATISSE values are only approximate -> Figure out the correct ones

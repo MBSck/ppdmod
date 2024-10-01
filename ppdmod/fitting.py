@@ -600,6 +600,7 @@ def get_best_fit(
         discard: Optional[int] = 0,
         distribution: Optional[str] = "default",
         method: Optional[str] = "quantile",
+        ptform: Optional[str] = None,
         **kwargs) -> Tuple[np.ndarray, np.ndarray]:
     """Gets the best fit from the emcee sampler."""
     params, uncertainties = [], []

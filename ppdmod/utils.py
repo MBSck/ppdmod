@@ -12,14 +12,14 @@ from openpyxl import Workbook, load_workbook
 from scipy.special import j1
 from scipy.interpolate import interp1d
 
-from .options import OPTIONS, SPECTRAL_RESOLUTIONS
-
+from .options import OPTIONS, SPECTRAL_RESOLUTIONS, RESOLUTION_GRIDS
 
 def resample_and_convolve(
         wavelengths: np.ndarray,
         wavelengths_data: np.ndarray, data: np.ndarray,
         sampling_dim: Optional[int] = 8192,
-        padding: Optional[float] = 1) -> u.um:
+        padding: Optional[float] = 1,
+        constant_resolution: Optional[bool] = False) -> u.um:
     """This function resamples the wavelengths in such a way that the
     convolution can be done with a kernel of constant resolution.
 
@@ -46,18 +46,39 @@ def resample_and_convolve(
     data_resolutions = np.array([np.array(OPTIONS.data.resolutions)
                                 [np.where(np.array(OPTIONS.data.bands) == (band if band not in ["lband", "mband"] else "lmband"))[0][0]]
                                 for band in unique_bands])
-
     mock_grids = [np.linspace(*limit, 200) for limit in map(get_band_limits, unique_bands)]
-    sub_grids = [np.logspace(np.log10(wl_min - padding), np.log10(wl_max + padding), sampling_dim)
-                 for wl_min, wl_max in map(get_band_limits, unique_bands)]
-    sub_data = [np.interp(sub_grid, wavelengths_data, data) for sub_grid in sub_grids]
 
-    fine_resolutions = np.array([sub_grid[0] / np.diff(sub_grid)[0] for sub_grid in sub_grids])
-    kernels = list(map(lambda x: Gaussian1DKernel(stddev=x / np.sqrt(8 * np.log(2))),
-                       fine_resolutions / data_resolutions))
-    convolved_data = [convolve_fft(sub_data, kernel) for sub_data, kernel in zip(sub_data, kernels)]
-    interpolated_data = np.concatenate([np.interp(mock_grid, sub_grid, conv_data)
-                                        for mock_grid, sub_grid, conv_data in zip(mock_grids, sub_grids, convolved_data)])
+    if constant_resolution:
+        sub_grids = [np.logspace(np.log10(wl_min - padding), np.log10(wl_max + padding), sampling_dim)
+                    for wl_min, wl_max in map(get_band_limits, unique_bands)]
+        sub_data = [np.interp(sub_grid, wavelengths_data, data) for sub_grid in sub_grids]
+
+        fine_resolutions = np.array([sub_grid[0] / np.diff(sub_grid)[0] for sub_grid in sub_grids])
+        kernels = list(map(lambda x: Gaussian1DKernel(stddev=x / np.sqrt(8 * np.log(2))),
+                        fine_resolutions / data_resolutions))
+        convolved_data = [convolve_fft(sub_data, kernel) for sub_data, kernel in zip(sub_data, kernels)]
+        interpolated_data = np.concatenate([np.interp(mock_grid, sub_grid, conv_data)
+                                            for mock_grid, sub_grid, conv_data in zip(mock_grids, sub_grids, convolved_data)])
+    else:
+        interpolated_data = []
+        for band_index, band in enumerate(unique_bands):
+            band_resolution = data_resolutions[band_index]
+            res_grid_wls, res_grids = RESOLUTION_GRIDS[band][band_resolution]
+
+            oversampled_grid = []
+            for index, (res_grid_wl, res_grid) in enumerate(zip(res_grid_wls, res_grids)):
+                if index == len(res_grid_wls) - 1:
+                    continue
+
+                oversampled_grid.append(np.linspace(res_grid_wl, res_grid_wls[index + 1], int(res_grid * 1e3), endpoint=False))
+
+            oversampled_grid = np.concatenate(oversampled_grid)
+            oversampled_data = np.interp(oversampled_grid, wavelengths_data, data)
+            convolved_data = convolve_fft(oversampled_data, Gaussian1DKernel(stddev=1 / (band_resolution * np.sqrt(8 * np.log(2)))))
+            interpolated_data.append(np.interp(mock_grids[band_index], oversampled_grid, convolved_data))
+
+        interpolated_data = np.concatenate(interpolated_data)
+
     return np.concatenate(mock_grids), interpolated_data
 
 
