@@ -14,6 +14,7 @@ from scipy.interpolate import interp1d
 
 from .options import OPTIONS, SPECTRAL_RESOLUTIONS, RESOLUTION_GRIDS
 
+
 def resample_and_convolve(
         wavelengths: np.ndarray,
         wavelengths_data: np.ndarray, data: np.ndarray,

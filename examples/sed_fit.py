@@ -65,37 +65,38 @@ OPTIONS.model.constant_params["pah"] = pah
 tempc = Parameter(**STANDARD_PARAMETERS.temp0)
 tempc.shortname = tempc.name = "tempc"
 tempc.description = "The temperature of the black body"
-tempc.value = 900
+tempc.value = 390.08
 
 cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 cont_weight.set(min=0, max=100)
 cont_weight.unit = u.pct
-cont_weight.value = 50
+cont_weight.value = 54
 
 pah_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 pah_weight.shortname = pah_weight.name = "pah_weight"
 pah_weight.description = "The mass fraction for the PAHs"
 pah_weight.set(min=0, max=20)
-pah_weight.value = 0.25
+pah_weight.value = 1.66
 
 factor = Parameter(**STANDARD_PARAMETERS.f)
 factor.name = factor.shortname = "factor"
 factor.description = "The factor to scale the black body"
-factor.unit, factor.value = u.one, 19
+factor.unit, factor.value = u.one, 17.46
 factor.free = True
 factor.set(min=15, max=25)
 
 sed = {"tempc": tempc, "pah_weight": pah_weight,
        "cont_weight": cont_weight, "factor": factor}
-for key in NAMES.keys():
-    for size in ["small", "large"]:
+
+weights = [[11.23, 13.40], [5.67, 5.85], [4.09, 3.77], [0.6, 0.24], [0.10, 0.10]]
+for w, key in zip(weights, NAMES.keys()):
+    for index, size in enumerate(["small", "large"]):
         weight_name = f"{key}_{size}_weight"
         weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
         weight.shortname = weight.name = weight_name
         weight.description = f"The mass fraction for {size} {key}"
         weight.set(min=0, max=100)
-        weight.unit = u.pct
-        weight.value = 50
+        weight.value, weight.unit = w[index], u.pct
         sed[weight_name] = weight
 
 OPTIONS.model.components_and_params = [["SED", sed]]

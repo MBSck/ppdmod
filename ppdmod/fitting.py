@@ -600,7 +600,6 @@ def get_best_fit(
         discard: Optional[int] = 0,
         distribution: Optional[str] = "default",
         method: Optional[str] = "quantile",
-        ptform: Optional[str] = None,
         **kwargs) -> Tuple[np.ndarray, np.ndarray]:
     """Gets the best fit from the emcee sampler."""
     params, uncertainties = [], []
@@ -612,6 +611,7 @@ def get_best_fit(
         else:
             probability = sampler.get_log_prob(flat=True, discard=discard)
 
+        # TODO: Check if this also samples non-jointly
         if method == "quantile":
             for index in range(samples.shape[1]):
                 quantiles = np.percentile(
@@ -623,15 +623,13 @@ def get_best_fit(
             params = samples[np.argmax(probability)]
     else:
         results = sampler.results
-        if method == "quantile":
-            samples = results.samples
-            weights = results.importance_weights()
+        samples, weights = results.samples, results.importance_weights()
 
-            for i in range(samples.shape[1]):
-                quantiles = dyutils.quantile(
-                    samples[:, i], np.array(OPTIONS.fit.quantiles) / 100,
-                    weights=weights)
-                params.append(quantiles[1])
-                uncertainties.append(np.diff(quantiles))
+        # NOTE: This is the approach for joint sampling (as in the parameters are
+        # dependent on each other within the model to some extent)
+        params = results.samples[results.logl.argmax()]
+        quantiles = np.array([dyutils.quantile(samps, np.array(OPTIONS.fit.quantiles) / 100, weights=weights)
+                              for samps in results.samples.T])
+        uncertainties = np.array([(quantile[0], quantile[1]) for quantile in quantiles])
 
     return params, uncertainties
