@@ -1312,10 +1312,9 @@ def plot_fit_parameters(components: List[Component], savefig: Path) -> None:
         # for index, component in enumerate(components, start=1):
         #     test = component.get_params(free=True)
 
-    labels = list(params.keys())
-    values = np.round(list(map(lambda x: x.value, params.values())), 4)
+    labels = format_labels(list(params.keys()))
+    values = np.round(list(map(lambda x: x.value, params.values())), 2)
     units = list(map(lambda x: x.unit, params.values()))
-    labels = format_labels(labels, units)
 
     doc = Document()
     with doc.create(Section("Fit Parameters")):
@@ -1325,8 +1324,6 @@ def plot_fit_parameters(components: List[Component], savefig: Path) -> None:
             table.add_hline()
 
             for label, unit, value in zip(labels, units, values):
-                if unit == u.pct:
-                    unit = r"\%"
                 table.add_row((NoEscape(label), unit, value))
 
             table.add_hline()
