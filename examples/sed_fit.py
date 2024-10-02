@@ -78,15 +78,13 @@ pah_weight.description = "The mass fraction for the PAHs"
 pah_weight.set(min=0, max=20)
 pah_weight.value = 1.66
 
-factor = Parameter(**STANDARD_PARAMETERS.f)
-factor.name = factor.shortname = "factor"
-factor.description = "The factor to scale the black body"
-factor.unit, factor.value = u.one, 17.46
-factor.free = True
-factor.set(min=15, max=25)
+fr = Parameter(**STANDARD_PARAMETERS.f)
+fr.description = "Opacity scaling term"
+fr.set(min=15, max=25)
+fr.free, fr.value = True, 17.46
 
 sed = {"tempc": tempc, "pah_weight": pah_weight,
-       "cont_weight": cont_weight, "factor": factor}
+       "cont_weight": cont_weight, "fr": fr}
 
 weights = [[11.23, 13.40], [5.67, 5.85], [4.09, 3.77], [0.6, 0.24], [0.10, 0.10]]
 for w, key in zip(weights, NAMES.keys()):
