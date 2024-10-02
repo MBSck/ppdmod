@@ -37,7 +37,7 @@ SPECTRAL_RESOLUTIONS = {
     "nband": {"low": 30, "high": 218}
 }
 
-RES_GRID_DIR = Path("../data/resolution_grids")
+RES_GRID_DIR = Path(__file__).parent.parent / "data" / "resolution_grids"
 RESOLUTION_GRIDS = {
     "nband": {30: np.load(RES_GRID_DIR / "nband_low.npy")}
 }
