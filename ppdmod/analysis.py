@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Tuple
 from pathlib import Path
 
+import astropy.units as u
 import numpy as np
 from astropy.io import fits
 from astropy.table import Table
