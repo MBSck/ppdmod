@@ -28,13 +28,14 @@ class SED(Component):
         self.pah_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
         self.pah_weight.shortname = self.pah_weight.name = "pah_weight"
         self.pah_weight.description = "The mass fraction for the PAHs"
+        self.pah_weight.unit = u.one
 
         self.kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
         self.cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
         self.cont_weight.set(min=0, max=100)
         self.cont_weight.unit = u.pct
 
-        self.fr = Parameter(**STANDARD_PARAMETERS.f)
+        self.fr = Parameter(**STANDARD_PARAMETERS.fr)
         self.fr.description = "Opacity scaling term"
         self.fr.free = True
 

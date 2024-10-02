@@ -90,7 +90,8 @@ def save_fits(components: List[Component],
             else:
                 grid = parameter.grid
 
-            data[parameter.shortname] = (grid, parameter().value)
+            data[parameter.shortname] = (grid, parameter().value,
+                                         parameter.unit, parameter.free)
 
         table = fits.BinTableHDU(
                 Table(data=data), header=table_header,
@@ -105,10 +106,10 @@ def restore_from_fits(path: Path) -> Tuple[List[str], List[Component], Optional[
     """Retrieves the individual model components from a model (.fits)-file 
     as well as the component labels and the sampler used.
     """
-    components, component_labels = [], []
+    components, component_labels, labels, units = [], [], [], []
     model_fits = path / "model.fits"
     with fits.open(model_fits, "readonly") as hdul:
-        for card in hdul:
+        for index, card in enumerate(hdul):
             header = card.header
             if card.name == "PRIMARY":
                 OPTIONS.model.gridtype = header["GRIDTYPE"]
@@ -120,9 +121,12 @@ def restore_from_fits(path: Path) -> Tuple[List[str], List[Component], Optional[
             param_names, param_data = card.data.columns.names, card.data.tolist()
             param_grid = [value if not np.all(np.isnan(value)) else None
                           for value in param_data[0]]
+            param_unit = [u.Unit(value.unit) for value in param_data[0]]
+            param_free = [value for value in param_data[0]]
 
             params = []
-            for name, grid, value in zip(param_names, param_grid, param_data[1]):
+            for name, value, grid, unit, free \
+                    in zip(param_names, param_data[1], param_grid, param_unit, param_free):
                 param_name = name
                 if (name[0] == "c" or name[0] == "s") and len(name) <= 2:
                     param_name = name[0]
@@ -137,14 +141,20 @@ def restore_from_fits(path: Path) -> Tuple[List[str], List[Component], Optional[
 
                 param.grid, param.value = grid, value
                 param.shortname = param.name = name
+                param.unit, param.free = unit, free
                 params.append(param)
+
+                if free:
+                    labels.append(f"{name}-{index}" if len(hdul) > 2 else name)
+                    units.append(unit)
 
             component = get_component_by_name(header["COMP"])(**dict(zip(param_names, params)))
             components.append(component)
 
-    OPTIONS.model.components_and_params = [[label.lower(), component.get_params()] for label, component in zip(component_labels, components)]
+    OPTIONS.model.components_and_params = [[label.lower(), component.get_params()]
+                                            for label, component in zip(component_labels, components)]
 
     # TODO: Add here the other samplers and emcee
     sampler = DynamicNestedSampler.restore(path / "sampler.save")
 
-    return component_labels, components, sampler
+    return component_labels, components, labels, units, sampler

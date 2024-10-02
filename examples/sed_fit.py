@@ -76,9 +76,9 @@ pah_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 pah_weight.shortname = pah_weight.name = "pah_weight"
 pah_weight.description = "The mass fraction for the PAHs"
 pah_weight.set(min=0, max=20)
-pah_weight.value = 1.66
+pah_weight.unit, pah_weight.value = u.one, 1.66
 
-fr = Parameter(**STANDARD_PARAMETERS.f)
+fr = Parameter(**STANDARD_PARAMETERS.fr)
 fr.description = "Opacity scaling term"
 fr.set(min=15, max=25)
 fr.free, fr.value = True, 17.46
@@ -98,7 +98,7 @@ for w, key in zip(weights, NAMES.keys()):
         sed[weight_name] = weight
 
 OPTIONS.model.components_and_params = [["SED", sed]]
-LABELS, UNITS = [key for key in sed], [value.unit for value in sed.values()]
+LABELS = [key for key in sed]
 component_labels = ["SED"]
 OPTIONS.fit.method = "dynesty"
 
@@ -107,8 +107,6 @@ day_dir = model_result_dir / str(datetime.now().date())
 dir_name = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 result_dir = day_dir / dir_name
 result_dir.mkdir(parents=True, exist_ok=True)
-np.save(result_dir / "labels.npy", LABELS)
-np.save(result_dir / "units.npy", UNITS)
 
 components = assemble_components(
         OPTIONS.model.components_and_params,
