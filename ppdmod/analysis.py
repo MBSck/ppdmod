@@ -91,8 +91,7 @@ def save_fits(components: List[Component],
             else:
                 grid = parameter.grid
 
-            data[parameter.shortname] = (grid, parameter().value,
-                                         parameter.unit, parameter.free)
+            data[parameter.shortname] = (grid, parameter().value)
 
         table = fits.BinTableHDU(
                 Table(data=data), header=table_header,

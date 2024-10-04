@@ -98,7 +98,7 @@ for w, key in zip(weights, NAMES.keys()):
         sed[weight_name] = weight
 
 OPTIONS.model.components_and_params = [["SED", sed]]
-LABELS = [key for key in sed]
+LABELS, UNITS = [key for key in sed], [value.unit for value in sed.values()]
 component_labels = ["SED"]
 OPTIONS.fit.method = "dynesty"
 
@@ -107,6 +107,9 @@ day_dir = model_result_dir / str(datetime.now().date())
 dir_name = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 result_dir = day_dir / dir_name
 result_dir.mkdir(parents=True, exist_ok=True)
+
+np.save("labels.npy", LABELS)
+np.save("units.npy", UNITS)
 
 components = assemble_components(
         OPTIONS.model.components_and_params,
