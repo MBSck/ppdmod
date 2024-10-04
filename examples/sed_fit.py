@@ -108,8 +108,8 @@ dir_name = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 result_dir = day_dir / dir_name
 result_dir.mkdir(parents=True, exist_ok=True)
 
-np.save("labels.npy", LABELS)
-np.save("units.npy", UNITS)
+np.save(result_dir / "labels.npy", LABELS)
+np.save(result_dir / "units.npy", UNITS)
 
 components = assemble_components(
         OPTIONS.model.components_and_params,
