@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 
 os.environ["OMP_NUM_THREADS"] = "1"
@@ -43,23 +44,25 @@ SHORTNAMES = ["pyrox", "enst", "forst", "sil", "oliv"]
 NAMES = ["MgPyroxene", "Enstatite", "Forsterite", "Silica", "Olivine"]
 NAMES = dict(zip(SHORTNAMES, NAMES))
 
+convolve = partial(resample_and_convolve, constant_resolution=True)
+
 OPTIONS.model.constant_params = {}
 for shortname, name in NAMES.items():
     for size, value in {"small": 0.1, "large": 2.0}.items():
         wl, value = np.loadtxt(GRF_DIR / f"{name}{value}.Combined.Kappa", usecols=(0, 2), unpack=True)
         param_name, param = f"kappa_{shortname}_{size}", Parameter(**STANDARD_PARAMETERS.kappa_abs)
-        param.grid, param.value = resample_and_convolve(OPTIONS.fit.wavelengths.value, wl, value)
+        param.grid, param.value = convolve(OPTIONS.fit.wavelengths.value, wl, value, )
         param.shortname = param.name = param_name
         OPTIONS.model.constant_params[param_name] = param
 
 kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
 wl, value = np.load(OPACITY_DIR / "optool" / "preibisch_amorph_c_rv0.1.npy")
-kappa_cont.grid, kappa_cont.value = resample_and_convolve(OPTIONS.fit.wavelengths.value, wl, value)
+kappa_cont.grid, kappa_cont.value = convolve(OPTIONS.fit.wavelengths.value, wl, value)
 OPTIONS.model.constant_params["kappa_cont"] = kappa_cont
 
 pah = Parameter(**STANDARD_PARAMETERS.pah)
 wl, value = np.loadtxt(OPACITY_DIR / "boekel" / "PAH.kappa", unpack=True)
-pah.grid, pah.value = resample_and_convolve(OPTIONS.fit.wavelengths.value, wl, value)
+pah.grid, pah.value = convolve(OPTIONS.fit.wavelengths.value, wl, value)
 OPTIONS.model.constant_params["pah"] = pah
 
 tempc = Parameter(**STANDARD_PARAMETERS.temp0)
