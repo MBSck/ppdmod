@@ -559,7 +559,6 @@ def restrict_phase(phase: np.ndarray) -> np.ndarray:
 
 
 def get_opacity(source_dir: Path, weights: np.ndarray,
-                sizes: List[List[float]],
                 names: List[str], method: str,
                 wavelength_grid: Optional[np.ndarray] = None,
                 fmaxs: Optional[List[float]] = None,
@@ -575,22 +574,23 @@ def get_opacity(source_dir: Path, weights: np.ndarray,
     grf_dict = {"olivine": "MgOlivine",
                 "pyroxene": "MgPyroxene",
                 "forsterite": "Forsterite",
-                "enstatite": "Enstatite"}
+                "enstatite": "Enstatite",
+                "silica": "Silica"}
 
-    # TODO: Include averaging over the crystalline silicates for DHS 0.1
     files = []
-    for index, (size, name) in enumerate(zip(sizes, names)):
-        for s in size:
+    for index, name in enumerate(names):
+        for size in ["small", "large"]:
             if method == "qval":
+                size = 0.1 if size == "small" else 1.5
                 if fmaxs[index] is not None:
-                    file_name = f"{qval_dict[name]}_f{fmaxs[index]:.1f}_rv{s:.1f}.dat"
+                    file_name = f"{qval_dict[name]}_f{fmaxs[index]:.1f}_rv{size:.1f}.dat"
                 else:
                     file_name = f"{qval_dict[name]}_rv{s:.1f}.dat"
             elif method == "grf":
-                s = 2.0 if s == 1.5 else s
-                file_name = f"{grf_dict[name]}{s:.1f}.Combined.Kappa"
+                size = 0.1 if size == "small" else 2
+                file_name = f"{grf_dict[name]}{size:.1f}.Combined.Kappa"
             else:
-                prefix = "Big" if s in [1.5, 2] else "Small"
+                size = "Big" if size == "large" else size.title()
                 file_name = f"{prefix}{name.title()}.kappa"
 
             files.append(source_dir / method / file_name)

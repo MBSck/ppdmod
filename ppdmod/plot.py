@@ -1033,7 +1033,7 @@ def plot_sed(wavelength_range: u.um,
             flux_label = r"$\nu F_{\nu}$ (W m$^{-2}$)"
 
     if not no_model:
-        ax.plot(wavelength, flux, label="Model", color="black")
+        ax.plot(wavelength, flux, label="Model", color="red")
         values.append(flux)
 
     if fig is not None:
