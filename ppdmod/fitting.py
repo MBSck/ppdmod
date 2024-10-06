@@ -173,6 +173,9 @@ def compute_observables(components: List[Component],
         complex_t3_comps.append(component.compute_complex_vis(
             OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord, wavelength))
 
+    complex_vis_comps = np.array(complex_vis_comps)
+    complex_t3_comps = np.array(complex_t3_comps)
+
     # TODO: Make this implementation work again
     # for comp in components:
     #     if "Point" == comp.shortname:

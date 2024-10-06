@@ -1,9 +1,10 @@
 import os
 import pickle
 from datetime import datetime
+from functools import partial
 from itertools import chain
-from typing import List
 from pathlib import Path
+from typing import List
 
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
@@ -28,12 +29,13 @@ from ppdmod.utils import load_data, qval_to_opacity, resample_and_convolve
 def ptform(theta: List[float]) -> np.ndarray:
     return ptform_sequential_radii(theta, LABELS)
 
+convolve = partial(resample_and_convolve, constant_resolution=False)
 
 DATA_DIR = Path("../data")
 wavelengths = {"hband": [1.7] * u.um, "kband": [2.15] * u.um,
                "lband": np.linspace(3.3, 3.8, 5) * u.um,
                "mband": np.linspace(4.6, 4.9, 3) * u.um,
-               "nband": np.linspace(8, 13, 35) * u.um,
+               "nband": np.linspace(8, 15, 35) * u.um,
                }
 
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
@@ -41,19 +43,16 @@ wavelength = np.concatenate((wavelengths["hband"], wavelengths["kband"],
                              wavelengths["lband"], wavelengths["mband"], wavelengths["nband"]))
 data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis"])
 
-convolve = partial(resample_and_convolve, constant_resolution=True)
-
 wl, value = load_data(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt", usecols=(0, 2))
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
 star_flux.grid, star_flux.value = convolve(OPTIONS.fit.wavelengths.value, wl, value)
 
-wl, value = np.load(DATA_DIR / "opacities" / "hd142527_boekel_qval_silicates.npy")
+wl, value = np.load(DATA_DIR / "opacities" / "hd142527_combined_silicate_opacities.npy")
 kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
 kappa_abs.value, kappa_abs.grid = convolve(OPTIONS.fit.wavelengths.value, wl, value)
 
-cont_opacity_file = DATA_DIR / "opacities" / "qval" / "Q_amorph_c_rv0.1.dat"
-# cont_opacity_file = DATA_DIR / "opacities" / "qval" / "Q_iron_0.10um_dhs_0.70.dat"
-wl, value = load_data(cont_opacity_file, load_func=qval_to_opacity)
+cont_opacity_file = DATA_DIR / "opacities" / "qval" / ""
+wl, value = np.load(DATA_DIR / "opacities" / "optool" / "preibisch_amorph_c_rv0.1.npy")
 kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
 kappa_cont.value, kappa_cont.grid = convolve(OPTIONS.fit.wavelengths.value, wl, value)
 
@@ -74,7 +73,7 @@ OPTIONS.model.constant_params = {
     "temps": temps, "f": star_flux,
     "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont,
-    "pa": pa, "cont_weight": 0.33}
+    "pa": pa, "cont_weight": 51}
 
 x = Parameter(**STANDARD_PARAMETERS.x)
 y = Parameter(**STANDARD_PARAMETERS.y)
@@ -208,7 +207,7 @@ if __name__ == "__main__":
     fit_params = {"nlive_init": 2000, "ptform": ptform}
     sampler = run_fit(**fit_params, ncores=ncores,
                       method="dynamic", save_dir=result_dir,
-                      debug=False)
+                      debug=True)
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
     components_and_params, shared_params = set_params_from_theta(theta)

@@ -17,7 +17,8 @@ from .options import OPTIONS, SPECTRAL_RESOLUTIONS, RESOLUTION_GRIDS
 
 def resample_and_convolve(
         wavelengths: np.ndarray,
-        wavelengths_data: np.ndarray, data: np.ndarray,
+        wavelengths_data: np.ndarray,
+        data: np.ndarray,
         sampling_dim: Optional[int] = 8192,
         padding: Optional[float] = 1,
         constant_resolution: Optional[bool] = False) -> u.um:
@@ -61,6 +62,8 @@ def resample_and_convolve(
         interpolated_data = np.concatenate([np.interp(mock_grid, sub_grid, conv_data)
                                             for mock_grid, sub_grid, conv_data in zip(mock_grids, sub_grids, convolved_data)])
     else:
+        # TODO: Make this work at some point
+        return wavelengths_data, data
         interpolated_data = []
         for band_index, band in enumerate(unique_bands):
             band_resolution = data_resolutions[band_index]
@@ -87,15 +90,15 @@ def get_band_limits(band: str) -> Tuple:
     """Gets the limits of the respective band"""
     match band:
         case "hband":
-            return 1.5, 1.9
+            return 1.5, 1.8
         case "kband":
-            return 1.8, 2.4
+            return 1.9, 2.5
         case "lband":
-            return 2.5, 4.0
+            return 2.8, 3.99
         case "mband":
-            return 4.0, 6.0
+            return 4., 6.
         case "nband":
-            return 7.5, 15.0
+            return 7.5, 16.
 
 
 def get_band(wavelength: u.um) -> str:
@@ -103,17 +106,17 @@ def get_band(wavelength: u.um) -> str:
     wavelength = wavelength.value if isinstance(wavelength, u.Quantity) \
         else wavelength
     wl_min, wl_max = wavelength.min(), wavelength.max()
-    if wl_min > 1.5 and wl_max < 1.9:
+    if wl_min > 1.5 and wl_max < 1.8:
         return "hband"
-    if wl_min > 1.8 and wl_max < 2.4:
+    if wl_min > 1.9 and wl_max < 2.5:
         return "kband"
-    if wl_min > 2.5 and wl_max < 4.0:
+    if wl_min > 2.8 and wl_max < 4.:
         return "lband"
-    if wl_min >= 4.0 and wl_max < 6:
+    if wl_min >= 4. and wl_max < 6.:
         return "mband"
-    if wl_min > 2.5 and wl_max < 6:
+    if wl_min > 2.8 and wl_max < 6:
         return "lmband"
-    if wl_min > 7.5 and wl_max < 15:
+    if wl_min > 7.5 and wl_max < 16.:
         return "nband"
     return "unknown"
 
