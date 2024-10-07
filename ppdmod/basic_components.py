@@ -633,7 +633,6 @@ class TempGradient(Ring):
     """
     name = "Temperature Gradient"
     shortname = "TempGradient"
-    asymmetric = False
     thin = False
     has_outer_radius = True
     optically_thick = False

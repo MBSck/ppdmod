@@ -72,8 +72,7 @@ OPTIONS.model.constant_params = {
     "eff_temp": 6500, "eff_radius": 3.46,
     "temps": temps, "f": star_flux,
     "kappa_abs": kappa_abs,
-    "kappa_cont": kappa_cont,
-    "pa": pa, "cont_weight": 51}
+    "kappa_cont": kappa_cont, "pa": pa}
 
 x = Parameter(**STANDARD_PARAMETERS.x)
 y = Parameter(**STANDARD_PARAMETERS.y)
@@ -95,7 +94,7 @@ rout.value = 3.
 sigma0.value = 1e-3
 p.value = 0.5
 c1.value = s1.value = 0.5
-cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass fractions
+cont_weight.value = 40
 rin.unit = rout.unit = u.au
 rout.free = True
 
@@ -106,8 +105,8 @@ p.set(min=-10, max=10)
 sigma0.set(min=0, max=1e-2)
 cont_weight.set(min=0, max=1)
 
-# one = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
-one = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0}
+one = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
+# one = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0}
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
 rout = Parameter(**STANDARD_PARAMETERS.rout)
@@ -122,7 +121,7 @@ rout.value = 10
 p.value = 0.5
 sigma0.value = 1e-3
 c1.value = s1.value = 0.5
-cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass fractions
+cont_weight.value = 40
 rin.unit = rout.unit = u.au
 rout.free = True
 
@@ -133,8 +132,8 @@ p.set(min=-10, max=10)
 sigma0.set(min=0, max=1)
 cont_weight.set(min=0, max=1)
 
-# two = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
-two = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0}
+two = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
+# two = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0}
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
 rout = Parameter(**STANDARD_PARAMETERS.rout)
@@ -148,7 +147,7 @@ rin.value = 12
 p.value = 0.5
 sigma0.value = 1e-3
 c1.value = s1.value = 0.5
-cont_weight.value = 0.40             # Relative contribution (adds to 1). Mass fractions
+cont_weight.value = 40
 rin.unit = rout.unit = u.au
 rout.free = True
 

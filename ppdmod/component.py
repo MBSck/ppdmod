@@ -97,9 +97,7 @@ class FourierComponent(Component):
             c = getattr(self, f"c{i}")
             s.name = s.shortname = f"s{i}"
             c.name = c.shortname = f"c{i}"
-
-            if not self.asymmetric:
-                s.free = c.free = False
+            c.free = s.free = self.asymmetric
 
     @property
     def elliptic(self) -> bool:
@@ -121,7 +119,11 @@ class FourierComponent(Component):
     def asymmetric(self, value: bool) -> None:
         """Sets the position angle and the parameters to free or false
         if elliptic is set."""
-        self._asymmetric = self.c1.free = self.s1.free = value
+        self._asymmetric = value
+        for i in range(1, OPTIONS.model.modulation + 1):
+            s = getattr(self, f"s{i}")
+            c = getattr(self, f"c{i}")
+            s.free = c.free = value
 
     def compute_internal_grid(
             self, dim: int, pixel_size: u.au
