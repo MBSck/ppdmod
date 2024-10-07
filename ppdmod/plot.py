@@ -180,7 +180,7 @@ def format_labels(labels: List[str],
     units : list, optional
         The units. The default is None.
     split : bool, optional
-        If True, splits into labels and units. The default is False.
+        If True, splits into labels, units, and uncertainties. The default is False.
 
     Returns
     -------
@@ -211,18 +211,20 @@ def format_labels(labels: List[str],
         else:
             name, index = label, ""
 
-        if name in nice_labels:
-            letter = nice_labels[name]["letter"]
+        if name in nice_labels or (len(name) == 2 and name[0] in nice_labels):
             if name[0] in ["c", "s"] and len(name) == 2:
+                letter = nice_labels[name[0]]["letter"]
                 indices = [name[1]]
                 if index:
                     indices.append(index)
-            elif name in ["temp0", "tempc"]:
-                indices = nice_labels[name]["indices"]
             else:
-                indices = [*nice_labels[name]["indices"]]
-                if index:
-                    indices.append(fr"\mathrm{{{index}}}")
+                letter = nice_labels[name]["letter"]
+                if name in ["temp0", "tempc"]:
+                    indices = nice_labels[name]["indices"]
+                else:
+                    indices = [*nice_labels[name]["indices"]]
+                    if index:
+                        indices.append(fr"\mathrm{{{index}}}")
 
             indices = r",\,".join(indices)
             formatted_label = f"{letter}_{{{indices}}}"
