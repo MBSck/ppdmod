@@ -23,7 +23,7 @@ from ppdmod.fitting import run_fit, get_best_fit, compute_observables, \
 from ppdmod.data import set_data
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
-from ppdmod.utils import load_data, qval_to_opacity, resample_and_convolve
+from ppdmod.utils import load_data, resample_and_convolve
 
 
 def ptform(theta: List[float]) -> np.ndarray:
@@ -102,7 +102,7 @@ rin.set(min=0, max=30)
 rout.set(min=0, max=30)
 rout.free = True
 p.set(min=-20, max=20)
-sigma0.set(min=0, max=1e-2)
+sigma0.set(min=0, max=5)
 cont_weight.set(min=0, max=100)
 
 one = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
@@ -125,11 +125,11 @@ cont_weight.value = 40
 rin.unit = rout.unit = u.au
 rout.free = True
 
-rin.set(min=0, max=30)
-rout.set(min=0, max=30)
+rin.set(min=0, max=50)
+rout.set(min=0, max=50)
 rout.free = True
 p.set(min=-20, max=20)
-sigma0.set(min=0, max=1)
+sigma0.set(min=0, max=5)
 cont_weight.set(min=0, max=100)
 
 two = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
@@ -155,7 +155,7 @@ rin.set(min=0, max=30)
 rout.set(min=0, max=30)
 rout.free = True
 p.set(min=-20, max=20)
-sigma0.set(min=0, max=1e-1)
+sigma0.set(min=0, max=5)
 cont_weight.set(min=0, max=100)
 
 # three = {"rin": rin, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
