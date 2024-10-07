@@ -83,7 +83,7 @@ def save_fits(components: List[Component],
     tables = []
     for index, component in enumerate(components):
         table_header, data = fits.Header(), {}
-        table_header["COMP"] = component.shortname.upper()
+        table_header["COMP"] = component.shortname
 
         for parameter in component.get_params().values():
             if parameter.grid is None:

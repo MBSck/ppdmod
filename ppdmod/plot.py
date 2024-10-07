@@ -168,7 +168,9 @@ def plot_components(components: List[FourierComponent], dim: int,
         return ax, top_ax, right_ax, image
 
 
-def format_labels(labels: List[str], units: Optional[List[str]] = None) -> List[str]:
+def format_labels(labels: List[str],
+                  units: Optional[List[str]] = None,
+                  split: Optional[bool] = False) -> List[str]:
     """Formats the labels in LaTeX.
 
     Parameters
@@ -177,11 +179,15 @@ def format_labels(labels: List[str], units: Optional[List[str]] = None) -> List[
         The labels.
     units : list, optional
         The units. The default is None.
+    split : bool, optional
+        If True, splits into labels and units. The default is False.
 
     Returns
     -------
-    list of str
+    labels : list of str
         The formatted labels.
+    units : list of str, optional
+        The formatted units. If split is True
     """
     nice_labels = {"rin": {"letter": "R", "indices": [r"\mathrm{in}"]},
                    "rout": {"letter": "R", "indices": [r"\mathrm{out}"]},
@@ -258,8 +264,12 @@ def format_labels(labels: List[str], units: Optional[List[str]] = None) -> List[
                 unit = r"\%"
             reformatted_units.append(unit)
 
-        formatted_labels = [rf"{label} $\left(\mathrm{{{str(unit).strip()}}}\right)$" if str(unit)
-            else label for label, unit in zip(formatted_labels, reformatted_units)]
+        reformatted_units = [rf"$\left(\mathrm{{{str(unit).strip()}}}\right)$" if str(unit)
+                            else "" for unit in reformatted_units]
+        if split:
+            return formatted_labels, reformatted_units
+
+        formatted_labels = [rf"{label} {unit}" for label, unit in zip(formatted_labels, reformatted_units)]
     return formatted_labels
 
 
