@@ -101,9 +101,9 @@ rout.free = True
 rin.set(min=0, max=30)
 rout.set(min=0, max=30)
 rout.free = True
-p.set(min=-10, max=10)
+p.set(min=-20, max=20)
 sigma0.set(min=0, max=1e-2)
-cont_weight.set(min=0, max=1)
+cont_weight.set(min=0, max=100)
 
 one = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
 # one = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0}
@@ -128,9 +128,9 @@ rout.free = True
 rin.set(min=0, max=30)
 rout.set(min=0, max=30)
 rout.free = True
-p.set(min=-10, max=10)
+p.set(min=-20, max=20)
 sigma0.set(min=0, max=1)
-cont_weight.set(min=0, max=1)
+cont_weight.set(min=0, max=100)
 
 two = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
 # two = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0}
@@ -154,9 +154,9 @@ rout.free = True
 rin.set(min=0, max=30)
 rout.set(min=0, max=30)
 rout.free = True
-p.set(min=-10, max=10)
+p.set(min=-20, max=20)
 sigma0.set(min=0, max=1e-1)
-cont_weight.set(min=0, max=1)
+cont_weight.set(min=0, max=100)
 
 # three = {"rin": rin, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
 three = {"rin": rin, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
