@@ -102,14 +102,16 @@ def save_fits(components: List[Component],
     hdu.writeto(save_dir, overwrite=True)
 
 
-def restore_from_fits(path: Path) -> Tuple[List[str], List[Component], Optional[NestedSampler]]:
+def restore_from_fits(path: Path,
+                      name: Optional[str] = "model.fits"
+                      ) -> Tuple[List[str], List[Component], Optional[NestedSampler]]:
     """Retrieves the individual model components from a model (.fits)-file 
     as well as the component labels and the sampler used.
     """
     components, component_labels = [], []
-    model_fits = path / "model.fits"
+    model_fits = path / name
     with fits.open(model_fits, "readonly") as hdul:
-        for index, card in enumerate(hdul):
+        for card in hdul:
             header = card.header
             if card.name == "PRIMARY":
                 OPTIONS.model.gridtype = header["GRIDTYPE"]

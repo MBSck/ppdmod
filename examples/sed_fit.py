@@ -105,8 +105,8 @@ LABELS, UNITS = [key for key in sed], [value.unit for value in sed.values()]
 component_labels = ["SED"]
 OPTIONS.fit.method = "dynesty"
 
-model_result_dir = Path("../model_results/")
-day_dir = model_result_dir / str(datetime.now().date())
+result_dir = Path("../model_results/") / "sed_fit"
+day_dir = result_dir / str(datetime.now().date())
 dir_name = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 result_dir = day_dir / dir_name
 result_dir.mkdir(parents=True, exist_ok=True)
@@ -142,5 +142,5 @@ if __name__ == "__main__":
     save_fits(
         components, component_labels,
         fit_hyperparameters=fit_params, ncores=ncores,
-        save_dir=result_dir / "model.fits",
+        save_dir=result_dir / "sed.fits",
         object_name="HD142527")
