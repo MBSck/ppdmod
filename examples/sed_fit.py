@@ -1,6 +1,5 @@
 import os
 from datetime import datetime
-from functools import partial
 from pathlib import Path
 
 os.environ["OMP_NUM_THREADS"] = "1"
@@ -19,6 +18,7 @@ from ppdmod.fitting import run_fit, get_best_fit, \
 from ppdmod.data import set_data
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
+from ppdmod.plot import plot_sed
 
 
 def ptform(theta):
@@ -42,8 +42,6 @@ GRF_DIR = OPACITY_DIR / "grf"
 SHORTNAMES = ["pyrox", "enst", "forst", "sil", "oliv"]
 NAMES = ["MgPyroxene", "Enstatite", "Forsterite", "Silica", "Olivine"]
 NAMES = dict(zip(SHORTNAMES, NAMES))
-
-# convolve = partial(resample_and_convolve, constant_resolution=True)
 
 OPTIONS.model.constant_params = {}
 for shortname, name in NAMES.items():
@@ -85,9 +83,7 @@ fr.description = "Opacity scaling term"
 fr.set(min=15, max=25)
 fr.free, fr.value = True, 17.46
 
-sed = {"tempc": tempc, "pah_weight": pah_weight,
-       "cont_weight": cont_weight, "fr": fr}
-
+sed = {"tempc": tempc, "pah_weight": pah_weight, "cont_weight": cont_weight, "fr": fr}
 weights = [[11.23, 13.40], [5.67, 5.85], [4.09, 3.77], [0.6, 0.24], [0.10, 0.10]]
 for w, key in zip(weights, NAMES.keys()):
     for index, size in enumerate(["small", "large"]):
@@ -137,6 +133,9 @@ if __name__ == "__main__":
     rchi_sq = compute_sed_chi_sq(
         components[0].compute_flux(OPTIONS.fit.wavelengths), reduced=True)
     print(f"rchi_sq: {rchi_sq:.2f}")
+
+    plot_sed([7.5, 14] * u.um, components, scaling="nu", save_dir=result_dir)
+    plot_sed([7.5, 14] * u.um, components, scaling=None, save_dir=result_dir)
 
     save_fits(
         components, component_labels,
