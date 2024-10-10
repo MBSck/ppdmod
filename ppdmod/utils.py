@@ -11,7 +11,7 @@ from openpyxl import Workbook, load_workbook
 from scipy.interpolate import interp1d
 from scipy.special import j1
 
-from .options import OPTIONS, RESOLUTION_GRIDS
+from .options import OPTIONS, DETECTOR_GRIDS
 
 
 def compute_detector_grid(tab_lambda_pix: u.um,
@@ -45,31 +45,20 @@ def compute_detector_grid(tab_lambda_pix: u.um,
         delta_lambda.append((tab_lambda[n] / reference_wavelength) * 3 *pinhole_size)
         p = np_val
 
-    tab_lambda_final = []
-    for index, tab in enumerate(tab_lambda[1:], start=1):
-        tab_lambda_final.append((tab + tab_lambda[index-1]) / 2)
-
-    tab_lambda_final = u.Quantity(tab_lambda_final, unit=u.um)
-    tab0 = interp1d(np.arange(1, tab_lambda_final.size),
-                    np.diff(tab_lambda_final), fill_value="extrapolate")(0)
-    tab_lambda_final = np.concatenate(([tab_lambda_final[0] - tab0 * u.um], tab_lambda_final))
-    return tab_lambda_final, np.diff(tab_lambda_final)
+    return u.Quantity(tab_lambda, unit=u.um)
 
 
-def calculate_resolution_grid(wavelenghts: u.um) -> u.one:
-    """Calculates the resolution grids from the true detector grids.
+def calculate_spectral_resolution(wavelengths: u.um) -> Tuple[u.um, u.one]:
+    """Calculate the spectral resolution for the different bands."""
+    central_wavelengths = []
+    for index, wl in enumerate(wavelengths[1:], start=1):
+        central_wavelengths.append((wl + wavelengths[index-1]) / 2)
 
-    Parameters
-    ----------
-    wavelengths : astropy.units.um
-        The wavelengths of the data.
-    """
-    band_resolution = data_resolutions[band_index]
-    res_grid_wls, res_grids = RESOLUTION_GRIDS[band][band_resolution]
-    ...
+    central_wavelengths = u.Quantity(central_wavelengths, unit=u.um)
+    return central_wavelengths, central_wavelengths.mean() / np.diff(wavelengths)
 
 
-
+# TODO: Right now only works with low resolution upgrade this to be able to handle more
 def resample_and_convolve(
         wavelengths: np.ndarray,
         wavelengths_data: np.ndarray,
@@ -92,21 +81,33 @@ def resample_and_convolve(
     """
     # HACK: Only possible to sort due to alphabetic order
     unique_bands = np.sort(list(set(np.array(list(map(get_band, wavelengths))))))
+    if not isinstance(wavelengths_data, u.Quantity):
+        wavelengths_data *= u.um
 
-    # TODO: Finish this
-    interpolated_data = []
-    for band, grid in enumerate(unique_bands, mock_grids):
-        mock_grid = np.linspace(*get_band_limits(band), 200) 
-        breakpoint()
+    grids, convolved_datasets = [], []
+    for band in unique_bands:
+        wls = DETECTOR_GRIDS[band]["low"] * u.um
 
-        oversampled_grid = np.concatenate(oversampled_grid)
-        oversampled_data = np.interp(oversampled_grid, wavelengths_data, data)
-        convolved_data = convolve_fft(oversampled_data, Gaussian1DKernel(stddev=1 / (band_resolution * np.sqrt(8 * np.log(2)))))
-        interpolated_data.append(np.interp(mock_grids[band_index], oversampled_grid, convolved_data))
+        extended_index = 3
+        diff_func = interp1d(np.arange(extended_index, wls.size + extended_index - 1),
+                             np.diff(wls), fill_value="extrapolate")
+        diffs = [diff_func(np.arange(extended_index)), diff_func(np.arange(wls.size + 1, wls.size + 1 + extended_index))]
 
-    interpolated_data = np.concatenate(interpolated_data)
+        for index in range(extended_index):
+            wls = wls.insert(0, wls[0] - diffs[0][index] * u.um)
+            wls = np.append(wls, wls[-1] + diffs[1][index] * u.um)
 
-    return np.concatenate(mock_grids), interpolated_data
+        diffs = np.diff(wls)
+        central_wavelengths, resolutions = calculate_spectral_resolution(wls)
+        grid = np.concatenate([np.linspace(wl - diff / 2, wl + diff / 2, int(res.value * 10), endpoint=False)
+                               for wl, diff, res in zip(central_wavelengths, diffs, resolutions)])
+        interpolated_dataset = np.interp(grid, wavelengths_data, data)
+        convolved_dataset = convolve_fft(interpolated_dataset, Gaussian1DKernel(resolutions.mean()))
+
+        grids.append(grid)
+        convolved_datasets.append(convolved_dataset)
+
+    return np.concatenate(grids), np.concatenate(convolved_datasets)
 
 
 def get_band_limits(band: str) -> Tuple:

@@ -32,24 +32,12 @@ def get_colorlist(colormap: str, ncolors: Optional[int] = 10) -> List[str]:
 
 
 WL_GRID_DIR = Path(__file__).parent.parent / "data" / "wl_grids" / "detector"
-RESOLUTION_GRIDS = {
+DETECTOR_GRIDS = {
     "kband": {"low": np.load(WL_GRID_DIR / "gravity" / "kband_low.npy")},
     "hband": {"low": np.load(WL_GRID_DIR / "pionier" / "hband_low.npy")},
     # "lband": {"low": np.load(WL_GRID_DIR / "matisse" / "lband_low.npy")},
     "nband": {"low": np.load(WL_GRID_DIR / "matisse" / "nband_low.npy")}
 }
-
-# NOTE: The MATISSE values are only approximate -> Figure out the correct ones
-CENTRAL_WAVELENGTHS = {
-    "hband": 1.68 * u.um,
-    "kband": 2.15 * u.um,
-
-    # NOTE: All central wavelengths for MATISSE are approximate
-    "lband": 3.5 * u.um,
-    "mband": 4.8 * u.um,
-    "nband": 10.5 * u.um
-}
-
 
 # NOTE: A list of standard parameters to be used when defining new components.
 STANDARD_PARAMETERS = SimpleNamespace(
