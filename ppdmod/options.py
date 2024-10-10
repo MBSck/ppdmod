@@ -1,12 +1,12 @@
 from pathlib import Path
-from typing import List, Optional
 from types import SimpleNamespace
+from typing import List, Optional
 
 import astropy.units as u
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.colors import ListedColormap
 from matplotlib import colormaps as mcm
+from matplotlib.colors import ListedColormap
 
 
 def convert_style_to_colormap(style: str) -> ListedColormap:

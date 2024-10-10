@@ -1,18 +1,16 @@
 from datetime import datetime
-from typing import Optional, List, Dict, Tuple
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
-import astropy.units as u
 import numpy as np
 from astropy.io import fits
 from astropy.table import Table
-from dynesty import NestedSampler, DynamicNestedSampler
+from dynesty import DynamicNestedSampler, NestedSampler
 
 from .basic_components import get_component_by_name
 from .component import Component
 from .options import OPTIONS, STANDARD_PARAMETERS
 from .parameter import Parameter
-
 
 # TODO: Include showing dynamic fitting
 KEYWORD_DESCRIPTIONS = {

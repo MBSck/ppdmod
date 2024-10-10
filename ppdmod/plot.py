@@ -1,17 +1,17 @@
 import re
-from itertools import zip_longest, chain
-from typing import Optional, Dict, List, Tuple
+from itertools import chain, zip_longest
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
-import astropy.units as u
 import astropy.constants as const
+import astropy.units as u
 import corner
 import matplotlib
-import matplotlib.colors as mcolors
 import matplotlib.cm as cm
+import matplotlib.colors as mcolors
 import matplotlib.lines as mlines
-import matplotlib.ticker as ticker
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 from astropy.io import fits
 from astropy.wcs import WCS
@@ -23,8 +23,12 @@ from matplotlib.legend import Legend
 from .component import FourierComponent
 from .fitting import compute_observables, get_best_fit
 from .options import OPTIONS, get_colormap
-from .utils import compute_effective_baselines, restrict_phase, \
-    angular_to_distance, distance_to_angular
+from .utils import (
+    angular_to_distance,
+    compute_effective_baselines,
+    distance_to_angular,
+    restrict_phase,
+)
 
 matplotlib.use("Agg")
 

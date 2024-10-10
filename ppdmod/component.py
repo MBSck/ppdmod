@@ -3,9 +3,9 @@ from typing import Optional, Tuple
 import astropy.units as u
 import numpy as np
 
+from .options import OPTIONS, STANDARD_PARAMETERS
 from .parameter import Parameter
-from .options import STANDARD_PARAMETERS, OPTIONS
-from .utils import compute_effective_baselines, broadcast_baselines
+from .utils import broadcast_baselines, compute_effective_baselines
 
 
 class Component:

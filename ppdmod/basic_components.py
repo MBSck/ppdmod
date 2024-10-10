@@ -1,18 +1,18 @@
 import sys
 from functools import partial
-from typing import Optional, Dict, List
+from typing import Dict, List, Optional
 
 import astropy.units as u
 import numpy as np
 from astropy.modeling.models import BlackBody
-from scipy.special import j0, j1, jv
-from scipy.signal import fftconvolve
 from scipy.interpolate import interp1d
+from scipy.signal import fftconvolve
+from scipy.special import j0, j1, jv
 
 from .component import Component, FourierComponent
+from .options import OPTIONS, STANDARD_PARAMETERS
 from .parameter import Parameter
-from .options import STANDARD_PARAMETERS, OPTIONS
-from .utils import distance_to_angular, angular_to_distance
+from .utils import angular_to_distance, distance_to_angular
 
 
 class SED(Component):

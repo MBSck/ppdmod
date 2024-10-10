@@ -1,14 +1,14 @@
 from functools import partial
-from typing import Optional, List, Union
-from types import SimpleNamespace
 from pathlib import Path
+from types import SimpleNamespace
+from typing import List, Optional, Union
 
 import astropy.units as u
 import numpy as np
 from astropy.io import fits
 
 from .options import OPTIONS
-from .utils import get_indices, get_band, get_resolution
+from .utils import get_band, get_indices, get_resolution
 
 
 class ReadoutFits:

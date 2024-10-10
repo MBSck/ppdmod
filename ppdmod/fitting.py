@@ -1,6 +1,6 @@
 from multiprocessing import Pool
-from typing import Optional, List, Dict, Tuple, Union
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple, Union
 
 import astropy.units as u
 import dynesty.utils as dyutils
@@ -12,9 +12,9 @@ from scipy.stats import gaussian_kde
 from .basic_components import assemble_components
 from .component import Component
 from .data import get_counts_data
-from .parameter import Parameter
 from .options import OPTIONS
-from .utils import compute_vis, compute_t3
+from .parameter import Parameter
+from .utils import compute_t3, compute_vis
 
 
 def get_priors() -> np.ndarray:

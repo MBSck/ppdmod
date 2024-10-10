@@ -13,11 +13,17 @@ import numpy as np
 
 from ppdmod.analysis import save_fits
 from ppdmod.basic_components import assemble_components
-from ppdmod.fitting import run_fit, get_best_fit, \
-    compute_sed_chi_sq, set_params_from_theta, lnprob_sed, ptform_sed
 from ppdmod.data import set_data
+from ppdmod.fitting import (
+    compute_sed_chi_sq,
+    get_best_fit,
+    lnprob_sed,
+    ptform_sed,
+    run_fit,
+    set_params_from_theta,
+)
+from ppdmod.options import OPTIONS, STANDARD_PARAMETERS
 from ppdmod.parameter import Parameter
-from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 from ppdmod.plot import plot_sed
 
 

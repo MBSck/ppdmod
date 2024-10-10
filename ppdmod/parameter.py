@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Union, Optional, Any
+from typing import Any, Optional, Union
 
 import astropy.units as u
 import numpy as np

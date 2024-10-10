@@ -15,14 +15,20 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 import astropy.units as u
 import numpy as np
 
-from ppdmod.analysis import save_fits
 from ppdmod import basic_components
-from ppdmod.fitting import run_fit, get_best_fit, compute_observables, \
-    compute_observable_chi_sq, set_params_from_theta, ptform_sequential_radii, \
-    ptform_one_disc
+from ppdmod.analysis import save_fits
 from ppdmod.data import set_data
+from ppdmod.fitting import (
+    compute_observable_chi_sq,
+    compute_observables,
+    get_best_fit,
+    ptform_one_disc,
+    ptform_sequential_radii,
+    run_fit,
+    set_params_from_theta,
+)
+from ppdmod.options import OPTIONS, STANDARD_PARAMETERS
 from ppdmod.parameter import Parameter
-from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 from ppdmod.utils import load_data, resample_and_convolve
 
 
