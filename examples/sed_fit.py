@@ -56,7 +56,7 @@ for shortname, name in NAMES.items():
     for size, value in {"small": 0.1, "large": 2.0}.items():
         wl, value = np.loadtxt(GRF_DIR / f"{name}{value}.Combined.Kappa", usecols=(0, 2), unpack=True)
         param_name, param = f"kappa_{shortname}_{size}", Parameter(**STANDARD_PARAMETERS.kappa_abs)
-        param.grid, param.value = resample_and_convolve(WAVELENGHTS, wl, value)
+        param.grid, param.value = resample_and_convolve(WAVELENGTHS, wl, value)
         param.shortname = param.name = param_name
         OPTIONS.model.constant_params[param_name] = param
 
