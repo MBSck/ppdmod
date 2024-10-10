@@ -50,16 +50,16 @@ data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis"])
 
 wl, value = load_data(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt", usecols=(0, 2))
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
-star_flux.grid, star_flux.value = resample_and_convolve(OPTIONS.fit.wavelengths.value, wl, value)
+star_flux.grid, star_flux.value = resample_and_convolve(data.fit.wavelengths.value, wl, value)
 
 wl, value = np.load(DATA_DIR / "opacities" / "hd142527_combined_silicate_opacities.npy")
 kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
-kappa_abs.value, kappa_abs.grid = resample_and_convolve(OPTIONS.fit.wavelengths.value, wl, value)
+kappa_abs.value, kappa_abs.grid = resample_and_convolve(data.fit.wavelengths.value, wl, value)
 
 cont_opacity_file = DATA_DIR / "opacities" / "qval" / ""
 wl, value = np.load(DATA_DIR / "opacities" / "optool" / "preibisch_amorph_c_rv0.1.npy")
 kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
-kappa_cont.value, kappa_cont.grid = resample_and_convolve(OPTIONS.fit.wavelengths.value, wl, value)
+kappa_cont.value, kappa_cont.grid = resample_and_convolve(data.fit.wavelengths.value, wl, value)
 
 pa = Parameter(**STANDARD_PARAMETERS.pa)
 inc = Parameter(**STANDARD_PARAMETERS.inc)

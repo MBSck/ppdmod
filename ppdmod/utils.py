@@ -1,27 +1,79 @@
 import time as time
 from pathlib import Path
-from typing import Callable, Optional, Dict, Tuple, List
+from typing import Callable, Dict, List, Optional, Tuple
 
-import astropy.units as u
 import astropy.constants as const
+import astropy.units as u
 import numpy as np
 from astropy.convolution import Gaussian1DKernel, convolve_fft
-from astropy.io import fits
 from astropy.modeling.models import BlackBody
 from openpyxl import Workbook, load_workbook
-from scipy.special import j1
 from scipy.interpolate import interp1d
+from scipy.special import j1
 
-from .options import OPTIONS, SPECTRAL_RESOLUTIONS, RESOLUTION_GRIDS
+from .options import OPTIONS, RESOLUTION_GRIDS
+
+
+def compute_detector_grid(tab_lambda_pix: u.um,
+                          reference_wavelength: u.um, pinhole_size: float) -> u.um:
+    """Compute the wavelength array (in m) corresponding to a given spectral
+    resolution (central wavelength and spectral channel width).
+
+    Parameters
+    ----------
+    tab_lambda_pix : u.um
+        The MATISSE wavelengths.
+    reference_wavelength : u.um
+        The reference wavelength at which we know the width of a
+        spectral channel (3.2 um in LM band and 8 um in N band).
+    pinhole_size : float
+        The size of the spatial filter in unit of lambda/D (1.5 for LM and 2 for N).
+
+    NOTES
+    -----
+    Code from A. Matter
+    """
+    nwl = tab_lambda_pix.size
+    tab_pix, tab_lambda = np.arange(nwl) * u.one, [tab_lambda_pix[0]]
+    delta_lambda = [tab_lambda_pix[0] / reference_wavelength * 3 * pinhole_size]
+
+    n, p, np_val = 0, 0, 0
+    while (np_val + delta_lambda[n]) <= nwl:
+        n += 1
+        np_val = p + delta_lambda[-1]
+        tab_lambda.append(np.interp(np_val, tab_pix, tab_lambda_pix))
+        delta_lambda.append((tab_lambda[n] / reference_wavelength) * 3 *pinhole_size)
+        p = np_val
+
+    tab_lambda_final = []
+    for index, tab in enumerate(tab_lambda[1:], start=1):
+        tab_lambda_final.append((tab + tab_lambda[index-1]) / 2)
+
+    tab_lambda_final = u.Quantity(tab_lambda_final, unit=u.um)
+    tab0 = interp1d(np.arange(1, tab_lambda_final.size),
+                    np.diff(tab_lambda_final), fill_value="extrapolate")(0)
+    tab_lambda_final = np.concatenate(([tab_lambda_final[0] - tab0 * u.um], tab_lambda_final))
+    return tab_lambda_final, np.diff(tab_lambda_final)
+
+
+def calculate_resolution_grid(wavelenghts: u.um) -> u.one:
+    """Calculates the resolution grids from the true detector grids.
+
+    Parameters
+    ----------
+    wavelengths : astropy.units.um
+        The wavelengths of the data.
+    """
+    band_resolution = data_resolutions[band_index]
+    res_grid_wls, res_grids = RESOLUTION_GRIDS[band][band_resolution]
+    ...
+
 
 
 def resample_and_convolve(
         wavelengths: np.ndarray,
         wavelengths_data: np.ndarray,
-        data: np.ndarray,
-        sampling_dim: Optional[int] = 8192,
-        padding: Optional[float] = 1,
-        constant_resolution: Optional[bool] = False) -> u.um:
+        data: np.ndarray) -> u.um:
     """This function resamples the wavelengths in such a way that the
     convolution can be done with a kernel of constant resolution.
 
@@ -33,11 +85,6 @@ def resample_and_convolve(
         The wavelengths of the data.
     data : numpy.ndarray
         The data to be convolved and resampled.
-    sampling_dim : int
-        The dimension to resample the data with.
-    padding : astropy.units.um
-        The padding to add to the data (some spacing left and right)
-        to avoid edge effects.
 
     Returns
     -------
@@ -45,43 +92,19 @@ def resample_and_convolve(
     """
     # HACK: Only possible to sort due to alphabetic order
     unique_bands = np.sort(list(set(np.array(list(map(get_band, wavelengths))))))
-    data_resolutions = np.array([np.array(OPTIONS.data.resolutions)
-                                [np.where(np.array(OPTIONS.data.bands) == (band if band not in ["lband", "mband"] else "lmband"))[0][0]]
-                                for band in unique_bands])
-    mock_grids = [np.linspace(*limit, 200) for limit in map(get_band_limits, unique_bands)]
 
-    if constant_resolution:
-        sub_grids = [np.logspace(np.log10(wl_min - padding), np.log10(wl_max + padding), sampling_dim)
-                    for wl_min, wl_max in map(get_band_limits, unique_bands)]
-        sub_data = [np.interp(sub_grid, wavelengths_data, data) for sub_grid in sub_grids]
+    # TODO: Finish this
+    interpolated_data = []
+    for band, grid in enumerate(unique_bands, mock_grids):
+        mock_grid = np.linspace(*get_band_limits(band), 200) 
+        breakpoint()
 
-        fine_resolutions = np.array([sub_grid[0] / np.diff(sub_grid)[0] for sub_grid in sub_grids])
-        kernels = list(map(lambda x: Gaussian1DKernel(stddev=x / np.sqrt(8 * np.log(2))),
-                        fine_resolutions / data_resolutions))
-        convolved_data = [convolve_fft(sub_data, kernel) for sub_data, kernel in zip(sub_data, kernels)]
-        interpolated_data = np.concatenate([np.interp(mock_grid, sub_grid, conv_data)
-                                            for mock_grid, sub_grid, conv_data in zip(mock_grids, sub_grids, convolved_data)])
-    else:
-        # TODO: Make this work at some point
-        return wavelengths_data, data
-        interpolated_data = []
-        for band_index, band in enumerate(unique_bands):
-            band_resolution = data_resolutions[band_index]
-            res_grid_wls, res_grids = RESOLUTION_GRIDS[band][band_resolution]
+        oversampled_grid = np.concatenate(oversampled_grid)
+        oversampled_data = np.interp(oversampled_grid, wavelengths_data, data)
+        convolved_data = convolve_fft(oversampled_data, Gaussian1DKernel(stddev=1 / (band_resolution * np.sqrt(8 * np.log(2)))))
+        interpolated_data.append(np.interp(mock_grids[band_index], oversampled_grid, convolved_data))
 
-            oversampled_grid = []
-            for index, (res_grid_wl, res_grid) in enumerate(zip(res_grid_wls, res_grids)):
-                if index == len(res_grid_wls) - 1:
-                    continue
-
-                oversampled_grid.append(np.linspace(res_grid_wl, res_grid_wls[index + 1], int(res_grid * 1e3), endpoint=False))
-
-            oversampled_grid = np.concatenate(oversampled_grid)
-            oversampled_data = np.interp(oversampled_grid, wavelengths_data, data)
-            convolved_data = convolve_fft(oversampled_data, Gaussian1DKernel(stddev=1 / (band_resolution * np.sqrt(8 * np.log(2)))))
-            interpolated_data.append(np.interp(mock_grids[band_index], oversampled_grid, convolved_data))
-
-        interpolated_data = np.concatenate(interpolated_data)
+    interpolated_data = np.concatenate(interpolated_data)
 
     return np.concatenate(mock_grids), interpolated_data
 
@@ -119,19 +142,6 @@ def get_band(wavelength: u.um) -> str:
     if wl_min > 7.5 and wl_max < 16.:
         return "nband"
     return "unknown"
-
-
-def get_resolution(header: fits.Header, band: str) -> int:
-    """Gets the resolution of the band from the header."""
-    match band:
-        case "hband":
-            return 30
-        case "kband":
-            return 22
-        case "lmband":
-            return SPECTRAL_RESOLUTIONS["lmband"][header["HIERARCH ESO INS DIL ID"].lower()]
-        case "nband":
-            return SPECTRAL_RESOLUTIONS["nband"][header["HIERARCH ESO INS DIN ID"].lower()]
 
 
 def smooth_interpolation(
