@@ -31,15 +31,12 @@ def get_colorlist(colormap: str, ncolors: Optional[int] = 10) -> List[str]:
     return [get_colormap(colormap)(i) for i in range(ncolors)]
 
 
-SPECTRAL_RESOLUTIONS = {
-    "hband": 30, "kband": 22,
-    "lmband": {"low": 34, "med": 506, "high": 959},
-    "nband": {"low": 30, "high": 218}
-}
-
-RES_GRID_DIR = Path(__file__).parent.parent / "data" / "resolution_grids"
+WL_GRID_DIR = Path(__file__).parent.parent / "data" / "wl_grids" / "detector"
 RESOLUTION_GRIDS = {
-    "nband": {30: np.load(RES_GRID_DIR / "nband_low.npy")}
+    "kband": {"low": np.load(WL_GRID_DIR / "gravity" / "kband_low.npy")},
+    "hband": {"low": np.load(WL_GRID_DIR / "pionier" / "hband_low.npy")},
+    # "lband": {"low": np.load(WL_GRID_DIR / "matisse" / "lband_low.npy")},
+    "nband": {"low": np.load(WL_GRID_DIR / "matisse" / "nband_low.npy")}
 }
 
 # NOTE: The MATISSE values are only approximate -> Figure out the correct ones
