@@ -889,7 +889,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
 
         if key == "flux":
             ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
-            ax.set_ylabel("Fluxes (Jy)")
+            ax.set_ylabel(r"$F_\nu$ (Jy)")
             if "flux" in ylimits:
                 ax.set_ylim(ylimits["flux"])
             else:
@@ -903,9 +903,9 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
         if key == "vis":
             ax.set_xlabel(label)
             if OPTIONS.model.output != "normed":
-                label = "Correlated fluxes (Jy)"
+                label = r"$F_{\nu,\,\mathrm{corr}}$ (Jy)"
             else:
-                label = "Visibilities (Normalized)"
+                label = "$V$ (Normalized)"
 
             ax.set_ylabel(label)
             if "vis" in ylimits:
@@ -926,7 +926,7 @@ def plot_overview(data_to_plot: Optional[List[str]] = None,
 
         if key == "t3":
             ax.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}$ (M$\lambda$)")
-            ax.set_ylabel(r"Closure Phases ($^\circ$)")
+            ax.set_ylabel(r"$\phi_{\mathrm{cp}}$ ($^\circ$)")
             nan_t3 = np.isnan(t3.value)
             lower_bound = t3.value[~nan_t3].min()
             lower_bound += lower_bound*0.25
