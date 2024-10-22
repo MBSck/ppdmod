@@ -112,11 +112,10 @@ def temp_gradient() -> TempGradient:
 
 @pytest.fixture
 def kappa_abs() -> Parameter:
-    weights = np.array([73.2, 8.6, 0.6, 14.2, 2.4, 1.0]) / 100
+    weights = np.array([0.0, 73.2, 8.6, 0.0, 0.6, 14.2, 2.4, 1.0]) / 100
     names = ["pyroxene", "forsterite", "enstatite", "silica"]
-    sizes = [[1.5], [0.1], [0.1, 1.5], [0.1, 1.5]]
 
-    grid, value = get_opacity(DATA_DIR, weights, sizes, names, "boekel")
+    grid, value = get_opacity(DATA_DIR / "opacities", weights, names, "boekel")
     kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
     kappa_abs.grid, kappa_abs.value = grid, value
     return kappa_abs
@@ -125,7 +124,7 @@ def kappa_abs() -> Parameter:
 @pytest.fixture
 def kappa_cont() -> Parameter:
     cont_opacity_file = DATA_DIR / "opacities" / "optool" / "preibisch_amorph_c_rv0.1.npy"
-    grid, value = load_data(cont_opacity_file, load_func=qval_to_opacity)
+    grid, value = np.load(cont_opacity_file)
 
     kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
     kappa_cont.value, kappa_cont.grid = grid, value
@@ -497,7 +496,7 @@ def test_ring_compute_vis(
     if "cm" not in fits_file.name:
         assert np.allclose(t3.value, t3_ring, atol=atol)
     else:
-        # NOTE: Due to numerical inaccuraies the diff is quite high in some cases
+        # NOTE: Due to numerical inaccuracies the difference is quite high in some cases
         diff = np.abs(t3.value - t3_ring)
         assert diff.max() < 120
 
@@ -639,6 +638,7 @@ def test_temp_gradient_flux(temp_gradient: TempGradient, wavelength: u.um) -> No
     assert flux.shape == (wavelength.size, 1)
 
 
+# TODO: Redo the temperature gradient images with the au scaling, to make sure it works
 @pytest.mark.parametrize(
     "fits_file, inc, pos_angle, c, s",
     [
@@ -670,13 +670,13 @@ def test_temp_gradient_compute_vis(
     inc = inc if inc is not None else 1
     pa = pos_angle if pos_angle is not None else 0
     atg = AsymmetricGreyBody(
-        rin=1.5,
-        rout=2,
+        rin=0.237765,
+        rout=0.31702,
         inc=inc,
         pa=pa,
         p=0.5,
         sigma0=1e-4,
-        cont_weight=0.9,
+        cont_weight=90,
         r0=1,
         kappa_abs=kappa_abs,
         kappa_cont=kappa_cont,

@@ -13,10 +13,12 @@ from ppdmod.options import OPTIONS, STANDARD_PARAMETERS
 from ppdmod.parameter import Parameter
 
 
+DATA_DIR = Path(__file__).parent.parent / "data"
+
 @pytest.fixture
-def fits_files() -> Path:
+def fits_files() -> list[Path]:
     """A MATISSE (.fits)-file."""
-    return list(Path("data/matisse").glob("*.fits"))
+    return list((DATA_DIR / "matisse").glob("*.fits"))
 
 
 @pytest.fixture

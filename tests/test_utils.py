@@ -92,7 +92,7 @@ def calculate_effective_baselines_varga(
     vcoord: u.m,
     compression: Optional[u.Quantity[u.one]] = None,
     pos_angle: Optional[u.Quantity[u.deg]] = None,
-    longest: Optional[bool] = False,
+    longest: bool = False,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Calculates the effective baselines with Jozsef's approach."""
     ucoord, vcoord = map(lambda x: u.Quantity(x, u.m), [ucoord, vcoord])
@@ -123,7 +123,7 @@ def calculate_effective_baselines_berger(
     vcoord: u.m,
     compression: Optional[u.Quantity[u.one]] = None,
     pos_angle: Optional[u.Quantity[u.deg]] = None,
-    longest: Optional[bool] = False,
+    longest: bool = False,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Calculates the effective baselines with Jozsef's approach."""
     ucoord, vcoord = map(lambda x: u.Quantity(x, u.m), [ucoord, vcoord])
