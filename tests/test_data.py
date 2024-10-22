@@ -1,13 +1,12 @@
-from typing import List
 from pathlib import Path
+from typing import List
 
 import astropy.units as u
 import numpy as np
 import pytest
 from astropy.io import fits
 
-from ppdmod.data import ReadoutFits, set_fit_wavelengths, set_data, \
-    set_fit_weights
+from ppdmod.data import ReadoutFits, set_data, set_fit_wavelengths, set_fit_weights
 from ppdmod.options import OPTIONS
 
 
@@ -26,14 +25,14 @@ def readouts(fits_files: List[Path]) -> List[ReadoutFits]:
     return list(map(ReadoutFits, fits_files))
 
 
-def test_read_into_namespace(fits_files: List[Path],
-                             readouts: List[ReadoutFits]) -> None:
+def test_read_into_namespace(
+    fits_files: List[Path], readouts: List[ReadoutFits]
+) -> None:
     """Tests the read_into_namespace function."""
     for fits_file, readout in zip(fits_files, readouts):
         with fits.open(fits_file) as hdul:
             instrument = hdul[0].header["instrume"].lower()
-            sci_index = OPTIONS.data.gravity.index\
-                if instrument == "gravity" else None
+            sci_index = OPTIONS.data.gravity.index if instrument == "gravity" else None
             wl_index = 1 if instrument == "gravity" else None
             vis = hdul["oi_vis", sci_index]
             vis2 = hdul["oi_vis2", sci_index]
@@ -41,34 +40,30 @@ def test_read_into_namespace(fits_files: List[Path],
 
             u1coord, u2coord = map(lambda x: t3.data[f"u{x}coord"], ["1", "2"])
             v1coord, v2coord = map(lambda x: t3.data[f"v{x}coord"], ["1", "2"])
-            u3coord, v3coord = (u1coord+u2coord), (v1coord+v2coord)
+            u3coord, v3coord = (u1coord + u2coord), (v1coord + v2coord)
             u123coord = np.array([u1coord, u2coord, u3coord])
             v123coord = np.array([v1coord, v2coord, v3coord])
 
-            assert np.array_equal(readout.t3.value,
-                                  t3.data["t3phi"][:, wl_index:])
-            assert np.array_equal(readout.t3.err,
-                                  t3.data["t3phierr"][:, wl_index:])
+            assert np.array_equal(readout.t3.value, t3.data["t3phi"][:, wl_index:])
+            assert np.array_equal(readout.t3.err, t3.data["t3phierr"][:, wl_index:])
             assert np.array_equal(readout.t3.u123coord, u123coord)
             assert np.array_equal(readout.t3.v123coord, v123coord)
 
-            assert np.array_equal(readout.vis.value,
-                                  vis.data["visamp"][:, wl_index:])
-            assert np.array_equal(readout.vis.err,
-                                  vis.data["visamperr"][:, wl_index:])
-            assert np.array_equal(readout.vis.ucoord,
-                                  vis.data["ucoord"].reshape(1, -1))
-            assert np.array_equal(readout.vis.vcoord,
-                                  vis.data["vcoord"].reshape(1, -1))
+            assert np.array_equal(readout.vis.value, vis.data["visamp"][:, wl_index:])
+            assert np.array_equal(readout.vis.err, vis.data["visamperr"][:, wl_index:])
+            assert np.array_equal(readout.vis.ucoord, vis.data["ucoord"].reshape(1, -1))
+            assert np.array_equal(readout.vis.vcoord, vis.data["vcoord"].reshape(1, -1))
 
-            assert np.array_equal(readout.vis2.value,
-                                  vis2.data["vis2data"][:, wl_index:])
-            assert np.array_equal(readout.vis2.err,
-                                  vis2.data["vis2err"][:, wl_index:])
-            assert np.array_equal(readout.vis2.ucoord,
-                                  vis2.data["ucoord"].reshape(1, -1))
-            assert np.array_equal(readout.vis2.vcoord,
-                                  vis2.data["vcoord"].reshape(1, -1))
+            assert np.array_equal(
+                readout.vis2.value, vis2.data["vis2data"][:, wl_index:]
+            )
+            assert np.array_equal(readout.vis2.err, vis2.data["vis2err"][:, wl_index:])
+            assert np.array_equal(
+                readout.vis2.ucoord, vis2.data["ucoord"].reshape(1, -1)
+            )
+            assert np.array_equal(
+                readout.vis2.vcoord, vis2.data["vcoord"].reshape(1, -1)
+            )
 
         assert readout.wavelength.unit == u.um
         wl_len = readout.wavelength.shape[0]
@@ -89,15 +84,12 @@ def test_read_into_namespace(fits_files: List[Path],
         assert readout.vis2.vcoord.shape == (1, 6)
 
 
-@pytest.mark.parametrize(
-        "wavelength", [[8], [8, 10], [3, 8, 10]])
+@pytest.mark.parametrize("wavelength", [[8], [8, 10], [3, 8, 10]])
 def test_set_fit_wavelenghts(wavelength: u.um) -> None:
     """Tests the set fit wavelenghts function."""
     set_fit_wavelengths(wavelength)
-    wavelength = [wavelength] if not isinstance(wavelength, list)\
-        else wavelength
-    assert np.array_equal(
-        OPTIONS.fit.wavelengths, wavelength*u.um)
+    wavelength = [wavelength] if not isinstance(wavelength, list) else wavelength
+    assert np.array_equal(OPTIONS.fit.wavelengths, wavelength * u.um)
     assert OPTIONS.fit.wavelengths.unit == u.um
     assert OPTIONS.fit.wavelengths.shape == (len(wavelength),)
 
@@ -107,7 +99,8 @@ def test_set_fit_wavelenghts(wavelength: u.um) -> None:
 
 # TODO: Maybe add tests that show that nan is one of the results that can come out.
 @pytest.mark.parametrize(
-        "wavelength", [[3.5]*u.um, [3.5, 8]*u.um, [8]*u.um, [8, 10]*u.um])
+    "wavelength", [[3.5] * u.um, [3.5, 8] * u.um, [8] * u.um, [8, 10] * u.um]
+)
 def test_wavelength_retrieval(readouts: List[ReadoutFits], wavelength: u.um) -> None:
     """Tests the wavelength retrieval of the (.fits)-files."""
     wl_len = len(wavelength)
@@ -121,12 +114,9 @@ def test_wavelength_retrieval(readouts: List[ReadoutFits], wavelength: u.um) -> 
         vis2 = readout.get_data_for_wavelength(wavelength, "vis2", "value")
         vis2_err = readout.get_data_for_wavelength(wavelength, "vis2", "err")
 
-        assert isinstance(flux, np.ndarray)\
-            and isinstance(flux_err, np.ndarray)
-        assert isinstance(vis, np.ndarray)\
-            and isinstance(vis_err, np.ndarray)
-        assert isinstance(t3, np.ndarray)\
-            and isinstance(t3_err, np.ndarray)
+        assert isinstance(flux, np.ndarray) and isinstance(flux_err, np.ndarray)
+        assert isinstance(vis, np.ndarray) and isinstance(vis_err, np.ndarray)
+        assert isinstance(t3, np.ndarray) and isinstance(t3_err, np.ndarray)
 
         assert flux.size != 0 and flux_err.size != 0
         assert t3.size != 0 and t3_err.size != 0
@@ -141,8 +131,8 @@ def test_wavelength_retrieval(readouts: List[ReadoutFits], wavelength: u.um) -> 
 
 # TODO: Add tests for setting the wavelengths and the binning as well
 @pytest.mark.parametrize(
-        "wavelength", [[3.5]*u.um, [8]*u.um,
-                       [3.5, 8]*u.um, [3.5, 8, 10]*u.um])
+    "wavelength", [[3.5] * u.um, [8] * u.um, [3.5, 8] * u.um, [3.5, 8, 10] * u.um]
+)
 def test_set_data(fits_files: List[Path], wavelength: u.um) -> None:
     """Tests the automatic data procurrment from one
     or multiple (.fits)-files."""
@@ -150,8 +140,7 @@ def test_set_data(fits_files: List[Path], wavelength: u.um) -> None:
     nwl, nfiles = wavelength.size, len(fits_files)
 
     flux = OPTIONS.data.flux
-    vis = OPTIONS.data.vis if "vis" in OPTIONS.fit.data\
-        else OPTIONS.data.vis2
+    vis = OPTIONS.data.vis if "vis" in OPTIONS.fit.data else OPTIONS.data.vis2
     t3 = OPTIONS.data.t3
 
     assert flux.value.size != 0 and flux.err.size != 0
@@ -159,12 +148,12 @@ def test_set_data(fits_files: List[Path], wavelength: u.um) -> None:
     assert flux.err.shape == (nwl, nfiles)
 
     assert vis.value.size != 0 and vis.err.size != 0
-    assert vis.value.shape == (nwl, 6*nfiles)
-    assert vis.err.shape == (nwl, 6*nfiles)
+    assert vis.value.shape == (nwl, 6 * nfiles)
+    assert vis.err.shape == (nwl, 6 * nfiles)
 
     assert t3.value.size != 0 and t3.err.size != 0
-    assert t3.value.shape == (nwl, 4*nfiles)
-    assert t3.err.shape == (nwl, 4*nfiles)
+    assert t3.value.shape == (nwl, 4 * nfiles)
+    assert t3.err.shape == (nwl, 4 * nfiles)
 
     set_data(fit_data=["flux", "vis", "vis2", "t3"])
 
@@ -173,11 +162,10 @@ def test_set_data(fits_files: List[Path], wavelength: u.um) -> None:
     assert t3.value.size == 0 and t3.err.size == 0
 
 
-@pytest.mark.parametrize(
-        "fit_data", [["flux", "vis", "t3"], ["flux", "vis2", "t3"]])
+@pytest.mark.parametrize("fit_data", [["flux", "vis", "t3"], ["flux", "vis2", "t3"]])
 def test_set_weights(fits_files: List[Path], fit_data: List[str]) -> None:
     """Tests the setting of the weights"""
-    set_data(fits_files, wavelengths=[3.5]*u.um, fit_data=fit_data)
+    set_data(fits_files, wavelengths=[3.5] * u.um, fit_data=fit_data)
     set_fit_weights()
 
     weights = OPTIONS.fit.weights
@@ -189,6 +177,6 @@ def test_set_weights(fits_files: List[Path], fit_data: List[str]) -> None:
 
     set_fit_weights([0.5, 0.5, 0.5])
     assert weights.flux == weights.vis == weights.t3
-    assert np.isclose(weights.flux, 1/3)
+    assert np.isclose(weights.flux, 1 / 3)
 
     set_data(fit_data=fit_data)

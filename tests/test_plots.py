@@ -1,5 +1,5 @@
-from typing import List
 from pathlib import Path
+from typing import List
 
 import astropy.units as u
 import emcee
@@ -7,8 +7,7 @@ import numpy as np
 import pytest
 from scipy.optimize import minimize
 
-from ppdmod.plot import plot_corner, plot_chains
-
+from ppdmod.plot import plot_chains, plot_corner
 
 PLOT_DIR = Path("plots")
 if not PLOT_DIR.exists():
@@ -24,13 +23,13 @@ def dim() -> int:
 @pytest.fixture
 def pixel_size() -> int:
     """The pixel size of the model."""
-    return 0.1*u.mas
+    return 0.1 * u.mas
 
 
 @pytest.fixture
 def position_angle() -> u.deg:
     """The position angle of the model."""
-    return 45*u.deg
+    return 45 * u.deg
 
 
 @pytest.fixture
@@ -42,13 +41,13 @@ def axis_ratio() -> u.one:
 @pytest.fixture
 def wavelength() -> u.m:
     """A wavelenght grid."""
-    return (13.000458e-6*u.m).to(u.um)
+    return (13.000458e-6 * u.m).to(u.um)
 
 
 @pytest.fixture
 def wavelengths() -> u.um:
     """A wavelength grid."""
-    return ([8.28835527e-06, 1.02322101e-05, 13.000458e-6]*u.m).to(u.um)
+    return ([8.28835527e-06, 1.02322101e-05, 13.000458e-6] * u.m).to(u.um)
 
 
 @pytest.fixture
@@ -56,7 +55,8 @@ def fits_files() -> Path:
     """A MATISSE (.fits)-file."""
     files = [
         "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits",
-        "hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_AQUARIUS_FINAL_TARGET_INT.fits"]
+        "hd_142666_2022-04-21T07_18_22:2022-04-21T06_47_05_AQUARIUS_FINAL_TARGET_INT.fits",
+    ]
     return [Path("data/fits") / file for file in files]
 
 
@@ -103,15 +103,12 @@ def sampler() -> None:
 
     np.random.seed(42)
     nll = lambda *args: -log_likelihood(*args)
-    initial = np.array([m_true, b_true, np.log(f_true)])\
-        + 0.1 * np.random.randn(3)
+    initial = np.array([m_true, b_true, np.log(f_true)]) + 0.1 * np.random.randn(3)
     soln = minimize(nll, initial, args=(x, y, yerr))
     pos = soln.x + 1e-4 * np.random.randn(32, 3)
     nwalkers, ndim = pos.shape
 
-    sampler = emcee.EnsembleSampler(
-        nwalkers, ndim, log_probability, args=(x, y, yerr)
-    )
+    sampler = emcee.EnsembleSampler(nwalkers, ndim, log_probability, args=(x, y, yerr))
     sampler.run_mcmc(pos, 5000, progress=True)
     return sampler
 
@@ -122,15 +119,11 @@ def labels() -> List[str]:
     return ["m", "b", "log(f)"]
 
 
-def test_plot_corner(sampler: np.ndarray,
-                     labels: List[str]) -> None:
+def test_plot_corner(sampler: np.ndarray, labels: List[str]) -> None:
     """Tests the plot corner function."""
-    plot_corner(sampler, labels,
-                savefig=PLOT_DIR / "corner.pdf")
+    plot_corner(sampler, labels, savefig=PLOT_DIR / "corner.pdf")
 
 
-def test_plot_chains(sampler: np.ndarray,
-                     labels: List[str]) -> None:
+def test_plot_chains(sampler: np.ndarray, labels: List[str]) -> None:
     """Tests the plot chains function."""
-    plot_chains(sampler, labels,
-                savefig=PLOT_DIR / "chains.pdf")
+    plot_chains(sampler, labels, savefig=PLOT_DIR / "chains.pdf")

@@ -1,16 +1,13 @@
 from pathlib import Path
-from typing import List
 
 import astropy.units as u
-import numpy as np
 import pytest
 
+from ppdmod.basic_components import Gaussian, Ring
 from ppdmod.component import FourierComponent
-from ppdmod.basic_components import Star, Ring, Gaussian
-from ppdmod.data import ReadoutFits, set_data
+from ppdmod.data import ReadoutFits
 from ppdmod.options import OPTIONS, STANDARD_PARAMETERS
 from ppdmod.parameter import Parameter
-from ppdmod.utils import compute_vis, compute_t3
 
 
 @pytest.fixture
@@ -22,7 +19,7 @@ def readout() -> ReadoutFits:
 @pytest.fixture
 def wavelength() -> u.um:
     """A wavelength grid."""
-    return [10]*u.um
+    return [10] * u.um
 
 
 @pytest.fixture
@@ -79,7 +76,7 @@ def test_eval(component: FourierComponent) -> None:
     component.eval(**params)
 
     assert component.x == Parameter(**STANDARD_PARAMETERS.fov)
-    assert component.y() == 10*u.mas
+    assert component.y() == 10 * u.mas
     assert component.dim() == 512
 
 
@@ -94,10 +91,10 @@ def test_get_params(component: FourierComponent):
 # TODO: Needs better test
 def test_translate_coordinates(component: FourierComponent) -> None:
     """Tests if the translation of the coordinates works."""
-    component.x.value = 10*u.mas
-    component.y.value = 10*u.mas
-    assert component.translate_image_func(10, 10) == (0*u.mas, 0*u.mas)
-    assert component.translate_image_func(0, 0) == (-10*u.mas, -10*u.mas)
+    component.x.value = 10 * u.mas
+    component.y.value = 10 * u.mas
+    assert component.translate_image_func(10, 10) == (0 * u.mas, 0 * u.mas)
+    assert component.translate_image_func(0, 0) == (-10 * u.mas, -10 * u.mas)
 
 
 # TODO: Switch the direction to fix theses tests
@@ -142,25 +139,19 @@ def test_translate_coordinates(component: FourierComponent) -> None:
 #     set_data(fit_data=["vis", "t3"])
 
 
-def test_flux_func() -> None:
-    ...
+def test_flux_func() -> None: ...
 
 
-def test_vis_func() -> None:
-    ...
+def test_vis_func() -> None: ...
 
 
-def test_compute_flux() -> None:
-    ...
+def test_compute_flux() -> None: ...
 
 
-def test_compute_vis() -> None:
-    ...
+def test_compute_vis() -> None: ...
 
 
-def test_image_func() -> None:
-    ...
+def test_image_func() -> None: ...
 
 
-def test_compute_image() -> None:
-    ...
+def test_compute_image() -> None: ...
