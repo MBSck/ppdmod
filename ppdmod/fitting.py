@@ -570,7 +570,7 @@ def run_dynesty(
     ncores: int = 6,
     debug: bool = False,
     save_dir: Optional[Path] = None,
-    method: Opstr = "static",
+    method: str = "static",
     **kwargs,
 ) -> np.ndarray:
     """Runs the dynesty nested sampler.
