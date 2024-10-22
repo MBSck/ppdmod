@@ -49,7 +49,9 @@ def compute_detector_grid(
     return u.Quantity(tab_lambda, unit=u.um)
 
 
-def calculate_spectral_resolution(wavelengths: u.um) -> Tuple[u.um, u.one]:
+def calculate_spectral_resolution(
+    wavelengths: u.um,
+) -> Tuple[u.Quantity[u.um], u.Quantity[u.one]]:
     """Calculate the spectral resolution for the different bands."""
     central_wavelengths = []
     for index, wl in enumerate(wavelengths[1:], start=1):
@@ -133,7 +135,7 @@ def resample_and_convolve(
     return np.concatenate(grids), np.concatenate(convolved_datasets)
 
 
-def get_band_limits(band: str) -> Tuple:
+def get_band_limits(band: str) -> Tuple[float, float]:
     """Gets the limits of the respective band"""
     match band:
         case "hband":
@@ -146,6 +148,7 @@ def get_band_limits(band: str) -> Tuple:
             return 4.0, 6.0
         case "nband":
             return 7.5, 16.0
+    return 0, 0
 
 
 def get_band(wavelength: u.um) -> str:
