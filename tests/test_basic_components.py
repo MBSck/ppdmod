@@ -34,7 +34,8 @@ DIMENSION = [2**power for power in range(9, 13)]
 CALCULATION_FILE = Path("analytical_calculation.xlsx")
 COMPONENT_DIR = Path("component")
 
-READOUT = ReadoutFits(list(Path("data/matisse").glob("*2022-04-21*.fits"))[0])
+DATA_DIR = Path(__file__).parent.parent / "data"
+READOUT = ReadoutFits(list((DATA_DIR / "matisse").glob("*2022-04-21*.fits"))[0])
 utils.make_workbook(
     CALCULATION_FILE,
     {
@@ -48,19 +49,6 @@ utils.make_workbook(
 def wavelength() -> u.m:
     """A wavelength grid."""
     return [12.5] * u.um
-
-
-@pytest.fixture
-def wavelength_solution() -> u.um:
-    """A MATISSE (.fits)-file."""
-    file = "hd_142666_2022-04-23T03_05_25:2022-04-23T02_28_06_AQUARIUS_FINAL_TARGET_INT.fits"
-    return ReadoutFits(Path("data/fits") / file).wavelength
-
-
-@pytest.fixture
-def qval_file_dir() -> Path:
-    """The qval-file directory."""
-    return Path("data/qval")
 
 
 @pytest.fixture
@@ -124,34 +112,30 @@ def temp_gradient() -> TempGradient:
 
 @pytest.fixture
 def kappa_abs() -> Parameter:
-    data_dir = Path("data")
     weights = np.array([73.2, 8.6, 0.6, 14.2, 2.4, 1.0]) / 100
     names = ["pyroxene", "forsterite", "enstatite", "silica"]
     sizes = [[1.5], [0.1], [0.1, 1.5], [0.1, 1.5]]
 
-    wl_opacity, opacity = get_opacity(data_dir, weights, sizes, names, "boekel")
+    grid, value = get_opacity(DATA_DIR, weights, sizes, names, "boekel")
     kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
-    kappa_abs.grid, kappa_abs.value = wl_opacity, opacity
+    kappa_abs.grid, kappa_abs.value = grid, value
     return kappa_abs
 
 
 @pytest.fixture
 def kappa_cont() -> Parameter:
-    data_dir = Path("data")
-    cont_opacity_file = data_dir / "qval" / "Q_amorph_c_rv0.1.dat"
-    # cont_opacity_file = DATA_DIR / "qval" / "Q_iron_0.10um_dhs_0.7.dat",
-    wl_cont, cont_opacity = load_data(cont_opacity_file, load_func=qval_to_opacity)
+    cont_opacity_file = DATA_DIR / "opacities" / "optool" / "preibisch_amorph_c_rv0.1.npy"
+    grid, value = load_data(cont_opacity_file, load_func=qval_to_opacity)
 
     kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
-    kappa_cont.value, kappa_cont.grid = cont_opacity, wl_cont
+    kappa_cont.value, kappa_cont.grid = grid, value
     return kappa_cont
 
 
 @pytest.fixture
 def star_flux() -> Parameter:
-    data_dir = Path("data")
     wl_flux, flux = load_data(
-        data_dir / "flux" / "hd142527" / "HD142527_stellar_model.txt"
+        DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt"
     )
     star_flux = Parameter(**STANDARD_PARAMETERS.f)
     star_flux.grid, star_flux.value = wl_flux, flux
@@ -463,7 +447,7 @@ def test_ring_compute_vis(
     else:
         wavelength = [wl] * u.um
 
-    fits_file = Path("data/aspro") / fits_file
+    fits_file = DATA_DIR / "aspro" / fits_file
     data = set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
 
     thin = False if width is not None else True
@@ -539,7 +523,7 @@ def test_uniform_disk_compute_vis(
 ) -> None:
     """Tests the calculation of uniform disk's visibilities."""
     wavelength = [10] * u.um
-    fits_file = Path("data/aspro") / fits_file
+    fits_file = DATA_DIR / "aspro" / fits_file
     data = set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
     vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
 
@@ -589,7 +573,7 @@ def test_gaussian_compute_vis(
 ) -> None:
     """Tests the calculation of the total flux."""
     wavelength = [10] * u.um
-    fits_file = Path("data/aspro") / fits_file
+    fits_file = DATA_DIR / "aspro" / fits_file
     data = set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
 
     gaussian.hlr.value = 10 * u.mas / 2
@@ -639,7 +623,7 @@ def test_temp_gradient_compute_grid(
     """Tests the hankel component's grid calculation."""
     OPTIONS.model.gridtype = grid_type
     radius = temp_gradient.compute_internal_grid()
-    assert radius.unit == u.mas
+    assert radius.unit == u.au
     assert radius.shape == (temp_gradient.dim(),)
     assert (
         radius[0].value == temp_gradient.rin.value
@@ -680,7 +664,7 @@ def test_temp_gradient_compute_vis(
     kappa_cont: Parameter,
 ) -> None:
     """Tests the calculation of the ring's visibilities."""
-    fits_file, wl = Path("data/aspro") / fits_file, [3.5] * u.um
+    fits_file, wl = DATA_DIR / "aspro" / fits_file, [3.5] * u.um
     data = set_data([fits_file], wavelengths=wl, fit_data=["vis", "t3"])
     c, s = c if c is not None else 0, s if s is not None else 0
     inc = inc if inc is not None else 1
@@ -759,7 +743,7 @@ def test_fluxes_vs_aspro(
     """Tests the calculation of temperature gradient's visibilities vs aspro."""
     wl = [3.5] * u.um
     data = set_data(
-        [Path("data") / "aspro" / fits_file], wavelengths=wl, fit_data=["vis", "t3"]
+        [DATA_DIR / "aspro" / fits_file], wavelengths=wl, fit_data=["vis", "t3"]
     )
     c, s = c if c is not None else 0, s if s is not None else 0
     inc = inc if inc is not None else 1

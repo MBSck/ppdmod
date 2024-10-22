@@ -13,8 +13,9 @@ from ppdmod.options import OPTIONS
 @pytest.fixture
 def fits_files() -> List[Path]:
     """A MATISSE (.fits)-file."""
-    april_one_file = list(Path("data/matisse").glob("*2022-04-21*.fits"))
-    april_two_files = list(Path("data/matisse").glob("*2022-04-23*.fits"))
+    data_dir = Path(__file__).parent.parent / "data" / "matisse"
+    april_one_file = list(data_dir.glob("*2022-04-21*.fits"))
+    april_two_files = list(data_dir.glob("*2022-04-23*.fits"))
     april_two_files.extend(april_one_file)
     return april_two_files
 
@@ -162,17 +163,51 @@ def test_set_data(fits_files: List[Path], wavelength: u.um) -> None:
     assert t3.value.size == 0 and t3.err.size == 0
 
 
-@pytest.mark.parametrize("fit_data", [["flux", "vis", "t3"], ["flux", "vis2", "t3"]])
+@pytest.mark.parametrize(
+    "fit_data",
+    [
+        ["flux"],
+        ["vis"],
+        ["t3"],
+        ["flux", "vis"],
+        ["flux", "t3"],
+        ["flux", "vis", "t3"],
+        ["flux", "vis2", "t3"],
+    ],
+)
 def test_set_weights(fits_files: List[Path], fit_data: List[str]) -> None:
     """Tests the setting of the weights"""
     set_data(fits_files, wavelengths=[3.5] * u.um, fit_data=fit_data)
-    set_fit_weights()
 
     weights = OPTIONS.fit.weights
     assert weights
-    assert weights.flux != 1
-    assert weights.vis != 1
-    assert weights.t3 != 1
+
+    if len(fit_data) == 1 or len(fit_data) == 2:
+        if fit_data == ["flux"]:
+            assert weights.flux == 1
+            assert weights.vis == 0
+            assert weights.t3 == 0
+        elif fit_data == ["vis"]:
+            assert weights.flux == 0
+            assert weights.vis == 1
+            assert weights.t3 == 0
+        elif fit_data == ["t3"]:
+            assert weights.flux == 0
+            assert weights.vis == 0
+            assert weights.t3 == 1
+        elif fit_data == ["flux", "vis"]:
+            assert weights.flux != 1 and weights.flux != 0
+            assert weights.vis != 1 and weights.vis != 0
+            assert weights.t3 == 0
+        elif fit_data == ["flux", "t3"]:
+            assert weights.flux != 1 and weights.flux != 0
+            assert weights.vis == 0
+            assert weights.t3 != 1 and weights.t3 != 0
+    else:
+        assert weights.flux != 1 and weights.flux != 0
+        assert weights.vis != 1 and weights.vis != 0
+        assert weights.t3 != 1 and weights.t3 != 0
+
     assert weights.flux + weights.vis + weights.t3 == 1
 
     set_fit_weights([0.5, 0.5, 0.5])

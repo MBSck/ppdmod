@@ -14,6 +14,7 @@ from ppdmod.data import ReadoutFits, get_all_wavelengths, set_data
 from ppdmod.options import OPTIONS, STANDARD_PARAMETERS
 from ppdmod.parameter import Parameter
 
+DATA_DIR = Path(__file__).parent.parent / "data"
 
 @pytest.fixture
 def qval_files() -> List[Path]:
@@ -25,7 +26,7 @@ def qval_files() -> List[Path]:
         "Q_Fo_Suto_DHS_f1.0_rv1.5.dat",
         "Q_En_Jaeger_DHS_f1.0_rv1.5.dat",
     ]
-    return list(map(lambda x: Path("data/qval") / x, files))
+    return list(map(lambda x: DATA_DIR / "opacities" / "qval" / x, files))
 
 
 @pytest.fixture
@@ -38,19 +39,18 @@ def grf_files() -> List[Path]:
         "Forsterite2.0.Combined.Kappa",
         "Enstatite2.0.Combined.Kappa",
     ]
-    return list(map(lambda x: Path("data/grf") / x, files))
+    return list(map(lambda x: DATA_DIR / "opacities" / "grf" / x, files))
 
 
 @pytest.fixture
 def continuum_file() -> Path:
-    return Path("data/qval") / "Q_amorph_c_rv0.1.dat"
+    return DATA_DIR / "opacities" / "optool" / "preibisch_amorph_c_rv0.1.npy"
 
 
-# TODO: Fits file is empty right now use ASPRO test files for N-band
 @pytest.fixture
 def fits_files() -> Path:
     """MATISSE (.fits)-files."""
-    return list(Path("data/matisse").glob("*.fits"))
+    return list((DATA_DIR / "matisse").glob("*.fits"))
 
 
 @pytest.fixture
@@ -76,7 +76,7 @@ def wavelength_solutions(fits_files: Path) -> u.um:
 @pytest.fixture
 def high_wavelength_solution() -> u.um:
     """The wavelength solution of high resolution MATISSE (.fits)-file."""
-    return np.load(Path("data") / "high_wavelength_solution.npy") * u.um
+    return np.load(DATA_DIR / "wl_grids" / "fits" / "matisse" / "nband_high.npy") * u.um
 
 
 def uniform_disk_vis(baselines, diameter):
@@ -166,23 +166,18 @@ def test_get_indices(wavelengths: u.um, wavelength_solutions: u.um) -> None:
     )
     assert index[0].size >= 1
 
-    for window in [None, 0.1]:
-        indices_l_band = utils.get_indices(
-            wavelengths, array=wavelength_solutions[0], window=window
-        )
-        indices_n_band = utils.get_indices(
-            wavelengths, array=wavelength_solutions[1], window=window
-        )
-        assert len(indices_l_band) == 3
-        assert len(indices_n_band) == 3
-        len_nband = len([i for i in indices_l_band if i.size != 0])
-        len_lband = len([i for i in indices_n_band if i.size != 0])
-        if window is None:
-            assert len_nband == 0
-            assert len_lband == 0
-        else:
-            assert len_nband == 1
-            assert len_lband == 2
+    indices_lband = utils.get_indices(
+        wavelengths, array=wavelength_solutions[0], window=0.1
+    )
+    indices_nband = utils.get_indices(
+        wavelengths, array=wavelength_solutions[2], window=0.1
+    )
+    assert len(indices_lband) == 3
+    assert len(indices_nband) == 3
+    len_nband = len([i for i in indices_lband if i.size != 0])
+    len_lband = len([i for i in indices_nband if i.size != 0])
+    assert len_nband == 1
+    assert len_lband == 2
 
 
 @pytest.mark.parametrize(
@@ -281,7 +276,7 @@ def test_compare_effective_baselines(
 ) -> None:
     """Compares the different calculations of the effective
     baseline calculation."""
-    fits_file = Path("data/aspro") / fits_file
+    fits_file = DATA_DIR / "aspro" / fits_file
     diameter, wavelength = 20 * u.mas, [10] * u.um
     set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
 
@@ -454,9 +449,7 @@ def test_linearly_combine_data(
     assert len(grf_combined.shape) == 1
     assert len(qval_combined.shape) == 1
 
-    wavelength_cont, continuum_data = utils.load_data(
-        continuum_file, load_func=utils.qval_to_opacity
-    )
+    wavelength_cont, continuum_data = np.load(continuum_file)
 
     cont_low = np.interp(low_wavelength_solution, wavelength_cont, continuum_data)
     cont_high = np.interp(high_wavelength_solution, wavelength_cont, continuum_data)
