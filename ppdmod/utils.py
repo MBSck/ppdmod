@@ -99,10 +99,15 @@ def resample_and_convolve(
 
         diffs = np.diff(wls)
         central_wavelengths, resolutions = calculate_spectral_resolution(wls)
-        grid = np.concatenate([np.linspace(wl - diff / 2, wl + diff / 2, int(res.value * 10), endpoint=False)
-                               for wl, diff, res in zip(central_wavelengths, diffs, resolutions)])
+
+        grid = np.linspace(central_wavelengths[0] - 1 * u.um, central_wavelengths[-1] + 1 * u.um, 4096)
         interpolated_dataset = np.interp(grid, wavelengths_data, data)
-        convolved_dataset = convolve_fft(interpolated_dataset, Gaussian1DKernel(resolutions.mean()))
+        convolved_dataset = [convolve_fft(interpolated_dataset, Gaussian1DKernel(res / np.sqrt(8 * np.log(2)))) for res in resolutions]
+
+        segments = [(wl - diff / 2, wl + diff / 2) for wl, diff in zip(central_wavelengths, diffs)]
+        conditions = [((grid >= segment[0]) & (grid <= segment[1])) for segment in segments]
+        convolved_dataset = np.select(conditions, convolved_dataset)
+        breakpoint()
 
         grids.append(grid)
         convolved_datasets.append(convolved_dataset)
