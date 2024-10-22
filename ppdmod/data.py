@@ -20,8 +20,9 @@ class ReadoutFits:
         The path to the (.fits) or flux file.
     """
 
-    def __init__(self, fits_file: Path,
-                 wavelength_range: Optional[u.Quantity[u.um]] = None) -> None:
+    def __init__(
+        self, fits_file: Path, wavelength_range: Optional[u.Quantity[u.um]] = None
+    ) -> None:
         """The class's constructor."""
         self.fits_file = Path(fits_file)
         self.wavelength_range = wavelength_range
@@ -36,53 +37,64 @@ class ReadoutFits:
         except OSError:
             hdul = None
             wl, flux, flux_err = np.loadtxt(self.fits_file, unpack=True)
-            self.wavelength = wl*u.um
+            self.wavelength = wl * u.um
             self.flux = SimpleNamespace(value=flux, err=flux_err)
 
         if hdul is not None:
             instrument = None
             if "instrume" in hdul[0].header:
                 instrument = hdul[0].header["instrume"].lower()
-            sci_index = OPTIONS.data.gravity.index\
-                if instrument == "gravity" else None
+            sci_index = OPTIONS.data.gravity.index if instrument == "gravity" else None
             wl_index = 1 if instrument == "gravity" else None
-            self.wavelength = (hdul["oi_wavelength", sci_index]
-                               .data["eff_wave"]*u.m).to(u.um)[wl_index:]
+            self.wavelength = (
+                hdul["oi_wavelength", sci_index].data["eff_wave"] * u.m
+            ).to(u.um)[wl_index:]
             self.band = get_band(self.wavelength)
 
             indices = slice(None)
             if self.wavelength_range is not None:
-                indices = (self.wavelength_range[0] < self.wavelength) \
-                    & (self.wavelength_range[1] > self.wavelength)
+                indices = (self.wavelength_range[0] < self.wavelength) & (
+                    self.wavelength_range[1] > self.wavelength
+                )
                 self.wavelength = self.wavelength[indices]
 
             self.flux = self.read_into_namespace(
-                    hdul, "flux", sci_index, wl_index, indices)
-            self.t3 = self.read_into_namespace(
-                    hdul, "t3", sci_index, wl_index, indices)
+                hdul, "flux", sci_index, wl_index, indices
+            )
+            self.t3 = self.read_into_namespace(hdul, "t3", sci_index, wl_index, indices)
             self.vis = self.read_into_namespace(
-                    hdul, "vis", sci_index, wl_index, indices)
+                hdul, "vis", sci_index, wl_index, indices
+            )
             self.vis2 = self.read_into_namespace(
-                    hdul, "vis2", sci_index, wl_index, indices)
+                hdul, "vis2", sci_index, wl_index, indices
+            )
             hdul.close()
 
-    def read_into_namespace(self, hdul: fits.HDUList, key: str,
-                            sci_index: Optional[int] = None,
-                            wl_index: Optional[int] = None,
-                            indices: Optional[int] = None) -> SimpleNamespace:
+    def read_into_namespace(
+        self,
+        hdul: fits.HDUList,
+        key: str,
+        sci_index: Optional[int] = None,
+        wl_index: Optional[int] = None,
+        indices: Optional[int] = None,
+    ) -> SimpleNamespace:
         """Reads a (.fits) Card into a SimpleNamespace."""
         try:
             data = hdul[f"oi_{key}", sci_index]
         except KeyError:
-            return SimpleNamespace(value=np.array([]), err=np.array([]),
-                                   ucoord=np.array([]).reshape(1, -1),
-                                   vcoord=np.array([]).reshape(1, -1))
+            return SimpleNamespace(
+                value=np.array([]),
+                err=np.array([]),
+                ucoord=np.array([]).reshape(1, -1),
+                vcoord=np.array([]).reshape(1, -1),
+            )
 
         if key == "flux":
             try:
                 return SimpleNamespace(
                     value=data.data["fluxdata"][:, indices][:, wl_index:],
-                    err=data.data["fluxerr"][:, indices][:, wl_index:])
+                    err=data.data["fluxerr"][:, indices][:, wl_index:],
+                )
             except KeyError:
                 return SimpleNamespace(value=np.array([]), err=np.array([]))
         elif key in ["vis", "vis2"]:
@@ -90,26 +102,32 @@ class ReadoutFits:
                 value_key, err_key = "visamp", "visamperr"
             else:
                 value_key, err_key = "vis2data", "vis2err"
-            return SimpleNamespace(value=data.data[value_key][:, wl_index:][:, indices],
-                                   err=data.data[err_key][:, wl_index:][:, indices],
-                                   ucoord=data.data["ucoord"].reshape(1, -1),
-                                   vcoord=data.data["vcoord"].reshape(1, -1))
+            return SimpleNamespace(
+                value=data.data[value_key][:, wl_index:][:, indices],
+                err=data.data[err_key][:, wl_index:][:, indices],
+                ucoord=data.data["ucoord"].reshape(1, -1),
+                vcoord=data.data["vcoord"].reshape(1, -1),
+            )
         elif key == "t3":
             value = data.data["t3phi"][:, wl_index:][:, indices]
             err = data.data["t3phierr"][:, wl_index:][:, indices]
             u1coord, u2coord = map(lambda x: data.data[f"u{x}coord"], ["1", "2"])
             v1coord, v2coord = map(lambda x: data.data[f"v{x}coord"], ["1", "2"])
 
-            u3coord, v3coord = (u1coord+u2coord), (v1coord+v2coord)
+            u3coord, v3coord = (u1coord + u2coord), (v1coord + v2coord)
             u123coord = np.array([u1coord, u2coord, u3coord])
             v123coord = np.array([v1coord, v2coord, v3coord])
-            return SimpleNamespace(value=value, err=err,
-                                   u123coord=u123coord, v123coord=v123coord)
+            return SimpleNamespace(
+                value=value, err=err, u123coord=u123coord, v123coord=v123coord
+            )
 
     def get_data_for_wavelength(
-            self, wavelength: u.Quantity,
-            key: str, subkey: str,
-            no_binning: Optional[bool] = False) -> np.ndarray:
+        self,
+        wavelength: u.Quantity,
+        key: str,
+        subkey: str,
+        no_binning: Optional[bool] = False,
+    ) -> np.ndarray:
         """Gets the data for the given wavelengths.
 
         If there is no data for the given wavelengths,
@@ -137,8 +155,7 @@ class ReadoutFits:
         else:
             window = None
 
-        indices = get_indices(
-            wavelength, array=self.wavelength, window=window)
+        indices = get_indices(wavelength, array=self.wavelength, window=window)
 
         data = getattr(getattr(self, key), subkey)
         if all(index.size == 0 for index in indices):
@@ -148,14 +165,24 @@ class ReadoutFits:
 
         if key == "flux":
             if no_binning:
-                wl_data = [[data.flatten()[index[0]] if index.size != 0
-                           else np.full((data.shape[0],), np.nan).tolist()[0]] for index in indices]
+                wl_data = [
+                    [
+                        data.flatten()[index[0]]
+                        if index.size != 0
+                        else np.full((data.shape[0],), np.nan).tolist()[0]
+                    ]
+                    for index in indices
+                ]
             else:
                 wl_data = [[data.flatten()[index].mean()] for index in indices]
         else:
             if no_binning:
-                wl_data = [data[:, index].flatten() if index.size != 0
-                           else np.full((data.shape[0],), np.nan) for index in indices]
+                wl_data = [
+                    data[:, index].flatten()
+                    if index.size != 0
+                    else np.full((data.shape[0],), np.nan)
+                    for index in indices
+                ]
             else:
                 wl_data = [data[:, index].mean(-1) for index in indices]
 
@@ -169,7 +196,9 @@ def get_all_wavelengths(readouts: Optional[List[ReadoutFits]] = None) -> np.ndar
     return np.sort(np.unique(np.concatenate(wavelengths)))
 
 
-def set_fit_wavelengths(wavelengths: Optional[u.Quantity[u.um]] = None) -> Union[str, np.ndarray]:
+def set_fit_wavelengths(
+    wavelengths: Optional[u.Quantity[u.um]] = None,
+) -> Union[str, np.ndarray]:
     """Sets the wavelengths to be fitted for as a global option.
 
     If called without a wavelength and all set to False, it will clear
@@ -202,8 +231,7 @@ def get_counts_data() -> np.ndarray[int]:
     visibilities and closure phases."""
     data = OPTIONS.data
     nflux = data.flux.value[~np.isnan(data.flux.value)].size
-    vis = data.vis.value if data.vis2.value.size == 0 \
-        else data.vis2.value
+    vis = data.vis.value if data.vis2.value.size == 0 else data.vis2.value
     nvis = vis[~np.isnan(vis)].size
     nt3 = data.t3.value[~np.isnan(data.t3.value)].size
     return np.array([nflux, nvis, nt3])
@@ -216,22 +244,24 @@ def set_fit_weights(weights: Optional[List[float]] = None) -> None:
         wflux, wvis, wt3 = weights
     else:
         nflux, nvis, nt3, wvis = (*get_counts_data(), 1)
-        wflux = 0 if nflux == 0 else nvis/nflux
-        wt3 = 0 if nt3 == 0 else nvis/nt3
+        wflux = 0 if nflux == 0 else nvis / nflux
+        wt3 = 0 if nt3 == 0 else nvis / nt3
 
     norm = wflux + wvis + wt3
-    OPTIONS.fit.weights.flux = wflux/norm
-    OPTIONS.fit.weights.vis = wvis/norm
-    OPTIONS.fit.weights.t3 = wt3/norm
+    OPTIONS.fit.weights.flux = wflux / norm
+    OPTIONS.fit.weights.vis = wvis / norm
+    OPTIONS.fit.weights.t3 = wt3 / norm
 
 
-def set_data(fits_files: Optional[List[Path]] = None,
-             wavelengths: Optional[Union[str, u.Quantity[u.um]]] = None,
-             fit_data: Optional[List[str]] = None,
-             weights: Optional[List[float]] = None,
-             wavelength_range: Optional[u.Quantity[u.um]] = None,
-             min_err: Optional[float] = 0.05,
-             **kwargs) -> SimpleNamespace:
+def set_data(
+    fits_files: Optional[List[Path]] = None,
+    wavelengths: Optional[Union[str, u.Quantity[u.um]]] = None,
+    fit_data: Optional[List[str]] = None,
+    weights: Optional[List[float]] = None,
+    wavelength_range: Optional[u.Quantity[u.um]] = None,
+    min_err: Optional[float] = 0.05,
+    **kwargs,
+) -> SimpleNamespace:
     """Sets the data as a global variable from the input files.
 
     If called without parameters or recalled, it will clear the data.
@@ -269,8 +299,9 @@ def set_data(fits_files: Optional[List[Path]] = None,
     if fits_files is None:
         return
 
-    OPTIONS.data.readouts = list(map(partial(
-        ReadoutFits, wavelength_range=wavelength_range), fits_files))
+    OPTIONS.data.readouts = list(
+        map(partial(ReadoutFits, wavelength_range=wavelength_range), fits_files)
+    )
     OPTIONS.data.bands = list(map(lambda x: x.band, OPTIONS.data.readouts))
 
     no_binning = False
@@ -286,11 +317,13 @@ def set_data(fits_files: Optional[List[Path]] = None,
             data = getattr(OPTIONS.data, key)
             data_readout = getattr(readout, key)
 
-            value = readout.get_data_for_wavelength(wavelengths, key, "value", no_binning)
+            value = readout.get_data_for_wavelength(
+                wavelengths, key, "value", no_binning
+            )
             err = readout.get_data_for_wavelength(wavelengths, key, "err", no_binning)
 
             if key in ["vis", "vis2", "t3"]:
-                ind = np.where(np.abs(err/value) < min_err)
+                ind = np.where(np.abs(err / value) < min_err)
                 err[ind] = np.abs(value[ind]) * min_err
 
             if data.value.size == 0:
@@ -305,19 +338,19 @@ def set_data(fits_files: Optional[List[Path]] = None,
                     data.vcoord = np.insert(data_readout.vcoord, 0, 0, axis=1)
                 else:
                     data.ucoord = np.concatenate(
-                        (data.ucoord, data_readout.ucoord), axis=-1)
+                        (data.ucoord, data_readout.ucoord), axis=-1
+                    )
                     data.vcoord = np.concatenate(
-                        (data.vcoord, data_readout.vcoord), axis=-1)
+                        (data.vcoord, data_readout.vcoord), axis=-1
+                    )
 
             elif key == "t3":
                 if data.u123coord.size == 0:
                     data.u123coord = np.insert(data_readout.u123coord, 0, 0, axis=1)
                     data.v123coord = np.insert(data_readout.v123coord, 0, 0, axis=1)
                 else:
-                    data.u123coord = np.hstack(
-                            (data.u123coord, data_readout.u123coord))
-                    data.v123coord = np.hstack(
-                            (data.v123coord, data_readout.v123coord))
+                    data.u123coord = np.hstack((data.u123coord, data_readout.u123coord))
+                    data.v123coord = np.hstack((data.v123coord, data_readout.v123coord))
 
     set_fit_weights(weights)
     return OPTIONS.data

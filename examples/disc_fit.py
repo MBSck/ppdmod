@@ -37,19 +37,30 @@ def ptform(theta: List[float]) -> np.ndarray:
 
 
 DATA_DIR = Path("../data")
-wavelengths = {"hband": [1.7] * u.um, "kband": [2.15] * u.um,
-               "lband": np.linspace(3.3, 3.8, 5) * u.um,
-               "mband": np.linspace(4.6, 4.9, 3) * u.um,
-               "nband": np.linspace(8, 15, 35) * u.um,
-               }
+wavelengths = {
+    "hband": [1.7] * u.um,
+    "kband": [2.15] * u.um,
+    "lband": np.linspace(3.3, 3.8, 5) * u.um,
+    "mband": np.linspace(4.6, 4.9, 3) * u.um,
+    "nband": np.linspace(8, 15, 35) * u.um,
+}
 
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
-wavelength = np.concatenate((wavelengths["hband"], wavelengths["kband"],
-                             wavelengths["lband"], wavelengths["mband"], wavelengths["nband"]))
+wavelength = np.concatenate(
+    (
+        wavelengths["hband"],
+        wavelengths["kband"],
+        wavelengths["lband"],
+        wavelengths["mband"],
+        wavelengths["nband"],
+    )
+)
 data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis"])
 WAVELENGTHS = OPTIONS.fit.wavelengths
 
-wl, value = load_data(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt", usecols=(0, 2))
+wl, value = load_data(
+    DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt", usecols=(0, 2)
+)
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
 star_flux.grid, star_flux.value = resample_and_convolve(WAVELENGTHS.value, wl, value)
 
@@ -70,15 +81,22 @@ inc.value = 0.915
 inc.free = True
 pa.free = False
 
-with open(DATA_DIR / "flux" / "hd142527" / "hd142527_dust_temperatures.pkl", "rb") as save_file:
+with open(
+    DATA_DIR / "flux" / "hd142527" / "hd142527_dust_temperatures.pkl", "rb"
+) as save_file:
     temps = pickle.load(save_file)
 
 OPTIONS.model.constant_params = {
-    "dim": 32, "dist": 158.51,
-    "eff_temp": 6500, "eff_radius": 3.46,
-    "temps": temps, "f": star_flux,
+    "dim": 32,
+    "dist": 158.51,
+    "eff_temp": 6500,
+    "eff_radius": 3.46,
+    "temps": temps,
+    "f": star_flux,
     "kappa_abs": kappa_abs,
-    "kappa_cont": kappa_cont, "pa": pa}
+    "kappa_cont": kappa_cont,
+    "pa": pa,
+}
 
 x = Parameter(**STANDARD_PARAMETERS.x)
 y = Parameter(**STANDARD_PARAMETERS.y)
@@ -95,8 +113,8 @@ c1 = Parameter(**STANDARD_PARAMETERS.c)
 s1 = Parameter(**STANDARD_PARAMETERS.s)
 cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 
-rin.value = 1.
-rout.value = 3.
+rin.value = 1.0
+rout.value = 3.0
 sigma0.value = 1e-3
 p.value = 0.5
 c1.value = s1.value = 0.5
@@ -178,17 +196,27 @@ OPTIONS.model.components_and_params = [
     # ["GreyBody", three],
 ]
 
-ring_labels = [[f"{key}-{index}" for key in ring]
-    for index, ring in enumerate([one, two, three], start=1)]
+ring_labels = [
+    [f"{key}-{index}" for key in ring]
+    for index, ring in enumerate([one, two, three], start=1)
+]
 ring_units = [[value.unit for value in ring.values()] for ring in [one, two, three]]
 
-LABELS = list(chain.from_iterable([star_labels, *ring_labels][:len(OPTIONS.model.components_and_params)]))
+LABELS = list(
+    chain.from_iterable(
+        [star_labels, *ring_labels][: len(OPTIONS.model.components_and_params)]
+    )
+)
 LABELS += shared_param_labels
-UNITS = list(chain.from_iterable([star_units, *ring_units][:len(OPTIONS.model.components_and_params)]))
+UNITS = list(
+    chain.from_iterable(
+        [star_units, *ring_units][: len(OPTIONS.model.components_and_params)]
+    )
+)
 UNITS += shared_param_units
 
 component_labels = ["Star", "Inner Ring", "Outer Ring", "Last Ring"]
-component_labels = component_labels[:len(OPTIONS.model.components_and_params)]
+component_labels = component_labels[: len(OPTIONS.model.components_and_params)]
 OPTIONS.fit.method = "dynesty"
 
 result_dir = Path("../model_results/") / "disc_fit"
@@ -200,30 +228,32 @@ np.save(result_dir / "labels.npy", LABELS)
 np.save(result_dir / "units.npy", UNITS)
 
 components = basic_components.assemble_components(
-        OPTIONS.model.components_and_params,
-        OPTIONS.model.shared_params)
-rchi_sq = compute_observable_chi_sq(
-        *compute_observables(components), reduced=True)
+    OPTIONS.model.components_and_params, OPTIONS.model.shared_params
+)
+rchi_sq = compute_observable_chi_sq(*compute_observables(components), reduced=True)
 print(f"rchi_sq: {rchi_sq:.2f}")
 
 
 if __name__ == "__main__":
     ncores = 70
     fit_params = {"nlive_init": 2000, "ptform": ptform}
-    sampler = run_fit(**fit_params, ncores=ncores,
-                      method="dynamic", save_dir=result_dir,
-                      debug=False)
+    sampler = run_fit(
+        **fit_params, ncores=ncores, method="dynamic", save_dir=result_dir, debug=False
+    )
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
     components_and_params, shared_params = set_params_from_theta(theta)
     components = basic_components.assemble_components(
-            components_and_params, shared_params)
-    rchi_sq = compute_observable_chi_sq(
-            *compute_observables(components), reduced=True)
+        components_and_params, shared_params
+    )
+    rchi_sq = compute_observable_chi_sq(*compute_observables(components), reduced=True)
     print(f"rchi_sq: {rchi_sq:.2f}")
 
     save_fits(
-        components, component_labels,
-        fit_hyperparameters=fit_params, ncores=ncores,
+        components,
+        component_labels,
+        fit_hyperparameters=fit_params,
+        ncores=ncores,
         save_dir=result_dir / "model.fits",
-        object_name="HD142527")
+        object_name="HD142527",
+    )

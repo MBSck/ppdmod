@@ -11,6 +11,7 @@ from .utils import smooth_interpolation
 @dataclass()
 class Parameter:
     """Defines a parameter."""
+
     name: str
     value: Any
     unit: u.Quantity
@@ -49,16 +50,18 @@ class Parameter:
         return u.Quantity(value, unit=self.unit, dtype=self.dtype)
 
     def __str__(self):
-        message = f"Parameter: {self.name} has the value "\
-            f"{np.round(self.value, 2)} and "\
+        message = (
+            f"Parameter: {self.name} has the value "
+            f"{np.round(self.value, 2)} and "
             f"is {'free' if self.free else 'fixed'}"
+        )
         if self.max is not None:
             message += f" with its limits being {self.min:.1f}-{self.max:.1f}"
         return message
 
     def _set_to_numpy_array(
-        self, array: Optional[ArrayLike] = None,
-        retain_value: Optional[bool] = False) -> Union[Any, np.ndarray]:
+        self, array: Optional[ArrayLike] = None, retain_value: Optional[bool] = False
+    ) -> Union[Any, np.ndarray]:
         """Converts a value to a numpy array."""
         if array is None:
             return
@@ -73,7 +76,6 @@ class Parameter:
         return array
 
     # TODO: One can make this modular, maybe cool for oimodeler?
-    def set(self, min: Optional[float] = None,
-            max: Optional[float] = None) -> None:
+    def set(self, min: Optional[float] = None, max: Optional[float] = None) -> None:
         """Sets the limits of the parameters."""
         self.min, self.max = min, max

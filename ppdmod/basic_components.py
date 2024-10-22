@@ -46,7 +46,9 @@ class SED(Component):
                 param_name = f"kappa_{key}_{size}"
                 param = Parameter(**STANDARD_PARAMETERS.kappa_abs)
                 param.shortname = param.name = param_name
-                param.description = f"The dust mass absorption coefficient for {size} {key}"
+                param.description = (
+                    f"The dust mass absorption coefficient for {size} {key}"
+                )
                 setattr(self, param_name, param)
 
                 weight_name = f"{key}_{size}_weight"
@@ -61,8 +63,15 @@ class SED(Component):
 
     def get_opacity(self, wavelength: u.um) -> np.ndarray:
         """Set the opacity from wavelength."""
-        opacity = np.sum([getattr(self, f"{key}_{size}_weight")() * getattr(self, f"kappa_{key}_{size}")(wavelength)
-                          for size in ["small", "large"] for key in self.materials], axis=0)
+        opacity = np.sum(
+            [
+                getattr(self, f"{key}_{size}_weight")()
+                * getattr(self, f"kappa_{key}_{size}")(wavelength)
+                for size in ["small", "large"]
+                for key in self.materials
+            ],
+            axis=0,
+        )
         opacity += (self.cont_weight() * self.kappa_cont(wavelength)).value
 
         # NOTE: The 1e2 term is to be able to fit the weights as percentages
@@ -73,7 +82,7 @@ class SED(Component):
         bb = BlackBody(temperature=self.tempc())(wavelength)
         opacity = self.get_opacity(wavelength)
         pah = self.pah_weight() * self.pah(wavelength)
-        flux = (bb * opacity * u.sr * 10. ** -self.fr()).to(u.Jy) + pah
+        flux = (bb * opacity * u.sr * 10.0 ** -self.fr()).to(u.Jy) + pah
         return flux.value.reshape((wavelength.size, 1))
 
 
@@ -112,8 +121,9 @@ class PointSource(FourierComponent):
         """Returns the flux weight of the point source."""
         return self.fr(wavelength).value.reshape((wavelength.size, 1))
 
-    def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
-                 wavelength: u.um, **kwargs) -> np.ndarray:
+    def vis_func(
+        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
+    ) -> np.ndarray:
         """Computes the complex visibility
 
         Parameters
@@ -132,8 +142,9 @@ class PointSource(FourierComponent):
         return vis.astype(OPTIONS.data.dtype.complex)
 
     # TODO: Change the way that is implemented, as it is always in the centre right now
-    def image_func(self, xx: u.mas, yy: u.mas,
-                   pixel_size: u.mas, wavelength: u.m = None) -> np.ndarray:
+    def image_func(
+        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.m = None
+    ) -> np.ndarray:
         """Computes the image from a 2D grid.
 
         Parameters
@@ -193,7 +204,9 @@ class Star(FourierComponent):
         self.eff_radius = Parameter(**STANDARD_PARAMETERS.eff_radius)
         self.eval(**kwargs)
 
-        self.stellar_radius_angular = distance_to_angular(self.eff_radius(), self.dist())
+        self.stellar_radius_angular = distance_to_angular(
+            self.eff_radius(), self.dist()
+        )
 
     def flux_func(self, wavelength: u.um) -> np.ndarray:
         """Computes the flux of the star."""
@@ -202,14 +215,16 @@ class Star(FourierComponent):
         else:
             plancks_law = BlackBody(temperature=self.eff_temp())
             spectral_radiance = plancks_law(wavelength).to(
-                u.erg / (u.cm**2 * u.Hz * u.s * u.rad**2))
+                u.erg / (u.cm**2 * u.Hz * u.s * u.rad**2)
+            )
             stellar_flux = np.pi * (
                 spectral_radiance * self.stellar_radius_angular**2
             ).to(u.Jy)
         return stellar_flux.value.reshape((wavelength.size, 1))
 
-    def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
-                 wavelength: u.um, **kwargs) -> np.ndarray:
+    def vis_func(
+        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
+    ) -> np.ndarray:
         """Computes the complex visibility
 
         Parameters
@@ -223,11 +238,13 @@ class Star(FourierComponent):
         """
         new_shape = (-1,) + (1,) * (len(baselines.shape) - 1)
         vis = np.tile(
-            self.flux_func(wavelength).reshape(new_shape), baselines.shape[1:])
+            self.flux_func(wavelength).reshape(new_shape), baselines.shape[1:]
+        )
         return vis.astype(OPTIONS.data.dtype.complex)
 
-    def image_func(self, xx: u.mas, yy: u.mas,
-                   pixel_size: u.mas, wavelength: u.m = None) -> np.ndarray:
+    def image_func(
+        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.m = None
+    ) -> np.ndarray:
         """Computes the image from a 2D grid.
 
         Parameters
@@ -301,8 +318,9 @@ class Ring(FourierComponent):
             radius = np.logspace(np.log10(rin), np.log10(rout), self.dim())
         return radius.astype(OPTIONS.data.dtype.real) * self.rin.unit
 
-    def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
-                 wavelength: u.um, **kwargs) -> np.ndarray:
+    def vis_func(
+        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
+    ) -> np.ndarray:
         """Computes the complex visibility
 
         Parameters
@@ -316,13 +334,15 @@ class Ring(FourierComponent):
         brightness : astropy.unit.mas
             The radial brightness distribution
         """
-        mod_amps, cos_diff, bessel_funcs  = [], [], []
+        mod_amps, cos_diff, bessel_funcs = [], [], []
         if self.asymmetric:
             for i in range(1, OPTIONS.model.modulation + 1):
                 c, s = getattr(self, f"c{i}")(), getattr(self, f"s{i}")()
-                angle_diff = np.angle(np.exp(1j*(baseline_angles - np.arctan2(c, s)).value))
-                mod_amps.append((-1j)**i * np.hypot(c, s))
-                cos_diff.append(np.cos(i*angle_diff))
+                angle_diff = np.angle(
+                    np.exp(1j * (baseline_angles - np.arctan2(c, s)).value)
+                )
+                mod_amps.append((-1j) ** i * np.hypot(c, s))
+                cos_diff.append(np.cos(i * angle_diff))
                 bessel_funcs.append(partial(jv, i))
 
             mod_amps = np.array(mod_amps)
@@ -338,7 +358,9 @@ class Ring(FourierComponent):
             vis = j0(xx).astype(complex)
             if self.asymmetric:
                 bessel_funcs = np.array(list(map(lambda x: x(xx), bessel_funcs)))
-                mod_amps = mod_amps.reshape((mod_amps.shape[0],) + (1,) * (bessel_funcs.ndim - 1))
+                mod_amps = mod_amps.reshape(
+                    (mod_amps.shape[0],) + (1,) * (bessel_funcs.ndim - 1)
+                )
                 vis += (mod_amps * cos_diff * bessel_funcs).sum(axis=0)
             return vis
 
@@ -349,7 +371,9 @@ class Ring(FourierComponent):
             radius = self.compute_internal_grid()
 
             if intensity_func is not None:
-                intensity = intensity_func(radius, wavelength).to(u.erg/(u.rad**2 * u.cm**2 * u.s * u.Hz))
+                intensity = intensity_func(radius, wavelength).to(
+                    u.erg / (u.rad**2 * u.cm**2 * u.s * u.Hz)
+                )
                 intensity = intensity[:, np.newaxis]
 
             if radius.unit not in [u.rad, u.mas]:
@@ -372,9 +396,9 @@ class Ring(FourierComponent):
 
         return vis[..., np.newaxis].value.astype(OPTIONS.data.dtype.complex)
 
-    def image_func(self, xx: u.mas, yy: u.mas,
-                   pixel_size: u.mas, wavelength: u.um,
-                   **kwargs) -> np.ndarray:
+    def image_func(
+        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um, **kwargs
+    ) -> np.ndarray:
         """Computes the image from a 2D grid.
 
         Parameters
@@ -401,8 +425,12 @@ class Ring(FourierComponent):
         if intensity_func is None:
             intensity = 1 / (2 * np.pi)
         else:
-            intensity = intensity_func(radius, wavelength).to(
-                u.erg / (u.cm**2 * u.rad**2 * u.s * u.Hz)) * pixel_size.to(u.rad) ** 2
+            intensity = (
+                intensity_func(radius, wavelength).to(
+                    u.erg / (u.cm**2 * u.rad**2 * u.s * u.Hz)
+                )
+                * pixel_size.to(u.rad) ** 2
+            )
             intensity = intensity.to(u.Jy)
 
         image = intensity * radial_profile
@@ -410,7 +438,9 @@ class Ring(FourierComponent):
             polar_angle, modulations = np.arctan2(xx, yy), []
             for i in range(1, OPTIONS.model.modulation + 1):
                 c, s = getattr(self, f"c{i}")(), getattr(self, f"s{i}")()
-                modulations.append(c * np.cos(i * polar_angle) + s * np.sin(i * polar_angle))
+                modulations.append(
+                    c * np.cos(i * polar_angle) + s * np.sin(i * polar_angle)
+                )
 
             image *= 1 + np.sum(modulations, axis=0)
 
@@ -427,8 +457,9 @@ class UniformDisk(FourierComponent):
         self.diam = Parameter(**STANDARD_PARAMETERS.diam)
         self.eval(**kwargs)
 
-    def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
-                 wavelength: u.um, **kwargs) -> np.ndarray:
+    def vis_func(
+        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
+    ) -> np.ndarray:
         """Computes the complex visibility
 
         Parameters
@@ -491,11 +522,12 @@ class Gaussian(FourierComponent):
             The wavelengths.
         """
         xx = np.pi * self.hlr().to(u.rad) * baselines
-        vis = np.exp(-xx**2 / np.log(2))
+        vis = np.exp(-(xx**2) / np.log(2))
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
-    def image_func(self, xx: u.mas, yy: u.mas,
-                   pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
+    def image_func(
+        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um
+    ) -> np.ndarray:
         """Computes the image from a 2D grid.
 
         Parameters
@@ -508,10 +540,11 @@ class Gaussian(FourierComponent):
         -------
         image : astropy.units.Jy
         """
-        hlr = 2 * self.hlr() * (1/self.inc())
+        hlr = 2 * self.hlr() * (1 / self.inc())
         radius = np.hypot(xx, yy)[np.newaxis, ...]
-        image = np.log(2) / (np.pi * hlr ** 2) \
-            * np.exp(-(radius / hlr) ** 2 * np.log(2))
+        image = (
+            np.log(2) / (np.pi * hlr**2) * np.exp(-((radius / hlr) ** 2) * np.log(2))
+        )
         return image.value.astype(OPTIONS.data.dtype.real)
 
 
@@ -525,8 +558,9 @@ class Lorentzian(FourierComponent):
         self.hlr = Parameter(**STANDARD_PARAMETERS.hlr)
         self.eval(**kwargs)
 
-    def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
-                 wavelength: u.um, **kwargs) -> np.ndarray:
+    def vis_func(
+        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
+    ) -> np.ndarray:
         """Computes the complex visibility
 
         Parameters
@@ -542,8 +576,9 @@ class Lorentzian(FourierComponent):
         vis = np.exp(-2 * xx / np.sqrt(3))
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
-    def image_func(self, xx: u.mas, yy: u.mas,
-                   pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
+    def image_func(
+        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um
+    ) -> np.ndarray:
         """Computes the image from a 2D grid.
 
         Parameters
@@ -558,8 +593,7 @@ class Lorentzian(FourierComponent):
         """
         radius = np.hypot(xx, yy)[np.newaxis, ...]
         hlr = self.hlr() * self.inc()
-        image = hlr / (2 * np.pi**2 * np.sqrt(3)) \
-            * (hlr ** 2 / 3 + radius**2) ** (-3 / 2)
+        image = hlr / (2 * np.pi**2 * np.sqrt(3)) * (hlr**2 / 3 + radius**2) ** (-3 / 2)
         return image.value.astype(OPTIONS.data.dtype.real)
 
 
@@ -580,8 +614,9 @@ class GaussLorentzian(FourierComponent):
         self.gauss = Gaussian(hlr=self.hlr, inc=self.inc, pa=self.pa)
         self.lor = Lorentzian(hlr=self.hlr, inc=self.inc, pa=self.pa)
 
-    def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
-                 wavelength: u.um, **kwargs) -> np.ndarray:
+    def vis_func(
+        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
+    ) -> np.ndarray:
         """Computes the complex visibility
 
         Parameters
@@ -594,13 +629,15 @@ class GaussLorentzian(FourierComponent):
             The wavelengths.
         """
         vis_gauss = self.gauss.vis_func(
-            baselines, baseline_angles, wavelength, **kwargs)
+            baselines, baseline_angles, wavelength, **kwargs
+        )
         vis_lor = self.lor.vis_func(baselines, baseline_angles, wavelength, **kwargs)
         vis = (1 - self.flor()) * vis_gauss + self.flor() * vis_lor
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
-    def image_func(self, xx: u.mas, yy: u.mas,
-                   pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
+    def image_func(
+        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um
+    ) -> np.ndarray:
         """Computes the image from a 2D grid.
 
         Parameters
@@ -631,6 +668,7 @@ class TempGradient(Ring):
     dim : float
         The dimension [px].
     """
+
     name = "Temperature Gradient"
     shortname = "TempGradient"
     thin = False
@@ -670,14 +708,19 @@ class TempGradient(Ring):
         if OPTIONS.model.constant_params is not None:
             if "temps" in OPTIONS.model.constant_params:
                 temps = OPTIONS.model.constant_params["temps"]
-                cont_temps = interp1d(temps.weights, temps.values, axis=0)(self.cont_weight().value / 1e2)
+                cont_temps = interp1d(temps.weights, temps.values, axis=0)(
+                    self.cont_weight().value / 1e2
+                )
                 self.temps.grid, self.temps.value = temps.radii, cont_temps
 
     def get_opacity(self, wavelength: u.um) -> u.cm**2 / u.g:
         """Set the opacity from wavelength."""
         kappa_abs = self.kappa_abs(wavelength)
         if self.continuum_contribution:
-            cont_weight, kappa_cont = self.cont_weight().value / 1e2, self.kappa_cont(wavelength)
+            cont_weight, kappa_cont = (
+                self.cont_weight().value / 1e2,
+                self.kappa_cont(wavelength),
+            )
             opacity = (1 - cont_weight) * kappa_abs + cont_weight * kappa_cont
         else:
             opacity = kappa_abs
@@ -692,7 +735,9 @@ class TempGradient(Ring):
         """Computes a 1D-temperature profile."""
         if self.const_temperature:
             if self.temps.value is None:
-                temperature = np.sqrt(self.eff_radius().to(u.au) / (2 * radius)) * self.eff_temp()
+                temperature = (
+                    np.sqrt(self.eff_radius().to(u.au) / (2 * radius)) * self.eff_temp()
+                )
             else:
                 temperature = self.temps(radius)
         else:
@@ -804,6 +849,7 @@ class AsymmetricGreyBody(GreyBody):
     shortname = "AsymmetricGreyBody"
     asymmetric = True
 
+
 class StarHaloGauss(FourierComponent):
     """A star, a disk and a halo model with a Gauss profile.
 
@@ -852,42 +898,59 @@ class StarHaloGauss(FourierComponent):
 
         if self.is_gauss_lor:
             self.comp = GaussLorentzian(
-                flor=self.flor, hlr=self.hlr, inc=self.inc, pa=self.pa)
+                flor=self.flor, hlr=self.hlr, inc=self.inc, pa=self.pa
+            )
         else:
             self.comp = Gaussian(hlr=self.hlr, inc=self.inc, pa=self.pa)
 
         if self.has_ring:
             self.ring = Ring(
-                rin=self.rin, inc=self.inc, pa=self.pa,
-                asymmetric=True, c1=self.c1, s1=self.s1)
+                rin=self.rin,
+                inc=self.inc,
+                pa=self.pa,
+                asymmetric=True,
+                c1=self.c1,
+                s1=self.s1,
+            )
 
-    def vis_func(self, baselines: 1 / u.rad, baseline_angles: u.rad,
-                 wavelength: u.um, **kwargs) -> np.ndarray:
+    def vis_func(
+        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
+    ) -> np.ndarray:
         if self.wl0() == 0:
             self.wl0.value = np.mean(wavelength)
 
         wavelength_ratio = self.wl0() / wavelength
         fs, ks = self.fs(wavelength), self.ks(wavelength)
-        complex_vis_star = (fs * wavelength_ratio**ks).astype(OPTIONS.data.dtype.complex)
-        component_ratio = (1-self.fc()) * wavelength_ratio**ks \
-            + self.fc() * wavelength_ratio**self.kc()
+        complex_vis_star = (fs * wavelength_ratio**ks).astype(
+            OPTIONS.data.dtype.complex
+        )
+        component_ratio = (
+            1 - self.fc()
+        ) * wavelength_ratio**ks + self.fc() * wavelength_ratio ** self.kc()
 
         complex_vis_comp = self.comp.vis_func(
-            baselines, baseline_angles, wavelength, **kwargs)
+            baselines, baseline_angles, wavelength, **kwargs
+        )
 
         if self.has_ring:
             complex_vis_ring = self.ring.vis_func(
-                baselines, baseline_angles, wavelength, **kwargs)
+                baselines, baseline_angles, wavelength, **kwargs
+            )
             complex_vis_comp *= complex_vis_ring
 
-        complex_vis_comp = self.fc() * complex_vis_comp \
-            * wavelength_ratio[..., np.newaxis]**self.kc()
-        vis = (complex_vis_star[..., np.newaxis] + complex_vis_comp) \
-            / component_ratio[..., np.newaxis]
+        complex_vis_comp = (
+            self.fc()
+            * complex_vis_comp
+            * wavelength_ratio[..., np.newaxis] ** self.kc()
+        )
+        vis = (complex_vis_star[..., np.newaxis] + complex_vis_comp) / component_ratio[
+            ..., np.newaxis
+        ]
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
-    def image_func(self, xx: u.mas, yy: u.mas,
-                   pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
+    def image_func(
+        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um
+    ) -> np.ndarray:
         """Computes the image."""
         fh = 1 - (self.fs(wavelength) + self.fc())
         image = self.comp.image_func(xx, yy, pixel_size, wavelength)
@@ -896,9 +959,12 @@ class StarHaloGauss(FourierComponent):
             image = self.fc() * fftconvolve(image, image_ring, mode="same")
 
         pt = PointSource(inc=self.inc, pa=self.pa)
-        image += self.fs(wavelength) * pt.image_func(xx, yy, pixel_size, wavelength) + fh
+        image += (
+            self.fs(wavelength) * pt.image_func(xx, yy, pixel_size, wavelength) + fh
+        )
         image /= total if (total := np.sum(image, axis=(-2, -1))) != 0 else 1
         return (self.fr() * image).astype(OPTIONS.data.dtype.real)
+
 
 class StarHaloGaussLor(StarHaloGauss):
     """A star, a disk and a halo model with a Gauss-Lorentzian profile.
@@ -928,9 +994,9 @@ def get_component_by_name(name: str) -> FourierComponent:
     return getattr(sys.modules[__name__], name)
 
 
-def assemble_components(parameters: Dict[str, Dict],
-                        shared_params: Optional[Dict[str, Parameter]] = None
-                        ) -> List[FourierComponent]:
+def assemble_components(
+    parameters: Dict[str, Dict], shared_params: Optional[Dict[str, Parameter]] = None
+) -> List[FourierComponent]:
     """Assembles a model from a dictionary of parameters."""
     shared_params = shared_params if shared_params is not None else {}
     if OPTIONS.model.constant_params is None:

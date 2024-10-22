@@ -37,12 +37,14 @@ KEYWORD_DESCRIPTIONS = {
 }
 
 
-def save_fits(components: List[Component],
-              component_labels: List[str],
-              save_dir: Optional[Path] = None,
-              object_name: Optional[str] = None,
-              fit_hyperparameters: Optional[Dict] = None,
-              ncores: Optional[int] = None) -> None:
+def save_fits(
+    components: List[Component],
+    component_labels: List[str],
+    save_dir: Optional[Path] = None,
+    object_name: Optional[str] = None,
+    fit_hyperparameters: Optional[Dict] = None,
+    ncores: Optional[int] = None,
+) -> None:
     """Saves a (.fits)-file of the model with all the information on the
     parameter space."""
     save_dir = Path.cwd() if save_dir is None else Path(save_dir)
@@ -64,7 +66,10 @@ def save_fits(components: List[Component],
     for key in OPTIONS.fit.data:
         key = "vis" if key == "vis2" else key
         description = f"The weight for the {key.upper()} data set"
-        header[f"W{key.upper()}"] = (np.round(getattr(OPTIONS.fit.weights, key), 3), description)
+        header[f"W{key.upper()}"] = (
+            np.round(getattr(OPTIONS.fit.weights, key), 3),
+            description,
+        )
 
     if fit_hyperparameters is not None:
         for key, value in fit_hyperparameters.items():
@@ -92,18 +97,20 @@ def save_fits(components: List[Component],
             data[parameter.shortname] = (grid, parameter().value)
 
         table = fits.BinTableHDU(
-                Table(data=data), header=table_header,
-                name=component_labels[index].upper().replace(" ", "_"))
+            Table(data=data),
+            header=table_header,
+            name=component_labels[index].upper().replace(" ", "_"),
+        )
         tables.append(table)
 
     hdu = fits.HDUList([primary, *tables])
     hdu.writeto(save_dir, overwrite=True)
 
 
-def restore_from_fits(path: Path,
-                      name: Optional[str] = "model.fits"
-                      ) -> Tuple[List[str], List[Component], Optional[NestedSampler]]:
-    """Retrieves the individual model components from a model (.fits)-file 
+def restore_from_fits(
+    path: Path, name: str = "model.fits"
+) -> Tuple[List[str], List[Component], NestedSampler]:
+    """Retrieves the individual model components from a model (.fits)-file
     as well as the component labels and the sampler used.
     """
     components, component_labels = [], []
@@ -119,8 +126,10 @@ def restore_from_fits(path: Path,
 
             component_labels.append(card.name)
             param_names, param_data = card.data.columns.names, card.data.tolist()
-            param_grid = [value if not np.all(np.isnan(value)) else None
-                          for value in param_data[0]]
+            param_grid = [
+                value if not np.all(np.isnan(value)) else None
+                for value in param_data[0]
+            ]
 
             params = []
             for name, value, grid in zip(param_names, param_data[1], param_grid):
@@ -140,11 +149,15 @@ def restore_from_fits(path: Path,
                 param.shortname = param.name = name
                 params.append(param)
 
-            component = get_component_by_name(header["COMP"])(**dict(zip(param_names, params)))
+            component = get_component_by_name(header["COMP"])(
+                **dict(zip(param_names, params))
+            )
             components.append(component)
 
-    OPTIONS.model.components_and_params = [[label.lower(), component.get_params()]
-                                            for label, component in zip(component_labels, components)]
+    OPTIONS.model.components_and_params = [
+        [label.lower(), component.get_params()]
+        for label, component in zip(component_labels, components)
+    ]
 
     # TODO: Add here the other samplers and emcee
     sampler = DynamicNestedSampler.restore(path / "sampler.save")

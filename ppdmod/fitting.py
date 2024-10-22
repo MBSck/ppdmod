@@ -32,11 +32,12 @@ def get_priors() -> np.ndarray:
 
 
 def set_theta_from_params(
-        components_and_params: List[List[Dict]],
-        shared_params: Optional[Dict[str, Parameter]] = None) -> np.ndarray:
+    components_and_params: List[List[Dict]],
+    shared_params: Optional[Dict[str, Parameter]] = None,
+) -> np.ndarray:
     """Sets the theta vector from the parameters."""
     theta = []
-    for (_, params) in components_and_params:
+    for _, params in components_and_params:
         if not params:
             continue
         theta.extend([parameter.value for parameter in params.values()])
@@ -45,16 +46,15 @@ def set_theta_from_params(
 
 
 def set_params_from_theta(
-        theta: np.ndarray
-        ) -> Tuple[List[Dict[str, Component]], Dict[str, Parameter]]:
+    theta: np.ndarray,
+) -> Tuple[List[Dict[str, Component]], Dict[str, Parameter]]:
     """Sets the parameters from the theta vector."""
     components_and_params = OPTIONS.model.components_and_params
     shared_params = OPTIONS.model.shared_params
 
     new_shared_params = {}
     if shared_params not in [None, {}]:
-        for key, param in zip(shared_params.keys(),
-                              theta[-len(shared_params):]):
+        for key, param in zip(shared_params.keys(), theta[-len(shared_params) :]):
             new_shared_params[key] = param
 
     lower, upper = None, 0
@@ -66,7 +66,8 @@ def set_params_from_theta(
             upper = -len(shared_params) if shared_params not in [None, {}] else upper
 
         new_components_and_params.append(
-            [component, dict(zip(params.keys(), theta[lower:upper]))])
+            [component, dict(zip(params.keys(), theta[lower:upper]))]
+        )
 
         lower = lower + len(params) if lower is not None else len(params)
 
@@ -85,24 +86,30 @@ def init_randomly(nwalkers: Optional[int] = None) -> np.ndarray:
     theta : numpy.ndarray
     """
     params = []
-    for (_, param) in OPTIONS.model.components_and_params:
+    for _, param in OPTIONS.model.components_and_params:
         params.extend(param.values())
 
     if OPTIONS.model.shared_params is not None:
         params.extend(OPTIONS.model.shared_params.values())
 
     if nwalkers is None:
-        return np.array([np.random.uniform(param.min, param.max)
-                         for param in params])
-    return np.array([[np.random.uniform(param.min, param.max)
-                      for param in params] for _ in range(nwalkers)])
+        return np.array([np.random.uniform(param.min, param.max) for param in params])
+    return np.array(
+        [
+            [np.random.uniform(param.min, param.max) for param in params]
+            for _ in range(nwalkers)
+        ]
+    )
 
 
-def compute_chi_sq(data: u.Quantity, error: u.Quantity,
-                   model_data: u.Quantity,
-                   diff_method: Optional[str] = "linear",
-                   func_method: Optional[str] = "logarithmic",
-                   lnf: Optional[float] = None) -> float:
+def compute_chi_sq(
+    data: u.Quantity,
+    error: u.Quantity,
+    model_data: u.Quantity,
+    diff_method: Optional[str] = "linear",
+    func_method: Optional[str] = "logarithmic",
+    lnf: Optional[float] = None,
+) -> float:
     """Computes the chi square minimisation.
 
     Parameters
@@ -126,15 +133,15 @@ def compute_chi_sq(data: u.Quantity, error: u.Quantity,
     chi_sq : float
     """
     if lnf is None:
-        sigma_squared = error ** 2
+        sigma_squared = error**2
     else:
-        sigma_squared = error ** 2 + model_data ** 2 * np.exp(2 * lnf)
+        sigma_squared = error**2 + model_data**2 * np.exp(2 * lnf)
 
     diff = data - model_data
     if diff_method != "linear":
         diff = np.angle(np.exp(diff * u.deg.to(u.rad) * 1j), deg=True)
 
-    square_term = diff ** 2 / sigma_squared
+    square_term = diff**2 / sigma_squared
     if func_method == "default":
         return square_term.sum()
 
@@ -143,11 +150,13 @@ def compute_chi_sq(data: u.Quantity, error: u.Quantity,
 
 # TODO: Write tests (ASPRO) that tests multiple components with the total flux
 # TODO: Make it so that both point source and star can be used at the same time
-def compute_observables(components: List[Component],
-                        wavelength: Optional[np.ndarray] = None,
-                        rzero: Optional[bool] = False,
-                        rcomponents: Optional[bool] = False,
-                        rraw: Optional[bool] = False) -> Tuple[np.ndarray]:
+def compute_observables(
+    components: List[Component],
+    wavelength: Optional[np.ndarray] = None,
+    rzero: Optional[bool] = False,
+    rcomponents: Optional[bool] = False,
+    rraw: Optional[bool] = False,
+) -> Tuple[np.ndarray]:
     """Calculates the observables from the model.
 
     Parameters
@@ -168,10 +177,14 @@ def compute_observables(components: List[Component],
 
     complex_vis_comps, complex_t3_comps = [], []
     for component in [comp for comp in components if comp.name != "Point Source"]:
-        complex_vis_comps.append(component.compute_complex_vis(
-            vis.ucoord, vis.vcoord, wavelength))
-        complex_t3_comps.append(component.compute_complex_vis(
-            OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord, wavelength))
+        complex_vis_comps.append(
+            component.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
+        )
+        complex_t3_comps.append(
+            component.compute_complex_vis(
+                OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord, wavelength
+            )
+        )
 
     complex_vis_comps = np.array(complex_vis_comps)
     complex_t3_comps = np.array(complex_t3_comps)
@@ -222,8 +235,9 @@ def compute_observables(components: List[Component],
     return flux_model, vis_model, t3_model
 
 
-def compute_sed_chi_sq(flux_model: np.ndarray,
-                       reduced: Optional[bool] = False) -> float:
+def compute_sed_chi_sq(
+    flux_model: np.ndarray, reduced: Optional[bool] = False
+) -> float:
     """Calculates the sed model's chi square from the observables.
 
     Parameters
@@ -248,10 +262,12 @@ def compute_sed_chi_sq(flux_model: np.ndarray,
     flux = OPTIONS.data.flux
     nan_indices = np.isnan(flux.value)
     func_method = "default" if reduced else "logarithmic"
-    chi_sq = compute_chi_sq(flux.value[~nan_indices],
-                            flux.err[~nan_indices],
-                            flux_model.flatten(),
-                            func_method=func_method)
+    chi_sq = compute_chi_sq(
+        flux.value[~nan_indices],
+        flux.err[~nan_indices],
+        flux_model.flatten(),
+        func_method=func_method,
+    )
 
     # NOTE: The -1 here indicates that one of the parameters is actually fixed
     if reduced:
@@ -262,11 +278,12 @@ def compute_sed_chi_sq(flux_model: np.ndarray,
 
 
 def compute_observable_chi_sq(
-        flux_model: np.ndarray,
-        vis_model: np.ndarray,
-        t3_model: np.ndarray,
-        reduced: Optional[bool] = False,
-        split: Optional[bool] = False):
+    flux_model: np.ndarray,
+    vis_model: np.ndarray,
+    t3_model: np.ndarray,
+    reduced: Optional[bool] = False,
+    split: Optional[bool] = False,
+):
     """Calculates the disc model's chi square from the observables.
 
     Parameters
@@ -298,19 +315,25 @@ def compute_observable_chi_sq(
         weight = getattr(OPTIONS.fit.weights, key)
         nan_indices = np.isnan(data.value)
         diff_method = "linear" if key != "t3" else "exponential"
-        chi_sqs.append(compute_chi_sq(
-            data.value[~nan_indices],
-            data.err[~nan_indices],
-            params[key][~nan_indices],
-            diff_method=diff_method,
-            func_method=func_method) * weight)
+        chi_sqs.append(
+            compute_chi_sq(
+                data.value[~nan_indices],
+                data.err[~nan_indices],
+                params[key][~nan_indices],
+                diff_method=diff_method,
+                func_method=func_method,
+            )
+            * weight
+        )
 
     chi_sqs = np.array(chi_sqs).astype(float)
     ndata, nfree_params = get_counts_data(), get_priors().shape[0]
     if reduced:
         chi_sqs = np.append(chi_sqs, [0] * (3 - chi_sqs.size))
         rchi_sq = chi_sqs.sum() / (ndata.sum() - nfree_params)
-        return np.abs([rchi_sq, *chi_sqs / (ndata - nfree_params)]) if split else rchi_sq
+        return (
+            np.abs([rchi_sq, *chi_sqs / (ndata - nfree_params)]) if split else rchi_sq
+        )
 
     return [chi_sqs.sum(), *chi_sqs] if split else chi_sqs.sum()
 
@@ -332,16 +355,25 @@ def ptform_one_disc(theta: List[float], labels: List[str]) -> np.ndarray:
     Only works with two components (as of now - could be extended).
     """
     params, priors = transform_uniform_prior(theta), get_priors()
-    indices_radii = list(map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels))))
+    indices_radii = list(
+        map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
+    )
     params[indices_radii[2]] = params[indices_radii[1]]
-    params[indices_radii[-1]] = params[indices_radii[2]] + np.diff(priors[indices_radii[-1]])[0] * theta[indices_radii[-1]]
+    params[indices_radii[-1]] = (
+        params[indices_radii[2]]
+        + np.diff(priors[indices_radii[-1]])[0] * theta[indices_radii[-1]]
+    )
     if params[indices_radii[-2]] > priors[indices_radii[-2]][1]:
         params[indices_radii[-2]] = priors[indices_radii[-2]][1]
 
     indices_sigma0 = list(map(labels.index, filter(lambda x: "sigma0" in x, labels)))
     indices_p = list(map(labels.index, filter(lambda x: "p" in x, labels)))
     r0 = OPTIONS.model.reference_radius.value
-    sigma01, p1, p2 = params[indices_sigma0[0]], params[indices_p[0]], params[indices_p[1]]
+    sigma01, p1, p2 = (
+        params[indices_sigma0[0]],
+        params[indices_p[0]],
+        params[indices_p[1]],
+    )
     params[indices_sigma0[1]] = sigma01 * (params[indices_radii[1]] / r0) ** (p1 - p2)
 
     return params
@@ -350,14 +382,19 @@ def ptform_one_disc(theta: List[float], labels: List[str]) -> np.ndarray:
 def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray:
     """Transform that soft constrains successive radii to be smaller than the one before."""
     params, priors = transform_uniform_prior(theta), get_priors()
-    indices = list(map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels))))
+    indices = list(
+        map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
+    )
     for count, index in enumerate(indices):
         if count == len(indices) - 1:
             break
 
         current_radius, next_radius = params[index], params[indices[count + 1]]
         if next_radius <= current_radius:
-            next_theta, next_priors = theta[indices[count + 1]], priors[indices[count + 1]]
+            next_theta, next_priors = (
+                theta[indices[count + 1]],
+                priors[indices[count + 1]],
+            )
             updated_radius = current_radius + np.diff(next_priors)[0] * next_theta
 
             if updated_radius > next_priors[1]:
@@ -370,7 +407,9 @@ def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray
 
 def ptform_sed(theta: List[float], labels: List[str]) -> np.ndarray:
     """Transform that soft constrains successive radii to be smaller than the one before."""
-    indices = list(map(labels.index, filter(lambda x: "weight" in x and "pah" not in x, labels)))
+    indices = list(
+        map(labels.index, filter(lambda x: "weight" in x and "pah" not in x, labels))
+    )
     params = transform_uniform_prior(theta)
 
     remainder = 100
@@ -382,8 +421,10 @@ def ptform_sed(theta: List[float], labels: List[str]) -> np.ndarray:
     return params
 
 
-def lnprior(components_and_params: List[List[Dict]],
-            shared_params: Optional[Dict[str, float]] = None) -> float:
+def lnprior(
+    components_and_params: List[List[Dict]],
+    shared_params: Optional[Dict[str, float]] = None,
+) -> float:
     """Checks if the priors are in bounds.
 
     Parameters
@@ -399,14 +440,16 @@ def lnprior(components_and_params: List[List[Dict]],
         The log of the prior.
     """
     if shared_params not in [{}, None]:
-        for value, param in zip(shared_params.values(),
-                                OPTIONS.model.shared_params.values()):
+        for value, param in zip(
+            shared_params.values(), OPTIONS.model.shared_params.values()
+        ):
             if param.free:
                 if not param.min < value < param.max:
                     return -np.inf
 
     for (_, values), (_, params) in zip(
-            components_and_params, OPTIONS.model.components_and_params):
+        components_and_params, OPTIONS.model.components_and_params
+    ):
         for value, param in zip(values.values(), params.values()):
             if param.free:
                 if not param.min < value < param.max:
@@ -467,13 +510,16 @@ def lnprob_sed(theta: np.ndarray) -> float:
     components = assemble_components(parameters, shared_params)
     return compute_sed_chi_sq(components[0].compute_flux(OPTIONS.fit.wavelengths))
 
-def run_mcmc(nwalkers: int,
-             nburnin: Optional[int] = 0,
-             nsteps: Optional[int] = 100,
-             ncores: Optional[int] = 6,
-             debug: Optional[bool] = False,
-             save_dir: Optional[Path] = None,
-             **kwargs) -> np.ndarray:
+
+def run_mcmc(
+    nwalkers: int,
+    nburnin: Optional[int] = 0,
+    nsteps: Optional[int] = 100,
+    ncores: Optional[int] = 6,
+    debug: Optional[bool] = False,
+    save_dir: Optional[Path] = None,
+    **kwargs,
+) -> np.ndarray:
     """Runs the emcee Hastings Metropolitan sampler.
 
     The EnsambleSampler recieves the parameters and the args are passed to
@@ -498,7 +544,8 @@ def run_mcmc(nwalkers: int,
 
     print(f"Executing MCMC.\n{'':-^50}")
     sampler = emcee.EnsembleSampler(
-        nwalkers, theta.shape[1], kwargs.pop("lnprob", lnprob), pool=pool)
+        nwalkers, theta.shape[1], kwargs.pop("lnprob", lnprob), pool=pool
+    )
 
     if nburnin is not None:
         print("Running burn-in...")
@@ -517,13 +564,15 @@ def run_mcmc(nwalkers: int,
     return sampler
 
 
-def run_dynesty(sample: Optional[str] = "rwalk",
-                bound: Optional[str] = "multi",
-                ncores: Optional[int] = 6,
-                debug: Optional[bool] = False,
-                save_dir: Optional[Path] = None,
-                method: Optional[str] = "static",
-                **kwargs) -> np.ndarray:
+def run_dynesty(
+    sample: Optional[str] = "rwalk",
+    bound: Optional[str] = "multi",
+    ncores: Optional[int] = 6,
+    debug: Optional[bool] = False,
+    save_dir: Optional[Path] = None,
+    method: Optional[str] = "static",
+    **kwargs,
+) -> np.ndarray:
     """Runs the dynesty nested sampler.
 
     Parameters
@@ -545,29 +594,40 @@ def run_dynesty(sample: Optional[str] = "rwalk",
     ndim = init_randomly().shape[0]
     pool = Pool(processes=ncores) if not debug else None
     queue_size = ncores if not debug else None
-    general_kwargs = {"bound": bound, "queue_size": queue_size,
-                      "sample": sample,
-                      "periodic": kwargs.pop("periodic", None),
-                      "reflective": kwargs.pop("reflective", None),
-                      "pool": pool, "update_interval": ndim}
+    general_kwargs = {
+        "bound": bound,
+        "queue_size": queue_size,
+        "sample": sample,
+        "periodic": kwargs.pop("periodic", None),
+        "reflective": kwargs.pop("reflective", None),
+        "pool": pool,
+        "update_interval": ndim,
+    }
 
     static_kwargs = {"nlive": kwargs.pop("nlive", 1000)}
     sampler_kwargs = {"dynamic": {}, "static": static_kwargs}
 
     static_run = {"dlogz": kwargs.pop("dlogz", 0.01)}
-    dynamic_run = {"nlive_batch": kwargs.pop("nlive_batch", 1000),
-                   "maxbatch": kwargs.pop("maxbatch", 100),
-                   "dlogz_init": kwargs.pop("dlogz_init", 0.01),
-                   "nlive_init": kwargs.pop("nlive_init", 1000)}
+    dynamic_run = {
+        "nlive_batch": kwargs.pop("nlive_batch", 1000),
+        "maxbatch": kwargs.pop("maxbatch", 100),
+        "dlogz_init": kwargs.pop("dlogz_init", 0.01),
+        "nlive_init": kwargs.pop("nlive_init", 1000),
+    }
     run_kwargs = {"dynamic": dynamic_run, "static": static_run}
 
     print(f"Executing Dynesty.\n{'':-^50}")
     ptform = kwargs.pop("ptform", transform_uniform_prior)
     sampler = samplers[method](
-        kwargs.pop("lnprob", lnprob), ptform, ndim,
-        **general_kwargs, **sampler_kwargs[method])
-    sampler.run_nested(**run_kwargs[method], print_progress=True,
-                       checkpoint_file=str(checkpoint_file))
+        kwargs.pop("lnprob", lnprob),
+        ptform,
+        ndim,
+        **general_kwargs,
+        **sampler_kwargs[method],
+    )
+    sampler.run_nested(
+        **run_kwargs[method], print_progress=True, checkpoint_file=str(checkpoint_file)
+    )
 
     if not debug:
         pool.close()
@@ -599,11 +659,12 @@ def run_fit(**kwargs) -> np.ndarray:
 
 
 def get_best_fit(
-        sampler: Union[emcee.EnsembleSampler],
-        discard: Optional[int] = 0,
-        distribution: Optional[str] = "default",
-        method: Optional[str] = "quantile",
-        **kwargs) -> Tuple[np.ndarray, np.ndarray]:
+    sampler: Union[emcee.EnsembleSampler],
+    discard: Optional[int] = 0,
+    distribution: Optional[str] = "default",
+    method: Optional[str] = "quantile",
+    **kwargs,
+) -> Tuple[np.ndarray, np.ndarray]:
     """Gets the best fit from the emcee sampler."""
     params, uncertainties = [], []
     if OPTIONS.fit.method == "emcee":
@@ -617,8 +678,7 @@ def get_best_fit(
         # TODO: Check if this also samples non-jointly
         if method == "quantile":
             for index in range(samples.shape[1]):
-                quantiles = np.percentile(
-                    samples[:, index], OPTIONS.fit.quantiles)
+                quantiles = np.percentile(samples[:, index], OPTIONS.fit.quantiles)
                 params.append(quantiles[1])
                 uncertainties.append(np.diff(quantiles))
             params, uncertainties = map(np.array, (params, uncertainties))
@@ -631,8 +691,14 @@ def get_best_fit(
         # NOTE: This is the approach for joint sampling (as in the parameters are
         # dependent on each other within the model to some extent)
         params = results.samples[results.logl.argmax()]
-        quantiles = np.array([dyutils.quantile(samps, np.array(OPTIONS.fit.quantiles) / 100, weights=weights)
-                              for samps in results.samples.T])
+        quantiles = np.array(
+            [
+                dyutils.quantile(
+                    samps, np.array(OPTIONS.fit.quantiles) / 100, weights=weights
+                )
+                for samps in results.samples.T
+            ]
+        )
         uncertainties = np.array([(quantile[0], quantile[1]) for quantile in quantiles])
 
     return params, uncertainties

@@ -38,9 +38,13 @@ fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "downsampled"
 # fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "only_low"
 
 # wavelength_range = None
-wavelength_range = [8., 13.1] * u.um
-data = set_data(list(fits_dir.glob("*fits")), wavelengths="all",
-                wavelength_range=wavelength_range, fit_data=["flux"])
+wavelength_range = [8.0, 13.1] * u.um
+data = set_data(
+    list(fits_dir.glob("*fits")),
+    wavelengths="all",
+    wavelength_range=wavelength_range,
+    fit_data=["flux"],
+)
 
 WAVELENGTHS = OPTIONS.fit.wavelengths
 OPACITY_DIR = DATA_DIR / "opacities"
@@ -53,8 +57,13 @@ NAMES = dict(zip(SHORTNAMES, NAMES))
 OPTIONS.model.constant_params = {}
 for shortname, name in NAMES.items():
     for size, value in {"small": 0.1, "large": 2.0}.items():
-        grid, value = np.loadtxt(GRF_DIR / f"{name}{value}.Combined.Kappa", usecols=(0, 2), unpack=True)
-        param_name, param = f"kappa_{shortname}_{size}", Parameter(**STANDARD_PARAMETERS.kappa_abs)
+        grid, value = np.loadtxt(
+            GRF_DIR / f"{name}{value}.Combined.Kappa", usecols=(0, 2), unpack=True
+        )
+        param_name, param = (
+            f"kappa_{shortname}_{size}",
+            Parameter(**STANDARD_PARAMETERS.kappa_abs),
+        )
         param.grid, param.value = grid, value
         param.shortname = param.name = param_name
         OPTIONS.model.constant_params[param_name] = param
@@ -117,35 +126,39 @@ np.save(result_dir / "labels.npy", LABELS)
 np.save(result_dir / "units.npy", UNITS)
 
 components = assemble_components(
-        OPTIONS.model.components_and_params,
-        OPTIONS.model.shared_params)
+    OPTIONS.model.components_and_params, OPTIONS.model.shared_params
+)
 
 rchi_sq = compute_sed_chi_sq(
-    components[0].compute_flux(OPTIONS.fit.wavelengths), reduced=True)
+    components[0].compute_flux(OPTIONS.fit.wavelengths), reduced=True
+)
 print(f"rchi_sq: {rchi_sq:.2f}")
 
 
 if __name__ == "__main__":
     ncores = 70
     fit_params = {"nlive_init": 2000, "lnprob": lnprob_sed, "ptform": ptform}
-    sampler = run_fit(**fit_params, ncores=ncores,
-                      method="dynamic", save_dir=result_dir,
-                      debug=False)
+    sampler = run_fit(
+        **fit_params, ncores=ncores, method="dynamic", save_dir=result_dir, debug=False
+    )
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
     components_and_params, shared_params = set_params_from_theta(theta)
-    components = assemble_components(
-            components_and_params, shared_params)
+    components = assemble_components(components_and_params, shared_params)
 
     rchi_sq = compute_sed_chi_sq(
-        components[0].compute_flux(OPTIONS.fit.wavelengths), reduced=True)
+        components[0].compute_flux(OPTIONS.fit.wavelengths), reduced=True
+    )
     print(f"rchi_sq: {rchi_sq:.2f}")
 
     plot_sed([7.5, 14] * u.um, components, scaling="nu", save_dir=result_dir)
     plot_sed([7.5, 14] * u.um, components, scaling=None, save_dir=result_dir)
 
     save_fits(
-        components, component_labels,
-        fit_hyperparameters=fit_params, ncores=ncores,
+        components,
+        component_labels,
+        fit_hyperparameters=fit_params,
+        ncores=ncores,
         save_dir=result_dir / "sed.fits",
-        object_name="HD142527")
+        object_name="HD142527",
+    )

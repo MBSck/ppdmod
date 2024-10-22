@@ -58,4 +58,3 @@ include = ["ppdmod*"]
 
 [project.urls]
 repository = "https://github.com/MBSck/ppdmod"
-

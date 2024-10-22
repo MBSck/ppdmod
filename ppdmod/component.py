@@ -10,6 +10,7 @@ from .utils import broadcast_baselines, compute_effective_baselines
 
 class Component:
     """The base class for the component."""
+
     name = "Generic component"
     shortname = "GenComp"
     description = "This is base component are derived."
@@ -70,6 +71,7 @@ class FourierComponent(Component):
     dim : float
         The dimension (px).
     """
+
     name = "Fourier component"
     shortname = "FourierComp"
     description = "The component from which all analytical components are derived."
@@ -126,8 +128,8 @@ class FourierComponent(Component):
             s.free = c.free = value
 
     def compute_internal_grid(
-            self, dim: int, pixel_size: u.au
-            ) -> Tuple[u.Quantity[u.au], u.Quantity[u.au]]:
+        self, dim: int, pixel_size: u.au
+    ) -> Tuple[u.Quantity[u.au], u.Quantity[u.au]]:
         """Calculates the model grid.
 
         Parameters
@@ -144,33 +146,40 @@ class FourierComponent(Component):
         """
         return np.array([]) * u.au, np.array([]) * u.au
 
-
     def translate_image_func(
-            self, xx: u.mas, yy: u.mas
-            ) -> Tuple[u.Quantity[u.mas], u.Quantity[u.mas]]:
+        self, xx: u.mas, yy: u.mas
+    ) -> Tuple[u.Quantity[u.mas], u.Quantity[u.mas]]:
         """Shifts the coordinates in image space according to an offset."""
         xx, yy = map(lambda x: u.Quantity(value=x, unit=u.mas), [xx, yy])
-        xx, yy =  xx-self.x(), yy-self.y()
+        xx, yy = xx - self.x(), yy - self.y()
         return xx.astype(OPTIONS.data.dtype.real), yy.astype(OPTIONS.data.dtype.real)
 
-    def translate_vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad) -> np.ndarray:
+    def translate_vis_func(
+        self, baselines: 1 / u.rad, baseline_angles: u.rad
+    ) -> np.ndarray:
         """Translates a coordinate shift in image space to Fourier space."""
-        uv_coords = self.x() * np.cos(baseline_angles) + self.y() * np.sin(baseline_angles)
+        uv_coords = self.x() * np.cos(baseline_angles) + self.y() * np.sin(
+            baseline_angles
+        )
         translation = np.exp(2j * np.pi * baselines * uv_coords.to(u.rad))
         return translation.value.astype(OPTIONS.data.dtype.complex)
 
-    def vis_func(self, baselines: 1/u.rad, baseline_angles: u.rad,
-                 wavelength: u.um, **kwargs) -> np.ndarray:
+    def vis_func(
+        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
+    ) -> np.ndarray:
         """Computes the correlated fluxes."""
         return np.array([]).astype(OPTIONS.data.dtype.complex)
 
-    def compute_complex_vis(self, ucoord: u.m, vcoord: u.m,
-                            wavelength: u.um, **kwargs) -> np.ndarray:
+    def compute_complex_vis(
+        self, ucoord: u.m, vcoord: u.m, wavelength: u.um, **kwargs
+    ) -> np.ndarray:
         """Computes the correlated fluxes."""
         baselines, baseline_angles = compute_effective_baselines(
-                ucoord, vcoord, self.inc(), self.pa())
+            ucoord, vcoord, self.inc(), self.pa()
+        )
         wavelength, baselines, baseline_angles = broadcast_baselines(
-                wavelength, baselines, baseline_angles, ucoord)
+            wavelength, baselines, baseline_angles, ucoord
+        )
 
         vis = self.vis_func(baselines, baseline_angles, wavelength, **kwargs)
         vis = vis.squeeze(-1) if vis.shape[-1] == 1 else vis
@@ -182,20 +191,30 @@ class FourierComponent(Component):
 
         return (vis * shift).astype(OPTIONS.data.dtype.complex)
 
-    def image_func(self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
+    def image_func(
+        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um
+    ) -> np.ndarray:
         """Calculates the image."""
         return np.array([]).astype(OPTIONS.data.dtype.real)
 
-    def compute_image(self, dim: int, pixel_size: u.mas, wavelength: u.um) -> np.ndarray:
+    def compute_image(
+        self, dim: int, pixel_size: u.mas, wavelength: u.um
+    ) -> np.ndarray:
         """Computes the image."""
-        wavelength = wavelength if isinstance(wavelength, u.Quantity)\
+        wavelength = (
+            wavelength
+            if isinstance(wavelength, u.Quantity)
             else u.Quantity(wavelength, u.um)
+        )
         try:
             wavelength = wavelength[:, np.newaxis, np.newaxis]
         except TypeError:
             wavelength = wavelength[np.newaxis, np.newaxis]
-        pixel_size = pixel_size if isinstance(pixel_size, u.Quantity)\
+        pixel_size = (
+            pixel_size
+            if isinstance(pixel_size, u.Quantity)
             else u.Quantity(pixel_size, u.mas)
+        )
 
         xx = np.linspace(-0.5, 0.5, dim) * pixel_size * dim
         xx, yy = self.translate_image_func(*np.meshgrid(xx, xx))
@@ -204,7 +223,7 @@ class FourierComponent(Component):
             pa_rad = self.pa().to(u.rad)
             xr = xx * np.cos(pa_rad) - yy * np.sin(pa_rad)
             yr = xx * np.sin(pa_rad) + yy * np.cos(pa_rad)
-            xx, yy = xr * (1/self.inc()), yr
+            xx, yy = xr * (1 / self.inc()), yr
 
         image = self.image_func(xx, yy, pixel_size, wavelength)
         return (self.fr() * image).value.astype(OPTIONS.data.dtype.real)
