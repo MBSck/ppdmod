@@ -36,8 +36,8 @@ matplotlib.use("Agg")
 def set_axes_color(
     ax: Axes,
     background_color: str,
-    set_label: Optional[bool] = True,
-    direction: Optional[str] = None,
+    set_label: bool = True,
+    direction: str = None,
 ) -> None:
     """Sets all the axes' facecolor."""
     opposite_color = "white" if background_color == "black" else "black"
@@ -65,10 +65,10 @@ def plot_component_mosaic(
     components: List[FourierComponent],
     dim: int,
     pixel_size: u.mas,
-    norm: Optional[float] = 0.5,
-    zoom: Optional[float] = None,
-    cols: Optional[int] = 4,
-    cmap: Optional[str] = "inferno",
+    norm: float = 0.5,
+    zoom: float = None,
+    cols: int = 4,
+    cmap: str = "inferno",
     savefig: Optional[Path] = None,
 ) -> None:
     """Plots a mosaic of components for the different wavelengths."""
@@ -138,12 +138,12 @@ def plot_components(
     dim: int,
     pixel_size: u.mas,
     wavelength: u.um,
-    norm: Optional[float] = 0.5,
-    save_as_fits: Optional[bool] = False,
+    norm: float = 0.5,
+    save_as_fits: bool = False,
     zoom: Optional[float] = None,
     ax: Optional[Axes] = None,
-    cmap: Optional[str] = "inferno",
-    no_text: Optional[bool] = False,
+    cmap: str = "inferno",
+    no_text: bool = False,
     savefig: Optional[Path] = None,
 ) -> Tuple[Axes]:
     """Plots a component."""
@@ -221,7 +221,7 @@ def plot_components(
 
 
 def format_labels(
-    labels: List[str], units: Optional[List[str]] = None, split: Optional[bool] = False
+    labels: List[str], units: Optional[List[str]] = None, split: bool = False
 ) -> List[str]:
     """Formats the labels in LaTeX.
 
@@ -357,8 +357,8 @@ def plot_corner(
     sampler: np.ndarray,
     labels: List[str],
     units: Optional[List[str]] = None,
-    discard: Optional[int] = 0,
-    fontsize: Optional[int] = 12,
+    discard: int = 0,
+    fontsize: int = 12,
     savefig: Optional[Path] = None,
     **kwargs,
 ) -> None:
@@ -438,7 +438,7 @@ def plot_chains(
     sampler: np.ndarray,
     labels: List[str],
     units: Optional[List[str]] = None,
-    discard: Optional[int] = 0,
+    discard: int = 0,
     savefig: Optional[Path] = None,
     **kwargs,
 ) -> None:
@@ -492,7 +492,7 @@ def plot_all(
     model_file: Path,
     pixel_size: u.mas,
     wavelengths: u.um,
-    zoom: Optional[float] = 25,
+    zoom: float = 25,
     save_dir: Optional[Path] = None,
 ) -> None:
     """Plots all the plots.
@@ -556,11 +556,11 @@ def plot_datapoints(
     axarr,
     wavelengths: u.um,
     components: Optional[List] = None,
-    data_to_plot: Optional[List[str]] = OPTIONS.fit.data,
+    data_to_plot: List[str] = OPTIONS.fit.data,
     norm: Optional[np.ndarray] = None,
     wavelength_range: Optional[List[float]] = None,
-    plot_nan: Optional[bool] = False,
-    colormap: Optional[str] = OPTIONS.plot.color.colormap,
+    plot_nan: bool = False,
+    colormap: str = OPTIONS.plot.color.colormap,
 ) -> None:
     """Plots the deviation of a model from real data of an object for
     total flux, visibilities and closure phases.
@@ -712,10 +712,10 @@ def plot_datapoints(
 def plot_fit(
     components: Optional[List] = None,
     data_to_plot: Optional[List[str]] = None,
-    cmap: Optional[str] = OPTIONS.plot.color.colormap,
-    ylimits: Optional[Dict[str, List[float]]] = {},
+    cmap: str = OPTIONS.plot.color.colormap,
+    ylimits: Dict[str, List[float]] = {},
     wavelength_range: Optional[List[float]] = None,
-    plot_nan: Optional[bool] = False,
+    plot_nan: bool = False,
     title: Optional[str] = None,
     savefig: Optional[Path] = None,
 ):
@@ -894,11 +894,11 @@ def plot_fit(
 
 def plot_overview(
     data_to_plot: Optional[List[str]] = None,
-    colormap: Optional[str] = OPTIONS.plot.color.colormap,
+    colormap: str = OPTIONS.plot.color.colormap,
     wavelength_range: Optional[List[float]] = None,
-    ylimits: Optional[Dict[str, List[float]]] = {},
+    ylimits: Dict[str, List[float]] = {},
     title: Optional[str] = None,
-    raxis: Optional[bool] = False,
+    raxis: bool = False,
     inclination: Optional[float] = None,
     pos_angle: Optional[float] = None,
     savefig: Optional[Path] = None,
@@ -1090,8 +1090,8 @@ def plot_overview(
 def plot_sed(
     wavelength_range: u.um,
     components: Optional[List[FourierComponent]] = None,
-    scaling: Optional[str] = "nu",
-    no_model: Optional[bool] = False,
+    scaling: str = "nu",
+    no_model: bool = False,
     ax: Optional[plt.Axes] = None,
     save_dir: Optional[Path] = None,
 ):
@@ -1351,7 +1351,7 @@ def plot_product(
     save_path=None,
     ax=None,
     colorbar=False,
-    cmap: Optional[str] = OPTIONS.plot.color.colormap,
+    cmap: str = OPTIONS.plot.color.colormap,
     scale=None,
     label=None,
 ):
@@ -1404,7 +1404,7 @@ def plot_product(
 
 def plot_intermediate_products(
     dim: int,
-    wavelength: Optional[u.Quantity[u.um]],
+    wavelength: u.Quantity[u.um],
     components: List[FourierComponent],
     component_labels: List[str],
     save_dir: Optional[Path] = None,

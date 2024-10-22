@@ -243,9 +243,11 @@ def set_fit_weights(weights: Optional[List[float]] = None) -> None:
     if weights is not None:
         wflux, wvis, wt3 = weights
     else:
-        nflux, nvis, nt3, wvis = (*get_counts_data(), 1)
-        wflux = 0 if nflux == 0 else nvis / nflux
-        wt3 = 0 if nt3 == 0 else nvis / nt3
+        nflux, nvis, nt3 = get_counts_data()
+        nmax = max(nflux, nvis, nt3)
+        wflux = 0. if nflux == 0 else nmax / nflux
+        wvis = 0. if nvis == 0 else nmax / nvis
+        wt3 = 0. if nt3 == 0 else nmax / nt3
 
     norm = wflux + wvis + wt3
     OPTIONS.fit.weights.flux = wflux / norm

@@ -205,7 +205,7 @@ def smooth_interpolation(
 
 
 def take_time_average(
-    func: Callable, *args, nsteps: Optional[int] = 10
+    func: Callable, *args, nsteps: int = 10
 ) -> Tuple[Callable, float]:
     """Takes a time average of the code."""
     execution_times = []
@@ -644,7 +644,7 @@ def get_opacity(
     method: str,
     wavelength_grid: Optional[np.ndarray] = None,
     fmaxs: Optional[List[float]] = None,
-    individual: Optional[bool] = False,
+    individual: bool = False,
     **kwargs,
 ) -> Tuple[np.ndarray]:
     """Gets the opacity from input parameters."""
@@ -680,7 +680,7 @@ def get_opacity(
                 file_name = f"{grf_dict[name]}{size:.1f}.Combined.Kappa"
             else:
                 size = "Big" if size == "large" else size.title()
-                file_name = f"{prefix}{name.title()}.kappa"
+                file_name = f"{size}{name.title()}.kappa"
 
             files.append(source_dir / method / file_name)
 
@@ -699,10 +699,10 @@ def get_opacity(
 def load_data(
     files: List[Path],
     load_func: Optional[Callable] = None,
-    comments: Optional[str] = "#",
-    skiprows: Optional[int] = 1,
-    usecols: Optional[Tuple[int, int]] = (0, 1),
-    method: Optional[str] = "shortest",
+    comments: str = "#",
+    skiprows: int = 1,
+    usecols: Tuple[int, int] = (0, 1),
+    method: str = "shortest",
     kind: Optional[str] = None,
     fill_value: Optional[str] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:

@@ -1,6 +1,6 @@
 from pathlib import Path
 from types import SimpleNamespace
-from typing import List, Optional
+from typing import List
 
 import astropy.units as u
 import matplotlib.pyplot as plt
@@ -25,7 +25,7 @@ def get_colormap(colormap: str) -> ListedColormap:
         return convert_style_to_colormap(colormap)
 
 
-def get_colorlist(colormap: str, ncolors: Optional[int] = 10) -> List[str]:
+def get_colorlist(colormap: str, ncolors: int = 10) -> List[str]:
     """Gets the colormap as a list from the matplotlib colormaps."""
     return [get_colormap(colormap)(i) for i in range(ncolors)]
 

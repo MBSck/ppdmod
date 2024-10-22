@@ -16,13 +16,13 @@ class Parameter:
     value: Any
     unit: u.Quantity
     shortname: Optional[str] = None
-    free: Optional[bool] = True
+    free: bool = True
     description: Optional[str] = None
     min: Optional[float] = None
     max: Optional[float] = None
     dtype: Optional[type] = None
     grid: Optional[np.ndarray] = None
-    smooth: Optional[bool] = False
+    smooth: bool = False
 
     def __setattr__(self, key: str, value: Any):
         """Sets an attribute."""
@@ -60,7 +60,7 @@ class Parameter:
         return message
 
     def _set_to_numpy_array(
-        self, array: Optional[ArrayLike] = None, retain_value: Optional[bool] = False
+        self, array: Optional[ArrayLike] = None, retain_value: bool = False
     ) -> Union[Any, np.ndarray]:
         """Converts a value to a numpy array."""
         if array is None:

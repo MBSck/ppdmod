@@ -182,9 +182,9 @@ class FourierComponent(Component):
         )
 
         vis = self.vis_func(baselines, baseline_angles, wavelength, **kwargs)
-        vis = vis.squeeze(-1) if vis.shape[-1] == 1 else vis
+        vis = vis.reshape(vis.shape[:-1]) if vis.shape[-1] == 1 else vis
         shift = self.translate_vis_func(baselines, baseline_angles)
-        shift = shift.squeeze(-1) if shift.shape[-1] == 1 else shift
+        shift = shift.reshape(shift.shape[:-1]) if shift.shape[-1] == 1 else shift
 
         if self.shortname != "Point":
             vis *= self.fr()

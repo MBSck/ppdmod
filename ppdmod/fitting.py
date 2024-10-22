@@ -106,8 +106,8 @@ def compute_chi_sq(
     data: u.Quantity,
     error: u.Quantity,
     model_data: u.Quantity,
-    diff_method: Optional[str] = "linear",
-    func_method: Optional[str] = "logarithmic",
+    diff_method: str = "linear",
+    func_method: str = "logarithmic",
     lnf: Optional[float] = None,
 ) -> float:
     """Computes the chi square minimisation.
@@ -153,9 +153,9 @@ def compute_chi_sq(
 def compute_observables(
     components: List[Component],
     wavelength: Optional[np.ndarray] = None,
-    rzero: Optional[bool] = False,
-    rcomponents: Optional[bool] = False,
-    rraw: Optional[bool] = False,
+    rzero: bool = False,
+    rcomponents: bool = False,
+    rraw: bool = False,
 ) -> Tuple[np.ndarray]:
     """Calculates the observables from the model.
 
@@ -236,7 +236,7 @@ def compute_observables(
 
 
 def compute_sed_chi_sq(
-    flux_model: np.ndarray, reduced: Optional[bool] = False
+    flux_model: np.ndarray, reduced: bool = False
 ) -> float:
     """Calculates the sed model's chi square from the observables.
 
@@ -281,8 +281,8 @@ def compute_observable_chi_sq(
     flux_model: np.ndarray,
     vis_model: np.ndarray,
     t3_model: np.ndarray,
-    reduced: Optional[bool] = False,
-    split: Optional[bool] = False,
+    reduced: bool = False,
+    split: bool = False,
 ):
     """Calculates the disc model's chi square from the observables.
 
@@ -513,10 +513,10 @@ def lnprob_sed(theta: np.ndarray) -> float:
 
 def run_mcmc(
     nwalkers: int,
-    nburnin: Optional[int] = 0,
-    nsteps: Optional[int] = 100,
-    ncores: Optional[int] = 6,
-    debug: Optional[bool] = False,
+    nburnin: int = 0,
+    nsteps: int = 100,
+    ncores: int = 6,
+    debug: bool = False,
     save_dir: Optional[Path] = None,
     **kwargs,
 ) -> np.ndarray:
@@ -565,12 +565,12 @@ def run_mcmc(
 
 
 def run_dynesty(
-    sample: Optional[str] = "rwalk",
-    bound: Optional[str] = "multi",
-    ncores: Optional[int] = 6,
-    debug: Optional[bool] = False,
+    sample: str = "rwalk",
+    bound: str = "multi",
+    ncores: int = 6,
+    debug: bool = False,
     save_dir: Optional[Path] = None,
-    method: Optional[str] = "static",
+    method: Opstr = "static",
     **kwargs,
 ) -> np.ndarray:
     """Runs the dynesty nested sampler.
@@ -660,9 +660,9 @@ def run_fit(**kwargs) -> np.ndarray:
 
 def get_best_fit(
     sampler: Union[emcee.EnsembleSampler],
-    discard: Optional[int] = 0,
-    distribution: Optional[str] = "default",
-    method: Optional[str] = "quantile",
+    discard: int = 0,
+    distribution: str = "default",
+    method: str = "quantile",
     **kwargs,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Gets the best fit from the emcee sampler."""
