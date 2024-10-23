@@ -31,7 +31,7 @@ def ptform(theta):
     return ptform_sed(theta, LABELS)
 
 
-DATA_DIR = Path("../data")
+DATA_DIR = Path(__file__).parent.parent / "data"
 # fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "averaged"
 fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "downsampled"
 # fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "only_high"
@@ -153,6 +153,7 @@ if __name__ == "__main__":
 
     plot_sed([7.5, 14] * u.um, components, scaling="nu", save_dir=result_dir)
     plot_sed([7.5, 14] * u.um, components, scaling=None, save_dir=result_dir)
+    np.save(result_dir / "theta.npy", theta)
 
     save_fits(
         components,
