@@ -1112,12 +1112,8 @@ def plot_sed(
 
     if not no_model:
         wavelength = OPTIONS.fit.wavelengths if wavelength is None else wavelength
-
-        flux = []
-        for component in [comp for comp in components if comp.name != "Point Source"]:
-            flux.append(component.compute_flux(wavelength))
-
-        flux = np.sum(flux, axis=0)
+        components = [comp for comp in components if comp.name != "Point Source"]
+        flux = np.sum([comp.compute_flux(wavelength) for comp in components], axis=0)
         if flux.size > 0:
             flux = np.tile(flux, (len(OPTIONS.data.readouts))).real
 
@@ -1154,9 +1150,7 @@ def plot_sed(
         )
         readout_err_percentage = readout_err / readout_flux
 
-        if scaling is None:
-            readout_flux = readout_flux
-        elif scaling == "nu":
+        if scaling == "nu":
             readout_flux = (readout_flux * u.Jy).to(u.W / u.m**2 / u.Hz)
             readout_flux = (
                 readout_flux
@@ -1202,9 +1196,7 @@ def plot_sed(
     flux_label = r"$F_{\nu}$ (Jy)"
     if not no_model:
         flux = flux[:, 0]
-        if scaling is None:
-            flux = flux
-        elif scaling == "nu":
+        if scaling == "nu":
             flux = (flux * u.Jy).to(u.W / u.m**2 / u.Hz)
             flux = (flux * (const.c / (wavelength.to(u.m))).to(u.Hz)).value
             flux_label = r"$\nu F_{\nu}$ (W m$^{-2}$)"
