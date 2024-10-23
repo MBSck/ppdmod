@@ -83,27 +83,29 @@ tempc.shortname = tempc.name = "tempc"
 tempc.description = "The temperature of the black body"
 tempc.value = 390.08
 
-cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
-cont_weight.set(min=0, max=100)
-cont_weight.unit = u.pct
-cont_weight.value = 54
+weight_cont = Parameter(**STANDARD_PARAMETERS.cont_weight)
+weight_cont.set(min=0, max=100)
+weight_cont.unit = u.pct
+weight_cont.value = 54
 
-pah_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
-pah_weight.shortname = pah_weight.name = "pah_weight"
-pah_weight.description = "The mass fraction for the PAHs"
-pah_weight.set(min=0, max=20)
-pah_weight.unit, pah_weight.value = u.one, 1.66
+scale_pah = Parameter(**STANDARD_PARAMETERS.cont_weight)
+scale_pah.shortname = scale_pah.name = "scale_pah"
+scale_pah.description = "The mass fraction for the PAHs"
+scale_pah.set(min=0, max=20)
+scale_pah.unit, scale_pah.value = u.one, 1.66
 
-fr = Parameter(**STANDARD_PARAMETERS.fr)
-fr.description = "Opacity scaling term"
-fr.set(min=15, max=25)
-fr.free, fr.value = True, 17.46
+f = Parameter(**STANDARD_PARAMETERS.fr)
+f.description = "Offset term"
+f.name = f.shortname = "f"
+f.unit = u.one
+f.set(min=15, max=25)
+f.free, f.value = True, 17.46
 
-sed = {"tempc": tempc, "pah_weight": pah_weight, "cont_weight": cont_weight, "fr": fr}
+sed = {"tempc": tempc, "scale_pah": scale_pah, "weight_cont": weight_cont, "f": f}
 weights = [[11.23, 13.40], [5.67, 5.85], [4.09, 3.77], [0.6, 0.24], [0.10, 0.10]]
 for w, key in zip(weights, NAMES.keys()):
     for index, size in enumerate(["small", "large"]):
-        weight_name = f"{key}_{size}_weight"
+        weight_name = f"weight_{key}_{size}"
         weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
         weight.shortname = weight.name = weight_name
         weight.description = f"The mass fraction for {size} {key}"
@@ -114,7 +116,6 @@ for w, key in zip(weights, NAMES.keys()):
 OPTIONS.model.components_and_params = [["SED", sed]]
 LABELS, UNITS = [key for key in sed], [value.unit for value in sed.values()]
 component_labels = ["SED"]
-OPTIONS.fit.method = "dynesty"
 
 result_dir = Path("../model_results/") / "sed_fit"
 day_dir = result_dir / str(datetime.now().date())

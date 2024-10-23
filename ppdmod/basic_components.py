@@ -15,6 +15,8 @@ from .parameter import Parameter
 from .utils import angular_to_distance, distance_to_angular
 
 
+# TODO: Implement this here like it is done in the script (used with oimodeler)
+# avoids errors -> Not super urgent
 class SED(Component):
     name = "SED"
     shortname = "SED"
@@ -25,64 +27,56 @@ class SED(Component):
         self.tempc = Parameter(**STANDARD_PARAMETERS.tempc)
 
         self.pah = Parameter(**STANDARD_PARAMETERS.pah)
-        self.pah_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
-        self.pah_weight.shortname = self.pah_weight.name = "pah_weight"
-        self.pah_weight.description = "The mass fraction for the PAHs"
-        self.pah_weight.unit = u.one
+        self.scale_pah = Parameter(**STANDARD_PARAMETERS.cont_weight)
+        self.scale_pah.shortname = self.scale_pah.name = "pah_scale"
+        self.scale_pah.description = "The mass fraction for the PAHs"
+        self.scale_pah.unit = u.one
 
-        self.kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
-        self.cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
-        self.cont_weight.set(min=0, max=100)
-        self.cont_weight.unit = u.pct
+        self.f = Parameter(**STANDARD_PARAMETERS.fr)
+        self.f.shortname = self.f.name = "f"
+        self.f.description = "Offset term"
+        self.f.unit = u.one
+        self.f.free = True
 
-        self.fr = Parameter(**STANDARD_PARAMETERS.fr)
-        self.fr.description = "Opacity scaling term"
-        self.fr.free = True
+        self.materials = list(
+            ["_".join(key.split("_")[1:]) for key in kwargs.keys() if "kappa" in key]
+        )
 
-        self.materials = ["pyrox", "enst", "forst", "sil", "oliv"]
+        for material in self.materials:
+            for prefix in ["kappa", "weight"]:
+                key = "kappa_abs" if prefix == "kappa" else "cont_weight"
+                param = Parameter(**getattr(STANDARD_PARAMETERS, key))
+                param.name = param.shortname = f"{prefix}_{material}"
+                param.description = f"The mass fraction for {param.name}"
 
-        for key in self.materials:
-            for size in ["small", "large"]:
-                param_name = f"kappa_{key}_{size}"
-                param = Parameter(**STANDARD_PARAMETERS.kappa_abs)
-                param.shortname = param.name = param_name
-                param.description = (
-                    f"The dust mass absorption coefficient for {size} {key}"
-                )
-                setattr(self, param_name, param)
+                if prefix == "kappa":
+                    param.unit = u.cm**2 / u.g
+                else:
+                    param.unit = u.pct
 
-                weight_name = f"{key}_{size}_weight"
-                weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
-                weight.shortname = weight.name = weight_name
-                weight.description = f"The mass fraction for {size} {key}"
-                weight.unit = u.pct
-                weight.set(min=0, max=100)
-                setattr(self, weight_name, weight)
+                setattr(self, param.name, param)
 
         self.eval(**kwargs)
-
-    def get_opacity(self, wavelength: u.um) -> np.ndarray:
-        """Set the opacity from wavelength."""
-        opacity = np.sum(
-            [
-                getattr(self, f"{key}_{size}_weight")()
-                * getattr(self, f"kappa_{key}_{size}")(wavelength)
-                for size in ["small", "large"]
-                for key in self.materials
-            ],
-            axis=0,
-        )
-        opacity += (self.cont_weight() * self.kappa_cont(wavelength)).value
-
-        # NOTE: The 1e2 term is to be able to fit the weights as percentages
-        return opacity.astype(OPTIONS.data.dtype.real) / 1e2
 
     def flux_func(self, wavelength: u.um) -> np.ndarray:
         """Returns the flux weight of the point source."""
         bb = BlackBody(temperature=self.tempc())(wavelength)
-        opacity = self.get_opacity(wavelength)
-        pah = self.pah_weight() * self.pah(wavelength)
-        flux = (bb * opacity * u.sr * 10.0 ** -self.fr()).to(u.Jy) + pah
+
+        # NOTE: The 1e2 term is to be able to fit the weights as percentages
+        opacity = (
+            np.sum(
+                [
+                    getattr(self, f"weight_{material}")()
+                    * getattr(self, f"kappa_{material}")(wavelength)
+                    for material in self.materials
+                ],
+                axis=0,
+            )
+            / 1e2
+        )
+
+        pah = self.scale_pah() * self.pah(wavelength)
+        flux = (bb * opacity * u.sr * 10.0 ** -self.f()).to(u.Jy) + pah
         return flux.value.reshape((wavelength.size, 1))
 
 

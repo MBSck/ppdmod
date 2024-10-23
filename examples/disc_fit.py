@@ -36,7 +36,7 @@ def ptform(theta: List[float]) -> np.ndarray:
     return ptform_sequential_radii(theta, LABELS)
 
 
-DATA_DIR = Path("../data")
+DATA_DIR = Path(__file__).parent.parent / "data"
 wavelengths = {
     "hband": [1.7] * u.um,
     "kband": [2.15] * u.um,

@@ -159,7 +159,7 @@ def restore_from_fits(
         for label, component in zip(component_labels, components)
     ]
 
-    # TODO: Add here the other samplers and emcee
+    # TODO: Add here the emcee
     sampler = DynamicNestedSampler.restore(path / "sampler.save")
 
     return component_labels, components, sampler
