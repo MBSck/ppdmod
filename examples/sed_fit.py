@@ -32,13 +32,9 @@ def ptform(theta):
 
 
 DATA_DIR = Path(__file__).parent.parent / "data"
-# fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "averaged"
-fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "downsampled"
-# fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "only_high"
-# fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "only_low"
+fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "averaged"
 
-# wavelength_range = None
-wavelength_range = [8.0, 13.1] * u.um
+wavelength_range = [8.0, 13.15] * u.um
 data = set_data(
     list(fits_dir.glob("*fits")),
     wavelengths="all",
