@@ -25,7 +25,6 @@ from ppdmod.fitting import (
 )
 from ppdmod.options import OPTIONS, STANDARD_PARAMETERS
 from ppdmod.parameter import Parameter
-from ppdmod.plot import plot_sed
 
 
 def ptform(theta):

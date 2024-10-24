@@ -1,7 +1,6 @@
 import os
 import pickle
 from datetime import datetime
-from functools import partial
 from itertools import chain
 from pathlib import Path
 from typing import List
@@ -246,6 +245,10 @@ if __name__ == "__main__":
     components = basic_components.assemble_components(
         components_and_params, shared_params
     )
+
+    with open(result_dir / "components.pkl", "wb") as file:
+        pickle.dump(components, file)
+
     rchi_sq = compute_observable_chi_sq(*compute_observables(components), reduced=True)
     print(f"rchi_sq: {rchi_sq:.2f}")
 
