@@ -303,6 +303,8 @@ def format_labels(
                 formatted_label = f"{letter}_{{{indices}}}"
                 if "log" in label:
                     formatted_label = rf"\log_{{10}}\left({formatted_label}\right)"
+            elif "scale" in name:
+                formatted_label = rf"w_{{\mathrm{{{name.replace('scale_', '')}}}}}"
             else:
                 formatted_label = label
 

@@ -236,7 +236,7 @@ def compute_observables(
 
 
 def compute_sed_chi_sq(
-    flux_model: np.ndarray, reduced: bool = False
+    flux_model: np.ndarray, nfree: int, reduced: bool = False
 ) -> float:
     """Calculates the sed model's chi square from the observables.
 
@@ -244,15 +244,10 @@ def compute_sed_chi_sq(
     ----------
     flux_model : numpy.ndarray
         The model's total flux.
-    vis_model : numpy.ndarray
-        Either the model's correlated fluxes or the model's
-        visibilities (depends on the OPTIONS.fit.data).
-    t3_model : numpy.ndarray
-        The model's closure phase.
+    nfree : int
+        The number of free parameters.
     reduced : bool, optional
         Whether to return the reduced chi square.
-    split : bool, optional
-        Whether to return the individual components.
 
     Returns
     -------
@@ -271,8 +266,7 @@ def compute_sed_chi_sq(
 
     # NOTE: The -1 here indicates that one of the parameters is actually fixed
     if reduced:
-        nfree_params = len(get_priors()) - 1
-        return chi_sq / (flux.value.size - nfree_params)
+        return chi_sq / (flux.value.size - (nfree) - 1)
 
     return chi_sq
 
