@@ -669,6 +669,7 @@ def get_opacity(
 
     files = []
     for index, name in enumerate(names):
+        name = name.lower()
         for size in ["small", "large"]:
             if method == "qval":
                 size = 0.1 if size == "small" else 1.5
