@@ -1,4 +1,5 @@
 import os
+import pickle
 from datetime import datetime
 from pathlib import Path
 
@@ -34,7 +35,7 @@ def ptform(theta):
 DATA_DIR = Path(__file__).parent.parent / "data"
 fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "averaged"
 
-wavelength_range = [8.0, 13.15] * u.um
+wavelength_range = [8.0, 15] * u.um
 data = set_data(
     list(fits_dir.glob("*fits")),
     wavelengths="all",
@@ -143,14 +144,13 @@ if __name__ == "__main__":
     components_and_params, shared_params = set_params_from_theta(theta)
     components = assemble_components(components_and_params, shared_params)
 
+    with open(result_dir / "components.pkl", "wb") as file:
+        pickle.dump(components, file)
+
     rchi_sq = compute_sed_chi_sq(
         components[0].compute_flux(OPTIONS.fit.wavelengths), reduced=True
     )
     print(f"rchi_sq: {rchi_sq:.2f}")
-
-    plot_sed([7.5, 14] * u.um, components, scaling="nu", save_dir=result_dir)
-    plot_sed([7.5, 14] * u.um, components, scaling=None, save_dir=result_dir)
-    np.save(result_dir / "theta.npy", theta)
 
     save_fits(
         components,
