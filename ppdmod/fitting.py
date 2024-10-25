@@ -275,7 +275,7 @@ def compute_observable_chi_sq(
     flux_model: np.ndarray,
     vis_model: np.ndarray,
     t3_model: np.ndarray,
-    nfree: int,
+    nfree: int | None = None,
     reduced: bool = False,
     split: bool = False,
 ):
