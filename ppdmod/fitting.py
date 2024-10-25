@@ -275,6 +275,7 @@ def compute_observable_chi_sq(
     flux_model: np.ndarray,
     vis_model: np.ndarray,
     t3_model: np.ndarray,
+    nfree: int,
     reduced: bool = False,
     split: bool = False,
 ):
@@ -321,12 +322,12 @@ def compute_observable_chi_sq(
         )
 
     chi_sqs = np.array(chi_sqs).astype(float)
-    ndata, nfree_params = get_counts_data(), get_priors().shape[0]
+    ndata = get_counts_data()
     if reduced:
         chi_sqs = np.append(chi_sqs, [0] * (3 - chi_sqs.size))
-        rchi_sq = chi_sqs.sum() / (ndata.sum() - nfree_params)
+        rchi_sq = chi_sqs.sum() / (ndata.sum() - nfree)
         return (
-            np.abs([rchi_sq, *chi_sqs / (ndata - nfree_params)]) if split else rchi_sq
+            np.abs([rchi_sq, *chi_sqs / (ndata - nfree)]) if split else rchi_sq
         )
 
     return [chi_sqs.sum(), *chi_sqs] if split else chi_sqs.sum()

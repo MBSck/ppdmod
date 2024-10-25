@@ -63,12 +63,13 @@ grid, value = load_data(
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
 star_flux.grid, star_flux.value = grid, value
 
-grid, value = np.load(DATA_DIR / "opacities" / "hd142527_combined_silicate_opacities.npy")
+grid, value = np.load(DATA_DIR / "opacities" / "hd142527_silicate_opacities.npy")
 kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
 kappa_abs.value, kappa_abs.grid = grid, value
 
-cont_opacity_file = DATA_DIR / "opacities" / "qval" / ""
-grid, value = np.load(DATA_DIR / "opacities" / "optool" / "preibisch_amorph_c_rv0.1.npy")
+grid, value = np.load(
+    DATA_DIR / "opacities" / "optool" / "preibisch_amorph_c_rv0.1.npy"
+)
 kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
 kappa_cont.value, kappa_cont.grid = grid, value
 
@@ -229,7 +230,9 @@ np.save(result_dir / "units.npy", UNITS)
 components = basic_components.assemble_components(
     OPTIONS.model.components_and_params, OPTIONS.model.shared_params
 )
-rchi_sq = compute_observable_chi_sq(*compute_observables(components), reduced=True)
+rchi_sq = compute_observable_chi_sq(
+    *compute_observables(components), nfree=len(UNITS), reduced=True
+)
 print(f"rchi_sq: {rchi_sq:.2f}")
 
 
@@ -249,7 +252,9 @@ if __name__ == "__main__":
     with open(result_dir / "components.pkl", "wb") as file:
         pickle.dump(components, file)
 
-    rchi_sq = compute_observable_chi_sq(*compute_observables(components), reduced=True)
+    rchi_sq = compute_observable_chi_sq(
+        *compute_observables(components), nfree=len(UNITS), reduced=True
+    )
     print(f"rchi_sq: {rchi_sq:.2f}")
 
     save_fits(
