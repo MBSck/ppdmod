@@ -127,7 +127,9 @@ components = assemble_components(
 )
 
 rchi_sq = compute_sed_chi_sq(
-    components[0].compute_flux(OPTIONS.fit.wavelengths), reduced=True
+    components[0].compute_flux(OPTIONS.fit.wavelengths),
+    reduced=True,
+    nfree=len(UNITS),
 )
 print(f"rchi_sq: {rchi_sq:.2f}")
 
@@ -147,7 +149,9 @@ if __name__ == "__main__":
         pickle.dump(components, file)
 
     rchi_sq = compute_sed_chi_sq(
-        components[0].compute_flux(OPTIONS.fit.wavelengths), reduced=True
+        components[0].compute_flux(OPTIONS.fit.wavelengths),
+        reduced=True,
+        nfree=len(UNITS),
     )
     print(f"rchi_sq: {rchi_sq:.2f}")
 
