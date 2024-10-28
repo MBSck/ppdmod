@@ -27,7 +27,7 @@ from ppdmod.fitting import (
 )
 from ppdmod.options import OPTIONS, STANDARD_PARAMETERS
 from ppdmod.parameter import Parameter
-from ppdmod.utils import load_data
+from ppdmod.utils import load_data, get_opacity, qval_to_opacity
 
 
 def ptform(theta: List[float]) -> np.ndarray:
@@ -53,8 +53,14 @@ wavelength = np.concatenate(
         wavelengths["nband"],
     )
 )
-data = set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis"])
+data = set_data(
+    fits_files,
+    wavelengths=wavelength,
+    fit_data=["flux", "vis"],
+    set_std_err=["mband"],
+)
 WAVELENGTHS = OPTIONS.fit.wavelengths
+NAMES = ["Pyroxene", "Enstatite", "Forsterite", "Silica", "Olivine"]
 
 grid, value = load_data(
     DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt", usecols=(0, 2)
@@ -62,13 +68,21 @@ grid, value = load_data(
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
 star_flux.grid, star_flux.value = grid, value
 
-method = "boekel"
-grid, value = np.load(DATA_DIR / "opacities" / f"hd142527_silicate_{method}_opacities.npy")
+
+# _, weights = np.load(
+#     path / dir_name / "assets" / "silicate_labels_and_weights.npy"
+# )
+# weights = weights.astype(float) / weights.astype(float).sum()
+weights = np.array([0, 73.2, 0.6, 14.2, 8.6, 0, 2.4, 1.0, 0, 0]) / 1e2
+grid, value = get_opacity(DATA_DIR / "opacities", weights, NAMES, "boekel")
 kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
 kappa_abs.value, kappa_abs.grid = grid, value
 
-grid, value = np.load(
-    DATA_DIR / "opacities" / "optool" / "preibisch_amorph_c_rv0.1.npy"
+# grid, value = np.load(
+#     DATA_DIR / "opacities" / "optool" / "preibisch_amorph_c_rv0.1.npy"
+# )
+grid, value = load_data(
+    DATA_DIR / "opacities" / "qval" / "Q_amorph_c_rv0.1.dat", load_func=qval_to_opacity
 )
 kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
 kappa_cont.value, kappa_cont.grid = grid, value
@@ -240,7 +254,7 @@ if __name__ == "__main__":
     ncores = 70
     fit_params = {"nlive_init": 2000, "ptform": ptform}
     sampler = run_fit(
-        **fit_params, ncores=ncores, method="dynamic", save_dir=result_dir, debug=False
+        **fit_params, ncores=ncores, method="dynamic", save_dir=result_dir, debug=True
     )
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)

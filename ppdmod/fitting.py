@@ -156,7 +156,7 @@ def compute_observables(
     rzero: bool = False,
     rcomponents: bool = False,
     rraw: bool = False,
-) -> Tuple[np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Calculates the observables from the model.
 
     Parameters
@@ -670,7 +670,6 @@ def get_best_fit(
         else:
             probability = sampler.get_log_prob(flat=True, discard=discard)
 
-        # TODO: Check if this also samples non-jointly
         if method == "quantile":
             for index in range(samples.shape[1]):
                 quantiles = np.percentile(samples[:, index], OPTIONS.fit.quantiles)
@@ -693,8 +692,6 @@ def get_best_fit(
         )
 
         if method == "max":
-            # NOTE: This is the approach for joint sampling (as in the parameters are
-            # dependent on each other within the model to some extent)
             params = results.samples[results.logl.argmax()]
         elif method == "quantile":
             params = quantiles[:, 1]
