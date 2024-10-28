@@ -355,8 +355,9 @@ def set_data(
                     data.u123coord = np.hstack((data.u123coord, data_readout.u123coord))
                     data.v123coord = np.hstack((data.v123coord, data_readout.v123coord))
 
-    for key in fit_data:
-        breakpoint()
+    # TODO: Finish this to get better errors
+    # for key in fit_data:
+        # breakpoint()
 
     set_fit_weights(weights)
     return OPTIONS.data
