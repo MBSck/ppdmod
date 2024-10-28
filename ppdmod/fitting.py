@@ -1,6 +1,6 @@
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple
 
 import astropy.units as u
 import dynesty.utils as dyutils
@@ -654,10 +654,10 @@ def run_fit(**kwargs) -> np.ndarray:
 
 
 def get_best_fit(
-    sampler: Union[emcee.EnsembleSampler],
+    sampler: emcee.EnsembleSampler,
     discard: int = 0,
     distribution: str = "default",
-    method: str = "quantile",
+    method: str = "maximum",
     **kwargs,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Gets the best fit from the emcee sampler."""
@@ -683,9 +683,6 @@ def get_best_fit(
         results = sampler.results
         samples, weights = results.samples, results.importance_weights()
 
-        # NOTE: This is the approach for joint sampling (as in the parameters are
-        # dependent on each other within the model to some extent)
-        params = results.samples[results.logl.argmax()]
         quantiles = np.array(
             [
                 dyutils.quantile(
@@ -694,6 +691,14 @@ def get_best_fit(
                 for samps in results.samples.T
             ]
         )
+
+        if method == "maximum":
+            # NOTE: This is the approach for joint sampling (as in the parameters are
+            # dependent on each other within the model to some extent)
+            params = results.samples[results.logl.argmax()]
+        elif method == "quantile":
+            params = quantiles[:, 1]
+
         uncertainties = np.array([(quantile[0], quantile[1]) for quantile in quantiles])
 
     return params, uncertainties
