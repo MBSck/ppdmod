@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Tuple
 
 import astropy.units as u
 import numpy as np
@@ -27,7 +27,7 @@ class Component:
                     else:
                         setattr(self, key, value)
 
-    def get_params(self, free: Optional[bool] = False):
+    def get_params(self, free: bool = False):
         """Gets all the parameters of a component.
 
         Parameters

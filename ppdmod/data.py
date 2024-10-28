@@ -1,7 +1,7 @@
 from functools import partial
 from pathlib import Path
 from types import SimpleNamespace
-from typing import List, Optional, Union
+from typing import List
 
 import astropy.units as u
 import numpy as np
@@ -21,7 +21,7 @@ class ReadoutFits:
     """
 
     def __init__(
-        self, fits_file: Path, wavelength_range: Optional[u.Quantity[u.um]] = None
+        self, fits_file: Path, wavelength_range: u.Quantity[u.um] | None = None
     ) -> None:
         """The class's constructor."""
         self.fits_file = Path(fits_file)
@@ -74,9 +74,9 @@ class ReadoutFits:
         self,
         hdul: fits.HDUList,
         key: str,
-        sci_index: Optional[int] = None,
-        wl_index: Optional[int] = None,
-        indices: Optional[int] = None,
+        sci_index: int | None = None,
+        wl_index: int | None = None,
+        indices: int | None = None,
     ) -> SimpleNamespace:
         """Reads a (.fits) Card into a SimpleNamespace."""
         try:
@@ -97,7 +97,8 @@ class ReadoutFits:
                 )
             except KeyError:
                 return SimpleNamespace(value=np.array([]), err=np.array([]))
-        elif key in ["vis", "vis2"]:
+
+        if key in ["vis", "vis2"]:
             if key == "vis":
                 value_key, err_key = "visamp", "visamperr"
             else:
@@ -108,25 +109,25 @@ class ReadoutFits:
                 ucoord=data.data["ucoord"].reshape(1, -1),
                 vcoord=data.data["vcoord"].reshape(1, -1),
             )
-        elif key == "t3":
-            value = data.data["t3phi"][:, wl_index:][:, indices]
-            err = data.data["t3phierr"][:, wl_index:][:, indices]
-            u1coord, u2coord = map(lambda x: data.data[f"u{x}coord"], ["1", "2"])
-            v1coord, v2coord = map(lambda x: data.data[f"v{x}coord"], ["1", "2"])
 
-            u3coord, v3coord = (u1coord + u2coord), (v1coord + v2coord)
-            u123coord = np.array([u1coord, u2coord, u3coord])
-            v123coord = np.array([v1coord, v2coord, v3coord])
-            return SimpleNamespace(
-                value=value, err=err, u123coord=u123coord, v123coord=v123coord
-            )
+        value = data.data["t3phi"][:, wl_index:][:, indices]
+        err = data.data["t3phierr"][:, wl_index:][:, indices]
+        u1coord, u2coord = map(lambda x: data.data[f"u{x}coord"], ["1", "2"])
+        v1coord, v2coord = map(lambda x: data.data[f"v{x}coord"], ["1", "2"])
+
+        u3coord, v3coord = (u1coord + u2coord), (v1coord + v2coord)
+        u123coord = np.array([u1coord, u2coord, u3coord])
+        v123coord = np.array([v1coord, v2coord, v3coord])
+        return SimpleNamespace(
+            value=value, err=err, u123coord=u123coord, v123coord=v123coord
+        )
 
     def get_data_for_wavelength(
         self,
         wavelength: u.Quantity,
         key: str,
         subkey: str,
-        no_binning: Optional[bool] = False,
+        no_binning: bool = False,
     ) -> np.ndarray:
         """Gets the data for the given wavelengths.
 
@@ -189,7 +190,7 @@ class ReadoutFits:
         return np.array(wl_data).astype(OPTIONS.data.dtype.real)
 
 
-def get_all_wavelengths(readouts: Optional[List[ReadoutFits]] = None) -> np.ndarray:
+def get_all_wavelengths(readouts: List[ReadoutFits] | None = None) -> np.ndarray:
     """Gets all wavelengths from the readouts."""
     readouts = OPTIONS.data.readouts if readouts is None else readouts
     wavelengths = list(map(lambda x: x.wavelength, readouts))
@@ -197,8 +198,8 @@ def get_all_wavelengths(readouts: Optional[List[ReadoutFits]] = None) -> np.ndar
 
 
 def set_fit_wavelengths(
-    wavelengths: Optional[u.Quantity[u.um]] = None,
-) -> Union[str, np.ndarray]:
+    wavelengths: u.Quantity[u.um] | None = None,
+) -> str | np.ndarray:
     """Sets the wavelengths to be fitted for as a global option.
 
     If called without a wavelength and all set to False, it will clear
@@ -237,7 +238,7 @@ def get_counts_data() -> np.ndarray[int]:
     return np.array([nflux, nvis, nt3])
 
 
-def set_fit_weights(weights: Optional[List[float]] = None) -> None:
+def set_fit_weights(weights: List[float] | None = None) -> None:
     """Sets the weights of the fit parameters
     from the observed data"""
     if weights is not None:
@@ -245,9 +246,9 @@ def set_fit_weights(weights: Optional[List[float]] = None) -> None:
     else:
         nflux, nvis, nt3 = get_counts_data()
         nmax = max(nflux, nvis, nt3)
-        wflux = 0. if nflux == 0 else nmax / nflux
-        wvis = 0. if nvis == 0 else nmax / nvis
-        wt3 = 0. if nt3 == 0 else nmax / nt3
+        wflux = 0.0 if nflux == 0 else nmax / nflux
+        wvis = 0.0 if nvis == 0 else nmax / nvis
+        wt3 = 0.0 if nt3 == 0 else nmax / nt3
 
     norm = wflux + wvis + wt3
     OPTIONS.fit.weights.flux = wflux / norm
@@ -256,12 +257,12 @@ def set_fit_weights(weights: Optional[List[float]] = None) -> None:
 
 
 def set_data(
-    fits_files: Optional[List[Path]] = None,
-    wavelengths: Optional[Union[str, u.Quantity[u.um]]] = None,
-    fit_data: Optional[List[str]] = None,
-    weights: Optional[List[float]] = None,
-    wavelength_range: Optional[u.Quantity[u.um]] = None,
-    min_err: Optional[float] = 0.05,
+    fits_files: List[Path] | None = None,
+    wavelengths: str | u.Quantity[u.um] | None = None,
+    fit_data: List[str] = ["flux", "vis", "t3"],
+    weights: List[float] | None = None,
+    wavelength_range: u.Quantity[u.um] | None = None,
+    min_err: float = 0.05,
     **kwargs,
 ) -> SimpleNamespace:
     """Sets the data as a global variable from the input files.
@@ -353,6 +354,9 @@ def set_data(
                 else:
                     data.u123coord = np.hstack((data.u123coord, data_readout.u123coord))
                     data.v123coord = np.hstack((data.v123coord, data_readout.v123coord))
+
+    for key in fit_data:
+        breakpoint()
 
     set_fit_weights(weights)
     return OPTIONS.data

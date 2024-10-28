@@ -1,6 +1,6 @@
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 import astropy.units as u
 import dynesty.utils as dyutils
@@ -33,7 +33,7 @@ def get_priors() -> np.ndarray:
 
 def set_theta_from_params(
     components_and_params: List[List[Dict]],
-    shared_params: Optional[Dict[str, Parameter]] = None,
+    shared_params: Dict[str, Parameter] | None = None,
 ) -> np.ndarray:
     """Sets the theta vector from the parameters."""
     theta = []
@@ -74,7 +74,7 @@ def set_params_from_theta(
     return new_components_and_params, new_shared_params
 
 
-def init_randomly(nwalkers: Optional[int] = None) -> np.ndarray:
+def init_randomly(nwalkers: int | None = None) -> np.ndarray:
     """initialises a random numpy.ndarray from the parameter's limits.
 
     parameters
@@ -108,7 +108,7 @@ def compute_chi_sq(
     model_data: u.Quantity,
     diff_method: str = "linear",
     func_method: str = "logarithmic",
-    lnf: Optional[float] = None,
+    lnf: float | None = None,
 ) -> float:
     """Computes the chi square minimisation.
 
@@ -152,7 +152,7 @@ def compute_chi_sq(
 # TODO: Make it so that both point source and star can be used at the same time
 def compute_observables(
     components: List[Component],
-    wavelength: Optional[np.ndarray] = None,
+    wavelength: np.ndarray | None = None,
     rzero: bool = False,
     rcomponents: bool = False,
     rraw: bool = False,
@@ -418,7 +418,7 @@ def ptform_sed(theta: List[float], labels: List[str]) -> np.ndarray:
 
 def lnprior(
     components_and_params: List[List[Dict]],
-    shared_params: Optional[Dict[str, float]] = None,
+    shared_params: Dict[str, float] | None = None,
 ) -> float:
     """Checks if the priors are in bounds.
 
@@ -512,7 +512,7 @@ def run_mcmc(
     nsteps: int = 100,
     ncores: int = 6,
     debug: bool = False,
-    save_dir: Optional[Path] = None,
+    save_dir: Path | None = None,
     **kwargs,
 ) -> np.ndarray:
     """Runs the emcee Hastings Metropolitan sampler.
@@ -564,7 +564,7 @@ def run_dynesty(
     bound: str = "multi",
     ncores: int = 6,
     debug: bool = False,
-    save_dir: Optional[Path] = None,
+    save_dir: Path | None = None,
     method: str = "static",
     **kwargs,
 ) -> np.ndarray:

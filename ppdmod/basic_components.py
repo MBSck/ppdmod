@@ -1,6 +1,6 @@
 import sys
 from functools import partial
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import astropy.units as u
 import numpy as np
@@ -989,7 +989,7 @@ def get_component_by_name(name: str) -> FourierComponent:
 
 
 def assemble_components(
-    parameters: Dict[str, Dict], shared_params: Optional[Dict[str, Parameter]] = None
+    parameters: Dict[str, Dict], shared_params: Dict[str, Parameter] | None = None
 ) -> List[FourierComponent]:
     """Assembles a model from a dictionary of parameters."""
     shared_params = shared_params if shared_params is not None else {}

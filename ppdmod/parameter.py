@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 import astropy.units as u
 import numpy as np
@@ -15,13 +15,13 @@ class Parameter:
     name: str
     value: Any
     unit: u.Quantity
-    shortname: Optional[str] = None
+    shortname: str | None = None
     free: bool = True
-    description: Optional[str] = None
-    min: Optional[float] = None
-    max: Optional[float] = None
-    dtype: Optional[type] = None
-    grid: Optional[np.ndarray] = None
+    description: str | None = None
+    min: float | None = None
+    max: float | None = None
+    dtype: type | None = None
+    grid: np.ndarray | None = None
     smooth: bool = False
 
     def __setattr__(self, key: str, value: Any):
@@ -36,7 +36,7 @@ class Parameter:
         self.value = self._set_to_numpy_array(self.value)
         self.grid = self._set_to_numpy_array(self.grid)
 
-    def __call__(self, points: Optional[u.Quantity] = None) -> np.ndarray:
+    def __call__(self, points: u.Quantity | None = None) -> np.ndarray:
         """Gets the value for the parameter or the corresponding
         values for some points."""
         if points is None or self.grid is None:
@@ -60,7 +60,7 @@ class Parameter:
         return message
 
     def _set_to_numpy_array(
-        self, array: Optional[ArrayLike] = None, retain_value: bool = False
+        self, array: ArrayLike | None = None, retain_value: bool = False
     ) -> Union[Any, np.ndarray]:
         """Converts a value to a numpy array."""
         if array is None:
@@ -76,6 +76,6 @@ class Parameter:
         return array
 
     # TODO: One can make this modular, maybe cool for oimodeler?
-    def set(self, min: Optional[float] = None, max: Optional[float] = None) -> None:
+    def set(self, min: float | None = None, max: float | None = None) -> None:
         """Sets the limits of the parameters."""
         self.min, self.max = min, max

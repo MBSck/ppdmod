@@ -1,7 +1,7 @@
 import re
 from itertools import chain, zip_longest
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import astropy.constants as const
 import astropy.units as u
@@ -69,7 +69,7 @@ def plot_component_mosaic(
     zoom: float = None,
     cols: int = 4,
     cmap: str = "inferno",
-    savefig: Optional[Path] = None,
+    savefig: Path | None = None,
 ) -> None:
     """Plots a mosaic of components for the different wavelengths."""
     wavelengths = OPTIONS.plot.ticks * u.um
@@ -140,11 +140,11 @@ def plot_components(
     wavelength: u.um,
     norm: float = 0.5,
     save_as_fits: bool = False,
-    zoom: Optional[float] = None,
-    ax: Optional[Axes] = None,
+    zoom: float | None = None,
+    ax: Axes | None = None,
     cmap: str = "inferno",
     no_text: bool = False,
-    savefig: Optional[Path] = None,
+    savefig: Path | None = None,
 ) -> Tuple[Axes]:
     """Plots a component."""
     components = [components] if not isinstance(components, list) else components
@@ -221,7 +221,7 @@ def plot_components(
 
 
 def format_labels(
-    labels: List[str], units: Optional[List[str]] = None, split: bool = False
+    labels: List[str], units: List[str | None] = None, split: bool = False
 ) -> List[str]:
     """Formats the labels in LaTeX.
 
@@ -358,10 +358,10 @@ def get_exponent(num):
 def plot_corner(
     sampler: np.ndarray,
     labels: List[str],
-    units: Optional[List[str]] = None,
+    units: List[str] | None = None,
     discard: int = 0,
     fontsize: int = 12,
-    savefig: Optional[Path] = None,
+    savefig: Path | None = None,
     **kwargs,
 ) -> None:
     """Plots the corner of the posterior spread.
@@ -439,9 +439,9 @@ def plot_corner(
 def plot_chains(
     sampler: np.ndarray,
     labels: List[str],
-    units: Optional[List[str]] = None,
+    units: List[str] | None = None,
     discard: int = 0,
-    savefig: Optional[Path] = None,
+    savefig: Path | None = None,
     **kwargs,
 ) -> None:
     """Plots the fitter's chains.
@@ -495,7 +495,7 @@ def plot_all(
     pixel_size: u.mas,
     wavelengths: u.um,
     zoom: float = 25,
-    save_dir: Optional[Path] = None,
+    save_dir: Path | None = None,
 ) -> None:
     """Plots all the plots.
 
@@ -557,10 +557,10 @@ class LogNorm(mcolors.Normalize):
 def plot_datapoints(
     axarr,
     wavelengths: u.um,
-    components: Optional[List] = None,
+    components: List | None = None,
     data_to_plot: List[str] = OPTIONS.fit.data,
-    norm: Optional[np.ndarray] = None,
-    wavelength_range: Optional[List[float]] = None,
+    norm: np.ndarray | None = None,
+    wavelength_range: List[float] | None = None,
     plot_nan: bool = False,
     colormap: str = OPTIONS.plot.color.colormap,
 ) -> None:
@@ -712,14 +712,14 @@ def plot_datapoints(
 
 
 def plot_fit(
-    components: Optional[List] = None,
-    data_to_plot: Optional[List[str]] = None,
+    components: List | None = None,
+    data_to_plot: List[str | None] = None,
     cmap: str = OPTIONS.plot.color.colormap,
     ylimits: Dict[str, List[float]] = {},
-    wavelength_range: Optional[List[float]] = None,
+    wavelength_range: List[float | None] = None,
     plot_nan: bool = False,
-    title: Optional[str] = None,
-    savefig: Optional[Path] = None,
+    title: str | None = None,
+    savefig: Path | None = None,
 ):
     """Plots the deviation of a model from real data of an object for
     total flux, visibilities and closure phases.
@@ -895,15 +895,15 @@ def plot_fit(
 
 
 def plot_overview(
-    data_to_plot: Optional[List[str]] = None,
+    data_to_plot: List[str | None] = None,
     colormap: str = OPTIONS.plot.color.colormap,
-    wavelength_range: Optional[List[float]] = None,
+    wavelength_range: List[float | None] = None,
     ylimits: Dict[str, List[float]] = {},
-    title: Optional[str] = None,
+    title: str | None = None,
     raxis: bool = False,
-    inclination: Optional[float] = None,
-    pos_angle: Optional[float] = None,
-    savefig: Optional[Path] = None,
+    inclination: float | None = None,
+    pos_angle: float | None = None,
+    savefig: Path | None = None,
 ) -> None:
     """Plots an overview over the total data for baselines [Mlambda].
 
@@ -1091,11 +1091,11 @@ def plot_overview(
 # TODO: Make colorscale permanent -> Implement colormap
 def plot_sed(
     wavelength_range: u.um,
-    components: Optional[List[FourierComponent]] = None,
+    components: List[FourierComponent | None] = None,
     scaling: str = "nu",
     no_model: bool = False,
-    ax: Optional[plt.Axes] = None,
-    save_dir: Optional[Path] = None,
+    ax: plt.Axes | None = None,
+    save_dir: Path | None = None,
 ):
     """Plots the observables of the model.
 
@@ -1223,7 +1223,7 @@ def plot_interferometric_observables(
     wavelength_range: u.um,
     components: List[FourierComponent],
     component_labels: List[str],
-    save_dir: Optional[Path] = None,
+    save_dir: Path | None = None,
 ) -> None:
     """Plots the observables of the model.
 
@@ -1401,7 +1401,7 @@ def plot_intermediate_products(
     wavelength: u.Quantity[u.um],
     components: List[FourierComponent],
     component_labels: List[str],
-    save_dir: Optional[Path] = None,
+    save_dir: Path | None = None,
 ) -> None:
     """Plots the intermediate products of the model (temperature, density, etc.)."""
     wavelength = (

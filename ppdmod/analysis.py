@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 from astropy.io import fits
@@ -40,10 +40,10 @@ KEYWORD_DESCRIPTIONS = {
 def save_fits(
     components: List[Component],
     component_labels: List[str],
-    save_dir: Optional[Path] = None,
-    object_name: Optional[str] = None,
-    fit_hyperparameters: Optional[Dict] = None,
-    ncores: Optional[int] = None,
+    save_dir: Path | None = None,
+    object_name: str | None = None,
+    fit_hyperparameters: Dict | None = None,
+    ncores: int | None = None,
 ) -> None:
     """Saves a (.fits)-file of the model with all the information on the
     parameter space."""

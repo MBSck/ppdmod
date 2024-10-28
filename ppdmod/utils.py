@@ -1,6 +1,6 @@
 import time as time
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Tuple
 
 import astropy.constants as const
 import astropy.units as u
@@ -174,8 +174,8 @@ def smooth_interpolation(
     interpolation_points: np.ndarray,
     grid: np.ndarray,
     values: np.ndarray,
-    kind: Optional[str] = None,
-    fill_value: Optional[str] = None,
+    kind: str | None = None,
+    fill_value: str | None = None,
 ) -> np.ndarray:
     """Rebins the grid to a higher factor and then interpolates and averages
     to the original grid.
@@ -232,7 +232,7 @@ def execution_time(func: Callable) -> Callable:
 
 
 def get_indices(
-    values, array: np.ndarray, window: Optional[float] = None
+    values, array: np.ndarray, window: float | None = None
 ) -> List[np.ndarray]:
     """Gets the indices of values occurring in a numpy array
     and returns it in a list corresponding to the input values.
@@ -362,10 +362,10 @@ def distance_to_angular(diameter: u.au, distance: u.pc) -> u.mas:
 def compute_effective_baselines(
     ucoord: u.m,
     vcoord: u.m,
-    inclination: Optional[u.Quantity[u.one]] = None,
-    pos_angle: Optional[u.Quantity[u.deg]] = None,
-    longest: Optional[bool] = False,
-    rzero: Optional[bool] = True,
+    inclination: u.Quantity[u.one | None] = None,
+    pos_angle: u.Quantity[u.deg | None] = None,
+    longest: bool | None = False,
+    rzero: bool | None = True,
 ) -> Tuple[u.Quantity[u.m], u.Quantity[u.one]]:
     """Calculates the effective baselines from the projected baselines
     in mega lambda.
@@ -511,7 +511,7 @@ def binary_vis(
 
 
 def uniform_disk(
-    pixel_size: u.mas, dim: int, diameter: Optional[u.Quantity[u.mas]] = None
+    pixel_size: u.mas, dim: int, diameter: u.Quantity[u.mas | None] = None
 ) -> u.one:
     """The brightness profile of a uniform disk.
 
@@ -645,8 +645,8 @@ def get_opacity(
     weights: np.ndarray,
     names: List[str],
     method: str,
-    wavelength_grid: Optional[np.ndarray] = None,
-    fmaxs: Optional[List[float]] = None,
+    wavelength_grid: np.ndarray | None = None,
+    fmaxs: List[float | None] = None,
     individual: bool = False,
     **kwargs,
 ) -> Tuple[np.ndarray]:
@@ -702,13 +702,13 @@ def get_opacity(
 
 def load_data(
     files: List[Path],
-    load_func: Optional[Callable] = None,
+    load_func: Callable | None = None,
     comments: str = "#",
     skiprows: int = 1,
     usecols: Tuple[int, int] = (0, 1),
     method: str = "shortest",
-    kind: Optional[str] = None,
-    fill_value: Optional[str] = None,
+    kind: str | None = None,
+    fill_value: str | None = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Loads data from a file.
 
