@@ -512,10 +512,10 @@ def get_opacity(
     names: List[str],
     method: str,
     wavelength_grid: np.ndarray | None = None,
-    fmaxs: List[float | None] = None,
+    fmaxs: List[float] | None = None,
     individual: bool = False,
     **kwargs,
-) -> Tuple[np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray]:
     """Gets the opacity from input parameters."""
     qval_dict = {
         "olivine": "Q_Am_Mgolivine_Jae_DHS",
@@ -567,7 +567,7 @@ def get_opacity(
 
 
 def load_data(
-    files: List[Path],
+    files: Path | List[Path],
     load_func: Callable | None = None,
     comments: str = "#",
     skiprows: int = 1,

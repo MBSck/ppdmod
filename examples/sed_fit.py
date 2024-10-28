@@ -24,6 +24,7 @@ from ppdmod.fitting import (
 )
 from ppdmod.options import OPTIONS, STANDARD_PARAMETERS
 from ppdmod.parameter import Parameter
+from ppdmod.utils import load_data, qval_to_opacity
 
 
 def ptform(theta):
@@ -64,7 +65,9 @@ for shortname, name in NAMES.items():
         OPTIONS.model.constant_params[param_name] = param
 
 kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
-grid, value = np.load(OPACITY_DIR / "optool" / "preibisch_amorph_c_rv0.1.npy")
+grid, value = load_data(
+    DATA_DIR / "opacities" / "qval" / "Q_amorph_c_rv0.1.dat", load_func=qval_to_opacity
+)
 kappa_cont.grid, kappa_cont.value = grid, value
 OPTIONS.model.constant_params["kappa_cont"] = kappa_cont
 
