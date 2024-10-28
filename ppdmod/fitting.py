@@ -657,7 +657,7 @@ def get_best_fit(
     sampler: emcee.EnsembleSampler,
     discard: int = 0,
     distribution: str = "default",
-    method: str = "maximum",
+    method: str = "max",
     **kwargs,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Gets the best fit from the emcee sampler."""
@@ -677,7 +677,7 @@ def get_best_fit(
                 params.append(quantiles[1])
                 uncertainties.append(np.diff(quantiles))
             params, uncertainties = map(np.array, (params, uncertainties))
-        elif method == "maximum":
+        elif method == "max":
             params = samples[np.argmax(probability)]
     else:
         results = sampler.results
@@ -692,7 +692,7 @@ def get_best_fit(
             ]
         )
 
-        if method == "maximum":
+        if method == "max":
             # NOTE: This is the approach for joint sampling (as in the parameters are
             # dependent on each other within the model to some extent)
             params = results.samples[results.logl.argmax()]
