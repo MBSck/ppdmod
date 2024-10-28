@@ -362,8 +362,8 @@ def distance_to_angular(diameter: u.au, distance: u.pc) -> u.mas:
 def compute_effective_baselines(
     ucoord: u.m,
     vcoord: u.m,
-    inclination: u.Quantity[u.one | None] = None,
-    pos_angle: u.Quantity[u.deg | None] = None,
+    inclination: u.Quantity[u.one] | None = None,
+    pos_angle: u.Quantity[u.deg] | None = None,
     longest: bool | None = False,
     rzero: bool | None = True,
 ) -> Tuple[u.Quantity[u.m], u.Quantity[u.one]]:
@@ -511,7 +511,7 @@ def binary_vis(
 
 
 def uniform_disk(
-    pixel_size: u.mas, dim: int, diameter: u.Quantity[u.mas | None] = None
+    pixel_size: u.mas, dim: int, diameter: u.Quantity[u.mas] | None = None
 ) -> u.one:
     """The brightness profile of a uniform disk.
 
