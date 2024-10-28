@@ -262,6 +262,7 @@ def set_data(
     fit_data: List[str] = ["flux", "vis", "t3"],
     weights: List[float] | None = None,
     wavelength_range: u.Quantity[u.um] | None = None,
+    set_std_err: List[str] = ["mband"],
     min_err: float = 0.05,
     **kwargs,
 ) -> SimpleNamespace:
@@ -282,6 +283,9 @@ def set_data(
         The weights of the fit parameters from the observed data.
     wavelength_range : astropy.units.um, optional
         A range of wavelengths to be kept. Other wavelengths will be omitted.
+    set_std_err : list of str, optional
+        The data to be set the standard error from the variance of the datasets from.
+        Default is ["mband"].
     min_err : float, optional
         The minimum error of the data to be kept. Will set the error to be that at least.
     """
@@ -355,9 +359,16 @@ def set_data(
                     data.u123coord = np.hstack((data.u123coord, data_readout.u123coord))
                     data.v123coord = np.hstack((data.v123coord, data_readout.v123coord))
 
-    # TODO: Finish this to get better errors
-    # for key in fit_data:
-        # breakpoint()
+    for key in fit_data:
+        data = getattr(OPTIONS.data, key)
+        bands = np.array(list(map(get_band, wavelengths)))
+        for band in set_std_err:
+            ind = np.where(band == bands)[0]
+            band_data = data.value[ind, :]
+            band_std = np.tile(np.std(band_data, axis=0), (band_data.shape[0], 1))
+            err_ind = np.where(np.abs(band_std / band_data) < min_err)
+            band_std[err_ind] = np.abs(band_data[err_ind]) * min_err
+            data.err[ind, :] = band_std
 
     set_fit_weights(weights)
     return OPTIONS.data
