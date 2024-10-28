@@ -30,14 +30,6 @@ def get_colorlist(colormap: str, ncolors: int = 10) -> List[str]:
     return [get_colormap(colormap)(i) for i in range(ncolors)]
 
 
-WL_GRID_DIR = Path(__file__).parent.parent / "data" / "wl_grids" / "detector"
-DETECTOR_GRIDS = {
-    "kband": {"low": np.load(WL_GRID_DIR / "gravity" / "kband_low.npy")},
-    "hband": {"low": np.load(WL_GRID_DIR / "pionier" / "hband_low.npy")},
-    # "lband": {"low": np.load(WL_GRID_DIR / "matisse" / "lband_low.npy")},
-    "nband": {"low": np.load(WL_GRID_DIR / "matisse" / "nband_low.npy")},
-}
-
 # NOTE: A list of standard parameters to be used when defining new components.
 STANDARD_PARAMETERS = SimpleNamespace(
     x={

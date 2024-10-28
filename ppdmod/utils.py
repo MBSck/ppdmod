@@ -5,134 +5,12 @@ from typing import Callable, Dict, List, Tuple
 import astropy.constants as const
 import astropy.units as u
 import numpy as np
-from astropy.convolution import Gaussian1DKernel, convolve_fft
 from astropy.modeling.models import BlackBody
 from openpyxl import Workbook, load_workbook
 from scipy.interpolate import interp1d
 from scipy.special import j1
 
-from .options import DETECTOR_GRIDS, OPTIONS
-
-
-def compute_detector_grid(
-    tab_lambda_pix: u.um, reference_wavelength: u.um, pinhole_size: float
-) -> u.um:
-    """Compute the wavelength array (in m) corresponding to a given spectral
-    resolution (central wavelength and spectral channel width).
-
-    Parameters
-    ----------
-    tab_lambda_pix : u.um
-        The MATISSE wavelengths.
-    reference_wavelength : u.um
-        The reference wavelength at which we know the width of a
-        spectral channel (3.2 um in LM band and 8 um in N band).
-    pinhole_size : float
-        The size of the spatial filter in unit of lambda/D (1.5 for LM and 2 for N).
-
-    NOTES
-    -----
-    Code from A. Matter
-    """
-    nwl = tab_lambda_pix.size
-    tab_pix, tab_lambda = np.arange(nwl) * u.one, [tab_lambda_pix[0]]
-    delta_lambda = [tab_lambda_pix[0] / reference_wavelength * 3 * pinhole_size]
-
-    n, p, np_val = 0, 0, 0
-    while (np_val + delta_lambda[n]) <= nwl:
-        n += 1
-        np_val = p + delta_lambda[-1]
-        tab_lambda.append(np.interp(np_val, tab_pix, tab_lambda_pix))
-        delta_lambda.append((tab_lambda[n] / reference_wavelength) * 3 * pinhole_size)
-        p = np_val
-
-    return u.Quantity(tab_lambda, unit=u.um)
-
-
-def calculate_spectral_resolution(
-    wavelengths: u.um,
-) -> Tuple[u.Quantity[u.um], u.Quantity[u.one]]:
-    """Calculate the spectral resolution for the different bands."""
-    central_wavelengths = []
-    for index, wl in enumerate(wavelengths[1:], start=1):
-        central_wavelengths.append((wl + wavelengths[index - 1]) / 2)
-
-    central_wavelengths = u.Quantity(central_wavelengths, unit=u.um)
-    return central_wavelengths, central_wavelengths.mean() / np.diff(wavelengths)
-
-
-# TODO: Right now only works with low resolution upgrade this to be able to handle more
-def resample_and_convolve(
-    wavelengths: np.ndarray, wavelengths_data: np.ndarray, data: np.ndarray
-) -> u.um:
-    """This function resamples the wavelengths in such a way that the
-    convolution can be done with a kernel of constant resolution.
-
-    Parameters
-    ----------
-    wavelengths : astropy.units.um
-        The wavelengths to be resampled to.
-    wavelengths_data : astropy.units.um
-        The wavelengths of the data.
-    data : numpy.ndarray
-        The data to be convolved and resampled.
-
-    Returns
-    -------
-    convolved_data : numpy.ndarray
-    """
-    # HACK: Only possible to sort due to alphabetic order
-    unique_bands = np.sort(list(set(np.array(list(map(get_band, wavelengths))))))
-    if not isinstance(wavelengths_data, u.Quantity):
-        wavelengths_data *= u.um
-
-    grids, convolved_datasets = [], []
-    for band in unique_bands:
-        wls = DETECTOR_GRIDS[band]["low"] * u.um
-
-        extended_index = 3
-        diff_func = interp1d(
-            np.arange(extended_index, wls.size + extended_index - 1),
-            np.diff(wls),
-            fill_value="extrapolate",
-        )
-        diffs = [
-            diff_func(np.arange(extended_index)),
-            diff_func(np.arange(wls.size + 1, wls.size + 1 + extended_index)),
-        ]
-
-        for index in range(extended_index):
-            wls = wls.insert(0, wls[0] - diffs[0][index] * u.um)
-            wls = np.append(wls, wls[-1] + diffs[1][index] * u.um)
-
-        diffs = np.diff(wls)
-        central_wavelengths, resolutions = calculate_spectral_resolution(wls)
-
-        grid = np.linspace(
-            central_wavelengths[0] - 1 * u.um, central_wavelengths[-1] + 1 * u.um, 4096
-        )
-        interpolated_dataset = np.interp(grid, wavelengths_data, data)
-        convolved_dataset = [
-            convolve_fft(
-                interpolated_dataset, Gaussian1DKernel(res / np.sqrt(8 * np.log(2)))
-            )
-            for res in resolutions
-        ]
-
-        segments = [
-            (wl - diff / 2, wl + diff / 2)
-            for wl, diff in zip(central_wavelengths, diffs)
-        ]
-        conditions = [
-            ((grid >= segment[0]) & (grid <= segment[1])) for segment in segments
-        ]
-        convolved_dataset = np.select(conditions, convolved_dataset)
-        breakpoint()
-
-        grids.append(grid)
-        convolved_datasets.append(convolved_dataset)
-
-    return np.concatenate(grids), np.concatenate(convolved_datasets)
+from .options import OPTIONS
 
 
 def get_band_limits(band: str) -> Tuple[float, float]:
@@ -217,18 +95,6 @@ def take_time_average(
         return_val = func(*args)
         execution_times.append(time.perf_counter() - time_st)
     return return_val, np.array(execution_times).mean()
-
-
-def execution_time(func: Callable) -> Callable:
-    """Prints the execution time of the decorated function."""
-
-    def wrapper(*args, **kwargs):
-        start_time = time.time()
-        result = func(*args, **kwargs)
-        print(f"Execution time: {time.time() - start_time:.6f} seconds")
-        return result
-
-    return wrapper
 
 
 def get_indices(
