@@ -12,7 +12,6 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 import astropy.units as u
 import numpy as np
 
-from ppdmod.analysis import save_fits
 from ppdmod.basic_components import assemble_components
 from ppdmod.data import set_data
 from ppdmod.fitting import (
@@ -154,12 +153,3 @@ if __name__ == "__main__":
         nfree=len(UNITS),
     )
     print(f"rchi_sq: {rchi_sq:.2f}")
-
-    save_fits(
-        components,
-        component_labels,
-        fit_hyperparameters=fit_params,
-        ncores=ncores,
-        save_dir=result_dir / "sed.fits",
-        object_name="HD142527",
-    )

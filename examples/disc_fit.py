@@ -15,7 +15,6 @@ import astropy.units as u
 import numpy as np
 
 from ppdmod import basic_components
-from ppdmod.analysis import save_fits
 from ppdmod.data import set_data
 from ppdmod.fitting import (
     compute_observable_chi_sq,
@@ -257,12 +256,3 @@ if __name__ == "__main__":
         *compute_observables(components), nfree=len(UNITS), reduced=True
     )
     print(f"rchi_sq: {rchi_sq:.2f}")
-
-    save_fits(
-        components,
-        component_labels,
-        fit_hyperparameters=fit_params,
-        ncores=ncores,
-        save_dir=result_dir / "model.fits",
-        object_name="HD142527",
-    )
