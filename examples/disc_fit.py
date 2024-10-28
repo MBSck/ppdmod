@@ -63,7 +63,8 @@ grid, value = load_data(
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
 star_flux.grid, star_flux.value = grid, value
 
-grid, value = np.load(DATA_DIR / "opacities" / "hd142527_silicate_opacities.npy")
+method = "boekel"
+grid, value = np.load(DATA_DIR / "opacities" / f"hd142527_silicate_{method}_opacities.npy")
 kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
 kappa_abs.value, kappa_abs.grid = grid, value
 
@@ -85,13 +86,13 @@ with open(
     DATA_DIR / "flux" / "hd142527" / "hd142527_dust_temperatures.pkl", "rb"
 ) as save_file:
     temps = pickle.load(save_file)
+    # OPTIONS.model.constant_params["temps"] = temps
 
 OPTIONS.model.constant_params = {
     "dim": 32,
     "dist": 158.51,
     "eff_temp": 6500,
     "eff_radius": 3.46,
-    "temps": temps,
     "f": star_flux,
     "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont,
