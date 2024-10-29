@@ -69,7 +69,9 @@ star_flux.grid, star_flux.value = grid, value
 
 
 method = "grf"
-grid, value = np.load(DATA_DIR / "opacities" / f"hd142527_silicate_{method}_opacities.npy")
+grid, value = np.load(
+    DATA_DIR / "opacities" / f"hd142527_silicate_{method}_opacities.npy"
+)
 kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
 kappa_abs.grid, kappa_abs.value = grid, value
 
@@ -87,12 +89,6 @@ inc.value = 0.915
 inc.free = True
 pa.free = False
 
-with open(
-    DATA_DIR / "flux" / "hd142527" / "hd142527_dust_temperatures.pkl", "rb"
-) as save_file:
-    temps = pickle.load(save_file)
-    # OPTIONS.model.constant_params["temps"] = temps
-
 OPTIONS.model.constant_params = {
     "dim": 32,
     "dist": 158.51,
@@ -103,6 +99,13 @@ OPTIONS.model.constant_params = {
     "kappa_cont": kappa_cont,
     "pa": pa,
 }
+
+
+with open(
+    DATA_DIR / "flux" / "hd142527" / "hd142527_dust_temperatures.pkl", "rb"
+) as save_file:
+    temps = pickle.load(save_file)
+    OPTIONS.model.constant_params["temps"] = temps
 
 x = Parameter(**STANDARD_PARAMETERS.x)
 y = Parameter(**STANDARD_PARAMETERS.y)
@@ -155,8 +158,7 @@ OPTIONS.model.components_and_params = [
 ]
 
 ring_labels = [
-    [f"{key}-{index}" for key in ring]
-    for index, ring in enumerate([one, two], start=1)
+    [f"{key}-{index}" for key in ring] for index, ring in enumerate([one, two], start=1)
 ]
 ring_units = [[value.unit for value in ring.values()] for ring in [one, two]]
 
