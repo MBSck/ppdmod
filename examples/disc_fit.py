@@ -85,7 +85,7 @@ grid, value = load_data(
     DATA_DIR / "opacities" / "qval" / "Q_amorph_c_rv0.1.dat", load_func=qval_to_opacity
 )
 kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
-kappa_cont.grid, kappa_cont.grid = grid, value
+kappa_cont.grid, kappa_cont.value = grid, value
 
 pa = Parameter(**STANDARD_PARAMETERS.pa)
 inc = Parameter(**STANDARD_PARAMETERS.inc)
