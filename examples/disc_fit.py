@@ -76,7 +76,7 @@ star_flux.grid, star_flux.value = grid, value
 weights = np.array([0, 73.2, 0.6, 14.2, 8.6, 0, 2.4, 1.0, 0, 0]) / 1e2
 grid, value = get_opacity(DATA_DIR / "opacities", weights, NAMES, "boekel")
 kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
-kappa_abs.value, kappa_abs.grid = grid, value
+kappa_abs.grid, kappa_abs.value = grid, value
 
 # grid, value = np.load(
 #     DATA_DIR / "opacities" / "optool" / "preibisch_amorph_c_rv0.1.npy"
@@ -85,7 +85,7 @@ grid, value = load_data(
     DATA_DIR / "opacities" / "qval" / "Q_amorph_c_rv0.1.dat", load_func=qval_to_opacity
 )
 kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
-kappa_cont.value, kappa_cont.grid = grid, value
+kappa_cont.grid, kappa_cont.grid = grid, value
 
 pa = Parameter(**STANDARD_PARAMETERS.pa)
 inc = Parameter(**STANDARD_PARAMETERS.inc)
@@ -127,21 +127,11 @@ c1 = Parameter(**STANDARD_PARAMETERS.c)
 s1 = Parameter(**STANDARD_PARAMETERS.s)
 cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 
-rin.value = 1.0
-rout.value = 3.0
-sigma0.value = 1e-3
-p.value = 0.5
-c1.value = s1.value = 0.5
-cont_weight.value = 40
-rin.unit = rout.unit = u.au
-rout.free = True
-
 rin.set(min=0, max=30)
 rout.set(min=0, max=30)
 rout.free = True
 p.set(min=-20, max=20)
-sigma0.set(min=0, max=5)
-cont_weight.set(min=0, max=100)
+sigma0.set(min=0, max=1e-1)
 
 one = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
 # one = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0}
@@ -154,50 +144,13 @@ c1 = Parameter(**STANDARD_PARAMETERS.c)
 s1 = Parameter(**STANDARD_PARAMETERS.s)
 cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 
-rin.value = 5
-rout.value = 10
-p.value = 0.5
-sigma0.value = 1e-3
-c1.value = s1.value = 0.5
-cont_weight.value = 40
-rin.unit = rout.unit = u.au
-rout.free = True
-
 rin.set(min=0, max=50)
 rout.set(min=0, max=50)
 rout.free = True
 p.set(min=-20, max=20)
-sigma0.set(min=0, max=5)
-cont_weight.set(min=0, max=100)
+sigma0.set(min=0, max=1e-1)
 
 two = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
-# two = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0}
-
-rin = Parameter(**STANDARD_PARAMETERS.rin)
-rout = Parameter(**STANDARD_PARAMETERS.rout)
-p = Parameter(**STANDARD_PARAMETERS.p)
-sigma0 = Parameter(**STANDARD_PARAMETERS.sigma0)
-c1 = Parameter(**STANDARD_PARAMETERS.c)
-s1 = Parameter(**STANDARD_PARAMETERS.s)
-cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
-
-rin.value = 12
-p.value = 0.5
-sigma0.value = 1e-3
-c1.value = s1.value = 0.5
-cont_weight.value = 40
-rin.unit = rout.unit = u.au
-rout.free = True
-
-rin.set(min=0, max=30)
-rout.set(min=0, max=30)
-rout.free = True
-p.set(min=-20, max=20)
-sigma0.set(min=0, max=5)
-cont_weight.set(min=0, max=100)
-
-# three = {"rin": rin, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
-three = {"rin": rin, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
 
 OPTIONS.model.shared_params = {"inc": inc}
 shared_param_labels = [f"{label}-sh" for label in OPTIONS.model.shared_params]
@@ -207,14 +160,13 @@ OPTIONS.model.components_and_params = [
     ["Star", star],
     ["GreyBody", one],
     ["GreyBody", two],
-    # ["GreyBody", three],
 ]
 
 ring_labels = [
     [f"{key}-{index}" for key in ring]
-    for index, ring in enumerate([one, two, three], start=1)
+    for index, ring in enumerate([one, two], start=1)
 ]
-ring_units = [[value.unit for value in ring.values()] for ring in [one, two, three]]
+ring_units = [[value.unit for value in ring.values()] for ring in [one, two]]
 
 LABELS = list(
     chain.from_iterable(
@@ -229,8 +181,7 @@ UNITS = list(
 )
 UNITS += shared_param_units
 
-component_labels = ["Star", "Inner Ring", "Outer Ring", "Last Ring"]
-component_labels = component_labels[: len(OPTIONS.model.components_and_params)]
+component_labels = ["Star", "Inner Ring", "Outer Ring"]
 OPTIONS.fit.method = "dynesty"
 
 result_dir = Path("../model_results/") / "disc_fit"
@@ -244,10 +195,6 @@ np.save(result_dir / "units.npy", UNITS)
 components = basic_components.assemble_components(
     OPTIONS.model.components_and_params, OPTIONS.model.shared_params
 )
-rchi_sq = compute_observable_chi_sq(
-    *compute_observables(components), nfree=len(UNITS), reduced=True
-)
-print(f"rchi_sq: {rchi_sq:.2f}")
 
 
 if __name__ == "__main__":
