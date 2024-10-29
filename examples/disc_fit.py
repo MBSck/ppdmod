@@ -27,7 +27,7 @@ from ppdmod.fitting import (
 )
 from ppdmod.options import OPTIONS, STANDARD_PARAMETERS
 from ppdmod.parameter import Parameter
-from ppdmod.utils import load_data, get_opacity, qval_to_opacity
+from ppdmod.utils import load_data, qval_to_opacity
 
 
 def ptform(theta: List[float]) -> np.ndarray:
@@ -60,7 +60,6 @@ data = set_data(
     set_std_err=["mband"],
 )
 WAVELENGTHS = OPTIONS.fit.wavelengths
-NAMES = ["Pyroxene", "Enstatite", "Forsterite", "Silica", "Olivine"]
 
 grid, value = load_data(
     DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt", usecols=(0, 2)
@@ -69,18 +68,11 @@ star_flux = Parameter(**STANDARD_PARAMETERS.f)
 star_flux.grid, star_flux.value = grid, value
 
 
-# _, weights = np.load(
-#     path / dir_name / "assets" / "silicate_labels_and_weights.npy"
-# )
-# weights = weights.astype(float) / weights.astype(float).sum()
-weights = np.array([0, 73.2, 0.6, 14.2, 8.6, 0, 2.4, 1.0, 0, 0]) / 1e2
-grid, value = get_opacity(DATA_DIR / "opacities", weights, NAMES, "boekel")
+method = "boekel"
+grid, value = np.load(DATA_DIR / "opacities" / f"hd142527_silicate_{method}_opacities.npy")
 kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
 kappa_abs.grid, kappa_abs.value = grid, value
 
-# grid, value = np.load(
-#     DATA_DIR / "opacities" / "optool" / "preibisch_amorph_c_rv0.1.npy"
-# )
 grid, value = load_data(
     DATA_DIR / "opacities" / "qval" / "Q_amorph_c_rv0.1.dat", load_func=qval_to_opacity
 )
