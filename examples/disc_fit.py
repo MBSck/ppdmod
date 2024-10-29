@@ -68,7 +68,7 @@ star_flux = Parameter(**STANDARD_PARAMETERS.f)
 star_flux.grid, star_flux.value = grid, value
 
 
-method = "boekel"
+method = "grf"
 grid, value = np.load(DATA_DIR / "opacities" / f"hd142527_silicate_{method}_opacities.npy")
 kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
 kappa_abs.grid, kappa_abs.value = grid, value
