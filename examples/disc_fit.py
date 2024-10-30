@@ -101,11 +101,11 @@ OPTIONS.model.constant_params = {
 }
 
 
-with open(
-    DATA_DIR / "flux" / "hd142527" / "hd142527_dust_temperatures.pkl", "rb"
-) as save_file:
-    temps = pickle.load(save_file)
-    OPTIONS.model.constant_params["temps"] = temps
+# with open(
+#     DATA_DIR / "flux" / "hd142527" / "hd142527_dust_temperatures.pkl", "rb"
+# ) as save_file:
+#     temps = pickle.load(save_file)
+#     OPTIONS.model.constant_params["temps"] = temps
 
 x = Parameter(**STANDARD_PARAMETERS.x)
 y = Parameter(**STANDARD_PARAMETERS.y)
