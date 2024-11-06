@@ -38,8 +38,8 @@ DATA_DIR = Path(__file__).parent.parent / "data"
 wavelengths = {
     "hband": [1.7] * u.um,
     "kband": [2.15] * u.um,
-    "lband": np.linspace(3.3, 3.8, 5) * u.um,
-    "mband": np.linspace(4.6, 4.9, 3) * u.um,
+    "lband": np.linspace(3.1, 3.4, 5) * u.um,
+    "mband": np.linspace(4.7, 4.9, 3) * u.um,
     "nband": np.linspace(8, 15, 35) * u.um,
 }
 
@@ -61,9 +61,7 @@ data = set_data(
 )
 WAVELENGTHS = OPTIONS.fit.wavelengths
 
-grid, value = load_data(
-    DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt", usecols=(0, 2)
-)
+grid, value = np.load(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.npy")
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
 star_flux.grid, star_flux.value = grid, value
 
