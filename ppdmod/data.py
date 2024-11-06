@@ -1,3 +1,4 @@
+from collections import Counter
 from functools import partial
 from pathlib import Path
 from types import SimpleNamespace
@@ -256,6 +257,18 @@ def set_fit_weights(weights: List[float] | None = None) -> None:
     OPTIONS.fit.weights.t3 = wt3 / norm
 
 
+def set_band_weights():
+    """Sets the weights for the individual bands."""
+    wavelengths = OPTIONS.fit.wavelengths
+    bands, counts = zip(*Counter(map(get_band, wavelengths)).items())
+    nmax = max(counts)
+    weights = nmax / np.array(counts)
+    weights /= weights.sum()
+
+    for weight, band in zip(weights, bands):
+        setattr(OPTIONS.fit.weights, band, weight)
+
+
 def set_data(
     fits_files: List[Path] | None = None,
     wavelengths: str | u.Quantity[u.um] | None = None,
@@ -371,4 +384,5 @@ def set_data(
             data.err[ind, :] = band_std
 
     set_fit_weights(weights)
+    set_band_weights()
     return OPTIONS.data

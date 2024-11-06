@@ -14,7 +14,7 @@ from .component import Component
 from .data import get_counts_data
 from .options import OPTIONS
 from .parameter import Parameter
-from .utils import compute_t3, compute_vis
+from .utils import compute_t3, compute_vis, get_band
 
 
 def get_priors() -> np.ndarray:
@@ -236,7 +236,9 @@ def compute_observables(
 
 
 def compute_sed_chi_sq(
-    flux_model: np.ndarray, reduced: bool = False, nfree: int | None = None,
+    flux_model: np.ndarray,
+    reduced: bool = False,
+    nfree: int | None = None,
 ) -> float:
     """Calculates the sed model's chi square from the observables.
 
@@ -308,27 +310,31 @@ def compute_observable_chi_sq(
         data = getattr(OPTIONS.data, key)
         key = key if key != "vis2" else "vis"
         weight = getattr(OPTIONS.fit.weights, key)
-        nan_indices = np.isnan(data.value)
         diff_method = "linear" if key != "t3" else "exponential"
-        chi_sqs.append(
-            compute_chi_sq(
-                data.value[~nan_indices],
-                data.err[~nan_indices],
-                params[key][~nan_indices],
+
+        band_chi_sq = 0
+        bands = np.array(list(map(get_band, OPTIONS.fit.wavelengths)))
+        for band, indices in {
+            band: np.where(bands == band) for band in set(bands)
+        }.items():
+            value, err = data.value[indices[0]], data.err[indices[0]]
+            nan_indices = np.isnan(value)
+            band_chi_sq += compute_chi_sq(
+                value[~nan_indices],
+                err[~nan_indices],
+                params[key][indices[0]][~nan_indices],
                 diff_method=diff_method,
                 func_method=func_method,
-            )
-            * weight
-        )
+            ) * getattr(OPTIONS.fit.weights, band)
+
+        chi_sqs.append(band_chi_sq * weight)
 
     chi_sqs = np.array(chi_sqs).astype(float)
     ndata = get_counts_data()
     if reduced:
         chi_sqs = np.append(chi_sqs, [0] * (3 - chi_sqs.size))
         rchi_sq = chi_sqs.sum() / (ndata.sum() - nfree)
-        return (
-            np.abs([rchi_sq, *chi_sqs / (ndata - nfree)]) if split else rchi_sq
-        )
+        return np.abs([rchi_sq, *chi_sqs / (ndata - nfree)]) if split else rchi_sq
 
     return [chi_sqs.sum(), *chi_sqs] if split else chi_sqs.sum()
 
@@ -402,9 +408,7 @@ def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray
 
 def ptform_sed(theta: List[float], labels: List[str]) -> np.ndarray:
     """Transform that soft constrains successive radii to be smaller than the one before."""
-    indices = list(
-        map(labels.index, filter(lambda x: "weight" in x, labels))
-    )
+    indices = list(map(labels.index, filter(lambda x: "weight" in x, labels)))
     params = transform_uniform_prior(theta)
 
     remainder = 100
