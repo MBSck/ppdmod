@@ -699,6 +699,7 @@ class TempGradient(Ring):
 
         self.eval(**kwargs)
 
+        # TODO: Fix this implementation, don't do that here. Do that in the temp calculation
         if OPTIONS.model.constant_params is not None:
             if "temps" in OPTIONS.model.constant_params:
                 temps = OPTIONS.model.constant_params["temps"]

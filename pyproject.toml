@@ -3,7 +3,7 @@ name = "ppdmod"
 dynamic = ["version"]
 description = "A package for modelling and model-fitting protoplanetary disks"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.9,<3.10"
 license = {file = "LICENSE"}
 authors = [
 	{name = "Marten Scheuck", email = "martenscheuck@gmail.com"}
@@ -21,15 +21,15 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Physics",
 ]
 dependencies = [
-    "astropy>=6.1.4",
+    "astropy>=5.3.2",
     "corner>=2.2.2",
     "dynesty>=2.1.4",
     "emcee>=3.1.6",
     "matplotlib>=3.9.2",
-    "numpy>=2.1.2",
+    "numpy>=2.0.2",
     "openpyxl>=3.1.5",
     "pandas>=2.2.3",
-    "scipy>=1.14.1",
+    "scipy>=1.13.1",
 ]
 
 [tool.uv]
@@ -38,9 +38,9 @@ dev-dependencies = [
     "pydata-sphinx-theme>=0.16.0",
     "pytest-cov>=5.0.0",
     "pytest>=8.3.3",
-    "sphinx>=8.1.3",
+    "sphinx>=7.4.7",
     "sphinx-autobuild>=2024.10.3",
-    "sphinx-autodoc-typehints>=2.5.0",
+    "sphinx-autodoc-typehints>=2.3.0",
 ]
 
 [build-system]
