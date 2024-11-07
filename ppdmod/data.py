@@ -231,30 +231,22 @@ def set_fit_wavelengths(
 def get_counts_data() -> np.ndarray[int]:
     """Gets the number of data points for the flux,
     visibilities and closure phases."""
-    data = OPTIONS.data
-    nflux = data.flux.value[~np.isnan(data.flux.value)].size
-    vis = data.vis.value if data.vis2.value.size == 0 else data.vis2.value
-    nvis = vis[~np.isnan(vis)].size
-    nt3 = data.t3.value[~np.isnan(data.t3.value)].size
-    return np.array([nflux, nvis, nt3])
+    counts = []
+    for key in OPTIONS.fit.data:
+        data = getattr(OPTIONS.data, key)
+        counts.append(data.value[~np.isnan(data.value)].size)
+
+    return np.array(counts)
 
 
 def set_fit_weights(weights: List[float] | None = None) -> None:
     """Sets the weights of the fit parameters
     from the observed data"""
-    if weights is not None:
-        wflux, wvis, wt3 = weights
-    else:
-        nflux, nvis, nt3 = get_counts_data()
-        nmax = max(nflux, nvis, nt3)
-        wflux = 0.0 if nflux == 0 else nmax / nflux
-        wvis = 0.0 if nvis == 0 else nmax / nvis
-        wt3 = 0.0 if nt3 == 0 else nmax / nt3
+    if weights is None:
+        weights = [1, 1, 1]
 
-    norm = wflux + wvis + wt3
-    OPTIONS.fit.weights.flux = wflux / norm
-    OPTIONS.fit.weights.vis = wvis / norm
-    OPTIONS.fit.weights.t3 = wt3 / norm
+    for weight, key in zip(weights, OPTIONS.fit.data):
+        setattr(OPTIONS.fit.weights, key, weight)
 
 
 def set_band_weights():

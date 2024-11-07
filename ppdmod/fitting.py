@@ -279,7 +279,7 @@ def compute_observable_chi_sq(
     t3_model: np.ndarray,
     nfree: int | None = None,
     reduced: bool = False,
-    split: bool = False,
+    rtotal_chi_sq: bool = False,
 ):
     """Calculates the disc model's chi square from the observables.
 
@@ -294,8 +294,8 @@ def compute_observable_chi_sq(
         The model's closure phase.
     reduced : bool, optional
         Whether to return the reduced chi square.
-    split : bool, optional
-        Whether to return the individual components.
+    rtotal_chi_sq : bool, optional
+        Whether to return the total reduced chi square.
 
     Returns
     -------
@@ -306,50 +306,32 @@ def compute_observable_chi_sq(
     func_method = "default" if reduced else "logarithmic"
 
     # TODO: Think again of the weights and add the error weights between the observables
-    chi_sqs, err_weights = [], []
+    chi_sqs, weights = [], []
     for key in OPTIONS.fit.data:
         data = getattr(OPTIONS.data, key)
         key = key if key != "vis2" else "vis"
-        weight = getattr(OPTIONS.fit.weights, key)
+        weights.append(getattr(OPTIONS.fit.weights, key))
         diff_method = "linear" if key != "t3" else "exponential"
-        # err_weights.append((1 / data.err[~np.isnan(data.err)] ** 2).sum())
 
-        bands = np.array(list(map(get_band, OPTIONS.fit.wavelengths)))
-        band_chi_sqs, band_weights, band_err_weights = [], [], []
-        for band, indices in {
-            band: np.where(bands == band) for band in sorted(set(bands))
-        }.items():
-            value, err = data.value[indices[0]], data.err[indices[0]]
-            nan_indices = np.isnan(value)
-            band_chi_sqs.append(
-                compute_chi_sq(
-                    value[~nan_indices],
-                    err[~nan_indices],
-                    params[key][indices[0]][~nan_indices],
-                    diff_method=diff_method,
-                    func_method=func_method,
-                )
+        nan_indices = np.isnan(data.value)
+        chi_sqs.append(
+            compute_chi_sq(
+                data.value[~nan_indices],
+                data.err[~nan_indices],
+                params[key][~nan_indices],
+                diff_method=diff_method,
+                func_method=func_method,
             )
-            band_weights.append(getattr(OPTIONS.fit.weights, band))
-            band_err_weights.append((1 / err[~nan_indices] ** 2).sum())
-
-        band_err_weights = max(band_err_weights) / band_err_weights
-        band_err_weights = band_err_weights / np.sum(band_err_weights)
-
-        # TODO: Reimplement the band weights again but properly (scaling for the individual files?)
-        chi_sqs.append(np.sum(band_chi_sqs) * weight)
+        )
 
     chi_sqs = np.array(chi_sqs).astype(float)
-    # err_weights = max(err_weights) / np.array(err_weights)
-    # err_weights = err_weights / np.sum(err_weights)
-
-    ndata = get_counts_data()
     if reduced:
-        chi_sqs = np.append(chi_sqs, [0] * (3 - chi_sqs.size))
-        rchi_sq = chi_sqs.sum() / (ndata.sum() - nfree)
-        return np.abs([rchi_sq, *chi_sqs / (ndata - nfree)]) if split else rchi_sq
+        if rtotal_chi_sq:
+            return (chi_sqs * weights).sum() / (get_counts_data().sum() - nfree)
 
-    return [chi_sqs.sum(), *chi_sqs] if split else chi_sqs.sum()
+        chi_sqs = chi_sqs / (get_counts_data() - nfree)
+
+    return (chi_sqs * weights).sum()
 
 
 def transform_uniform_prior(theta: List[float]) -> float:
@@ -493,7 +475,9 @@ def lnprob(theta: np.ndarray) -> float:
             return -np.inf
 
     components = assemble_components(parameters, shared_params)
-    return compute_observable_chi_sq(*compute_observables(components))
+    return compute_observable_chi_sq(
+        *compute_observables(components), reduced=True, nfree=len(get_priors())
+    )
 
 
 def lnprob_sed(theta: np.ndarray) -> float:

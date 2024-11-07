@@ -462,7 +462,7 @@ plot = SimpleNamespace(
 )
 
 # NOTE: Fitting
-weights = SimpleNamespace(flux=1, t3=1, vis=1, hband=0, kband=0, lband=0, mband=0, nband=0)
+weights = SimpleNamespace(flux=1, t3=1, vis=1)
 fit = SimpleNamespace(
     weights=weights,
     data=["flux", "vis", "t3"],
