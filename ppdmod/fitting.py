@@ -305,6 +305,7 @@ def compute_observable_chi_sq(
     params = {"flux": flux_model, "vis": vis_model, "t3": t3_model}
     func_method = "default" if reduced else "logarithmic"
 
+    # TODO: Think again of the weights and add the error weights between the observables
     chi_sqs, err_weights = [], []
     for key in OPTIONS.fit.data:
         data = getattr(OPTIONS.data, key)
@@ -334,7 +335,9 @@ def compute_observable_chi_sq(
 
         band_err_weights = max(band_err_weights) / band_err_weights
         band_err_weights = band_err_weights / np.sum(band_err_weights)
-        chi_sqs.append(np.sum(band_chi_sqs * band_err_weights) * weight)
+
+        # TODO: Reimplement the band weights again but properly (scaling for the individual files?)
+        chi_sqs.append(np.sum(band_chi_sqs) * weight)
 
     chi_sqs = np.array(chi_sqs).astype(float)
     # err_weights = max(err_weights) / np.array(err_weights)

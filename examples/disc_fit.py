@@ -99,11 +99,9 @@ OPTIONS.model.constant_params = {
 }
 
 
-# with open(
-#     DATA_DIR / "flux" / "hd142527" / "hd142527_dust_temperatures.pkl", "rb"
-# ) as save_file:
-#     temps = pickle.load(save_file)
-#     OPTIONS.model.constant_params["temps"] = temps
+# TODO: Think of how to save the dust temperatures?
+# DATA_DIR / "flux" / "hd142527" / "hd142527_dust_temperatures.pkl", "rb"
+# OPTIONS.model.constant_params["temps"] = temps
 
 x = Parameter(**STANDARD_PARAMETERS.x)
 y = Parameter(**STANDARD_PARAMETERS.y)
@@ -193,7 +191,7 @@ if __name__ == "__main__":
     ncores = 70
     fit_params = {"nlive_init": 2000, "ptform": ptform}
     sampler = run_fit(
-        **fit_params, ncores=ncores, method="dynamic", save_dir=result_dir, debug=False
+        **fit_params, ncores=ncores, method="dynamic", save_dir=result_dir, debug=True
     )
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)

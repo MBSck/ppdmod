@@ -986,10 +986,7 @@ def assemble_components(
 ) -> List[FourierComponent]:
     """Assembles a model from a dictionary of parameters."""
     shared_params = shared_params if shared_params is not None else {}
-    if OPTIONS.model.constant_params is None:
-        constant_params = {}
-    else:
-        constant_params = OPTIONS.model.constant_params
+    constant_params = OPTIONS.model.constant_params
 
     components = []
     for component, params in parameters:

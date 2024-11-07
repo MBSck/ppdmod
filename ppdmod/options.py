@@ -430,7 +430,7 @@ data = SimpleNamespace(
 # NOTE: Model
 model = SimpleNamespace(
     components_and_params=None,
-    constant_params=None,
+    constant_params={},
     shared_params=None,
     output="non-normed",
     reference_radius=1 * u.au,
