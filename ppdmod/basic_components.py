@@ -12,7 +12,7 @@ from scipy.special import j0, j1, jv
 from .component import Component, FourierComponent
 from .options import OPTIONS, STANDARD_PARAMETERS
 from .parameter import Parameter
-from .utils import angular_to_distance, distance_to_angular
+from .utils import angular_to_distance, distance_to_angular, smooth_interpolation
 
 
 # TODO: Implement this here like it is done in the script (used with oimodeler)
@@ -683,7 +683,6 @@ class TempGradient(Ring):
         self.r0 = Parameter(**STANDARD_PARAMETERS.r0)
         self.q = Parameter(**STANDARD_PARAMETERS.q)
         self.temp0 = Parameter(**STANDARD_PARAMETERS.temp0)
-        self.temps = Parameter(**STANDARD_PARAMETERS.temps)
         self.p = Parameter(**STANDARD_PARAMETERS.p)
         self.sigma0 = Parameter(**STANDARD_PARAMETERS.sigma0)
 
@@ -698,15 +697,6 @@ class TempGradient(Ring):
             self.cont_weight.free = False
 
         self.eval(**kwargs)
-
-        # TODO: Fix this implementation, don't do that here. Do that in the temp calculation
-        if OPTIONS.model.constant_params is not None:
-            if "temps" in OPTIONS.model.constant_params:
-                temps = OPTIONS.model.constant_params["temps"]
-                cont_temps = interp1d(temps.weights, temps.values, axis=0)(
-                    self.cont_weight().value / 1e2
-                )
-                self.temps.grid, self.temps.value = temps.radii, cont_temps
 
     def get_opacity(self, wavelength: u.um) -> u.cm**2 / u.g:
         """Set the opacity from wavelength."""
@@ -729,12 +719,14 @@ class TempGradient(Ring):
     def compute_temperature(self, radius: u.au) -> u.K:
         """Computes a 1D-temperature profile."""
         if self.const_temperature:
-            if self.temps.value is None:
+            if "temps" in OPTIONS.model.constant_params:
+                weights, radii, cont_temps = OPTIONS.model.constant_params["temps"]
+                temps = interp1d(weights, cont_temps, axis=0)(self.cont_weight().value / 1e2)
+                temperature = smooth_interpolation(radius, radii, temps)
+            else:
                 temperature = (
                     np.sqrt(self.eff_radius().to(u.au) / (2 * radius)) * self.eff_temp()
                 )
-            else:
-                temperature = self.temps(radius)
         else:
             r0 = OPTIONS.model.reference_radius if self.r0.value == 0 else self.r0()
             temperature = self.temp0() * (radius / r0) ** self.q()
