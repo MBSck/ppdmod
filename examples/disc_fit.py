@@ -99,9 +99,8 @@ OPTIONS.model.constant_params = {
 }
 
 
-# TODO: Think of how to save the dust temperatures?
-# DATA_DIR / "flux" / "hd142527" / "hd142527_dust_temperatures.pkl", "rb"
-# OPTIONS.model.constant_params["temps"] = temps
+opacity_temps = np.load(DATA_DIR / "flux" / "hd142527" / "opacity_temperatures.npz")
+OPTIONS.model.constant_params["opacity_temps"] = opacity_temps
 
 x = Parameter(**STANDARD_PARAMETERS.x)
 y = Parameter(**STANDARD_PARAMETERS.y)
@@ -191,7 +190,7 @@ if __name__ == "__main__":
     ncores = 70
     fit_params = {"nlive_init": 2000, "ptform": ptform}
     sampler = run_fit(
-        **fit_params, ncores=ncores, method="dynamic", save_dir=result_dir, debug=False
+        **fit_params, ncores=ncores, method="dynamic", save_dir=result_dir, debug=True
     )
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
@@ -201,7 +200,6 @@ if __name__ == "__main__":
     components = basic_components.assemble_components(
         components_and_params, shared_params
     )
-
 
     with open(result_dir / "components.pkl", "wb") as file:
         pickle.dump(components, file)

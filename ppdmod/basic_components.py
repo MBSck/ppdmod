@@ -685,6 +685,7 @@ class TempGradient(Ring):
         self.temp0 = Parameter(**STANDARD_PARAMETERS.temp0)
         self.p = Parameter(**STANDARD_PARAMETERS.p)
         self.sigma0 = Parameter(**STANDARD_PARAMETERS.sigma0)
+        self.opacity_temps = None
 
         self.kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
         self.kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
@@ -719,10 +720,13 @@ class TempGradient(Ring):
     def compute_temperature(self, radius: u.au) -> u.K:
         """Computes a 1D-temperature profile."""
         if self.const_temperature:
-            if "temps" in OPTIONS.model.constant_params:
-                weights, radii, temps = OPTIONS.model.constant_params["temps"]
-                weighted_temps = interp1d(weights, temps, axis=0)(self.cont_weight().value / 1e2)
-                temperature = smooth_interpolation(radius, radii, weighted_temps)
+            if self.opacity_temps is not None:
+                interp_opacity_temps = interp1d(
+                    self.opacity_temps["weights"], self.opacity_temps["matrix"], axis=0
+                )(self.cont_weight().value / 1e2)
+                temperature = smooth_interpolation(
+                    radius.value, self.opacity_temps["radii"], interp_opacity_temps
+                )
             else:
                 temperature = (
                     np.sqrt(self.eff_radius().to(u.au) / (2 * radius)) * self.eff_temp()
