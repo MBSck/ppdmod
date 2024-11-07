@@ -3,6 +3,7 @@ import pickle
 from datetime import datetime
 from itertools import chain
 from pathlib import Path
+from types import SimpleNamespace
 from typing import List
 
 os.environ["OMP_NUM_THREADS"] = "1"
@@ -99,8 +100,12 @@ OPTIONS.model.constant_params = {
 }
 
 
-opacity_temps = np.load(DATA_DIR / "flux" / "hd142527" / "opacity_temperatures.npz")
-OPTIONS.model.constant_params["opacity_temps"] = opacity_temps
+radii = np.load(DATA_DIR / "flux" / "hd142527" / "radii.npy")
+weights = np.load(DATA_DIR / "flux" / "hd142527" / "weights.npy")
+weight_temp_matrix = np.load(DATA_DIR / "flux" / "hd142527" / "weight_temp_matrix.npy")
+OPTIONS.model.constant_params["opacity_temps"] = SimpleNamespace(
+    radii=radii, weights=weights, matrix=weight_temp_matrix
+)
 
 x = Parameter(**STANDARD_PARAMETERS.x)
 y = Parameter(**STANDARD_PARAMETERS.y)

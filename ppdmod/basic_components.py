@@ -722,10 +722,10 @@ class TempGradient(Ring):
         if self.const_temperature:
             if self.opacity_temps is not None:
                 interp_opacity_temps = interp1d(
-                    self.opacity_temps["weights"], self.opacity_temps["matrix"], axis=0
+                    self.opacity_temps.weights, self.opacity_temps.matrix, axis=0
                 )(self.cont_weight().value / 1e2)
                 temperature = smooth_interpolation(
-                    radius.value, self.opacity_temps["radii"], interp_opacity_temps
+                    radius.value, self.opacity_temps.radii, interp_opacity_temps
                 ) * u.K
             else:
                 temperature = (
