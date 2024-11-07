@@ -720,9 +720,9 @@ class TempGradient(Ring):
         """Computes a 1D-temperature profile."""
         if self.const_temperature:
             if "temps" in OPTIONS.model.constant_params:
-                weights, radii, cont_temps = OPTIONS.model.constant_params["temps"]
-                temps = interp1d(weights, cont_temps, axis=0)(self.cont_weight().value / 1e2)
-                temperature = smooth_interpolation(radius, radii, temps)
+                weights, radii, temps = OPTIONS.model.constant_params["temps"]
+                weighted_temps = interp1d(weights, temps, axis=0)(self.cont_weight().value / 1e2)
+                temperature = smooth_interpolation(radius, radii, weighted_temps)
             else:
                 temperature = (
                     np.sqrt(self.eff_radius().to(u.au) / (2 * radius)) * self.eff_temp()
