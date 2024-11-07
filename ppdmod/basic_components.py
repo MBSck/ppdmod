@@ -726,7 +726,7 @@ class TempGradient(Ring):
                 )(self.cont_weight().value / 1e2)
                 temperature = smooth_interpolation(
                     radius.value, self.opacity_temps["radii"], interp_opacity_temps
-                )
+                ) * u.K
             else:
                 temperature = (
                     np.sqrt(self.eff_radius().to(u.au) / (2 * radius)) * self.eff_temp()
