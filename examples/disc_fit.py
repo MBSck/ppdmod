@@ -101,9 +101,8 @@ OPTIONS.model.constant_params = {
 
 with open(DATA_DIR / "flux" / "hd142527" / "opacity_temps.pkl", "rb") as f:
     opacity_temps = SimpleNamespace(**{k: np.array(v) for k, v in pickle.load(f).items()})
-breakpoint()
 
-OPTIONS.model.constant_params["opacity_temps"] = opacity_temps
+# OPTIONS.model.constant_params["opacity_temps"] = opacity_temps
 
 x = Parameter(**STANDARD_PARAMETERS.x)
 y = Parameter(**STANDARD_PARAMETERS.y)
