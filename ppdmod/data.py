@@ -116,7 +116,7 @@ class ReadoutFits:
         u1coord, u2coord = map(lambda x: data.data[f"u{x}coord"], ["1", "2"])
         v1coord, v2coord = map(lambda x: data.data[f"v{x}coord"], ["1", "2"])
 
-        u3coord, v3coord = (u1coord + u2coord), (v1coord + v2coord)
+        u3coord, v3coord = -(u1coord + u2coord), -(v1coord + v2coord)
         u123coord = np.array([u1coord, u2coord, u3coord])
         v123coord = np.array([v1coord, v2coord, v3coord])
         return SimpleNamespace(
@@ -371,9 +371,10 @@ def set_data(
             ind = np.where(band == bands)[0]
             band_data = data.value[ind, :]
             band_std = np.tile(np.std(band_data, axis=0), (band_data.shape[0], 1))
-            err_ind = np.where(np.abs(band_std / band_data) < min_err)
-            band_std[err_ind] = np.abs(band_data[err_ind]) * min_err
             data.err[ind, :] = band_std
+
+        err_ind = np.where(np.abs(data.err / data.value) < min_err)
+        data.err[err_ind] += np.abs(data.value[err_ind]) * min_err
 
     set_fit_weights(weights)
     set_band_weights()
