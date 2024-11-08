@@ -326,6 +326,15 @@ wheels = [
 ]
 
 [[package]]
+name = "julia"
+version = "0.6.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d9/ec/e13a3d0951f0bc0c949b914a324da47358d5cb465d402677e704ecbede8a/julia-0.6.2.tar.gz", hash = "sha256:35eefc030671392b79ba0e1898b7103ed1286ad044783c4cadc99d4401c368e3", size = 54332 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/82/af/2e9a1a996f32b34249582392bb419cf8983b627a1d31412acbe9d6dea5b0/julia-0.6.2-py2.py3-none-any.whl", hash = "sha256:90752f71376fdb9919439d20496c2dab24486dfa4fe8a831d6dd14a1bcbc04d1", size = 68776 },
+]
+
+[[package]]
 name = "kiwisolver"
 version = "1.4.7"
 source = { registry = "https://pypi.org/simple" }
@@ -516,6 +525,7 @@ dependencies = [
     { name = "corner" },
     { name = "dynesty" },
     { name = "emcee" },
+    { name = "julia" },
     { name = "matplotlib" },
     { name = "numpy" },
     { name = "openpyxl" },
@@ -540,6 +550,7 @@ requires-dist = [
     { name = "corner", specifier = ">=2.2.2" },
     { name = "dynesty", specifier = ">=2.1.4" },
     { name = "emcee", specifier = ">=3.1.6" },
+    { name = "julia", specifier = ">=0.6.2" },
     { name = "matplotlib", specifier = ">=3.9.2" },
     { name = "numpy", specifier = ">=2.0.2" },
     { name = "openpyxl", specifier = ">=3.1.5" },
