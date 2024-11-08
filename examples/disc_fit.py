@@ -103,9 +103,9 @@ OPTIONS.model.constant_params = {
 radii = np.load(DATA_DIR / "flux" / "hd142527" / "radii.npy")
 weights = np.load(DATA_DIR / "flux" / "hd142527" / "weights.npy")
 weight_temp_matrix = np.load(DATA_DIR / "flux" / "hd142527" / "weight_temp_matrix.npy")
-OPTIONS.model.constant_params["opacity_temps"] = SimpleNamespace(
-    radii=radii, weights=weights, matrix=weight_temp_matrix
-)
+# OPTIONS.model.constant_params["opacity_temps"] = SimpleNamespace(
+#     radii=radii, weights=weights, matrix=weight_temp_matrix
+# )
 
 x = Parameter(**STANDARD_PARAMETERS.x)
 y = Parameter(**STANDARD_PARAMETERS.y)
@@ -192,7 +192,7 @@ components = basic_components.assemble_components(
 
 
 if __name__ == "__main__":
-    ncores = 70
+    ncores = 50
     fit_params = {"nlive_init": 2000, "ptform": ptform}
     sampler = run_fit(
         **fit_params, ncores=ncores, method="dynamic", save_dir=result_dir, debug=False
