@@ -322,10 +322,10 @@ def compute_observable_chi_sq(
 
     chi_sqs = np.array(chi_sqs).astype(float) * weights
     if reduced:
-        if rtotal_chi_sq:
-            return chi_sqs.sum() / (get_counts_data() - ndim).sum()
+        if not rtotal_chi_sq:
+            return chi_sqs / (get_counts_data() - ndim)
 
-        chi_sqs = chi_sqs / (get_counts_data() - ndim)
+        return chi_sqs.sum() / (get_counts_data() - ndim).sum()
 
     return chi_sqs.sum()
 
@@ -472,7 +472,10 @@ def lnprob(theta: np.ndarray) -> float:
 
     components = assemble_components(parameters, shared_params)
     return compute_observable_chi_sq(
-        *compute_observables(components), ndim=len(get_priors()), reduced=True
+        *compute_observables(components),
+        ndim=len(get_priors()),
+        reduced=True,
+        rtotal_chi_sq=True,
     )
 
 

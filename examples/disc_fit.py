@@ -99,17 +99,16 @@ OPTIONS.model.constant_params = {
     "pa": pa,
 }
 
+with open(DATA_DIR / "flux" / "hd142527" / "opacity_temps.pkl", "rb") as f:
+    opacity_temps = SimpleNamespace(**{k: np.array(v) for k, v in pickle.load(f).items()})
+breakpoint()
 
-radii = np.load(DATA_DIR / "flux" / "hd142527" / "radii.npy")
-weights = np.load(DATA_DIR / "flux" / "hd142527" / "weights.npy")
-weight_temp_matrix = np.load(DATA_DIR / "flux" / "hd142527" / "weight_temp_matrix.npy")
-# OPTIONS.model.constant_params["opacity_temps"] = SimpleNamespace(
-#     radii=radii, weights=weights, matrix=weight_temp_matrix
-# )
+OPTIONS.model.constant_params["opacity_temps"] = opacity_temps
 
 x = Parameter(**STANDARD_PARAMETERS.x)
 y = Parameter(**STANDARD_PARAMETERS.y)
 x.free = y.free = True
+
 star = {}
 star_labels = [rf"{label}-\star" for label in star]
 star_units = [value.unit for value in star.values()]
@@ -129,7 +128,6 @@ p.set(min=-20, max=20)
 sigma0.set(min=0, max=1e-1)
 
 one = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
-# one = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0}
 
 rin = Parameter(**STANDARD_PARAMETERS.rin)
 rout = Parameter(**STANDARD_PARAMETERS.rout)
@@ -209,7 +207,17 @@ if __name__ == "__main__":
     with open(result_dir / "components.pkl", "wb") as file:
         pickle.dump(components, file)
 
+    ndim = len(UNITS)
     rchi_sq = compute_observable_chi_sq(
-        *compute_observables(components), nfree=len(UNITS), reduced=True
+        *compute_observables(components),
+        ndim=ndim,
+        reduced=True,
+        rtotal_chi_sq=True,
     )
-    print(f"rchi_sq: {rchi_sq:.2f}")
+    print(f"total reduced chi_sq: {rchi_sq:.2f}")
+
+    rchi_sqs = compute_observable_chi_sq(
+        *compute_observables(components), ndim=ndim, reduced=True
+    )
+    rchi_sqs = np.round(rchi_sqs, 2)
+    print(f"Individual reduced chi_sqs: {rchi_sqs}")
