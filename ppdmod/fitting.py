@@ -102,12 +102,12 @@ def init_randomly(nwalkers: int | None = None) -> np.ndarray:
     )
 
 
-def compute_chi_sq(
+def compute_log_chi_sq(
     data: u.Quantity,
     error: u.Quantity,
     model_data: u.Quantity,
+    ndim: int,
     diff_method: str = "linear",
-    func_method: str = "logarithmic",
     lnf: float | None = None,
 ) -> float:
     """Computes the chi square minimisation.
@@ -120,11 +120,12 @@ def compute_chi_sq(
         The real data's error.
     model_data : numpy.ndarray
         The model data.
+    ndim : int
+        The number of (parameter) dimensions.
     diff_method : str, optional
         The method to determine the difference of the dataset,
         to the data. Either "linear" or "exponential".
         Default is "linear".
-
     lnf : float, optional
         The error correction term for the real data.
 
@@ -132,20 +133,16 @@ def compute_chi_sq(
     -------
     chi_sq : float
     """
-    if lnf is None:
-        sigma_squared = error**2
-    else:
-        sigma_squared = error**2 + model_data**2 * np.exp(2 * lnf)
+    sigma_squared = error**2
+    if lnf is not None:
+        sigma_squared += model_data**2 * np.exp(2 * lnf)
 
-    diff = data - model_data
+    residuals = data - model_data
     if diff_method != "linear":
-        diff = np.angle(np.exp(diff * u.deg.to(u.rad) * 1j), deg=True)
+        residuals = np.angle(np.exp(residuals * u.deg.to(u.rad) * 1j), deg=True)
 
-    square_term = diff**2 / sigma_squared
-    if func_method == "default":
-        return square_term.sum()
-
-    return -0.5 * (square_term + np.log(2 * np.pi * sigma_squared)).sum()
+    lnorm = np.log(2 * np.pi * sigma_squared)
+    return -0.5 * ((residuals**2 / sigma_squared) + lnorm).sum()
 
 
 # TODO: Write tests (ASPRO) that tests multiple components with the total flux
@@ -258,12 +255,10 @@ def compute_sed_chi_sq(
     """
     flux = OPTIONS.data.flux
     nan_indices = np.isnan(flux.value)
-    func_method = "default" if reduced else "logarithmic"
-    chi_sq = compute_chi_sq(
+    chi_sq = compute_log_chi_sq(
         flux.value[~nan_indices],
         flux.err[~nan_indices],
         flux_model.flatten(),
-        func_method=func_method,
     )
 
     # NOTE: The -1 here indicates that one of the parameters is actually fixed
@@ -277,7 +272,7 @@ def compute_observable_chi_sq(
     flux_model: np.ndarray,
     vis_model: np.ndarray,
     t3_model: np.ndarray,
-    nfree: int | None = None,
+    ndim: int,
     reduced: bool = False,
     rtotal_chi_sq: bool = False,
 ):
@@ -292,6 +287,8 @@ def compute_observable_chi_sq(
         visibilities (depends on the OPTIONS.fit.data).
     t3_model : numpy.ndarray
         The model's closure phase.
+    ndim : int
+        The number of (parameter) dimensions.
     reduced : bool, optional
         Whether to return the reduced chi square.
     rtotal_chi_sq : bool, optional
@@ -303,7 +300,6 @@ def compute_observable_chi_sq(
         The chi square.
     """
     params = {"flux": flux_model, "vis": vis_model, "t3": t3_model}
-    func_method = "default" if reduced else "logarithmic"
 
     # TODO: Think again of the weights and add the error weights between the observables
     chi_sqs, weights = [], []
@@ -315,23 +311,23 @@ def compute_observable_chi_sq(
 
         nan_indices = np.isnan(data.value)
         chi_sqs.append(
-            compute_chi_sq(
+            compute_log_chi_sq(
                 data.value[~nan_indices],
                 data.err[~nan_indices],
                 params[key][~nan_indices],
+                ndim=ndim,
                 diff_method=diff_method,
-                func_method=func_method,
             )
         )
 
-    chi_sqs = np.array(chi_sqs).astype(float)
+    chi_sqs = np.array(chi_sqs).astype(float) * weights
     if reduced:
         if rtotal_chi_sq:
-            return (chi_sqs * weights).sum() / (get_counts_data().sum() - nfree)
+            return chi_sqs.sum() / (get_counts_data() - ndim).sum()
 
-        chi_sqs = chi_sqs / (get_counts_data() - nfree)
+        chi_sqs = chi_sqs / (get_counts_data() - ndim)
 
-    return (chi_sqs * weights).sum()
+    return chi_sqs.sum()
 
 
 def transform_uniform_prior(theta: List[float]) -> float:
@@ -476,7 +472,7 @@ def lnprob(theta: np.ndarray) -> float:
 
     components = assemble_components(parameters, shared_params)
     return compute_observable_chi_sq(
-        *compute_observables(components), reduced=True, nfree=len(get_priors())
+        *compute_observables(components), ndim=len(get_priors()), reduced=True
     )
 
 

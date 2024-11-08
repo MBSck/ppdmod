@@ -26,8 +26,8 @@ t3_model = compute_t3(np.sum([comp.compute_complex_vis(t3.u123coord, t3.v123coor
 assert np.allclose(vis.value, vis_model, rtol=1e-1)
 assert np.allclose(t3.value, t3_model, rtol=1e0)
 
-chi_sq = fitting.compute_chi_sq(vis.value, vis.err, vis_model) \
-    + fitting.compute_chi_sq(t3.value, t3.err, t3_model)
+chi_sq = fitting.compute_log_chi_sq(vis.value, vis.err, vis_model) \
+    + fitting.compute_log_chi_sq(t3.value, t3.err, t3_model)
 rchi_sq = fitting.compute_observable_chi_sq(
         *fitting.compute_observables(components, wavelength), reduced=True)
 print(f"chi_sq: {chi_sq}", f"rchi_sq: {rchi_sq}")
