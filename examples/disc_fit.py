@@ -196,7 +196,7 @@ if __name__ == "__main__":
     )
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
-    np.save(result_dir / "theta.npy", theta)
+    np.savez(result_dir / "results.npz", theta=theta, uncertainites=uncertainties)
 
     components_and_params, shared_params = set_params_from_theta(theta)
     components = basic_components.assemble_components(
