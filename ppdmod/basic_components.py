@@ -66,13 +66,12 @@ class SED(Component):
         opacity = (
             np.sum(
                 [
-                    getattr(self, f"weight_{material}")().value
+                    getattr(self, f"weight_{material}")().value / 1e2
                     * getattr(self, f"kappa_{material}")(wavelength)
                     for material in self.materials
                 ],
                 axis=0,
             )
-            / 1e2
         )
 
         pah = self.scale_pah() * self.pah(wavelength)

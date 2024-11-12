@@ -526,7 +526,7 @@ def get_opacity(
     }
 
     grf_dict = {
-        "olivine": "MgOlivine",
+        "olivine": "Olivine",
         "pyroxene": "MgPyroxene",
         "forsterite": "Forsterite",
         "enstatite": "Enstatite",
