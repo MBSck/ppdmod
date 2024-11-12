@@ -187,6 +187,10 @@ np.save(result_dir / "units.npy", UNITS)
 components = basic_components.assemble_components(
     OPTIONS.model.components_and_params, OPTIONS.model.shared_params
 )
+rchi_sq = compute_observable_chi_sq(
+    *compute_observables(components), ndim=len(UNITS), method="linear"
+)
+print(f"rchi_sq: {rchi_sq:.2f}")
 
 
 if __name__ == "__main__":
@@ -202,10 +206,11 @@ if __name__ == "__main__":
         components_and_params, shared_params
     )
 
+    np.save(result_dir / "theta.npy", theta)
     with open(result_dir / "components.pkl", "wb") as file:
         pickle.dump(components, file)
 
     rchi_sq = compute_observable_chi_sq(
-        *compute_observables(components), nfree=len(UNITS), reduced=True
+        *compute_observables(components), ndim=len(UNITS), method="linear"
     )
     print(f"rchi_sq: {rchi_sq:.2f}")
