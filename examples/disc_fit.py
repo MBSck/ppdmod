@@ -187,10 +187,10 @@ np.save(result_dir / "units.npy", UNITS)
 components = basic_components.assemble_components(
     OPTIONS.model.components_and_params, OPTIONS.model.shared_params
 )
-rchi_sq = compute_observable_chi_sq(
+rchi_sqs = compute_observable_chi_sq(
     *compute_observables(components), ndim=len(UNITS), method="linear"
 )
-print(f"rchi_sq: {rchi_sq:.2f}")
+print(f"rchi_sq: {rchi_sqs[0]:.2f}")
 
 
 if __name__ == "__main__":
@@ -210,7 +210,7 @@ if __name__ == "__main__":
     with open(result_dir / "components.pkl", "wb") as file:
         pickle.dump(components, file)
 
-    rchi_sq = compute_observable_chi_sq(
+    rchi_sqs = compute_observable_chi_sq(
         *compute_observables(components), ndim=len(UNITS), method="linear"
     )
-    print(f"rchi_sq: {rchi_sq:.2f}")
+    print(f"rchi_sq: {rchi_sqs[0]:.2f}")
