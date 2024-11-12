@@ -511,20 +511,10 @@ def get_opacity(
     weights: np.ndarray,
     names: List[str],
     method: str,
-    wavelength_grid: np.ndarray | None = None,
-    fmaxs: List[float] | None = None,
     individual: bool = False,
     **kwargs,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Gets the opacity from input parameters."""
-    qval_dict = {
-        "olivine": "Q_Am_Mgolivine_Jae_DHS",
-        "pyroxene": "Q_Am_Mgpyroxene_Dor_DHS",
-        "forsterite": "Q_Fo_Suto_DHS",
-        "enstatite": "Q_En_Jaeger_DHS",
-        "silica": "Q_silica",
-    }
-
     grf_dict = {
         "olivine": "Olivine",
         "pyroxene": "MgPyroxene",
@@ -534,18 +524,10 @@ def get_opacity(
     }
 
     files = []
-    for index, name in enumerate(names):
+    for name in names:
         name = name.lower()
         for size in ["small", "large"]:
-            if method == "qval":
-                size = 0.1 if size == "small" else 1.5
-                if fmaxs[index] is not None:
-                    file_name = (
-                        f"{qval_dict[name]}_f{fmaxs[index]:.1f}_rv{size:.1f}.dat"
-                    )
-                else:
-                    file_name = f"{qval_dict[name]}_rv{s:.1f}.dat"
-            elif method == "grf":
+            if method == "grf":
                 size = 0.1 if size == "small" else 2
                 file_name = f"{grf_dict[name]}{size:.1f}.Combined.Kappa"
             else:
@@ -554,16 +536,13 @@ def get_opacity(
 
             files.append(source_dir / method / file_name)
 
-    load_func = qval_to_opacity if method == "qval" else None
-    wl, opacity = load_data(files, load_func=load_func, **kwargs)
+    usecols = (0, 2) if method == "grf" else (0, 1)
+    wl, opacity = load_data(files, usecols=usecols, **kwargs)
 
     if individual:
         return wl, opacity
 
-    opacity = linearly_combine_data(opacity, weights)
-    if wavelength_grid is not None:
-        return wavelength_grid, np.interp(wavelength_grid, wl[0], opacity)
-
+    opacity = (opacity * weights[:, np.newaxis]).sum(axis=0)
     return wl, opacity
 
 
