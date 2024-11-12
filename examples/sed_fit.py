@@ -130,8 +130,8 @@ components = assemble_components(
 
 rchi_sq = compute_sed_chi_sq(
     components[0].compute_flux(OPTIONS.fit.wavelengths),
-    reduced=True,
-    nfree=len(UNITS),
+    ndim=len(UNITS),
+    method="linear",
 )
 print(f"rchi_sq: {rchi_sq:.2f}")
 
@@ -152,7 +152,7 @@ if __name__ == "__main__":
 
     rchi_sq = compute_sed_chi_sq(
         components[0].compute_flux(OPTIONS.fit.wavelengths),
-        reduced=True,
-        nfree=len(UNITS),
+        ndim=len(UNITS),
+        method="linear",
     )
     print(f"rchi_sq: {rchi_sq:.2f}")

@@ -106,6 +106,7 @@ def compute_chi_sq(
     data: u.Quantity,
     error: u.Quantity,
     model_data: u.Quantity,
+    ndim: int,
     diff_method: str = "linear",
     func_method: str = "logarithmic",
     lnf: float | None = None,
@@ -120,11 +121,12 @@ def compute_chi_sq(
         The real data's error.
     model_data : numpy.ndarray
         The model data.
+    ndim : int
+        The number of (parameter) dimensions.
     diff_method : str, optional
         The method to determine the difference of the dataset,
         to the data. Either "linear" or "exponential".
         Default is "linear".
-
     lnf : float, optional
         The error correction term for the real data.
 
@@ -137,15 +139,20 @@ def compute_chi_sq(
     else:
         sigma_squared = error**2 + model_data**2 * np.exp(2 * lnf)
 
-    diff = data - model_data
     if diff_method != "linear":
-        diff = np.angle(np.exp(diff * u.deg.to(u.rad) * 1j), deg=True)
+        diff = np.angle(
+            np.exp(1j * np.deg2rad(data)) * np.exp(-1j * np.deg2rad(model_data)),
+            deg=True,
+        )
+    else:
+        diff = data - model_data
 
     square_term = diff**2 / sigma_squared
     if func_method == "default":
         return square_term.sum()
 
-    return -0.5 * (square_term + np.log(2 * np.pi * sigma_squared)).sum()
+    lnorm = np.log(2 * np.pi * sigma_squared) * ndim
+    return -0.5 * (square_term + lnorm).sum()
 
 
 # TODO: Write tests (ASPRO) that tests multiple components with the total flux
@@ -235,19 +242,18 @@ def compute_observables(
     return flux_model, vis_model, t3_model
 
 
-def compute_sed_chi_sq(
-    flux_model: np.ndarray, reduced: bool = False, nfree: int | None = None,
-) -> float:
+def compute_sed_chi_sq(flux_model: np.ndarray, ndim: int, method: str) -> float:
     """Calculates the sed model's chi square from the observables.
 
     Parameters
     ----------
     flux_model : numpy.ndarray
         The model's total flux.
-    reduced : bool, optional
-        Whether to return the reduced chi square.
-    nfree : int, optional
-        The number of free parameters.
+    ndim : int, optional
+        The number of (parameter) dimensions.
+    method : str
+        The method to determine the difference of the dataset,
+        to the data. Either "linear" or "logarithmic".
 
     Returns
     -------
@@ -256,29 +262,25 @@ def compute_sed_chi_sq(
     """
     flux = OPTIONS.data.flux
     nan_indices = np.isnan(flux.value)
-    func_method = "default" if reduced else "logarithmic"
     chi_sq = compute_chi_sq(
         flux.value[~nan_indices],
         flux.err[~nan_indices],
         flux_model.flatten(),
-        func_method=func_method,
+        ndim,
+        func_method=method,
     )
 
     # NOTE: The -1 here indicates that one of the parameters is actually fixed
-    if reduced:
-        return chi_sq / (flux.value.size - (nfree) - 1)
-
-    return chi_sq
+    return chi_sq / (flux.value.size - ndim - 1)
 
 
 def compute_observable_chi_sq(
     flux_model: np.ndarray,
     vis_model: np.ndarray,
     t3_model: np.ndarray,
-    nfree: int | None = None,
-    reduced: bool = False,
-    split: bool = False,
-):
+    ndim: int,
+    method: str,
+) -> Tuple[float, float, float, float]:
     """Calculates the disc model's chi square from the observables.
 
     Parameters
@@ -290,18 +292,18 @@ def compute_observable_chi_sq(
         visibilities (depends on the OPTIONS.fit.data).
     t3_model : numpy.ndarray
         The model's closure phase.
-    reduced : bool, optional
-        Whether to return the reduced chi square.
-    split : bool, optional
-        Whether to return the individual components.
+    ndim : int
+        The number of (parameter) dimensions.
+    method : bool
+        The method used to calculate the chi square.
+        Either "linear" or "logarithmic".
 
     Returns
     -------
-    chi_sq : float
-        The chi square.
+    chi_sq : Tuple of floats 
+        The total and the individual chi squares.
     """
     params = {"flux": flux_model, "vis": vis_model, "t3": t3_model}
-    func_method = "default" if reduced else "logarithmic"
 
     chi_sqs = []
     for key in OPTIONS.fit.data:
@@ -309,28 +311,21 @@ def compute_observable_chi_sq(
         key = key if key != "vis2" else "vis"
         weight = getattr(OPTIONS.fit.weights, key)
         nan_indices = np.isnan(data.value)
-        diff_method = "linear" if key != "t3" else "exponential"
         chi_sqs.append(
             compute_chi_sq(
                 data.value[~nan_indices],
                 data.err[~nan_indices],
                 params[key][~nan_indices],
-                diff_method=diff_method,
-                func_method=func_method,
+                ndim=ndim,
+                diff_method="linear" if key != "t3" else "exponential",
+                func_method=method,
             )
             * weight
         )
 
-    chi_sqs = np.array(chi_sqs).astype(float)
     ndata = get_counts_data()
-    if reduced:
-        chi_sqs = np.append(chi_sqs, [0] * (3 - chi_sqs.size))
-        rchi_sq = chi_sqs.sum() / (ndata.sum() - nfree)
-        return (
-            np.abs([rchi_sq, *chi_sqs / (ndata - nfree)]) if split else rchi_sq
-        )
-
-    return [chi_sqs.sum(), *chi_sqs] if split else chi_sqs.sum()
+    chi_sqs = np.array(chi_sqs).astype(float)
+    return (chi_sqs.sum() / (ndata.sum() - ndim), *(chi_sqs / (ndata - ndim)))
 
 
 def transform_uniform_prior(theta: List[float]) -> float:
@@ -402,9 +397,7 @@ def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray
 
 def ptform_sed(theta: List[float], labels: List[str]) -> np.ndarray:
     """Transform that soft constrains successive radii to be smaller than the one before."""
-    indices = list(
-        map(labels.index, filter(lambda x: "weight" in x, labels))
-    )
+    indices = list(map(labels.index, filter(lambda x: "weight" in x, labels)))
     params = transform_uniform_prior(theta)
 
     remainder = 100
@@ -476,7 +469,9 @@ def lnprob(theta: np.ndarray) -> float:
             return -np.inf
 
     components = assemble_components(parameters, shared_params)
-    return compute_observable_chi_sq(*compute_observables(components))
+    return compute_observable_chi_sq(
+        *compute_observables(components), ndim=theta.size, method="logarithmic"
+    )[0]
 
 
 def lnprob_sed(theta: np.ndarray) -> float:
@@ -503,7 +498,11 @@ def lnprob_sed(theta: np.ndarray) -> float:
             return -np.inf
 
     components = assemble_components(parameters, shared_params)
-    return compute_sed_chi_sq(components[0].compute_flux(OPTIONS.fit.wavelengths))
+    return compute_sed_chi_sq(
+        components[0].compute_flux(OPTIONS.fit.wavelengths),
+        ndim=len(get_priors()),
+        method="logarithmic",
+    )
 
 
 def run_mcmc(
