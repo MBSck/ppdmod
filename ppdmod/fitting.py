@@ -243,7 +243,7 @@ def compute_observables(
 
 
 def compute_sed_chi_sq(flux_model: np.ndarray, ndim: int, method: str) -> float:
-    """Calculates the sed model's chi square from the observables.
+    """Calculates the sed model's chi square.
 
     Parameters
     ----------
@@ -274,7 +274,7 @@ def compute_sed_chi_sq(flux_model: np.ndarray, ndim: int, method: str) -> float:
     return chi_sq / (flux.value.size - ndim - 1)
 
 
-def compute_observable_chi_sq(
+def compute_interferometric_chi_sq(
     flux_model: np.ndarray,
     vis_model: np.ndarray,
     t3_model: np.ndarray,
@@ -282,7 +282,7 @@ def compute_observable_chi_sq(
     method: str,
     reduced: bool = False,
 ) -> Tuple[float, float, float, float]:
-    """Calculates the disc model's chi square from the observables.
+    """Calculates the disc model's chi square.
 
     Parameters
     ----------
@@ -324,7 +324,10 @@ def compute_observable_chi_sq(
         chi_sqs.append(chi_sq)
 
     ndata = get_counts_data()
-    chi_sqs = np.array(chi_sqs).astype(float) / weights
+
+    # TODO: Make sure the weights are correct for not only the vis, but
+    # also the closure phase fit
+    chi_sqs = np.array(chi_sqs).astype(float) * weights
     if reduced:
         total_chi_sq = chi_sqs.sum() / np.abs(ndata.sum() - ndim)
         chi_sqs = chi_sqs / np.abs(ndata - ndim)
@@ -476,7 +479,7 @@ def lnprob(theta: np.ndarray) -> float:
 
     components = assemble_components(parameters, shared_params)
     return sum(
-        compute_observable_chi_sq(
+        compute_interferometric_chi_sq(
             *compute_observables(components), ndim=theta.size, method="logarithmic"
         )[1:]
     )

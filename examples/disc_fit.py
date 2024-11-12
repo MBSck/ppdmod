@@ -17,7 +17,7 @@ import numpy as np
 from ppdmod import basic_components
 from ppdmod.data import set_data
 from ppdmod.fitting import (
-    compute_observable_chi_sq,
+    compute_interferometric_chi_sq,
     compute_observables,
     get_best_fit,
     ptform_one_disc,
@@ -58,7 +58,7 @@ data = set_data(
     wavelengths=wavelength,
     fit_data=["flux", "vis"],
     set_std_err=["mband"],
-    weights = [1, 13.77604942]
+    weights = [1, 0.07258975120604641]
 )
 WAVELENGTHS = OPTIONS.fit.wavelengths
 
@@ -143,7 +143,6 @@ s1 = Parameter(**STANDARD_PARAMETERS.s)
 cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 
 rin.set(min=0, max=50)
-rout.set(min=0, max=50)
 rout.free = False
 p.set(min=-30, max=20)
 sigma0.set(min=0, max=1e-1)
@@ -225,7 +224,7 @@ if __name__ == "__main__":
     with open(result_dir / "components.pkl", "wb") as file:
         pickle.dump(components, file)
 
-    rchi_sqs = compute_observable_chi_sq(
+    rchi_sqs = compute_interferometric_chi_sq(
         *compute_observables(components),
         ndim=theta.size,
         method="linear",

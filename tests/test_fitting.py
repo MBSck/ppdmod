@@ -250,7 +250,7 @@ def test_calculate_chi_sq(
     OPTIONS.model.modulation = 1
 
     components = assemble_components(components_and_params, shared_params)
-    chi_sq = fitting.compute_observable_chi_sq(*fitting.compute_observables(components))
+    chi_sq = fitting.compute_interferometric_chi_sq(*fitting.compute_observables(components))
 
     assert chi_sq != 0
     assert isinstance(chi_sq, float)

@@ -6,7 +6,7 @@ import numpy as np
 from ppdmod import data
 from ppdmod import plot
 from ppdmod.basic_components import assemble_components
-from ppdmod.fitting import compute_observable_chi_sq, compute_observables, \
+from ppdmod.fitting import compute_interferometric_chi_sq, compute_observables, \
     set_params_from_theta, lnprior, run_fit, get_best_fit, transform_uniform_prior
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
@@ -48,7 +48,7 @@ def lnprob(theta: np.ndarray) -> float:
             return -np.inf
 
     components = assemble_components(parameters, shared_params)
-    return compute_observable_chi_sq(*compute_observables(components))
+    return compute_interferometric_chi_sq(*compute_observables(components))
 
 
 DATA_DIR = Path("../data/gravity")
@@ -135,7 +135,7 @@ if __name__ == "__main__":
 
     components_and_params, shared_params = set_params_from_theta(theta)
     components = assemble_components(components_and_params, shared_params)
-    rchi_sq = compute_observable_chi_sq(*compute_observables(components), reduced=True)
+    rchi_sq = compute_interferometric_chi_sq(*compute_observables(components), reduced=True)
     print(f"rchi_sq: {rchi_sq}")
 
     plot.plot_chains(sampler, labels, **fit_params,

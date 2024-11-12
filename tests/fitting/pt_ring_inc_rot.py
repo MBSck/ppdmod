@@ -23,7 +23,7 @@ vis_model = np.abs(np.sum([comp.compute_complex_vis(vis.ucoord, vis.vcoord, wave
 assert np.allclose(vis.value, vis_model, rtol=1e-1)
 
 chi_sq = fitting.compute_chi_sq(vis.value, vis.err, vis_model)
-rchi_sq = fitting.compute_observable_chi_sq(
+rchi_sq = fitting.compute_interferometric_chi_sq(
         *fitting.compute_observables(components, wavelength), reduced=True)
 print(f"chi_sq: {chi_sq}", f"rchi_sq: {rchi_sq}")
 
@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
     components_and_params, shared_params = fitting.set_params_from_theta(theta)
     components = assemble_components(components_and_params, shared_params)
-    rchi_sq = fitting.compute_observable_chi_sq(
+    rchi_sq = fitting.compute_interferometric_chi_sq(
             *fitting.compute_observables(components, wavelength), reduced=True)
     print(f"rchi_sq: {rchi_sq}")
 

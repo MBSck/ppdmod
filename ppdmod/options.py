@@ -230,7 +230,7 @@ STANDARD_PARAMETERS = SimpleNamespace(
         "shortname": "rout",
         "min": 0,
         "max": 300,
-        "value": 300,
+        "value": 4,
         "unit": u.mas,
         "description": "The outer radius",
         "free": False,
