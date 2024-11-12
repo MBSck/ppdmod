@@ -146,8 +146,8 @@ cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
 
 rin.set(min=0, max=50)
 rout.set(min=0, max=50)
-rout.free = True
-p.set(min=-20, max=20)
+rout.free = False
+p.set(min=-30, max=20)
 sigma0.set(min=0, max=1e-1)
 
 rin.value = 2
@@ -155,7 +155,8 @@ rout.value = 4
 p.value = 0.5
 sigma0.value = 1e-3
 
-two = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
+# two = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
+two = {"rin": rin, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
 
 OPTIONS.model.shared_params = {"inc": inc}
 shared_param_labels = [f"{label}-sh" for label in OPTIONS.model.shared_params]
@@ -199,10 +200,10 @@ np.save(result_dir / "units.npy", UNITS)
 components = basic_components.assemble_components(
     OPTIONS.model.components_and_params, OPTIONS.model.shared_params
 )
-# rchi_sqs = compute_observable_chi_sq(
-#     *compute_observables(components), ndim=len(UNITS), method="linear"
-# )
-# print(f"rchi_sq: {rchi_sqs[0]:.2f}")
+rchi_sqs = compute_observable_chi_sq(
+    *compute_observables(components), ndim=len(UNITS), method="linear"
+)
+print(f"rchi_sq: {rchi_sqs[0]:.2f}")
 
 
 if __name__ == "__main__":
@@ -219,10 +220,11 @@ if __name__ == "__main__":
     )
 
     np.save(result_dir / "theta.npy", theta)
+    np.save(result_dir / "uncertainties.npy", uncertainties)
     with open(result_dir / "components.pkl", "wb") as file:
         pickle.dump(components, file)
 
     rchi_sqs = compute_observable_chi_sq(
-        *compute_observables(components), ndim=len(UNITS), method="linear"
+        *compute_observables(components), ndim=theta.size, method="linear"
     )
     print(f"rchi_sq: {rchi_sqs[0]:.2f}")
