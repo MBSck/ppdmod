@@ -238,17 +238,14 @@ def get_counts_data() -> np.ndarray[int]:
     return np.array(counts)
 
 
-def set_fit_weights(weights: List[float] | None = None) -> None:
+def set_weights(weights: List[float] | None = None) -> None:
     """Sets the weights of the fit parameters
     from the observed data"""
-    if weights is not None:
-        wflux, wvis, wt3 = weights
-    else:
-        wflux, wvis, wt3 = 1, 1, 1
+    if weights is None:
+        weights = [1, 1, 1]
 
-    OPTIONS.fit.weights.flux = wflux
-    OPTIONS.fit.weights.vis = wvis
-    OPTIONS.fit.weights.t3 = wt3
+    for key, weight in zip(OPTIONS.fit.data, weights):
+        setattr(OPTIONS.fit.weights, key, weight)
 
 
 def set_data(
@@ -365,5 +362,5 @@ def set_data(
             band_std[err_ind] = np.abs(band_data[err_ind]) * min_err
             data.err[ind, :] = band_std
 
-    set_fit_weights(weights)
+    set_weights(weights)
     return OPTIONS.data
