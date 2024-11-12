@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from astropy.io import fits
 
-from ppdmod.data import ReadoutFits, set_data, set_fit_wavelengths, set_fit_weights
+from ppdmod.data import ReadoutFits, set_data, set_fit_wavelengths, set_weights
 from ppdmod.options import OPTIONS
 
 
@@ -210,7 +210,7 @@ def test_set_weights(fits_files: List[Path], fit_data: List[str]) -> None:
 
     assert weights.flux + weights.vis + weights.t3 == 1
 
-    set_fit_weights([0.5, 0.5, 0.5])
+    set_weights([0.5, 0.5, 0.5])
     assert weights.flux == weights.vis == weights.t3
     assert np.isclose(weights.flux, 1 / 3)
 

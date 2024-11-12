@@ -304,28 +304,28 @@ def compute_observable_chi_sq(
         The total and the individual chi squares.
     """
     params = {"flux": flux_model, "vis": vis_model, "t3": t3_model}
+    weights = [getattr(OPTIONS.fit.weights, key) for key in OPTIONS.fit.data]
 
     chi_sqs = []
     for key in OPTIONS.fit.data:
         data = getattr(OPTIONS.data, key)
-        key = key if key != "vis2" else "vis"
-        weight = getattr(OPTIONS.fit.weights, key)
         nan_indices = np.isnan(data.value)
-        chi_sqs.append(
-            compute_chi_sq(
-                data.value[~nan_indices],
-                data.err[~nan_indices],
-                params[key][~nan_indices],
-                ndim=ndim,
-                diff_method="linear" if key != "t3" else "exponential",
-                method=method,
-            )
-            * weight
+        chi_sq = compute_chi_sq(
+            data.value[~nan_indices],
+            data.err[~nan_indices],
+            params[key if key != "vis2" else "vis"][~nan_indices],
+            ndim=ndim,
+            diff_method="linear" if key != "t3" else "exponential",
+            method=method,
         )
+        chi_sqs.append(chi_sq)
 
     ndata = get_counts_data()
-    chi_sqs = np.array(chi_sqs).astype(float)
-    return (chi_sqs.sum() / (ndata.sum() - ndim), *(chi_sqs / (ndata - ndim)))
+    chi_sqs = np.array(chi_sqs).astype(float) * weights
+    total_chi_sq = chi_sqs.sum() / np.abs(ndata.sum() - ndim)
+    chi_sqs = chi_sqs / np.abs(ndata - ndim)
+    print(chi_sqs)
+    return (total_chi_sq, *chi_sqs)
 
 
 def transform_uniform_prior(theta: List[float]) -> float:

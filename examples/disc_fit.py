@@ -58,6 +58,7 @@ data = set_data(
     wavelengths=wavelength,
     fit_data=["flux", "vis"],
     set_std_err=["mband"],
+    weights = [2.10969028, 1]
 )
 WAVELENGTHS = OPTIONS.fit.wavelengths
 
@@ -65,10 +66,11 @@ grid, value = np.load(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.n
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
 star_flux.grid, star_flux.value = grid, value
 
+SOURCE_DIR = DATA_DIR / "model_results" / "hd142527"
 
 method = "grf"
 grid, value = np.load(
-    DATA_DIR / "opacities" / f"hd142527_silicate_{method}_opacities.npy"
+    SOURCE_DIR / f"silicate_{method}_opacities.npy"
 )
 kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
 kappa_abs.grid, kappa_abs.value = grid, value
@@ -126,6 +128,11 @@ rout.free = True
 p.set(min=-20, max=20)
 sigma0.set(min=0, max=1e-1)
 
+rin.value = 0.5
+rout.value = 1.5
+p.value = 0.5
+sigma0.value = 1e-3
+
 one = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
 # one = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0}
 
@@ -142,6 +149,11 @@ rout.set(min=0, max=50)
 rout.free = True
 p.set(min=-20, max=20)
 sigma0.set(min=0, max=1e-1)
+
+rin.value = 2
+rout.value = 4
+p.value = 0.5
+sigma0.value = 1e-3
 
 two = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
 
@@ -187,10 +199,10 @@ np.save(result_dir / "units.npy", UNITS)
 components = basic_components.assemble_components(
     OPTIONS.model.components_and_params, OPTIONS.model.shared_params
 )
-rchi_sqs = compute_observable_chi_sq(
-    *compute_observables(components), ndim=len(UNITS), method="linear"
-)
-print(f"rchi_sq: {rchi_sqs[0]:.2f}")
+# rchi_sqs = compute_observable_chi_sq(
+#     *compute_observables(components), ndim=len(UNITS), method="linear"
+# )
+# print(f"rchi_sq: {rchi_sqs[0]:.2f}")
 
 
 if __name__ == "__main__":
