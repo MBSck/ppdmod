@@ -25,4 +25,5 @@ opacities/
 plots/
 phase/
 results_model/
+data/model_results/
 baselines/
