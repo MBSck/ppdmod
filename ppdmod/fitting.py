@@ -108,7 +108,7 @@ def compute_chi_sq(
     model_data: u.Quantity,
     ndim: int,
     diff_method: str = "linear",
-    func_method: str = "logarithmic",
+    method: str = "logarithmic",
     lnf: float | None = None,
 ) -> float:
     """Computes the chi square minimisation.
@@ -127,6 +127,10 @@ def compute_chi_sq(
         The method to determine the difference of the dataset,
         to the data. Either "linear" or "exponential".
         Default is "linear".
+    method : str, optional
+        The method used to calculate the chi square.
+        Either "linear" or "logarithmic".
+        Default is "logarithic".
     lnf : float, optional
         The error correction term for the real data.
 
@@ -134,25 +138,21 @@ def compute_chi_sq(
     -------
     chi_sq : float
     """
-    if lnf is None:
-        sigma_squared = error**2
-    else:
+    sigma_squared = error**2
+    if lnf is not None:
         sigma_squared = error**2 + model_data**2 * np.exp(2 * lnf)
 
+    diff = data - model_data
     if diff_method != "linear":
-        diff = np.angle(
-            np.exp(1j * np.deg2rad(data)) * np.exp(-1j * np.deg2rad(model_data)),
-            deg=True,
-        )
-    else:
-        diff = data - model_data
+        diff = np.exp(1j * np.deg2rad(data)) * np.exp(-1j * np.deg2rad(model_data))
+        diff = np.angle(diff, deg=True)
 
-    square_term = diff**2 / sigma_squared
-    if func_method == "default":
-        return square_term.sum()
+    chi_sq = diff**2 / sigma_squared
+    if method == "linear":
+        return chi_sq.sum()
 
-    lnorm = np.log(2 * np.pi * sigma_squared) * ndim
-    return -0.5 * (square_term + lnorm).sum()
+    lnorm = np.log(2 * np.pi) * ndim + np.log(sigma_squared)
+    return -0.5 * (chi_sq + lnorm).sum()
 
 
 # TODO: Write tests (ASPRO) that tests multiple components with the total flux
@@ -267,7 +267,7 @@ def compute_sed_chi_sq(flux_model: np.ndarray, ndim: int, method: str) -> float:
         flux.err[~nan_indices],
         flux_model.flatten(),
         ndim,
-        func_method=method,
+        method=method,
     )
 
     # NOTE: The -1 here indicates that one of the parameters is actually fixed
@@ -300,7 +300,7 @@ def compute_observable_chi_sq(
 
     Returns
     -------
-    chi_sq : Tuple of floats 
+    chi_sq : Tuple of floats
         The total and the individual chi squares.
     """
     params = {"flux": flux_model, "vis": vis_model, "t3": t3_model}
@@ -318,7 +318,7 @@ def compute_observable_chi_sq(
                 params[key][~nan_indices],
                 ndim=ndim,
                 diff_method="linear" if key != "t3" else "exponential",
-                func_method=method,
+                method=method,
             )
             * weight
         )
