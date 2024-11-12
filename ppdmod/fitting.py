@@ -280,6 +280,7 @@ def compute_observable_chi_sq(
     t3_model: np.ndarray,
     ndim: int,
     method: str,
+    reduced: bool = False,
 ) -> Tuple[float, float, float, float]:
     """Calculates the disc model's chi square from the observables.
 
@@ -297,6 +298,8 @@ def compute_observable_chi_sq(
     method : bool
         The method used to calculate the chi square.
         Either "linear" or "logarithmic".
+    reduced : bool, optional
+        Whether to return the reduced chi square.
 
     Returns
     -------
@@ -322,8 +325,12 @@ def compute_observable_chi_sq(
 
     ndata = get_counts_data()
     chi_sqs = np.array(chi_sqs).astype(float) * weights
-    total_chi_sq = chi_sqs.sum() / np.abs(ndata.sum() - ndim)
-    chi_sqs = chi_sqs / np.abs(ndata - ndim)
+    if reduced:
+        total_chi_sq = chi_sqs.sum() / np.abs(ndata.sum() - ndim)
+        chi_sqs = chi_sqs / np.abs(ndata - ndim)
+    else:
+        total_chi_sq = chi_sqs.sum()
+
     return (total_chi_sq, *chi_sqs)
 
 
