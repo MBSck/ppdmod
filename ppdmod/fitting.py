@@ -475,9 +475,11 @@ def lnprob(theta: np.ndarray) -> float:
             return -np.inf
 
     components = assemble_components(parameters, shared_params)
-    return compute_observable_chi_sq(
-        *compute_observables(components), ndim=theta.size, method="logarithmic"
-    )[0]
+    return sum(
+        compute_observable_chi_sq(
+            *compute_observables(components), ndim=theta.size, method="logarithmic"
+        )[1:]
+    )
 
 
 def lnprob_sed(theta: np.ndarray) -> float:
