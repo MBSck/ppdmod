@@ -324,7 +324,6 @@ def compute_observable_chi_sq(
     chi_sqs = np.array(chi_sqs).astype(float) * weights
     total_chi_sq = chi_sqs.sum() / np.abs(ndata.sum() - ndim)
     chi_sqs = chi_sqs / np.abs(ndata - ndim)
-    print(chi_sqs)
     return (total_chi_sq, *chi_sqs)
 
 
