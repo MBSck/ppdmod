@@ -563,6 +563,7 @@ def get_opacity(
     opacity = linearly_combine_data(opacity, weights)
     if wavelength_grid is not None:
         return wavelength_grid, np.interp(wavelength_grid, wl[0], opacity)
+
     return wl, opacity
 
 

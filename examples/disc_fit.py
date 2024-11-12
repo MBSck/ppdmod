@@ -58,7 +58,7 @@ data = set_data(
     wavelengths=wavelength,
     fit_data=["flux", "vis"],
     set_std_err=["mband"],
-    # weights = [13.77604942, 1]
+    weights = [1, 13.77604942]
 )
 WAVELENGTHS = OPTIONS.fit.wavelengths
 
