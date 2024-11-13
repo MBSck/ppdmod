@@ -205,7 +205,7 @@ print(f"rchi_sq: {rchi_sqs[0]:.2f}")
 
 
 if __name__ == "__main__":
-    ncores = 70
+    ncores = 30
     fit_params = {"nlive_init": 2000, "ptform": ptform}
     sampler = run_fit(
         **fit_params, ncores=ncores, method="dynamic", save_dir=result_dir, debug=False
