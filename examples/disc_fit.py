@@ -195,7 +195,7 @@ np.save(result_dir / "units.npy", UNITS)
 components = basic_components.assemble_components(
     OPTIONS.model.components_and_params, OPTIONS.model.shared_params
 )
-rchi_sqs = compute_observable_chi_sq(
+rchi_sqs = compute_interferometric_chi_sq(
     *compute_observables(components),
     ndim=len(UNITS),
     method="linear",
