@@ -58,7 +58,7 @@ data = set_data(
     wavelengths=wavelength,
     fit_data=["flux", "vis"],
     set_std_err=["mband"],
-    weights = [1, 0.07258975120604641]
+    weights=[1, 0.07258975120604641],
 )
 WAVELENGTHS = OPTIONS.fit.wavelengths
 
@@ -99,9 +99,7 @@ OPTIONS.model.constant_params = {
 }
 
 
-# with open(
-#     DATA_DIR / "flux" / "hd142527" / "hd142527_dust_temperatures.pkl", "rb"
-# ) as save_file:
+# with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
 #     temps = pickle.load(save_file)
 #     OPTIONS.model.constant_params["temps"] = temps
 
@@ -197,13 +195,13 @@ np.save(result_dir / "units.npy", UNITS)
 components = basic_components.assemble_components(
     OPTIONS.model.components_and_params, OPTIONS.model.shared_params
 )
-# rchi_sqs = compute_observable_chi_sq(
-#     *compute_observables(components),
-#     ndim=len(UNITS),
-#     method="linear",
-#     reduced=True,
-# )
-# print(f"rchi_sq: {rchi_sqs[0]:.2f}")
+rchi_sqs = compute_observable_chi_sq(
+    *compute_observables(components),
+    ndim=len(UNITS),
+    method="linear",
+    reduced=True,
+)
+print(f"rchi_sq: {rchi_sqs[0]:.2f}")
 
 
 if __name__ == "__main__":
