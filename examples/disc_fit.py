@@ -62,7 +62,7 @@ data = set_data(
 )
 WAVELENGTHS = OPTIONS.fit.wavelengths
 
-grid, value = np.load(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.npy")
+grid, _, value = np.load(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.npy")
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
 star_flux.grid, star_flux.value = grid, value
 
@@ -205,7 +205,7 @@ print(f"rchi_sq: {rchi_sqs[0]:.2f}")
 
 
 if __name__ == "__main__":
-    ncores = 30
+    ncores = 50
     fit_params = {"nlive_init": 2000, "ptform": ptform}
     sampler = run_fit(
         **fit_params, ncores=ncores, method="dynamic", save_dir=result_dir, debug=False
