@@ -404,7 +404,7 @@ def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray
     return params
 
 
-def ptform_sed(theta: List[float], labels: List[str]) -> np.ndarray:
+def ptform_lband_fit(theta: List[float], labels: List[str]) -> np.ndarray:
     """Transform that soft constrains successive radii to be smaller than the one before."""
     indices = list(map(labels.index, filter(lambda x: "weight" in x, labels)))
     params = transform_uniform_prior(theta)
@@ -485,7 +485,7 @@ def lnprob(theta: np.ndarray) -> float:
     )
 
 
-def lnprob_sed(theta: np.ndarray) -> float:
+def lnprob_nband_fit(theta: np.ndarray) -> float:
     """Takes theta vector and the x, y and the yerr of the theta.
     Returns a number corresponding to how good of a fit the model is to your
     data for a given set of parameters, weighted by the data points.

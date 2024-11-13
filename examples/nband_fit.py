@@ -17,8 +17,8 @@ from ppdmod.data import set_data
 from ppdmod.fitting import (
     compute_sed_chi_sq,
     get_best_fit,
-    lnprob_sed,
-    ptform_sed,
+    lnprob_nband_fit,
+    ptform_lband_fit,
     run_fit,
     set_params_from_theta,
 )
@@ -28,11 +28,11 @@ from ppdmod.utils import load_data, qval_to_opacity
 
 
 def ptform(theta):
-    return ptform_sed(theta, LABELS)
+    return ptform_lband_fit(theta, LABELS)
 
 
 DATA_DIR = Path(__file__).parent.parent / "data"
-fits_dir = DATA_DIR / "fits" / "hd142527" / "sed_fit" / "averaged"
+fits_dir = DATA_DIR / "fits" / "hd142527" / "nband_fit" / "averaged"
 
 wavelength_range = [8.0, 15] * u.um
 data = set_data(
@@ -99,7 +99,7 @@ f.unit = u.one
 f.set(min=15, max=25)
 f.free, f.value = True, 17.46
 
-sed = {"tempc": tempc, "scale_pah": scale_pah, "weight_cont": weight_cont, "f": f}
+nband_fit = {"tempc": tempc, "scale_pah": scale_pah, "weight_cont": weight_cont, "f": f}
 weights = [[11.23, 13.40], [5.67, 5.85], [4.09, 3.77], [0.6, 0.24], [0.10, 0.10]]
 for w, key in zip(weights, NAMES.keys()):
     for index, size in enumerate(["small", "large"]):
@@ -109,13 +109,13 @@ for w, key in zip(weights, NAMES.keys()):
         weight.description = f"The mass fraction for {size} {key}"
         weight.set(min=0, max=100)
         weight.value, weight.unit = w[index], u.pct
-        sed[weight_name] = weight
+        nband_fit[weight_name] = weight
 
-OPTIONS.model.components_and_params = [["SED", sed]]
-LABELS, UNITS = [key for key in sed], [value.unit for value in sed.values()]
-component_labels = ["SED"]
+OPTIONS.model.components_and_params = [["NBandFit", nband_fit]]
+LABELS, UNITS = [key for key in nband_fit], [value.unit for value in nband_fit.values()]
+component_labels = ["NBandFit"]
 
-result_dir = Path("../model_results/") / "sed_fit"
+result_dir = Path("../model_results/") / "nband_fit"
 day_dir = result_dir / str(datetime.now().date())
 dir_name = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 result_dir = day_dir / dir_name
@@ -138,7 +138,7 @@ print(f"rchi_sq: {rchi_sq:.2f}")
 
 if __name__ == "__main__":
     ncores = 70
-    fit_params = {"nlive_init": 2000, "lnprob": lnprob_sed, "ptform": ptform}
+    fit_params = {"nlive_init": 2000, "lnprob": lnprob_nband_fit, "ptform": ptform}
     sampler = run_fit(
         **fit_params, ncores=ncores, method="dynamic", save_dir=result_dir, debug=False
     )

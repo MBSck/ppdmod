@@ -17,10 +17,10 @@ from .utils import angular_to_distance, distance_to_angular
 
 # TODO: Implement this here like it is done in the script (used with oimodeler)
 # avoids errors -> Not super urgent
-class SED(Component):
-    name = "SED"
-    shortname = "SED"
-    description = "A model for the SED of a star."
+class NBandFit(Component):
+    name = "NBandFit"
+    shortname = "NBandFit"
+    description = "A fit to the SED of a star."
 
     def __init__(self, **kwargs):
         """The class's constructor."""
