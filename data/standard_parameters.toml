@@ -1,0 +1,348 @@
+[STANDARD_PARAMETERS.x]
+name = "x"
+shortname = "x"
+value = 0
+description = "The x position"
+min = -30
+max = 30
+unit = "mas"
+free = false
+
+[STANDARD_PARAMETERS.y]
+name = "y"
+shortname = "y"
+value = 0
+description = "The y position"
+min = -30
+max = 30
+unit = "mas"
+free = false
+
+[STANDARD_PARAMETERS.f]
+name = "flux"
+shortname = "f"
+value = "null"
+description = "The flux"
+min = 0
+max = 10
+smooth = true
+unit = "Jy"
+free = false
+
+[STANDARD_PARAMETERS.fr]
+name = "flux_ratio"
+shortname = "fr"
+value = 1
+description = "The flux ratio"
+min = 0
+max = 1
+unit = "one"
+free = false
+
+[STANDARD_PARAMETERS.inc]
+name = "inclination"
+shortname = "inc"
+value = 1
+min = 0
+max = 1
+unit = "one"
+description = "The cosine of the inclination"
+
+[STANDARD_PARAMETERS.pa]
+name = "position_angle"
+shortname = "pa"
+value = 0
+min = 0
+max = 180
+unit = "deg"
+description = "The major-axis position angle"
+
+[STANDARD_PARAMETERS.pixel_size]
+name = "pixel_size"
+shortname = "pix_size"
+value = 1
+min = 0
+max = 100
+description = "The pixel size"
+unit = "mas"
+free = false
+
+[STANDARD_PARAMETERS.dim]
+name = "dim"
+shortname = "dim"
+value = 128
+description = "The pixel dimension"
+unit = "one"
+dtype = "int"
+free = false
+
+[STANDARD_PARAMETERS.exp]
+name = "exponent"
+shortname = "exp"
+value = 1
+min = 0
+max = 1
+unit = "one"
+description = "An exponent"
+free = true
+
+[STANDARD_PARAMETERS.wl]
+name = "wl"
+shortname = "wl"
+value = 0
+description = "The wavelength"
+unit = "um"
+
+[STANDARD_PARAMETERS.fov]
+name = "fov"
+shortname = "fov"
+value = 0
+min = 0
+max = 100
+description = "The field of view"
+unit = "mas"
+free = false
+
+[STANDARD_PARAMETERS.fwhm]
+name = "fwhm"
+shortname = "fwhm"
+value = 0
+min = 0
+max = 20
+description = "The full width half maximum"
+unit = "mas"
+free = true
+
+[STANDARD_PARAMETERS.la]
+name = "la"
+shortname = "la"
+value = 0
+min = -1
+max = 1.5
+description = "The logarithm of the half-light/-flux radius"
+unit = "one"
+free = true
+
+[STANDARD_PARAMETERS.lkr]
+name = "lkr"
+shortname = "lkr"
+value = 0
+min = -1
+max = 1
+description = "The logarithm of the kernel/ring radius"
+unit = "one"
+free = true
+
+[STANDARD_PARAMETERS.hlr]
+name = "hlr"
+shortname = "hlr"
+value = 0
+min = 0
+max = 20
+description = "The half-light/-flux radius"
+unit = "mas"
+free = true
+
+[STANDARD_PARAMETERS.kernel]
+name = "kernel"
+shortname = "kernel"
+value = 0
+min = 0
+max = 20
+description = "The kernel radius"
+unit = "mas"
+free = true
+
+[STANDARD_PARAMETERS.diam]
+name = "diameter"
+shortname = "diam"
+value = 0
+min = 0
+max = 20
+description = "The diameter"
+unit = "mas"
+free = true
+
+[STANDARD_PARAMETERS.width]
+name = "width"
+shortname = "width"
+value = 0
+min = 0
+max = 300
+description = "The width"
+unit = "mas"
+free = true
+
+[STANDARD_PARAMETERS.r0]
+name = "r0"
+shortname = "r0"
+value = 1
+unit = "au"
+description = "Reference radius"
+free = false
+
+[STANDARD_PARAMETERS.rin]
+name = "rin"
+shortname = "rin"
+value = 0
+unit = "mas"
+min = 0
+max = 50
+description = "The inner radius"
+free = true
+
+[STANDARD_PARAMETERS.rout]
+name = "rout"
+shortname = "rout"
+min = 0
+max = 300
+value = 300
+unit = "mas"
+description = "The outer radius"
+free = false
+
+[STANDARD_PARAMETERS.c]
+name = "c"
+shortname = "c"
+value = 0
+min = -1
+max = 1
+unit = "one"
+description = "An azimuthal modulation amplitude"
+free = true
+
+[STANDARD_PARAMETERS.s]
+name = "s"
+shortname = "s"
+value = 0
+min = -1
+max = 1
+unit = "one"
+description = "An azimuthal modulation amplitude"
+free = true
+
+[STANDARD_PARAMETERS.temp0]
+name = "temp0"
+shortname = "temp0"
+value = 0
+unit = "K"
+free = true
+min = 0
+max = 3000
+description = "The temperature at a reference radius"
+
+[STANDARD_PARAMETERS.tempc]
+name = "tempc"
+shortname = "tempc"
+value = 0
+unit = "K"
+free = true
+min = 0
+max = 3000
+description = "The characteristic temperature"
+
+[STANDARD_PARAMETERS.temps]
+name = "temps"
+shortname = "temps"
+value = "null"
+unit = "K"
+free = false
+min = "null"
+max = "null"
+description = "A grid of temperatures"
+
+[STANDARD_PARAMETERS.q]
+name = "q"
+shortname = "q"
+value = 0
+min = 0
+max = 1
+unit = "one"
+free = true
+description = "The power-law exponent for a temperature profile"
+
+[STANDARD_PARAMETERS.p]
+name = "p"
+shortname = "p"
+value = 0
+min = 0
+max = 1
+unit = "one"
+free = true
+description = "The power-law exponent for a dust surface density profile"
+
+[STANDARD_PARAMETERS.sigma0]
+name = "sigma0"
+shortname = "sigma0"
+value = 0
+unit = "g/cm^2"
+free = true
+min = 0
+max = 0.01
+description = "The surface density at a reference radius"
+
+[STANDARD_PARAMETERS.kappa_abs]
+name = "kappa_abs"
+shortname = "kappa_abs"
+value = 0
+unit = "cm^2/g"
+free = false
+smooth = true
+description = "The dust mass absorption coefficient"
+
+[STANDARD_PARAMETERS.kappa_cont]
+name = "kappa_cont"
+shortname = "kappa_cont"
+value = 0
+unit = "cm^2/g"
+free = false
+smooth = true
+description = "The continuum dust mass absorption coefficient"
+
+[STANDARD_PARAMETERS.cont_weight]
+name = "cont_weight"
+shortname = "cont_weight"
+value = 0
+unit = "pct"
+free = true
+min = 0
+max = 100
+description = "The mass fraction of continuum vs. silicate"
+
+[STANDARD_PARAMETERS.pah]
+name = "pah"
+shortname = "pah"
+value = 0
+unit = "Jy"
+free = false
+description = "The flux curve of the PAHs"
+
+[STANDARD_PARAMETERS.dist]
+name = "dist"
+shortname = "dist"
+value = 0
+unit = "pc"
+free = false
+min = 0
+max = 1000
+description = "The Distance"
+
+[STANDARD_PARAMETERS.eff_temp]
+name = "eff_temp"
+shortname = "eff_temp"
+value = 0
+min = 0
+max = 30000
+unit = "K"
+free = false
+description = "The star's effective temperature"
+
+[STANDARD_PARAMETERS.eff_radius]
+name = "eff_radius"
+shortname = "eff_radius"
+value = 0
+min = 0
+max = 10
+unit = "Rsun"
+free = false
+description = "The stellar radius"
