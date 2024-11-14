@@ -729,7 +729,7 @@ class TempGradient(Ring):
                 interp_op_temps = interp1d(self.weights, self.matrix, axis=0)(
                     self.cont_weight().value / 1e2
                 )
-                temperature = np.interp(radius.value, self.radii, interp_op_temps)
+                temperature = np.interp(radius.value, self.radii, interp_op_temps) * u.K
             else:
                 temperature = (
                     np.sqrt(self.eff_radius().to(u.au) / (2 * radius)) * self.eff_temp()
