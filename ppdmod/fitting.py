@@ -381,10 +381,14 @@ def ptform_one_disc(theta: List[float], labels: List[str]) -> np.ndarray:
 def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray:
     """Transform that soft constrains successive radii to be smaller than the one before."""
     params, priors = transform_uniform_prior(theta), get_priors()
+    test = list(filter(lambda x: "rin" in x or "rout" in x, labels))
+    if "rout" not in radii[-1]:
+        ...
+
     indices = list(
         map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
     )
-    for count, index in enumerate(indices):
+    for count, index in enumerate(indices[::-1]):
         if count == len(indices) - 1:
             break
 
