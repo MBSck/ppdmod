@@ -44,7 +44,7 @@ wavelengths = {
 }
 
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
-wavelength = np.concatenate(
+wavelengths = np.concatenate(
     (
         wavelengths["hband"],
         wavelengths["kband"],
@@ -55,12 +55,11 @@ wavelength = np.concatenate(
 )
 data = set_data(
     fits_files,
-    wavelengths=wavelength,
+    wavelengths=wavelengths,
     fit_data=["flux", "vis"],
     set_std_err=["mband"],
     weights=[1, 0.07258975120604641],
 )
-WAVELENGTHS = OPTIONS.fit.wavelengths
 
 grid, _, value = np.load(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.npy")
 star_flux = Parameter(**STANDARD_PARAMETERS.f)
@@ -212,7 +211,7 @@ if __name__ == "__main__":
     ncores = 50
     fit_params = {"nlive_init": 2000, "ptform": ptform}
     sampler = run_fit(
-        **fit_params, ncores=ncores, method="dynamic", save_dir=result_dir, debug=False
+        **fit_params, ncores=ncores, method="dynamic", save_dir=result_dir, debug=True
     )
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
