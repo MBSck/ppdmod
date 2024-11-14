@@ -1,4 +1,3 @@
-import sys
 from functools import partial
 from typing import Dict, List
 
@@ -973,17 +972,3 @@ class StarHaloRing(StarHaloGaussLor):
     name = "StarHaloRing"
     shortname = "StarHaloRing"
     has_ring = True
-
-
-def assemble_components(
-    parameters: Dict[str, Dict], shared_params: Dict[str, Parameter] = {}
-) -> List[Component]:
-    """Assembles a model from a dictionary of parameters."""
-    components = []
-    for component, (component_name, params) in zip(
-        OPTIONS.model.components, parameters
-    ):
-        breakpoint()
-        comp = get_component_by_name(component_name)
-        components.append(comp(**params, **shared_params, **fixed_params))
-    return components

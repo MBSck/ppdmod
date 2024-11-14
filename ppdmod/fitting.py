@@ -4,12 +4,9 @@ from typing import Dict, List, Tuple
 
 import astropy.units as u
 import dynesty.utils as dyutils
-import emcee
 import numpy as np
 from dynesty import DynamicNestedSampler, NestedSampler
-from scipy.stats import gaussian_kde
 
-from .basic_components import assemble_components
 from .component import Component
 from .data import get_counts_data
 from .options import OPTIONS
@@ -47,13 +44,14 @@ def get_labels(
     -------
     theta : numpy.ndarray
     """
+    disc_models = ["TempGrad", "AsymTempGrad", "GreyBody", "AsymGreyBody"]
     labels, zone_count = [], 1
     for component in components:
         component_labels = [key for key in component.get_params(free=True)]
         if component.shortname == "Star":
-            component_labels = [fr"{label}-\star" for label in component_labels]
+            component_labels = [rf"{label}-\star" for label in component_labels]
 
-        if component.shortname in ["TempGrad", "AsymTempGrad", "GreyBody", "AsymGreyBody"]:
+        if component.shortname in disc_models:
             component_labels = [f"{label}-{zone_count}" for label in component_labels]
             zone_count += 1
 
@@ -62,7 +60,7 @@ def get_labels(
     if shared_params is not None:
         labels.extend([rf"{key}-\mathrm{{sh}}" for key in shared_params])
 
-    return np.array(labels)
+    return labels
 
 
 def get_theta(
@@ -83,7 +81,9 @@ def get_theta(
     """
     theta = []
     for component in components:
-        theta.extend([param.value for param in component.get_params(free=True).values()])
+        theta.extend(
+            [param.value for param in component.get_params(free=True).values()]
+        )
 
     if shared_params is not None:
         theta.extend([param.value for param in shared_params.values()])
@@ -91,33 +91,22 @@ def get_theta(
     return np.array(theta)
 
 
-def set_components_from_theta(
-    theta: np.ndarray,
-) -> Tuple[List[Dict[str, Component]], Dict[str, Parameter]]:
-    """Sets the parameters from the theta vector."""
-    components_and_params = OPTIONS.model.components_and_params
-    shared_params = OPTIONS.model.shared_params
+# TODO: Think about the fact that shared params cannot be free? -> See if this causes bugs
+# Make a shared flag that is set to true if the parameter is shared and free is false?
+# TODO: Implement that here then
+def set_components_from_theta(theta: np.ndarray) -> List[Component]:
+    """Sets the components from theta."""
+    components = list(map(Component.copy, OPTIONS.model.components))
 
-    new_shared_params = {}
-    if shared_params not in [None, {}]:
-        for key, param in zip(shared_params.keys(), theta[-len(shared_params) :]):
-            new_shared_params[key] = param
+    nshared = len(OPTIONS.model.shared_params)
+    theta_list, shared_params = theta[:-nshared].copy().tolist(), theta[-nshared:]
+    for component in components:
+        # TODO: Finish the code for the shared params
+        for param in component.get_params(free=True).values():
+            param.value = theta_list.pop(0)
 
-    lower, upper = None, 0
-    new_components_and_params = []
-    for index, (component, params) in enumerate(components_and_params):
-        upper += len(params)
-
-        if index == (len(components_and_params) - 1):
-            upper = -len(shared_params) if shared_params not in [None, {}] else upper
-
-        new_components_and_params.append(
-            [component, dict(zip(params.keys(), theta[lower:upper]))]
-        )
-
-        lower = lower + len(params) if lower is not None else len(params)
-
-    return new_components_and_params, new_shared_params
+    breakpoint()
+    return components
 
 
 def compute_chi_sq(
@@ -361,6 +350,7 @@ def transform_uniform_prior(theta: List[float]) -> float:
     return priors[:, 0] + (priors[:, 1] - priors[:, 0]) * theta
 
 
+# TODO: Same as below
 def ptform_one_disc(theta: List[float], labels: List[str]) -> np.ndarray:
     """Transform that hard constrains the model to one continous disc by
     setting the outer radius of the first component to the inner of the second.
@@ -396,6 +386,11 @@ def ptform_one_disc(theta: List[float], labels: List[str]) -> np.ndarray:
     return params
 
 
+# TODO: Fix this piece of code so it goes backwards to forwards. Start with the
+# largest radii first, only if all fit in line, then do it, or?
+# Smallest still ok if the largest one is capped?
+# Do it more naturally? As in some transform of the radii? Not just clipping it?
+# Use np.clip also
 def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray:
     """Transform that soft constrains successive radii to be smaller than the one before."""
     params, priors = transform_uniform_prior(theta).tolist(), get_priors()
@@ -441,42 +436,6 @@ def ptform_lband_fit(theta: List[float], labels: List[str]) -> np.ndarray:
 
     params[indices[-1]] = remainder if remainder > 1e-5 else 0
     return params
-
-
-def lnprior(
-    components_and_params: List[List[Dict]],
-    shared_params: Dict[str, float] | None = None,
-) -> float:
-    """Checks if the priors are in bounds.
-
-    Parameters
-    ----------
-    components_and_params : list of list of dict
-        The components and parameters.
-    shared_params : dict, optional
-        The shared parameters.
-
-    Returns
-    -------
-    float
-        The log of the prior.
-    """
-    if shared_params not in [{}, None]:
-        for value, param in zip(
-            shared_params.values(), OPTIONS.model.shared_params.values()
-        ):
-            if param.free:
-                if not param.min < value < param.max:
-                    return -np.inf
-
-    for (_, values), (_, params) in zip(
-        components_and_params, OPTIONS.model.components_and_params
-    ):
-        for value, param in zip(values.values(), params.values()):
-            if param.free:
-                if not param.min < value < param.max:
-                    return -np.inf
-    return 0
 
 
 def lnprob(theta: np.ndarray) -> float:
@@ -613,51 +572,30 @@ def run_fit(
     return sampler
 
 
-
-
 def get_best_fit(
-    sampler: emcee.EnsembleSampler,
-    discard: int = 0,
-    distribution: str = "default",
+    sampler: NestedSampler | DynamicNestedSampler,
     method: str = "max",
     **kwargs,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Gets the best fit from the emcee sampler."""
-    params, uncertainties = [], []
-    if OPTIONS.fit.method == "emcee":
-        samples = sampler.get_chain(flat=True, discard=discard)
-        if distribution == "gaussian":
-            kde = gaussian_kde(samples.T)
-            probability = kde.pdf(samples.T)
-        else:
-            probability = sampler.get_log_prob(flat=True, discard=discard)
+    results = sampler.results
+    weights = results.importance_weights()
 
-        if method == "quantile":
-            for index in range(samples.shape[1]):
-                quantiles = np.percentile(samples[:, index], OPTIONS.fit.quantiles)
-                params.append(quantiles[1])
-                uncertainties.append(np.diff(quantiles))
-            params, uncertainties = map(np.array, (params, uncertainties))
-        elif method == "max":
-            params = samples[np.argmax(probability)]
-    else:
-        results = sampler.results
-        samples, weights = results.samples, results.importance_weights()
+    quantiles = np.array(
+        [
+            dyutils.quantile(
+                samps, np.array(OPTIONS.fit.quantiles) / 100, weights=weights
+            )
+            for samps in results.samples.T
+        ]
+    )
 
-        quantiles = np.array(
-            [
-                dyutils.quantile(
-                    samps, np.array(OPTIONS.fit.quantiles) / 100, weights=weights
-                )
-                for samps in results.samples.T
-            ]
-        )
+    params = None
+    if method == "max":
+        params = results.samples[results.logl.argmax()]
+    elif method == "quantile":
+        params = quantiles[:, 1]
 
-        if method == "max":
-            params = results.samples[results.logl.argmax()]
-        elif method == "quantile":
-            params = quantiles[:, 1]
-
-        uncertainties = np.array([(quantile[0], quantile[1]) for quantile in quantiles])
+    uncertainties = np.array([(quantile[0], quantile[1]) for quantile in quantiles])
 
     return params, uncertainties
