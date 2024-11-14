@@ -136,7 +136,7 @@ def test_set_params_from_theta(
     theta = fitting.set_theta_from_params(
         mock_components_and_params, mock_shared_params
     )
-    new_components_and_params, new_shared_parameters = fitting.set_params_from_theta(
+    new_components_and_params, new_shared_parameters = fitting.set_components_from_theta(
         theta
     )
     all_params = []
@@ -290,7 +290,7 @@ def test_lnprior(values: List[float], expected: float) -> None:
     OPTIONS.model.modulation = 1
 
     theta = fitting.set_theta_from_params(components_and_params, shared_params)
-    new_components_and_params, new_shared_parameters = fitting.set_params_from_theta(
+    new_components_and_params, new_shared_parameters = fitting.set_components_from_theta(
         theta
     )
 

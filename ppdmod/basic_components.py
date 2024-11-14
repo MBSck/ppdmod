@@ -15,8 +15,6 @@ from .parameter import Parameter
 from .utils import angular_to_distance, distance_to_angular
 
 
-# TODO: Implement this here like it is done in the script (used with oimodeler)
-# avoids errors -> Not super urgent
 class NBandFit(Component):
     name = "NBandFit"
     shortname = "NBandFit"
@@ -165,11 +163,13 @@ class Star(FourierComponent):
         x pos of the component (mas).
     y : int
         y pos of the component (mas).
-    dist : float
+    f : astropy.units.Jy
+        The flux of the star.
+    dist : astropy.units.pc
         Distance to the star.
-    eff_temp : float
+    eff_temp : astropy.units.K
         The star's temperature.
-    eff_radius : float
+    eff_radius : astropy.units.R_sun
         The star's radius.
 
     Attributes
@@ -665,7 +665,7 @@ class TempGradient(Ring):
     """
 
     name = "Temperature Gradient"
-    shortname = "TempGradient"
+    shortname = "TempGrad"
     thin = False
     has_outer_radius = True
     optically_thick = False
@@ -686,11 +686,6 @@ class TempGradient(Ring):
         self.sigma0 = Parameter(**STANDARD_PARAMETERS.sigma0)
 
         self.weights, self.radii, self.matrix = None, None, None
-        if "temps" in OPTIONS.model.constant_params:
-            temps = OPTIONS.model.constant_params["temps"]
-            self.weights, self.radii = temps.weight, temps.radii
-            self.matrix = temps.matrix
-
         self.kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
         self.kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
         self.cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
@@ -819,7 +814,7 @@ class AsymmetricTempGradient(TempGradient):
     gradient."""
 
     name = "Asymmetric Temperature Gradient"
-    shortname = "AsymmetricTempGradient"
+    shortname = "AsymTempGrad"
     asymmetric = True
 
 
@@ -837,7 +832,7 @@ class AsymmetricGreyBody(GreyBody):
     gradient."""
 
     name = "Asymmetric Grey Body"
-    shortname = "AsymmetricGreyBody"
+    shortname = "AsymGreyBody"
     asymmetric = True
 
 
@@ -980,20 +975,15 @@ class StarHaloRing(StarHaloGaussLor):
     has_ring = True
 
 
-def get_component_by_name(name: str) -> FourierComponent:
-    """Gets the component by its name."""
-    return getattr(sys.modules[__name__], name)
-
-
 def assemble_components(
-    parameters: Dict[str, Dict], shared_params: Dict[str, Parameter] | None = None
-) -> List[FourierComponent]:
+    parameters: Dict[str, Dict], shared_params: Dict[str, Parameter] = {}
+) -> List[Component]:
     """Assembles a model from a dictionary of parameters."""
-    shared_params = shared_params if shared_params is not None else {}
-    constant_params = OPTIONS.model.constant_params
-
     components = []
-    for component, params in parameters:
-        comp = get_component_by_name(component)
-        components.append(comp(**params, **shared_params, **constant_params))
+    for component, (component_name, params) in zip(
+        OPTIONS.model.components, parameters
+    ):
+        breakpoint()
+        comp = get_component_by_name(component_name)
+        components.append(comp(**params, **shared_params, **fixed_params))
     return components

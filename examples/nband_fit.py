@@ -20,7 +20,7 @@ from ppdmod.fitting import (
     lnprob_nband_fit,
     ptform_lband_fit,
     run_fit,
-    set_params_from_theta,
+    set_components_from_theta,
 )
 from ppdmod.options import OPTIONS, STANDARD_PARAMETERS
 from ppdmod.parameter import Parameter
@@ -144,7 +144,7 @@ if __name__ == "__main__":
     )
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
-    components_and_params, shared_params = set_params_from_theta(theta)
+    components_and_params, shared_params = set_components_from_theta(theta)
     components = assemble_components(components_and_params, shared_params)
 
     with open(result_dir / "components.pkl", "wb") as file:

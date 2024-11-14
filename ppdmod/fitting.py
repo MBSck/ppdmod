@@ -31,21 +31,67 @@ def get_priors() -> np.ndarray:
     return np.array(priors)
 
 
-def set_theta_from_params(
-    components_and_params: List[List[Dict]],
-    shared_params: Dict[str, Parameter] | None = None,
+def get_labels(
+    components: List[Component], shared_params: Dict[str, Parameter] | None = None
 ) -> np.ndarray:
-    """Sets the theta vector from the parameters."""
+    """Sets the theta vector from the components.
+
+    Parameters
+    ----------
+    components : list of Component
+        The components to be used in the model.
+    shared_params : dict
+        The shared parameters.
+
+    Returns
+    -------
+    theta : numpy.ndarray
+    """
+    labels, zone_count = [], 1
+    for component in components:
+        component_labels = [key for key in component.get_params(free=True)]
+        if component.shortname == "Star":
+            component_labels = [fr"{label}-\star" for label in component_labels]
+
+        if component.shortname in ["TempGrad", "AsymTempGrad", "GreyBody", "AsymGreyBody"]:
+            component_labels = [f"{label}-{zone_count}" for label in component_labels]
+            zone_count += 1
+
+        labels.extend(component_labels)
+
+    if shared_params is not None:
+        labels.extend([rf"{key}-\mathrm{{sh}}" for key in shared_params])
+
+    return np.array(labels)
+
+
+def get_theta(
+    components: List[Component], shared_params: Dict[str, Parameter] | None = None
+) -> np.ndarray:
+    """Sets the theta vector from the components.
+
+    Parameters
+    ----------
+    components : list of Component
+        The components to be used in the model.
+    shared_params : dict
+        The shared parameters.
+
+    Returns
+    -------
+    theta : numpy.ndarray
+    """
     theta = []
-    for _, params in components_and_params:
-        if not params:
-            continue
-        theta.extend([parameter.value for parameter in params.values()])
-    theta.extend([parameter.value for parameter in shared_params.values()])
+    for component in components:
+        theta.extend([param.value for param in component.get_params(free=True).values()])
+
+    if shared_params is not None:
+        theta.extend([param.value for param in shared_params.values()])
+
     return np.array(theta)
 
 
-def set_params_from_theta(
+def set_components_from_theta(
     theta: np.ndarray,
 ) -> Tuple[List[Dict[str, Component]], Dict[str, Parameter]]:
     """Sets the parameters from the theta vector."""
@@ -72,34 +118,6 @@ def set_params_from_theta(
         lower = lower + len(params) if lower is not None else len(params)
 
     return new_components_and_params, new_shared_params
-
-
-def init_randomly(nwalkers: int | None = None) -> np.ndarray:
-    """initialises a random numpy.ndarray from the parameter's limits.
-
-    parameters
-    -----------
-    components_and_params : list of list of dict
-
-    Returns
-    -------
-    theta : numpy.ndarray
-    """
-    params = []
-    for _, param in OPTIONS.model.components_and_params:
-        params.extend(param.values())
-
-    if OPTIONS.model.shared_params is not None:
-        params.extend(OPTIONS.model.shared_params.values())
-
-    if nwalkers is None:
-        return np.array([np.random.uniform(param.min, param.max) for param in params])
-    return np.array(
-        [
-            [np.random.uniform(param.min, param.max) for param in params]
-            for _ in range(nwalkers)
-        ]
-    )
 
 
 def compute_chi_sq(
@@ -380,14 +398,17 @@ def ptform_one_disc(theta: List[float], labels: List[str]) -> np.ndarray:
 
 def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray:
     """Transform that soft constrains successive radii to be smaller than the one before."""
-    params, priors = transform_uniform_prior(theta), get_priors()
-    test = list(filter(lambda x: "rin" in x or "rout" in x, labels))
+    params, priors = transform_uniform_prior(theta).tolist(), get_priors()
+    radii = list(filter(lambda x: "rin" in x or "rout" in x, labels))
     if "rout" not in radii[-1]:
-        ...
+        radii.append(f"rout-{radii[-1].split('-')[1]}")
 
     indices = list(
         map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
     )
+    params.append(OPTIONS.model.components_and_params[-1][1]["rout"].value)
+    breakpoint()
+
     for count, index in enumerate(indices[::-1]):
         if count == len(indices) - 1:
             break
@@ -475,11 +496,7 @@ def lnprob(theta: np.ndarray) -> float:
     float
         The log of the probability.
     """
-    parameters, shared_params = set_params_from_theta(theta)
-
-    if OPTIONS.fit.method == "emcee":
-        if np.isinf(lnprior(parameters, shared_params)):
-            return -np.inf
+    parameters, shared_params = set_components_from_theta(theta)
 
     components = assemble_components(parameters, shared_params)
     return sum(
@@ -506,13 +523,7 @@ def lnprob_nband_fit(theta: np.ndarray) -> float:
     float
         The log of the probability.
     """
-    parameters, shared_params = set_params_from_theta(theta)
-
-    if OPTIONS.fit.method == "emcee":
-        if np.isinf(lnprior(parameters, shared_params)):
-            return -np.inf
-
-    components = assemble_components(parameters, shared_params)
+    components = assemble_components(theta)
     return compute_sed_chi_sq(
         components[0].compute_flux(OPTIONS.fit.wavelengths),
         ndim=len(get_priors()),
@@ -520,78 +531,36 @@ def lnprob_nband_fit(theta: np.ndarray) -> float:
     )
 
 
-def run_mcmc(
-    nwalkers: int,
-    nburnin: int = 0,
-    nsteps: int = 100,
-    ncores: int = 6,
-    debug: bool = False,
-    save_dir: Path | None = None,
-    **kwargs,
-) -> np.ndarray:
-    """Runs the emcee Hastings Metropolitan sampler.
-
-    The EnsambleSampler recieves the parameters and the args are passed to
-    the 'log_prob()' method (an addtional parameter 'a' can be used to
-    determine the stepsize, defaults to None).
-
-    Parameters
-    ----------
-    nwalkers : int, optional
-    theta : numpy.ndarray
-    nsteps : int, optional
-    discard : int, optional
-    ncores : int, optional
-    debug : bool, optional
-
-    Returns
-    -------
-    sampler : numpy.ndarray
-    """
-    theta = init_randomly(nwalkers)
-    pool = Pool(processes=ncores) if not debug else None
-
-    print(f"Executing MCMC.\n{'':-^50}")
-    sampler = emcee.EnsembleSampler(
-        nwalkers, theta.shape[1], kwargs.pop("lnprob", lnprob), pool=pool
-    )
-
-    if nburnin is not None:
-        print("Running burn-in...")
-        sampler.run_mcmc(theta, nburnin, progress=True)
-
-    sampler.reset()
-    print("Running production...")
-    sampler.run_mcmc(theta, nsteps, progress=True)
-
-    if save_dir is not None:
-        np.save(save_dir / "sampler.npy", sampler)
-
-    if not debug:
-        pool.close()
-        pool.join()
-    return sampler
-
-
-def run_dynesty(
+def run_fit(
     sample: str = "rwalk",
     bound: str = "multi",
     ncores: int = 6,
     debug: bool = False,
+    method: str = "dynamic",
     save_dir: Path | None = None,
-    method: str = "static",
     **kwargs,
-) -> np.ndarray:
+) -> NestedSampler | DynamicNestedSampler:
     """Runs the dynesty nested sampler.
 
     Parameters
     ----------
+    sample : str, optional
+        The sampling method. Either "rwalk" or "unif".
+    bound : str, optional
+        The bounding method. Either "multi" or "single".
     ncores : int, optional
+        The number of cores to use.
     debug : bool, optional
+        Whether to run the sampler in debug mode.
+        This will not use multiprocessing.
+    method : str, optional
+        The method to use. Either "dynamic" or "static".
+    save_dir : Path, optional
+        The directory to save the sampler.
 
     Returns
     -------
-    sampler : numpy.ndarray
+    sampler : dynesty.NestedSampler or dynesty.DynamicNestedSampler
     """
     if save_dir is not None:
         checkpoint_file = save_dir / "sampler.save"
@@ -599,10 +568,9 @@ def run_dynesty(
         checkpoint_file = None
 
     samplers = {"dynamic": DynamicNestedSampler, "static": NestedSampler}
-
-    ndim = init_randomly().shape[0]
     pool = Pool(processes=ncores) if not debug else None
     queue_size = ncores if not debug else None
+
     general_kwargs = {
         "bound": bound,
         "queue_size": queue_size,
@@ -610,27 +578,28 @@ def run_dynesty(
         "periodic": kwargs.pop("periodic", None),
         "reflective": kwargs.pop("reflective", None),
         "pool": pool,
-        "update_interval": ndim,
     }
 
+    # TODO: Check if update interval needs to be reimplemented
+    # TODO: Check what periodic and reflective does
     static_kwargs = {"nlive": kwargs.pop("nlive", 1000)}
     sampler_kwargs = {"dynamic": {}, "static": static_kwargs}
 
-    static_run = {"dlogz": kwargs.pop("dlogz", 0.01)}
-    dynamic_run = {
+    static = {"dlogz": kwargs.pop("dlogz", 0.01)}
+    dynamic = {
         "nlive_batch": kwargs.pop("nlive_batch", 1000),
         "maxbatch": kwargs.pop("maxbatch", 100),
         "dlogz_init": kwargs.pop("dlogz_init", 0.01),
         "nlive_init": kwargs.pop("nlive_init", 1000),
     }
-    run_kwargs = {"dynamic": dynamic_run, "static": static_run}
+    run_kwargs = {"dynamic": dynamic, "static": static}
 
     print(f"Executing Dynesty.\n{'':-^50}")
     ptform = kwargs.pop("ptform", transform_uniform_prior)
     sampler = samplers[method](
         kwargs.pop("lnprob", lnprob),
         ptform,
-        ndim,
+        len(get_priors()),
         **general_kwargs,
         **sampler_kwargs[method],
     )
@@ -644,27 +613,6 @@ def run_dynesty(
     return sampler
 
 
-def run_fit(**kwargs) -> np.ndarray:
-    """Runs the fit using either standard or nested sampling.
-
-    Parameters
-    ----------
-    nwalkers : int, optional
-        The number of walkers in the emcee sampler.
-    nsteps : int, optional
-        The number of steps in the emcee sampler.
-    discard : int, optional
-        The number of steps to discard in the emcee sampler.
-    ncores : int, optional
-        The number of cores to use in the emcee sampler.
-
-    Returns
-    -------
-    sampler : numpy.ndarray
-    """
-    if OPTIONS.fit.method == "emcee":
-        return run_mcmc(**kwargs)
-    return run_dynesty(**kwargs)
 
 
 def get_best_fit(

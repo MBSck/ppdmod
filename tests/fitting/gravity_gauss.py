@@ -7,7 +7,7 @@ from ppdmod import plot
 from ppdmod.basic_components import assemble_components
 from ppdmod.data import set_data
 from ppdmod.fitting import compute_interferometric_chi_sq, compute_observables, \
-    set_params_from_theta, lnprior, run_fit, get_best_fit, transform_uniform_prior
+    set_components_from_theta, lnprior, run_fit, get_best_fit, transform_uniform_prior
 from ppdmod.parameter import Parameter
 from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
 
@@ -38,7 +38,7 @@ def lnprob(theta: np.ndarray) -> float:
     float
         The log of the probability.
     """
-    parameters, shared_params = set_params_from_theta(theta)
+    parameters, shared_params = set_components_from_theta(theta)
     if parameters[0][1]["fs"] + parameters[0][1]["fc"] > 1:
         return -np.inf
 
@@ -118,7 +118,7 @@ if __name__ == "__main__":
 
     theta, uncertainties = get_best_fit(sampler, **fit_params, method="quantile")
 
-    components_and_params, shared_params = set_params_from_theta(theta)
+    components_and_params, shared_params = set_components_from_theta(theta)
     components = assemble_components(components_and_params, shared_params)
     rchi_sq = compute_interferometric_chi_sq(*compute_observables(components), reduced=True)
     print(f"rchi_sq: {rchi_sq}")

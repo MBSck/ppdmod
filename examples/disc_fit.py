@@ -1,7 +1,6 @@
 import os
 import pickle
 from datetime import datetime
-from itertools import chain
 from pathlib import Path
 from typing import List
 
@@ -20,12 +19,12 @@ from ppdmod.fitting import (
     compute_interferometric_chi_sq,
     compute_observables,
     get_best_fit,
-    ptform_one_disc,
     ptform_sequential_radii,
     run_fit,
-    set_params_from_theta,
+    set_components_from_theta,
+    get_theta,
 )
-from ppdmod.options import OPTIONS, STANDARD_PARAMETERS
+from ppdmod.options import OPTIONS
 from ppdmod.parameter import Parameter
 from ppdmod.utils import load_data, qval_to_opacity
 
@@ -62,145 +61,86 @@ data = set_data(
 )
 
 grid, _, value = np.load(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.npy")
-star_flux = Parameter(**STANDARD_PARAMETERS.f)
-star_flux.grid, star_flux.value = grid, value
+flux_star = Parameter(grid=grid, value=value, base="f")
 
 SOURCE_DIR = DATA_DIR / "model_results" / "hd142527"
 
 method = "grf"
 grid, value = np.load(SOURCE_DIR / f"silicate_{method}_opacities.npy")
-kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
-kappa_abs.grid, kappa_abs.value = grid, value
+kappa_abs = Parameter(grid=value, value=value, base="kappa_abs")
 
 grid, value = load_data(
     DATA_DIR / "opacities" / "qval" / "Q_amorph_c_rv0.1.dat", load_func=qval_to_opacity
 )
-kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
-kappa_cont.grid, kappa_cont.value = grid, value
+kappa_cont = Parameter(grid=grid, value=value, base="kappa_cont")
+pa = Parameter(value=352, free=False, base="pa")
+inc = Parameter(value=0.915, free=True, base="inc")
 
-pa = Parameter(**STANDARD_PARAMETERS.pa)
-inc = Parameter(**STANDARD_PARAMETERS.inc)
-
-pa.value = 352
-inc.value = 0.915
-inc.free = True
-pa.free = False
-
-OPTIONS.model.constant_params = {
+constant_params = {
     "dim": 32,
     "dist": 158.51,
     "eff_temp": 6500,
     "eff_radius": 3.46,
-    "f": star_flux,
     "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont,
-    "pa": pa,
 }
-
 
 with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
     temps = pickle.load(save_file)
 
 # NOTE: Set opacity calculated temperatures
-OPTIONS.model.constant_params["weights"] = temps.weights
-OPTIONS.model.constant_params["radii"] = temps.radii
-OPTIONS.model.constant_params["matrix"] = temps.values
+# OPTIONS.model.constant_params["weights"] = temps.weights
+# OPTIONS.model.constant_params["radii"] = temps.radii
+# OPTIONS.model.constant_params["matrix"] = temps.values
 
-x = Parameter(**STANDARD_PARAMETERS.x)
-y = Parameter(**STANDARD_PARAMETERS.y)
-x.free = y.free = True
-star = {}
-star_labels = [rf"{label}-\star" for label in star]
-star_units = [value.unit for value in star.values()]
+rin1 = Parameter(value=0.5, min=0, max=30, base="rin")
+rout1 = Parameter(value=1.5, min=0, max=30, free=True, base="rout")
+p1 = Parameter(value=0.5, min=-20, max=20, base="p")
+sigma01 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
+cont_weight1 = Parameter(base="cont_weight")
 
-rin = Parameter(**STANDARD_PARAMETERS.rin)
-rout = Parameter(**STANDARD_PARAMETERS.rout)
-p = Parameter(**STANDARD_PARAMETERS.p)
-sigma0 = Parameter(**STANDARD_PARAMETERS.sigma0)
-c1 = Parameter(**STANDARD_PARAMETERS.c)
-s1 = Parameter(**STANDARD_PARAMETERS.s)
-cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
+rin2 = Parameter(value=2, min=0, max=30, base="rin")
+rout2 = Parameter(value=4, free=False, base="rout")
+p2 = Parameter(value=0.5, min=-30, max=20, base="p")
+sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
+cont_weight2 = Parameter(base="cont_weight")
 
-rin.set(min=0, max=30)
-rout.set(min=0, max=30)
-rout.free = True
-p.set(min=-20, max=20)
-sigma0.set(min=0, max=1e-1)
-
-rin.value = 0.5
-rout.value = 1.5
-p.value = 0.5
-sigma0.value = 1e-3
-
-one = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
-# one = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0}
-
-rin = Parameter(**STANDARD_PARAMETERS.rin)
-rout = Parameter(**STANDARD_PARAMETERS.rout)
-p = Parameter(**STANDARD_PARAMETERS.p)
-sigma0 = Parameter(**STANDARD_PARAMETERS.sigma0)
-c1 = Parameter(**STANDARD_PARAMETERS.c)
-s1 = Parameter(**STANDARD_PARAMETERS.s)
-cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
-
-rin.set(min=0, max=50)
-rout.free = False
-p.set(min=-30, max=20)
-sigma0.set(min=0, max=1e-1)
-
-rin.value = 2
-rout.value = 4
-p.value = 0.5
-sigma0.value = 1e-3
-
-# two = {"rin": rin, "rout": rout, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
-two = {"rin": rin, "p": p, "sigma0": sigma0, "cont_weight": cont_weight}
-
-OPTIONS.model.shared_params = {"inc": inc}
-shared_param_labels = [f"{label}-sh" for label in OPTIONS.model.shared_params]
-shared_param_units = [value.unit for value in OPTIONS.model.shared_params.values()]
-
-OPTIONS.model.components_and_params = [
-    ["Star", star],
-    ["GreyBody", one],
-    ["GreyBody", two],
-]
-
-ring_labels = [
-    [f"{key}-{index}" for key in ring] for index, ring in enumerate([one, two], start=1)
-]
-ring_units = [[value.unit for value in ring.values()] for ring in [one, two]]
-
-LABELS = list(
-    chain.from_iterable(
-        [star_labels, *ring_labels][: len(OPTIONS.model.components_and_params)]
-    )
+star = basic_components.Star(label="Star", f=flux_star, **constant_params)
+inner_ring = basic_components.GreyBody(
+    label="Inner Ring",
+    rin=rin1,
+    rout=rout1,
+    p=p1,
+    sigma0=sigma01,
+    cont_weight=cont_weight1,
+    **constant_params,
 )
-LABELS += shared_param_labels
-UNITS = list(
-    chain.from_iterable(
-        [star_units, *ring_units][: len(OPTIONS.model.components_and_params)]
-    )
-)
-UNITS += shared_param_units
 
-component_labels = ["Star", "Inner Ring", "Outer Ring"]
-OPTIONS.fit.method = "dynesty"
+outer_ring = basic_components.GreyBody(
+    label="Outer Ring",
+    rin=rin2,
+    rout=rout2,
+    p=p2,
+    sigma0=sigma02,
+    cont_weight=cont_weight2,
+    **constant_params,
+)
+
+OPTIONS.model.components = components = [star, inner_ring, outer_ring]
+OPTIONS.model.shared_params = shared_params = {"inc": inc}
 
 result_dir = Path("../model_results/") / "disc_fit"
 day_dir = result_dir / str(datetime.now().date())
 dir_name = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 result_dir = day_dir / dir_name
 result_dir.mkdir(parents=True, exist_ok=True)
-np.save(result_dir / "labels.npy", LABELS)
-np.save(result_dir / "units.npy", UNITS)
 
-components = basic_components.assemble_components(
-    OPTIONS.model.components_and_params, OPTIONS.model.shared_params
-)
+ndim = get_theta(components, shared_params).size
+breakpoint()
+
 rchi_sqs = compute_interferometric_chi_sq(
     *compute_observables(components),
-    ndim=len(UNITS),
+    ndim=ndim,
     method="linear",
     reduced=True,
 )
@@ -215,7 +155,7 @@ if __name__ == "__main__":
     )
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
-    components_and_params, shared_params = set_params_from_theta(theta)
+    components_and_params, shared_params = set_components_from_theta(theta)
     components = basic_components.assemble_components(
         components_and_params, shared_params
     )

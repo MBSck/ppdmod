@@ -77,7 +77,7 @@ if __name__ == "__main__":
     sampler = fitting.run_fit(**fit_params, ncores=6, debug=False)
     theta, uncertainties = fitting.get_best_fit(sampler, **fit_params, method="quantile")
 
-    components_and_params, shared_params = fitting.set_params_from_theta(theta)
+    components_and_params, shared_params = fitting.set_components_from_theta(theta)
     components = assemble_components(components_and_params, shared_params)
     rchi_sq = fitting.compute_interferometric_chi_sq(
             *fitting.compute_observables(components, wavelength), reduced=True)

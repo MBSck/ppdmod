@@ -429,7 +429,7 @@ data = SimpleNamespace(
 # NOTE: Model
 model = SimpleNamespace(
     components=None,
-    shared_params=None,
+    shared_params={},
     output="non-normed",
     gridtype="logarithmic",
     modulation=1,

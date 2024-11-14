@@ -1,3 +1,4 @@
+import copy
 from typing import Tuple
 
 import astropy.units as u
@@ -13,6 +14,7 @@ class Component:
 
     name = "Generic component"
     shortname = "GenComp"
+    label = None
     description = "This is base component are derived."
 
     def eval(self, **kwargs) -> None:
@@ -27,15 +29,21 @@ class Component:
                     else:
                         setattr(self, key, value)
 
-    def get_params(self, free: bool = False):
+    def copy(self):
+        """Copies the component."""
+        return copy.deepcopy(self)
+
+    def get_params(self, free: bool = False, fixed: bool = False) -> dict:
         """Gets all the parameters of a component.
 
         Parameters
         ----------
         component : Component
             The component for which the parameters should be fetched.
-        only_free : bool, optional
-            If only the free parameters should be returned, by default False
+        free : bool, optional
+            If only the free parameters should be returned, by default False.
+        fixed : bool, optional
+            If only the fixed parameters should be returned, by default False.
 
         Returns
         -------
@@ -47,7 +55,11 @@ class Component:
             if isinstance(value, Parameter):
                 if free and not value.free:
                     continue
+                elif fixed and value.free:
+                    continue
+
                 params[attribute] = value
+
         return params
 
     def flux_func(self, wavelength: u.um) -> np.ndarray:
