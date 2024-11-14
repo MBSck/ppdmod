@@ -1,4 +1,3 @@
-from pathlib import Path
 from types import SimpleNamespace
 from typing import List
 
@@ -219,9 +218,9 @@ STANDARD_PARAMETERS = SimpleNamespace(
         "name": "rin",
         "shortname": "rin",
         "value": 0,
-        "unit": u.au,
+        "unit": u.mas,
         "min": 0,
-        "max": 10,
+        "max": 50,
         "description": "The inner radius",
         "free": True,
     },
@@ -229,9 +228,9 @@ STANDARD_PARAMETERS = SimpleNamespace(
         "name": "rout",
         "shortname": "rout",
         "min": 0,
-        "max": 30,
-        "value": 4,
-        "unit": u.au,
+        "max": 300,
+        "value": 300,
+        "unit": u.mas,
         "description": "The outer radius",
         "free": False,
     },
@@ -429,8 +428,7 @@ data = SimpleNamespace(
 
 # NOTE: Model
 model = SimpleNamespace(
-    components_and_params=None,
-    constant_params={},
+    components=None,
     shared_params=None,
     output="non-normed",
     gridtype="logarithmic",

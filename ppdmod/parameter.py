@@ -5,24 +5,27 @@ import astropy.units as u
 import numpy as np
 from numpy.typing import ArrayLike
 
+from .options import STANDARD_PARAMETERS
 from .utils import smooth_interpolation
 
 
+# TODO: Write template functionality
 @dataclass()
 class Parameter:
     """Defines a parameter."""
 
-    name: str
-    value: Any
-    unit: u.Quantity
+    name: str | None = None
+    value: Any | None = None
+    unit: u.Quantity | None = None
     shortname: str | None = None
-    free: bool = True
+    free: bool | None = None
     description: str | None = None
     min: float | None = None
     max: float | None = None
     dtype: type | None = None
     grid: np.ndarray | None = None
-    smooth: bool = False
+    smooth: bool | None = None
+    base: str | None = None
 
     def __setattr__(self, key: str, value: Any):
         """Sets an attribute."""
@@ -35,6 +38,22 @@ class Parameter:
         """Post initialisation actions."""
         self.value = self._set_to_numpy_array(self.value)
         self.grid = self._set_to_numpy_array(self.grid)
+        self._process_base(self.base)
+
+    def _process_base(self, base: str | None) -> None:
+        """Process the template attribute."""
+        if base is None:
+            return
+
+        for key, value in getattr(STANDARD_PARAMETERS, base).items():
+            if getattr(self, key) is None:
+                setattr(self, key, value)
+
+        if self.smooth is None:
+            self.smooth = False
+
+        if self.free is None:
+            self.free = False
 
     def __call__(self, points: u.Quantity | None = None) -> np.ndarray:
         """Gets the value for the parameter or the corresponding
