@@ -210,10 +210,10 @@ STANDARD_PARAMETERS = SimpleNamespace(
     r0={
         "name": "r0",
         "shortname": "r0",
-        "value": 0,
+        "value": 1,
         "unit": u.au,
         "description": "Reference radius",
-        "free": True,
+        "free": False,
     },
     rin={
         "name": "rin",
@@ -430,10 +430,9 @@ data = SimpleNamespace(
 # NOTE: Model
 model = SimpleNamespace(
     components_and_params=None,
-    constant_params=None,
+    constant_params={},
     shared_params=None,
     output="non-normed",
-    reference_radius=1 * u.au,
     gridtype="logarithmic",
     modulation=1,
 )

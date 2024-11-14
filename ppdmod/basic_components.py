@@ -63,15 +63,14 @@ class NBandFit(Component):
         bb = BlackBody(temperature=self.tempc())(wavelength)
 
         # NOTE: The 1e2 term is to be able to fit the weights as percentages
-        opacity = (
-            np.sum(
-                [
-                    getattr(self, f"weight_{material}")().value / 1e2
-                    * getattr(self, f"kappa_{material}")(wavelength)
-                    for material in self.materials
-                ],
-                axis=0,
-            )
+        opacity = np.sum(
+            [
+                getattr(self, f"weight_{material}")().value
+                / 1e2
+                * getattr(self, f"kappa_{material}")(wavelength)
+                for material in self.materials
+            ],
+            axis=0,
         )
 
         pah = self.scale_pah() * self.pah(wavelength)
@@ -288,6 +287,9 @@ class Ring(FourierComponent):
         self.rin = Parameter(**STANDARD_PARAMETERS.rin)
         self.rout = Parameter(**STANDARD_PARAMETERS.rout)
         self.width = Parameter(**STANDARD_PARAMETERS.width)
+
+        if self.has_outer_radius:
+            self.width.free = False
 
         self.eval(**kwargs)
 
@@ -673,7 +675,6 @@ class TempGradient(Ring):
     def __init__(self, **kwargs):
         """The class's constructor."""
         super().__init__(**kwargs)
-
         self.rin.unit = self.rout.unit = u.au
         self.dist = Parameter(**STANDARD_PARAMETERS.dist)
         self.eff_temp = Parameter(**STANDARD_PARAMETERS.eff_temp)
@@ -682,9 +683,14 @@ class TempGradient(Ring):
         self.r0 = Parameter(**STANDARD_PARAMETERS.r0)
         self.q = Parameter(**STANDARD_PARAMETERS.q)
         self.temp0 = Parameter(**STANDARD_PARAMETERS.temp0)
-        self.temps = Parameter(**STANDARD_PARAMETERS.temps)
         self.p = Parameter(**STANDARD_PARAMETERS.p)
         self.sigma0 = Parameter(**STANDARD_PARAMETERS.sigma0)
+
+        self.weights, self.radii, self.matrix = None, None, None
+        if "temps" in OPTIONS.model.constant_params:
+            temps = OPTIONS.model.constant_params["temps"]
+            self.weights, self.radii = temps.weight, temps.radii
+            self.matrix = temps.matrix
 
         self.kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
         self.kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
@@ -697,15 +703,6 @@ class TempGradient(Ring):
             self.cont_weight.free = False
 
         self.eval(**kwargs)
-
-        # TODO: Fix this implementation, don't do that here. Do that in the temp calculation
-        if OPTIONS.model.constant_params is not None:
-            if "temps" in OPTIONS.model.constant_params:
-                temps = OPTIONS.model.constant_params["temps"]
-                cont_temps = interp1d(temps.weights, temps.values, axis=0)(
-                    self.cont_weight().value / 1e2
-                )
-                self.temps.grid, self.temps.value = temps.radii, cont_temps
 
     def get_opacity(self, wavelength: u.um) -> u.cm**2 / u.g:
         """Set the opacity from wavelength."""
@@ -728,21 +725,22 @@ class TempGradient(Ring):
     def compute_temperature(self, radius: u.au) -> u.K:
         """Computes a 1D-temperature profile."""
         if self.const_temperature:
-            if self.temps.value is None:
+            if self.matrix is not None:
+                interp_op_temps = interp1d(self.weights, self.matrix, axis=0)(
+                    self.cont_weight().value / 1e2
+                )
+                temperature = np.interp(radius.value, self.radii, interp_op_temps)
+            else:
                 temperature = (
                     np.sqrt(self.eff_radius().to(u.au) / (2 * radius)) * self.eff_temp()
                 )
-            else:
-                temperature = self.temps(radius)
         else:
-            r0 = OPTIONS.model.reference_radius if self.r0.value == 0 else self.r0()
-            temperature = self.temp0() * (radius / r0) ** self.q()
+            temperature = self.temp0() * (radius / self.r0()) ** self.q()
         return temperature.astype(OPTIONS.data.dtype.real)
 
     def compute_surface_density(self, radius: u.au) -> u.one:
         """Computes a 1D-surface density profile."""
-        r0 = OPTIONS.model.reference_radius if self.r0.value == 0 else self.r0()
-        surface_density = self.sigma0() * (radius / r0) ** self.p()
+        surface_density = self.sigma0() * (radius / self.r0()) ** self.p()
         return surface_density.astype(OPTIONS.data.dtype.real)
 
     def compute_optical_depth(self, radius: u.au, wavelength: u.um) -> u.one:
@@ -993,10 +991,7 @@ def assemble_components(
 ) -> List[FourierComponent]:
     """Assembles a model from a dictionary of parameters."""
     shared_params = shared_params if shared_params is not None else {}
-    if OPTIONS.model.constant_params is None:
-        constant_params = {}
-    else:
-        constant_params = OPTIONS.model.constant_params
+    constant_params = OPTIONS.model.constant_params
 
     components = []
     for component, params in parameters:

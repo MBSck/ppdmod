@@ -38,8 +38,8 @@ DATA_DIR = Path(__file__).parent.parent / "data"
 wavelengths = {
     "hband": [1.7] * u.um,
     "kband": [2.15] * u.um,
-    "lband": np.linspace(3.1, 3.4, 5) * u.um,
-    "mband": np.linspace(4.7, 4.9, 3) * u.um,
+    "lband": np.linspace(3.1, 3.4, 6) * u.um,
+    "mband": np.linspace(4.7, 4.9, 4) * u.um,
     "nband": np.linspace(8, 15, 35) * u.um,
 }
 
@@ -99,9 +99,13 @@ OPTIONS.model.constant_params = {
 }
 
 
-# with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
-#     temps = pickle.load(save_file)
-#     OPTIONS.model.constant_params["temps"] = temps
+with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
+    temps = pickle.load(save_file)
+
+# NOTE: Set opacity calculated temperatures
+OPTIONS.model.constant_params["weights"] = temps.weights
+OPTIONS.model.constant_params["radii"] = temps.radii
+OPTIONS.model.constant_params["matrix"] = temps.values
 
 x = Parameter(**STANDARD_PARAMETERS.x)
 y = Parameter(**STANDARD_PARAMETERS.y)
@@ -208,7 +212,7 @@ if __name__ == "__main__":
     ncores = 50
     fit_params = {"nlive_init": 2000, "ptform": ptform}
     sampler = run_fit(
-        **fit_params, ncores=ncores, method="dynamic", save_dir=result_dir, debug=False
+        **fit_params, ncores=ncores, method="dynamic", save_dir=result_dir, debug=True
     )
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
@@ -228,4 +232,4 @@ if __name__ == "__main__":
         method="linear",
         reduced=True,
     )
-    print(f"rchi_sq: {rchi_sqs[0]:.2f}")
+    print(f"Total reduced chi_sq: {rchi_sqs[0]:.2f}")
