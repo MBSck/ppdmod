@@ -299,9 +299,9 @@ free = false
 smooth = true
 description = "The continuum dust mass absorption coefficient"
 
-[STANDARD_PARAMETERS.cont_weight]
-name = "cont_weight"
-shortname = "cont_weight"
+[STANDARD_PARAMETERS.weight_cont]
+name = "weight_cont"
+shortname = "weight_cont"
 value = 0
 unit = "pct"
 free = true

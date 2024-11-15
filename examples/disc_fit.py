@@ -153,7 +153,7 @@ if __name__ == "__main__":
     ncores = 50
     fit_params = {"nlive_init": 2000, "ptform": ptform}
     sampler = run_fit(
-        **fit_params, ncores=ncores, method="dynamic", save_dir=result_dir, debug=True
+        **fit_params, ncores=ncores, save_dir=result_dir, debug=True
     )
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)

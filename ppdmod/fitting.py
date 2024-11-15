@@ -252,7 +252,7 @@ def compute_observables(
     return flux_model, vis_model, t3_model
 
 
-def compute_sed_chi_sq(flux_model: np.ndarray, ndim: int, method: str) -> float:
+def compute_nband_fit_chi_sq(flux_model: np.ndarray, ndim: int, method: str) -> float:
     """Calculates the sed model's chi square.
 
     Parameters
@@ -429,7 +429,7 @@ def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray
     return params
 
 
-def ptform_lband_fit(theta: List[float], labels: List[str]) -> np.ndarray:
+def ptform_nband_fit(theta: List[float], labels: List[str]) -> np.ndarray:
     """Transform that soft constrains successive radii to be smaller than the one before."""
     indices = list(map(labels.index, filter(lambda x: "weight" in x, labels)))
     params = transform_uniform_prior(theta)
@@ -487,7 +487,7 @@ def lnprob_nband_fit(theta: np.ndarray) -> float:
         The log of the probability.
     """
     components = set_components_from_theta(theta)
-    return compute_sed_chi_sq(
+    return compute_nband_fit_chi_sq(
         components[0].compute_flux(OPTIONS.fit.wavelengths),
         ndim=theta.size,
         method="logarithmic",

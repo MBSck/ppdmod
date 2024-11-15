@@ -18,6 +18,7 @@ class NBandFit(Component):
     name = "NBandFit"
     shortname = "NBandFit"
     description = "A fit to the SED of a star."
+    label="NBandFit"
 
     def __init__(self, **kwargs):
         """The class's constructor."""
