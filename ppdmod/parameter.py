@@ -9,7 +9,6 @@ from .options import STANDARD_PARAMETERS
 from .utils import smooth_interpolation
 
 
-# TODO: Write template functionality
 @dataclass()
 class Parameter:
     """Defines a parameter."""
@@ -19,6 +18,7 @@ class Parameter:
     unit: u.Quantity | None = None
     shortname: str | None = None
     free: bool | None = None
+    shared: bool | None = None
     description: str | None = None
     min: float | None = None
     max: float | None = None
@@ -54,6 +54,9 @@ class Parameter:
 
         if self.free is None:
             self.free = False
+
+        if self.shared is None:
+            self.shared = False
 
     def __call__(self, points: u.Quantity | None = None) -> np.ndarray:
         """Gets the value for the parameter or the corresponding
@@ -94,7 +97,6 @@ class Parameter:
 
         return array
 
-    # TODO: One can make this modular, maybe cool for oimodeler?
     def set(self, min: float | None = None, max: float | None = None) -> None:
         """Sets the limits of the parameters."""
         self.min, self.max = min, max

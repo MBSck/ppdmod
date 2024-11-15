@@ -22,7 +22,7 @@ from ppdmod.fitting import (
     ptform_sequential_radii,
     run_fit,
     set_components_from_theta,
-    get_theta,
+    get_labels,
 )
 from ppdmod.options import OPTIONS
 from ppdmod.parameter import Parameter
@@ -74,7 +74,7 @@ grid, value = load_data(
 )
 kappa_cont = Parameter(grid=grid, value=value, base="kappa_cont")
 pa = Parameter(value=352, free=False, base="pa")
-inc = Parameter(value=0.915, free=True, base="inc")
+inc = Parameter(value=0.915, free=True, shared=True, base="inc")
 
 constant_params = {
     "dim": 32,
@@ -83,6 +83,7 @@ constant_params = {
     "eff_radius": 3.46,
     "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont,
+    "pa": pa,
 }
 
 with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
@@ -128,6 +129,7 @@ outer_ring = basic_components.GreyBody(
 
 OPTIONS.model.components = components = [star, inner_ring, outer_ring]
 OPTIONS.model.shared_params = shared_params = {"inc": inc}
+LABELS = get_labels(components, shared_params)
 
 result_dir = Path("../model_results/") / "disc_fit"
 day_dir = result_dir / str(datetime.now().date())
@@ -135,7 +137,11 @@ dir_name = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 result_dir = day_dir / dir_name
 result_dir.mkdir(parents=True, exist_ok=True)
 
-ndim = get_theta(components, shared_params).size
+ndim = len(LABELS)
+
+# TODO: The next two lines are just for testing remove them
+theta = np.random.rand(ndim)
+components2 = set_components_from_theta(theta)
 breakpoint()
 
 rchi_sqs = compute_interferometric_chi_sq(
@@ -155,10 +161,7 @@ if __name__ == "__main__":
     )
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
-    components_and_params, shared_params = set_components_from_theta(theta)
-    components = basic_components.assemble_components(
-        components_and_params, shared_params
-    )
+    components = set_components_from_theta(theta)
 
     np.save(result_dir / "theta.npy", theta)
     np.save(result_dir / "uncertainties.npy", uncertainties)
