@@ -53,7 +53,9 @@ class Component:
         for attribute in dir(self):
             value = getattr(self, attribute)
             if isinstance(value, Parameter):
-                if (free and not value.free) or (free and not value.shared):
+                if free and not value.free:
+                    continue
+                if free and value.shared:
                     continue
                 elif fixed and value.free:
                     continue
