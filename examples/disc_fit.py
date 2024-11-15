@@ -87,9 +87,9 @@ constant_params = {
     "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont,
     "pa": pa,
-    # "weigths": temps.weights,
-    # "radii": temps.radii,
-    # "matrix": temps.values,
+    "weigths": temps.weights,
+    "radii": temps.radii,
+    "matrix": temps.values,
 }
 
 rin1 = Parameter(value=0.5, min=0, max=30, base="rin")
