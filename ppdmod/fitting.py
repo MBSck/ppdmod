@@ -353,7 +353,7 @@ def transform_uniform_prior(theta: List[float]) -> float:
     return priors[:, 0] + (priors[:, 1] - priors[:, 0]) * theta
 
 
-# TODO: Same as below
+# TODO: Improve this and make it work again
 def ptform_one_disc(theta: List[float], labels: List[str]) -> np.ndarray:
     """Transform that hard constrains the model to one continous disc by
     setting the outer radius of the first component to the inner of the second.
@@ -390,41 +390,38 @@ def ptform_one_disc(theta: List[float], labels: List[str]) -> np.ndarray:
     return params
 
 
-# TODO: Fix this piece of code so it goes backwards to forwards. Start with the
-# largest radii first, only if all fit in line, then do it, or?
-# Smallest still ok if the largest one is capped?
-# Do it more naturally? As in some transform of the radii? Not just clipping it?
-# Use np.clip also
 def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray:
     """Transform that soft constrains successive radii to be smaller than the one before."""
-    params = transform_uniform_prior(theta).tolist()
     priors = get_priors(OPTIONS.model.components, OPTIONS.model.shared_params)
-    radii = list(filter(lambda x: "rin" in x or "rout" in x, labels))
-    if "rout" not in radii[-1]:
-        radii.append(f"rout-{radii[-1].split('-')[1]}")
+    params = transform_uniform_prior(theta)
 
+    radii_labels = list(filter(lambda x: "rin" in x or "rout" in x, labels))
     indices = list(
         map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
     )
-    params.append(OPTIONS.model.components_and_params[-1][1]["rout"].value)
-    breakpoint()
+    radii_values, radii_uniforms = params[indices].tolist(), theta[indices].tolist()
+    radii_priors = priors[indices].tolist()
+    if "rout" not in radii_labels[-1]:
+        radii_labels.append(f"rout-{radii_labels[-1].split('-')[1]}")
+        radii_values.append(OPTIONS.model.components[-1].rout.value)
+        radii_uniforms.append(1)
+        radii_priors.append([0, 0])
 
-    for count, index in enumerate(indices[::-1]):
-        if count == len(indices) - 1:
-            break
+    # TODO: Fix this for the case where there is no outer radius set
+    radii_values = radii_values[::-1]
+    radii_uniforms, radii_priors = radii_uniforms[::-1], radii_priors[::-1]
 
-        current_radius, next_radius = params[index], params[indices[count + 1]]
-        if next_radius <= current_radius:
-            next_theta, next_priors = (
-                theta[indices[count + 1]],
-                priors[indices[count + 1]],
-            )
-            updated_radius = current_radius + np.diff(next_priors)[0] * next_theta
+    new_radii = [radii_values[0]]
+    for index, (radius, uniform, prior) in enumerate(
+        zip(radii_values[1:], radii_uniforms[1:], radii_priors[1:]), start=1
+    ):
+        if radius > new_radii[index - 1]:
+            prior[-1] = new_radii[index - 1]
+            new_radii.append(prior[0] + (prior[1] - prior[0]) * uniform)
 
-            if updated_radius > next_priors[1]:
-                updated_radius = next_priors[1]
-
-            params[indices[count + 1]] = updated_radius
+    new_radii = new_radii[::-1]
+    for index, radius in zip(indices, new_radii):
+        params[index] = radius
 
     return params
 
