@@ -25,6 +25,7 @@ from .fitting import compute_observables, get_best_fit
 from .options import OPTIONS, get_colormap
 from .utils import (
     angular_to_distance,
+    distance_to_angular,
     compute_effective_baselines,
     distance_to_angular,
     restrict_phase,
@@ -1372,6 +1373,7 @@ def plot_product(
         plt.close(fig)
 
 
+# TODO: Clean and split this function into multiple ones
 def plot_intermediate_products(
     dim: int,
     wavelength: u.Quantity[u.um],
@@ -1389,8 +1391,8 @@ def plot_intermediate_products(
     component_labels = [
         " ".join(map(str.title, label.split("_"))) for label in component_labels
     ]
-    radii, surface_densities, optical_depths = [], [], []
-    fluxes, temperatures, emissivities, brightnesses = [], [], [], []
+    radii, surface_density, optical_depth = [], [], []
+    fluxes, temperature, emissivity, intensity = [], [], [], []
 
     _, ax = plt.subplots(figsize=(5, 5))
     for label, component in zip(component_labels, components):
@@ -1413,23 +1415,21 @@ def plot_intermediate_products(
         radius = component.compute_internal_grid()
         radii.append(radius)
 
-        temperatures.append(component.compute_temperature(radius))
-        surface_densities.append(component.compute_surface_density(radius))
-        optical_depths.append(
+        temperature.append(component.compute_temperature(radius))
+        surface_density.append(component.compute_surface_density(radius))
+        optical_depth.append(
             component.compute_optical_depth(radius, wavelength[:, np.newaxis])
         )
-        emissivities.append(
+        emissivity.append(
             component.compute_emissivity(radius, wavelength[:, np.newaxis])
         )
-        brightnesses.append(
-            component.compute_intensity(radius, wavelength[:, np.newaxis])
-        )
+        intensity.append(component.compute_intensity(radius, wavelength[:, np.newaxis]))
 
-    temperatures = u.Quantity(temperatures)
-    surface_densities = u.Quantity(surface_densities)
-    optical_depths = u.Quantity(optical_depths)
-    emissivities = u.Quantity(emissivities)
-    brightnesses = u.Quantity(brightnesses)
+    temperature = u.Quantity(temperature)
+    surface_density = u.Quantity(surface_density)
+    optical_depth = u.Quantity(optical_depth)
+    emissivity = u.Quantity(emissivity)
+    intensity = u.Quantity(intensity)
 
     total_flux = sum(fluxes)
     ax.plot(wavelengths, total_flux, label="Total")
@@ -1460,74 +1460,139 @@ def plot_intermediate_products(
     ]
     fill_radii = [np.linspace(lower, upper, dim) for lower, upper in radii_bounds]
     merged_radii = list(chain.from_iterable(zip_longest(radii, fill_radii)))[:-1]
-    radii = u.Quantity(np.concatenate(merged_radii, axis=0))
+    merged_radii = u.Quantity(np.concatenate(merged_radii, axis=0))
     fill_zeros = np.zeros((len(fill_radii), wavelength.size, dim))
 
     # TODO: Make it so that the temperatures are somehow continous in the plot? (Maybe check for self.temps in the models?)
     # or interpolate smoothly somehow (see the one youtube video?) :D
-    temperatures = u.Quantity(
-        list(chain.from_iterable(zip_longest(temperatures, fill_zeros[:, 0, :] * u.K)))[
+    temperature = u.Quantity(
+        list(chain.from_iterable(zip_longest(temperature, fill_zeros[:, 0, :] * u.K)))[
             :-1
         ]
     )
-    temperatures = np.concatenate(temperatures, axis=0)
-    surface_densities = u.Quantity(
+    temperature = np.concatenate(temperature, axis=0)
+    surface_density = u.Quantity(
         list(
             chain.from_iterable(
-                zip_longest(surface_densities, fill_zeros[:, 0, :] * u.g / u.cm**2)
+                zip_longest(surface_density, fill_zeros[:, 0, :] * u.g / u.cm**2)
             )
         )[:-1]
     )
-    surface_densities = np.concatenate(surface_densities, axis=0)
-    optical_depths = u.Quantity(
-        list(chain.from_iterable(zip_longest(optical_depths, fill_zeros)))[:-1]
+    surface_density = np.concatenate(surface_density, axis=0)
+    optical_depth = u.Quantity(
+        list(chain.from_iterable(zip_longest(optical_depth, fill_zeros)))[:-1]
     )
-    optical_depths = np.hstack(optical_depths)
-    emissivities = u.Quantity(
-        list(chain.from_iterable(zip_longest(emissivities, fill_zeros)))[:-1]
+    optical_depth = np.hstack(optical_depth)
+    emissivity = u.Quantity(
+        list(chain.from_iterable(zip_longest(emissivity, fill_zeros)))[:-1]
     )
-    emissivities = np.hstack(emissivities)
-    brightnesses = u.Quantity(
+    emissivity = np.hstack(emissivity)
+    intensity = u.Quantity(
         list(
             chain.from_iterable(
-                zip_longest(
-                    brightnesses, fill_zeros * u.erg / u.cm**2 / u.s / u.Hz / u.sr
+                zip_longest(intensity, fill_zeros * u.erg / u.cm**2 / u.s / u.Hz / u.sr)
+            )
+        )[:-1]
+    )
+    intensity = np.hstack(intensity)
+    intensity = intensity.to(u.W / u.m**2 / u.Hz / u.sr)
+    merged_radii_mas = distance_to_angular(merged_radii, components[-1].dist())
+
+    # TODO: Code this in a better manner
+    wls = [1.7, 2.15, 3.4, 8, 11.3, 13] * u.um
+    cumulative_intensity = (
+        np.zeros((wls.size, merged_radii_mas.size))
+        * u.erg
+        / u.s
+        / u.Hz
+        / u.cm**2
+        / u.sr
+    )
+    for index, wl in enumerate(wls):
+        tmp_intensity = [
+            component.compute_intensity(radius, wl)
+            for radius, component in zip(radii, components[1:])
+        ]
+        tmp_intensity = u.Quantity(
+            list(
+                chain.from_iterable(
+                    zip_longest(
+                        tmp_intensity,
+                        fill_zeros[0, 0][np.newaxis, :]
+                        * u.erg
+                        / u.cm**2
+                        / u.s
+                        / u.Hz
+                        / u.sr,
+                    )
                 )
-            )
-        )[:-1]
+            )[:-1]
+        )
+        cumulative_intensity[index, :] = np.hstack(tmp_intensity)
+
+    cumulative_intensity = cumulative_intensity.to(
+        u.erg / u.s / u.Hz / u.cm**2 / u.mas**2
     )
-    brightnesses = np.hstack(brightnesses).to(u.W / u.m**2 / u.Hz / u.sr)
+    cumulative_total_flux = (
+        2
+        * np.pi
+        * components[-1].inc()
+        * np.trapz(merged_radii_mas * cumulative_intensity, merged_radii_mas).to(u.Jy)[
+            :, np.newaxis
+        ]
+    )
+
+    cumulative_flux = np.zeros((wls.size, merged_radii.size)) * u.Jy
+    for index, _ in enumerate(merged_radii):
+        cumulative_flux[:, index] = (
+            2
+            * np.pi
+            * components[-1].inc()
+            * np.trapz(
+                merged_radii_mas[:index] * cumulative_intensity[:, :index],
+                merged_radii_mas[:index],
+            ).to(u.Jy)
+        )
+    cumulative_flux_ratio = cumulative_flux / cumulative_total_flux
+    plot_product(
+        merged_radii.value,
+        cumulative_flux_ratio.value,
+        "$R$ (AU)",
+        r"$F_{\nu}/F_{\nu,\,\mathrm{{tot}}}$ (a.u.)",
+        label=wls,
+        save_path=save_dir / "cumulative_flux_ratio.pdf",
+    )
 
     plot_product(
-        radii.value,
-        temperatures.value,
-        "$R$ (au)",
+        merged_radii.value,
+        temperature.value,
+        "$R$ (AU)",
         "$T$ (K)",
         save_path=save_dir / "temperature.pdf",
     )
     plot_product(
-        radii.value,
-        surface_densities.value,
+        merged_radii.value,
+        surface_density.value,
         "$R$ (au)",
         r"$\Sigma$ (g cm$^{-2}$)",
         save_path=save_dir / "surface_density.pdf",
         scale="sci",
     )
     plot_product(
-        radii.value,
-        optical_depths.value,
-        "$R$ (au)",
+        merged_radii.value,
+        optical_depth.value,
+        "$R$ (AU)",
         r"$\tau_{\nu}$",
         save_path=save_dir / "optical_depths.pdf",
         scale="log",
         colorbar=True,
         label=wavelength,
     )
-    # plot_product(radii.value, emissivities.value,
-    #              "$R$ (au)", r"$\epsilon_{\nu}$",
+    # plot_product(merged_radii.value, emissivities.value,
+    #              "$R$ (AU)", r"$\epsilon_{\nu}$",
     #              save_path=save_dir / "emissivities.pdf",
     #              label=wavelength)
-    # plot_product(radii.value, brightnesses.value,
-    #              "$R$ (au)", r"$I_{\nu}$ (W m$^{-2}$ Hz$^{-1}$ sr$^{-1}$)",
+    # plot_product(merged_radii.value, brightnesses.value,
+    #              "$R$ (AU)", r"$I_{\nu}$ (W m$^{-2}$ Hz$^{-1}$ sr$^{-1}$)",
     #              save_path=save_dir / "brightnesses.pdf",
     #              scale="log", label=wavelength)
