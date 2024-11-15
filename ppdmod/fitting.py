@@ -418,6 +418,8 @@ def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray
         if radius > new_radii[index - 1]:
             prior[-1] = new_radii[index - 1]
             new_radii.append(prior[0] + (prior[1] - prior[0]) * uniform)
+        else:
+            new_radii.append(radius)
 
     new_radii = new_radii[::-1]
     for index, radius in zip(indices, new_radii):
