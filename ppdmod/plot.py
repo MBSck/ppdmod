@@ -5,7 +5,6 @@ from typing import Dict, List, Tuple
 
 import astropy.constants as const
 import astropy.units as u
-import corner
 import matplotlib
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
@@ -15,6 +14,7 @@ import matplotlib.ticker as ticker
 import numpy as np
 from astropy.io import fits
 from astropy.wcs import WCS
+from dynesty import DynamicNestedSampler, NestedSampler
 from dynesty import plotting as dyplot
 from matplotlib.axes import Axes
 from matplotlib.gridspec import GridSpec
@@ -356,10 +356,9 @@ def get_exponent(num):
 
 
 def plot_corner(
-    sampler: np.ndarray,
+    sampler: NestedSampler | DynamicNestedSampler,
     labels: List[str],
     units: List[str] | None = None,
-    discard: int = 0,
     fontsize: int = 12,
     savefig: Path | None = None,
     **kwargs,
@@ -368,8 +367,8 @@ def plot_corner(
 
     Parameters
     ----------
-    sampler : numpy.ndarray
-        The emcee sampler.
+    sampler : dynesty.NestedSampler or dynesty.DynamicNestedSampler
+        The sampler.
     labels : list of str
         The parameter labels.
     units : list of str, optional
@@ -381,29 +380,18 @@ def plot_corner(
     """
     labels = format_labels(labels, units)
     quantiles = [x / 100 for x in OPTIONS.fit.quantiles]
-    if OPTIONS.fit.method == "emcee":
-        samples = sampler.get_chain(discard=discard, flat=True)
-        _, axarr = corner.corner(
-            samples,
-            show_titles=True,
-            labels=labels,
-            plot_datapoints=True,
-            quantiles=quantiles,
-            title_kwargs={"fontsize": fontsize},
-        )
-    else:
-        results = sampler.results
-        _, axarr = dyplot.cornerplot(
-            results,
-            color="blue",
-            truths=np.zeros(len(labels)),
-            labels=labels,
-            truth_color="black",
-            show_titles=True,
-            max_n_ticks=3,
-            title_quantiles=quantiles,
-            quantiles=quantiles,
-        )
+    results = sampler.results
+    _, axarr = dyplot.cornerplot(
+        results,
+        color="blue",
+        truths=np.zeros(len(labels)),
+        labels=labels,
+        truth_color="black",
+        show_titles=True,
+        max_n_ticks=3,
+        title_quantiles=quantiles,
+        quantiles=quantiles,
+    )
 
     params, uncertainties = get_best_fit(sampler)
     for index, row in enumerate(axarr):
@@ -437,10 +425,9 @@ def plot_corner(
 
 
 def plot_chains(
-    sampler: np.ndarray,
+    sampler: NestedSampler | DynamicNestedSampler,
     labels: List[str],
     units: List[str] | None = None,
-    discard: int = 0,
     savefig: Path | None = None,
     **kwargs,
 ) -> None:
@@ -448,8 +435,8 @@ def plot_chains(
 
     Parameters
     ----------
-    sampler : numpy.ndarray
-        The emcee sampler.
+    sampler : dynesty.NestedSampler or dynesty.DynamicNestedSampler
+        The sampler.
     labels : list of str
         The parameter labels.
     units : list of str, optional
@@ -459,29 +446,18 @@ def plot_chains(
     """
     labels = format_labels(labels, units)
     quantiles = [x / 100 for x in OPTIONS.fit.quantiles]
-    if OPTIONS.fit.method == "emcee":
-        samples = sampler.get_chain(discard=discard)
-        _, axes = plt.subplots(len(labels), figsize=(10, 7), sharex=True)
-
-        for index, label in enumerate(labels):
-            axes[index].plot(samples[:, :, index], "k", alpha=0.3)
-            axes[index].set_xlim(0, len(samples))
-            axes[index].set_ylabel(label)
-            axes[index].yaxis.set_label_coords(-0.1, 0.5)
-        axes[-1].set_xlabel("step number")
-    else:
-        results = sampler.results
-        dyplot.traceplot(
-            results,
-            labels=labels,
-            truths=np.zeros(len(labels)),
-            quantiles=quantiles,
-            truth_color="black",
-            show_titles=True,
-            trace_cmap="viridis",
-            connect=True,
-            connect_highlight=range(5),
-        )
+    results = sampler.results
+    dyplot.traceplot(
+        results,
+        labels=labels,
+        truths=np.zeros(len(labels)),
+        quantiles=quantiles,
+        truth_color="black",
+        show_titles=True,
+        trace_cmap="viridis",
+        connect=True,
+        connect_highlight=range(5),
+    )
 
     if savefig:
         plt.savefig(savefig, format="pdf")
