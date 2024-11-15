@@ -98,13 +98,11 @@ rin1 = Parameter(value=0.5, min=0, max=30, base="rin")
 rout1 = Parameter(value=1.5, min=0, max=30, free=True, base="rout")
 p1 = Parameter(value=0.5, min=-20, max=20, base="p")
 sigma01 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
-cont_weight1 = Parameter(base="cont_weight")
 
 rin2 = Parameter(value=2, min=0, max=30, base="rin")
 rout2 = Parameter(value=4, free=False, base="rout")
 p2 = Parameter(value=0.5, min=-30, max=20, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
-cont_weight2 = Parameter(base="cont_weight")
 
 star = basic_components.Star(label="Star", f=flux_star, **constant_params)
 inner_ring = basic_components.GreyBody(
@@ -113,7 +111,6 @@ inner_ring = basic_components.GreyBody(
     rout=rout1,
     p=p1,
     sigma0=sigma01,
-    cont_weight=cont_weight1,
     inc=inc,
     **constant_params,
 )
@@ -124,7 +121,6 @@ outer_ring = basic_components.GreyBody(
     rout=rout2,
     p=p2,
     sigma0=sigma02,
-    cont_weight=cont_weight2,
     inc=inc,
     **constant_params,
 )
