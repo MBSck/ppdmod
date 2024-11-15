@@ -4,7 +4,7 @@ from typing import Tuple
 import astropy.units as u
 import numpy as np
 
-from .options import OPTIONS, STANDARD_PARAMETERS
+from .options import OPTIONS, STANDARD_PARAMS
 from .parameter import Parameter
 from .utils import broadcast_baselines, compute_effective_baselines
 
@@ -94,16 +94,16 @@ class FourierComponent(Component):
 
     def __init__(self, **kwargs):
         """The class's constructor."""
-        self.fr = Parameter(**STANDARD_PARAMETERS.fr)
-        self.x = Parameter(**STANDARD_PARAMETERS.x)
-        self.y = Parameter(**STANDARD_PARAMETERS.y)
-        self.pa = Parameter(**STANDARD_PARAMETERS.pa)
-        self.inc = Parameter(**STANDARD_PARAMETERS.inc)
-        self.dim = Parameter(**STANDARD_PARAMETERS.dim)
+        self.fr = Parameter(**STANDARD_PARAMS.fr)
+        self.x = Parameter(**STANDARD_PARAMS.x)
+        self.y = Parameter(**STANDARD_PARAMS.y)
+        self.pa = Parameter(**STANDARD_PARAMS.pa)
+        self.inc = Parameter(**STANDARD_PARAMS.inc)
+        self.dim = Parameter(**STANDARD_PARAMS.dim)
 
         for i in range(1, OPTIONS.model.modulation + 1):
-            setattr(self, f"c{i}", Parameter(**STANDARD_PARAMETERS.c))
-            setattr(self, f"s{i}", Parameter(**STANDARD_PARAMETERS.s))
+            setattr(self, f"c{i}", Parameter(**STANDARD_PARAMS.c))
+            setattr(self, f"s{i}", Parameter(**STANDARD_PARAMS.s))
 
         if not self.elliptic:
             self.inc.free = self.pa.free = False

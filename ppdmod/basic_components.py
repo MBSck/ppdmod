@@ -9,7 +9,7 @@ from scipy.signal import fftconvolve
 from scipy.special import j0, j1, jv
 
 from .component import Component, FourierComponent
-from .options import OPTIONS, STANDARD_PARAMETERS
+from .options import OPTIONS, STANDARD_PARAMS
 from .parameter import Parameter
 from .utils import angular_to_distance, distance_to_angular
 
@@ -21,15 +21,15 @@ class NBandFit(Component):
 
     def __init__(self, **kwargs):
         """The class's constructor."""
-        self.tempc = Parameter(**STANDARD_PARAMETERS.tempc)
+        self.tempc = Parameter(**STANDARD_PARAMS.tempc)
 
-        self.pah = Parameter(**STANDARD_PARAMETERS.pah)
-        self.scale_pah = Parameter(**STANDARD_PARAMETERS.cont_weight)
+        self.pah = Parameter(**STANDARD_PARAMS.pah)
+        self.scale_pah = Parameter(**STANDARD_PARAMS.cont_weight)
         self.scale_pah.shortname = self.scale_pah.name = "pah_scale"
         self.scale_pah.description = "The mass fraction for the PAHs"
         self.scale_pah.unit = u.one
 
-        self.f = Parameter(**STANDARD_PARAMETERS.fr)
+        self.f = Parameter(**STANDARD_PARAMS.fr)
         self.f.shortname = self.f.name = "f"
         self.f.description = "Offset term"
         self.f.unit = u.one
@@ -42,7 +42,7 @@ class NBandFit(Component):
         for material in self.materials:
             for prefix in ["kappa", "weight"]:
                 key = "kappa_abs" if prefix == "kappa" else "cont_weight"
-                param = Parameter(**getattr(STANDARD_PARAMETERS, key))
+                param = Parameter(**getattr(STANDARD_PARAMS, key))
                 param.name = param.shortname = f"{prefix}_{material}"
                 param.description = f"The mass fraction for {param.name}"
 
@@ -189,10 +189,10 @@ class Star(FourierComponent):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.f = Parameter(**STANDARD_PARAMETERS.f)
-        self.dist = Parameter(**STANDARD_PARAMETERS.dist)
-        self.eff_temp = Parameter(**STANDARD_PARAMETERS.eff_temp)
-        self.eff_radius = Parameter(**STANDARD_PARAMETERS.eff_radius)
+        self.f = Parameter(**STANDARD_PARAMS.f)
+        self.dist = Parameter(**STANDARD_PARAMS.dist)
+        self.eff_temp = Parameter(**STANDARD_PARAMS.eff_temp)
+        self.eff_radius = Parameter(**STANDARD_PARAMS.eff_radius)
         self.eval(**kwargs)
 
         self.stellar_radius_angular = distance_to_angular(
@@ -283,9 +283,9 @@ class Ring(FourierComponent):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.rin = Parameter(**STANDARD_PARAMETERS.rin)
-        self.rout = Parameter(**STANDARD_PARAMETERS.rout)
-        self.width = Parameter(**STANDARD_PARAMETERS.width)
+        self.rin = Parameter(**STANDARD_PARAMS.rin)
+        self.rout = Parameter(**STANDARD_PARAMS.rout)
+        self.width = Parameter(**STANDARD_PARAMS.width)
 
         if self.has_outer_radius:
             self.width.free = False
@@ -448,7 +448,7 @@ class UniformDisk(FourierComponent):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.diam = Parameter(**STANDARD_PARAMETERS.diam)
+        self.diam = Parameter(**STANDARD_PARAMS.diam)
         self.eval(**kwargs)
 
     def vis_func(
@@ -498,7 +498,7 @@ class Gaussian(FourierComponent):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.hlr = Parameter(**STANDARD_PARAMETERS.hlr)
+        self.hlr = Parameter(**STANDARD_PARAMS.hlr)
         self.eval(**kwargs)
 
     def vis_func(
@@ -549,7 +549,7 @@ class Lorentzian(FourierComponent):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.hlr = Parameter(**STANDARD_PARAMETERS.hlr)
+        self.hlr = Parameter(**STANDARD_PARAMS.hlr)
         self.eval(**kwargs)
 
     def vis_func(
@@ -598,10 +598,10 @@ class GaussLorentzian(FourierComponent):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.flor = Parameter(**STANDARD_PARAMETERS.fr)
+        self.flor = Parameter(**STANDARD_PARAMS.fr)
         self.flor.name = self.flor.shortname = "flor"
         self.flor.free = True
-        self.hlr = Parameter(**STANDARD_PARAMETERS.hlr)
+        self.hlr = Parameter(**STANDARD_PARAMS.hlr)
 
         self.eval(**kwargs)
 
@@ -674,20 +674,20 @@ class TempGradient(Ring):
     def __init__(self, **kwargs):
         """The class's constructor."""
         super().__init__(**kwargs)
-        self.dist = Parameter(**STANDARD_PARAMETERS.dist)
-        self.eff_temp = Parameter(**STANDARD_PARAMETERS.eff_temp)
-        self.eff_radius = Parameter(**STANDARD_PARAMETERS.eff_radius)
+        self.dist = Parameter(**STANDARD_PARAMS.dist)
+        self.eff_temp = Parameter(**STANDARD_PARAMS.eff_temp)
+        self.eff_radius = Parameter(**STANDARD_PARAMS.eff_radius)
 
-        self.r0 = Parameter(**STANDARD_PARAMETERS.r0)
-        self.q = Parameter(**STANDARD_PARAMETERS.q)
-        self.temp0 = Parameter(**STANDARD_PARAMETERS.temp0)
-        self.p = Parameter(**STANDARD_PARAMETERS.p)
-        self.sigma0 = Parameter(**STANDARD_PARAMETERS.sigma0)
+        self.r0 = Parameter(**STANDARD_PARAMS.r0)
+        self.q = Parameter(**STANDARD_PARAMS.q)
+        self.temp0 = Parameter(**STANDARD_PARAMS.temp0)
+        self.p = Parameter(**STANDARD_PARAMS.p)
+        self.sigma0 = Parameter(**STANDARD_PARAMS.sigma0)
 
         self.weights, self.radii, self.matrix = None, None, None
-        self.kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
-        self.kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
-        self.cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
+        self.kappa_abs = Parameter(**STANDARD_PARAMS.kappa_abs)
+        self.kappa_cont = Parameter(**STANDARD_PARAMS.kappa_cont)
+        self.cont_weight = Parameter(**STANDARD_PARAMS.cont_weight)
 
         if self.const_temperature:
             self.q.free = self.temp0.free = False
@@ -848,30 +848,30 @@ class StarHaloGauss(FourierComponent):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.fs = Parameter(**STANDARD_PARAMETERS.fr)
+        self.fs = Parameter(**STANDARD_PARAMS.fr)
         self.fs.name = self.fs.shortname = "fs"
-        self.fc = Parameter(**STANDARD_PARAMETERS.fr)
+        self.fc = Parameter(**STANDARD_PARAMS.fr)
         self.fc.name = self.fc.shortname = "fc"
         self.fs.free = self.fc.free = True
 
-        self.la = Parameter(**STANDARD_PARAMETERS.la)
+        self.la = Parameter(**STANDARD_PARAMS.la)
 
         if self.has_ring:
-            self.lkr = Parameter(**STANDARD_PARAMETERS.lkr)
+            self.lkr = Parameter(**STANDARD_PARAMS.lkr)
 
-        self.wl0 = Parameter(**STANDARD_PARAMETERS.wl)
-        self.ks = Parameter(**STANDARD_PARAMETERS.exp)
+        self.wl0 = Parameter(**STANDARD_PARAMS.wl)
+        self.ks = Parameter(**STANDARD_PARAMS.exp)
         self.ks.name = self.ks.shortname = "ks"
         self.ks.value = 1
         self.ks.min, self.ks.max = -10, 10
         self.ks.free = False
-        self.kc = Parameter(**STANDARD_PARAMETERS.exp)
+        self.kc = Parameter(**STANDARD_PARAMS.exp)
         self.kc.name = self.kc.shortname = "kc"
         self.kc.min, self.kc.max = -10, 10
         self.kc.value = 1
 
         if self.is_gauss_lor:
-            self.flor = Parameter(**STANDARD_PARAMETERS.fr)
+            self.flor = Parameter(**STANDARD_PARAMS.fr)
             self.flor.name = self.flor.shortname = "flor"
             self.flor.free = True
 

@@ -7,7 +7,7 @@ from ppdmod import fitting
 from ppdmod import plot
 from ppdmod.basic_components import PointSource, Ring, assemble_components
 from ppdmod.parameter import Parameter
-from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
+from ppdmod.options import STANDARD_PARAMS, OPTIONS
 
 
 fits_file = Path("../data/aspro") / "model_pt_Iring.fits"
@@ -26,18 +26,18 @@ rchi_sq = fitting.compute_interferometric_chi_sq(
         *fitting.compute_observables(components, wavelength), reduced=True)
 print(f"chi_sq: {chi_sq}", f"rchi_sq: {rchi_sq}")
 
-fr_pt = Parameter(**STANDARD_PARAMETERS.fr)
+fr_pt = Parameter(**STANDARD_PARAMS.fr)
 fr_pt.value = 0.1
 fr_pt.free = True
 
 point = {"fr": fr_pt}
 point_labels = [f"pt_{label}" for label in point]
 
-fr_r = Parameter(**STANDARD_PARAMETERS.fr)
+fr_r = Parameter(**STANDARD_PARAMS.fr)
 fr_r.value = 0.1
 fr_r.free = True
 
-rin = Parameter(**STANDARD_PARAMETERS.rin)
+rin = Parameter(**STANDARD_PARAMS.rin)
 rin.value = 0.8
 rin.set(min=0., max=10)
 

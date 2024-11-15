@@ -15,20 +15,20 @@ from ppdmod.data import set_data
 from ppdmod.fitting import compute_interferometric_chi_sq, compute_observables, \
     set_components_from_theta, run_fit, get_best_fit
 from ppdmod.parameter import Parameter
-from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
+from ppdmod.options import STANDARD_PARAMS, OPTIONS
 
 
 DATA_DIR = Path("../data/aspro/")
 fits_files = [DATA_DIR / "a1_phi0_rin2_modulated_ring.fits"]
 data = set_data(fits_files, wavelengths=[3.5]*u.um, fit_data=["vis", "t3"])
 
-rin = Parameter(**STANDARD_PARAMETERS.rin)
+rin = Parameter(**STANDARD_PARAMS.rin)
 rin.value = 2
 
-a = Parameter(**STANDARD_PARAMETERS.a)
+a = Parameter(**STANDARD_PARAMS.a)
 a.value = 1
 
-phi = Parameter(**STANDARD_PARAMETERS.phi)
+phi = Parameter(**STANDARD_PARAMS.phi)
 phi.value = 0
 
 params = {"rin": rin, "a": a, "phi": phi}

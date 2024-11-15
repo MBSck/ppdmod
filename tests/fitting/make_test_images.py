@@ -4,7 +4,7 @@ import numpy as np
 from ppdmod.basic_components import AsymmetricGreyBody, GreyBody, Ring, Star, StarHaloRing
 from ppdmod.data import set_data, get_all_wavelengths
 from ppdmod.parameter import Parameter
-from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
+from ppdmod.options import STANDARD_PARAMS, OPTIONS
 from ppdmod.plot import plot_components
 from ppdmod.utils import compute_photometric_slope, compute_t3, \
     compute_vis, compute_stellar_radius, load_data, qval_to_opacity, get_opacity

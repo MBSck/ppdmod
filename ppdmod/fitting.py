@@ -91,6 +91,7 @@ def get_theta(
     return np.array(theta)
 
 
+# TODO: Think if this is the best way to do it -> Including the shared params
 def set_components_from_theta(theta: np.ndarray) -> List[Component]:
     """Sets the components from theta."""
     components = list(map(Component.copy, OPTIONS.model.components))
@@ -100,8 +101,9 @@ def set_components_from_theta(theta: np.ndarray) -> List[Component]:
         for param in component.get_params(free=True).values():
             param.value = theta_list.pop(0)
 
-        for param_name, param in zip(OPTIONS.model.shared_params.keys(), shared_params):
-            getattr(component, param_name).value = param
+        for param_name, value in zip(OPTIONS.model.shared_params.keys(), shared_params):
+            param = getattr(component, param_name)
+            param.value, param.shared, param.free = value, True, True
 
     return components
 

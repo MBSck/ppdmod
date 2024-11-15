@@ -9,7 +9,7 @@ from ppdmod.data import set_data
 from ppdmod.fitting import compute_interferometric_chi_sq, compute_observables, \
     set_components_from_theta, lnprior, run_fit, get_best_fit, transform_uniform_prior
 from ppdmod.parameter import Parameter
-from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
+from ppdmod.options import STANDARD_PARAMS, OPTIONS
 
 
 def ptform(theta: List[float]) -> np.ndarray:
@@ -54,33 +54,33 @@ DATA_DIR = Path("../data/gravity")
 fits_files = list((DATA_DIR).glob("*fits"))
 data = set_data(fits_files, wavelengths="all", fit_data=["vis2"])
 
-pa = Parameter(**STANDARD_PARAMETERS.pa)
+pa = Parameter(**STANDARD_PARAMS.pa)
 pa.value = 16
 pa.free = True
 
-inc = Parameter(**STANDARD_PARAMETERS.inc)
+inc = Parameter(**STANDARD_PARAMS.inc)
 inc.value = 0.9
 inc.free = True
 
-fc = Parameter(**STANDARD_PARAMETERS.fr)
+fc = Parameter(**STANDARD_PARAMS.fr)
 fc.value = 0.62
 fc.free = True
 
-fs = Parameter(**STANDARD_PARAMETERS.fr)
+fs = Parameter(**STANDARD_PARAMS.fr)
 fs.value = 0.25
 fs.free = True
 
 wavelength = data.get_all_wavelengths()
-ks = Parameter(**STANDARD_PARAMETERS.exp)
+ks = Parameter(**STANDARD_PARAMS.exp)
 ks.value = compute_photometric_slope(wavelength, 6500)
 ks.grid = wavelength
 ks.free = False
 
-kc = Parameter(**STANDARD_PARAMETERS.exp)
+kc = Parameter(**STANDARD_PARAMS.exp)
 kc.value = -1.256567224292807
 kc.set(min=-10, max=10)
 
-la = Parameter(**STANDARD_PARAMETERS.la)
+la = Parameter(**STANDARD_PARAMS.la)
 la.value = 0.12057393120584989
 la.set(min=-1, max=1.5)
 

@@ -16,7 +16,7 @@ from ppdmod.data import set_data, get_all_wavelengths
 from ppdmod.fitting import compute_interferometric_chi_sq, compute_observables, \
     set_components_from_theta, lnprior, run_fit, get_best_fit, transform_uniform_prior
 from ppdmod.parameter import Parameter
-from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
+from ppdmod.options import STANDARD_PARAMS, OPTIONS
 from ppdmod.utils import compute_photometric_slope
 
 
@@ -63,49 +63,49 @@ fits_files = list((DATA_DIR).glob("*fits"))
 fits_files.extend((DATA_DIR / "unused_pionier").glob("*fits"))
 data = set_data(fits_files, wavelengths="all", fit_data=["vis2", "t3"])
 
-pa = Parameter(**STANDARD_PARAMETERS.pa)
+pa = Parameter(**STANDARD_PARAMS.pa)
 pa.value = 0.09*u.rad.to(u.deg)
 pa.set(min=-45, max=45)
 pa.free = True
 
-inc = Parameter(**STANDARD_PARAMETERS.inc)
+inc = Parameter(**STANDARD_PARAMS.inc)
 inc.value = 0.84
 inc.free = True
 
-fc = Parameter(**STANDARD_PARAMETERS.fr)
+fc = Parameter(**STANDARD_PARAMS.fr)
 fc.value = 0.55
 fc.free = True
 
-fs = Parameter(**STANDARD_PARAMETERS.fr)
+fs = Parameter(**STANDARD_PARAMS.fr)
 fs.value = 0.42
 fs.free = True
 
 wavelengths = get_all_wavelengths()
-ks = Parameter(**STANDARD_PARAMETERS.exp)
+ks = Parameter(**STANDARD_PARAMS.exp)
 ks.value = compute_photometric_slope(wavelengths, 6500)
 ks.grid = wavelengths
 ks.free = False
 
-kc = Parameter(**STANDARD_PARAMETERS.exp)
+kc = Parameter(**STANDARD_PARAMS.exp)
 kc.value = -3.67
 kc.set(min=-10, max=10)
 
-la = Parameter(**STANDARD_PARAMETERS.la)
+la = Parameter(**STANDARD_PARAMS.la)
 la.value = 0.08
 la.set(min=-1, max=1.5)
 
-lkr = Parameter(**STANDARD_PARAMETERS.lkr)
+lkr = Parameter(**STANDARD_PARAMS.lkr)
 lkr.value = 0.54
 lkr.set(min=-1, max=1)
 
-flor = Parameter(**STANDARD_PARAMETERS.fr)
+flor = Parameter(**STANDARD_PARAMS.fr)
 flor.value = 0.42
 flor.free = True
 
-c1 = Parameter(**STANDARD_PARAMETERS.mod_amp)
+c1 = Parameter(**STANDARD_PARAMS.mod_amp)
 c1.value = -0.6
 
-s1 = Parameter(**STANDARD_PARAMETERS.mod_amp)
+s1 = Parameter(**STANDARD_PARAMS.mod_amp)
 s1.value = -0.57
 
 params = {"fs": fs, "fc": fc, "flor": flor, "la": la,

@@ -22,7 +22,7 @@ from ppdmod.fitting import (
     run_fit,
     set_components_from_theta,
 )
-from ppdmod.options import OPTIONS, STANDARD_PARAMETERS
+from ppdmod.options import OPTIONS, STANDARD_PARAMS
 from ppdmod.parameter import Parameter
 from ppdmod.utils import load_data, qval_to_opacity
 
@@ -58,41 +58,41 @@ for shortname, name in NAMES.items():
         )
         param_name, param = (
             f"kappa_{shortname}_{size}",
-            Parameter(**STANDARD_PARAMETERS.kappa_abs),
+            Parameter(**STANDARD_PARAMS.kappa_abs),
         )
         param.grid, param.value = grid, value
         param.shortname = param.name = param_name
         OPTIONS.model.constant_params[param_name] = param
 
-kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
+kappa_cont = Parameter(**STANDARD_PARAMS.kappa_cont)
 grid, value = load_data(
     DATA_DIR / "opacities" / "qval" / "Q_amorph_c_rv0.1.dat", load_func=qval_to_opacity
 )
 kappa_cont.grid, kappa_cont.value = grid, value
 OPTIONS.model.constant_params["kappa_cont"] = kappa_cont
 
-pah = Parameter(**STANDARD_PARAMETERS.pah)
+pah = Parameter(**STANDARD_PARAMS.pah)
 grid, value = np.loadtxt(OPACITY_DIR / "boekel" / "PAH.kappa", unpack=True)
 pah.grid, pah.value = grid, value
 OPTIONS.model.constant_params["pah"] = pah
 
-tempc = Parameter(**STANDARD_PARAMETERS.temp0)
+tempc = Parameter(**STANDARD_PARAMS.temp0)
 tempc.shortname = tempc.name = "tempc"
 tempc.description = "The temperature of the black body"
 tempc.value = 390.08
 
-weight_cont = Parameter(**STANDARD_PARAMETERS.cont_weight)
+weight_cont = Parameter(**STANDARD_PARAMS.cont_weight)
 weight_cont.set(min=0, max=100)
 weight_cont.unit = u.pct
 weight_cont.value = 54
 
-scale_pah = Parameter(**STANDARD_PARAMETERS.cont_weight)
+scale_pah = Parameter(**STANDARD_PARAMS.cont_weight)
 scale_pah.shortname = scale_pah.name = "scale_pah"
 scale_pah.description = "The mass fraction for the PAHs"
 scale_pah.set(min=0, max=20)
 scale_pah.unit, scale_pah.value = u.one, 1.66
 
-f = Parameter(**STANDARD_PARAMETERS.fr)
+f = Parameter(**STANDARD_PARAMS.fr)
 f.description = "Offset term"
 f.name = f.shortname = "f"
 f.unit = u.one
@@ -104,7 +104,7 @@ weights = [[11.23, 13.40], [5.67, 5.85], [4.09, 3.77], [0.6, 0.24], [0.10, 0.10]
 for w, key in zip(weights, NAMES.keys()):
     for index, size in enumerate(["small", "large"]):
         weight_name = f"weight_{key}_{size}"
-        weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
+        weight = Parameter(**STANDARD_PARAMS.cont_weight)
         weight.shortname = weight.name = weight_name
         weight.description = f"The mass fraction for {size} {key}"
         weight.set(min=0, max=100)

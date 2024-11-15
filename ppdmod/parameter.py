@@ -5,7 +5,7 @@ import astropy.units as u
 import numpy as np
 from numpy.typing import ArrayLike
 
-from .options import STANDARD_PARAMETERS
+from .options import STANDARD_PARAMS
 from .utils import smooth_interpolation
 
 
@@ -45,7 +45,7 @@ class Parameter:
         if base is None:
             return
 
-        for key, value in getattr(STANDARD_PARAMETERS, base).items():
+        for key, value in getattr(STANDARD_PARAMS, base).items():
             if getattr(self, key) is None:
                 setattr(self, key, value)
 

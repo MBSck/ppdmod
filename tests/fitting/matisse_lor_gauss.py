@@ -15,7 +15,7 @@ from ppdmod.data import set_data
 from ppdmod.fitting import compute_interferometric_chi_sq, compute_observables, \
     set_components_from_theta, run_fit, get_best_fit
 from ppdmod.parameter import Parameter
-from ppdmod.options import STANDARD_PARAMETERS, OPTIONS
+from ppdmod.options import STANDARD_PARAMS, OPTIONS
 
 
 DATA_DIR = Path("../data/fits/hd142527")
@@ -23,38 +23,38 @@ fits_files = list((DATA_DIR).glob("*HAWAII*fits"))
 data = set_data(fits_files, wavelengths="all",
                 fit_data=["vis2"], wavelength_range=[3., 3.3]*u.um)
 
-pa = Parameter(**STANDARD_PARAMETERS.pa)
+pa = Parameter(**STANDARD_PARAMS.pa)
 pa.value = 0.12*u.rad.to(u.deg)
 pa.set(min=-45, max=45)
 pa.free = True
 
-inc = Parameter(**STANDARD_PARAMETERS.inc)
+inc = Parameter(**STANDARD_PARAMS.inc)
 inc.value = 0.83
 inc.free = True
 
-fc = Parameter(**STANDARD_PARAMETERS.fr)
+fc = Parameter(**STANDARD_PARAMS.fr)
 fc.value = 0.56
 fc.free = True
 
 wl, flux_ratio = np.load(Path("../data/flux/hd142527/hd142527_flux_ratio.npy"))
-fs = Parameter(**STANDARD_PARAMETERS.fr)
+fs = Parameter(**STANDARD_PARAMS.fr)
 fs.value, fs.grid = flux_ratio, wl
 fs.interpolate, fs.free = True, False
 
 wl, k = np.load(Path("../data/flux/hd142527/hd142527_slope.npy"))
-ks = Parameter(**STANDARD_PARAMETERS.exp)
+ks = Parameter(**STANDARD_PARAMS.exp)
 ks.value, ks.grid = k, wl
 ks.interpolate, ks.free = True, False
 
-kc = Parameter(**STANDARD_PARAMETERS.exp)
+kc = Parameter(**STANDARD_PARAMS.exp)
 kc.value = -3.9
 kc.set(min=-20, max=20)
 
-la = Parameter(**STANDARD_PARAMETERS.la)
+la = Parameter(**STANDARD_PARAMS.la)
 la.value = 0.06
 la.set(min=-1, max=1.5)
 
-flor = Parameter(**STANDARD_PARAMETERS.fr)
+flor = Parameter(**STANDARD_PARAMS.fr)
 flor.value = 0.43
 flor.free = True
 

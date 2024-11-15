@@ -36,7 +36,10 @@ def get_units(dictionary: Dict[str, Any]) -> Dict[str, Any]:
     converted_dictionary = dictionary.copy()
     for value in converted_dictionary.values():
         if "unit" in value:
-            value["unit"] = u.Unit(value["unit"])
+            if value["unit"] == "one":
+                value["unit"] = u.one
+            else:
+                value["unit"] = u.Unit(value["unit"])
 
     return converted_dictionary
 
@@ -44,14 +47,12 @@ def get_units(dictionary: Dict[str, Any]) -> Dict[str, Any]:
 def load_toml_to_namespace(toml_file: Path):
     """Loads a toml file into a namespace."""
     with open(toml_file, "r") as file:
-        data = toml.load(file)
+        data = toml.load(file)["STANDARD_PARAMETERS"]
 
-    return SimpleNamespace(
-        **{k: v for d in get_units(data).values() for k, v in d.items()}
-    )
+    return SimpleNamespace(**get_units(data))
 
 
-STANDARD_PARAMETERS = load_toml_to_namespace(
+STANDARD_PARAMS = load_toml_to_namespace(
     Path(__file__).parent.parent / "data" / "standard_parameters.toml"
 )
 
