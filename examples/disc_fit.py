@@ -76,6 +76,9 @@ kappa_cont = Parameter(grid=grid, value=value, base="kappa_cont")
 pa = Parameter(value=352, free=False, base="pa")
 inc = Parameter(value=0.915, free=True, shared=True, base="inc")
 
+with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
+    temps = pickle.load(save_file)
+
 constant_params = {
     "dim": 32,
     "dist": 158.51,
@@ -84,15 +87,10 @@ constant_params = {
     "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont,
     "pa": pa,
+    # "weigths": temps.weights,
+    # "radii": temps.radii,
+    # "matrix": temps.values,
 }
-
-with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
-    temps = pickle.load(save_file)
-
-# NOTE: Set opacity calculated temperatures
-# OPTIONS.model.constant_params["weights"] = temps.weights
-# OPTIONS.model.constant_params["radii"] = temps.radii
-# OPTIONS.model.constant_params["matrix"] = temps.values
 
 rin1 = Parameter(value=0.5, min=0, max=30, base="rin")
 rout1 = Parameter(value=1.5, min=0, max=30, free=True, base="rout")
