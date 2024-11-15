@@ -620,11 +620,12 @@ def plot_datapoints(
                     marker="X",
                     **vars(scatter_params),
                 )
-                lower_ax.scatter(
+                lower_ax.errorbar(
                     wavelength.value.repeat(flux.err[index].size)[nan_flux],
                     flux.value[index][nan_flux] - flux_model[index][nan_flux],
-                    marker="o",
-                    **vars(scatter_params),
+                    flux.err[index][nan_flux],
+                    fmt="o",
+                    **vars(errorbar_params),
                 )
                 lower_ax.axhline(y=0, color=hline_color, linestyle="--")
 
@@ -648,11 +649,12 @@ def plot_datapoints(
                     marker="X",
                     **vars(scatter_params),
                 )
-                lower_ax.scatter(
+                lower_ax.errorbar(
                     effective_baselines_mlambda.value[nan_vis],
                     vis.value[index][nan_vis] - vis_model[index][nan_vis],
-                    marker="o",
-                    **vars(scatter_params),
+                    vis.err[index][nan_vis],
+                    fmt="o",
+                    **vars(errorbar_params),
                 )
                 lower_ax.axhline(y=0, color=hline_color, linestyle="--")
 
@@ -680,8 +682,9 @@ def plot_datapoints(
                 lower_ax.scatter(
                     longest_baselines_mlambda.value[nan_t3],
                     restrict_phase(t3.value[index][nan_t3] - t3_model[index][nan_t3]),
-                    marker="o",
-                    **vars(scatter_params),
+                    t3.err[index][nan_t3],
+                    fmt="o",
+                    **vars(errobar_params),
                 )
                 lower_ax.axhline(y=0, color=hline_color, linestyle="--")
 
@@ -1558,7 +1561,7 @@ def plot_intermediate_products(
         merged_radii.value,
         cumulative_flux_ratio.value,
         "$R$ (AU)",
-        r"$F_{\nu}/F_{\nu,\,\mathrm{{tot}}}$ (a.u.)",
+        r"$F_{\nu}\left(r\right)/F_{\nu,\,\mathrm{{tot}}}$ (a.u.)",
         label=wls,
         save_path=save_dir / "cumulative_flux_ratio.pdf",
     )
