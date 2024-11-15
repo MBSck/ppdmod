@@ -11,7 +11,7 @@ from ppdmod import utils
 from ppdmod.basic_components import Gaussian, PointSource, Star, TempGradient
 from ppdmod.component import FourierComponent
 from ppdmod.data import ReadoutFits, get_all_wavelengths, set_data
-from ppdmod.options import OPTIONS, STANDARD_PARAMETERS
+from ppdmod.options import OPTIONS, STANDARD_PARAMS
 from ppdmod.parameter import Parameter
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -559,7 +559,7 @@ def test_compute_t3(
 ) -> None:
     """Tests the calculation of the closure phase."""
     set_data(fits_files, wavelengths=wavelength, fit_data=["t3"])
-    fr = Parameter(**STANDARD_PARAMETERS.fr)
+    fr = Parameter(**STANDARD_PARAMS.fr)
     fr.value, fr.grid = np.array([0.2] * wavelength.size), wavelength
 
     params = {
@@ -605,7 +605,7 @@ def test_compute_vis(
 ) -> None:
     """Tests the calculation of the visibility."""
     set_data(fits_files, wavelengths=wavelength, fit_data=["vis2"])
-    fr = Parameter(**STANDARD_PARAMETERS.fr)
+    fr = Parameter(**STANDARD_PARAMS.fr)
     fr.value, fr.grid = np.array([0.2] * wavelength.size), wavelength
 
     params = {

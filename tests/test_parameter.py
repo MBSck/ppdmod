@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 from numpy.typing import ArrayLike
 
-from ppdmod.options import STANDARD_PARAMETERS
+from ppdmod.options import STANDARD_PARAMS
 from ppdmod.parameter import Parameter
 
 VALUE = np.arange(0, 10) * u.mas
@@ -14,7 +14,7 @@ WAVELENGTHS_AND_VALUES = list(zip(WAVELENGTH, VALUE))
 @pytest.fixture
 def x() -> Parameter:
     """Parameter x."""
-    return Parameter(**STANDARD_PARAMETERS.x)
+    return Parameter(**STANDARD_PARAMS.x)
 
 
 def test_parameter(x: Parameter) -> None:

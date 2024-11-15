@@ -20,7 +20,7 @@ from ppdmod.basic_components import (
     assemble_components,
 )
 from ppdmod.data import ReadoutFits, set_data
-from ppdmod.options import OPTIONS, STANDARD_PARAMETERS
+from ppdmod.options import OPTIONS, STANDARD_PARAMS
 from ppdmod.parameter import Parameter
 from ppdmod.utils import (
     compute_t3,
@@ -116,7 +116,7 @@ def kappa_abs() -> Parameter:
     names = ["pyroxene", "forsterite", "enstatite", "silica"]
 
     grid, value = get_opacity(DATA_DIR / "opacities", weights, names, "boekel")
-    kappa_abs = Parameter(**STANDARD_PARAMETERS.kappa_abs)
+    kappa_abs = Parameter(**STANDARD_PARAMS.kappa_abs)
     kappa_abs.grid, kappa_abs.value = grid, value
     return kappa_abs
 
@@ -126,7 +126,7 @@ def kappa_cont() -> Parameter:
     cont_opacity_file = DATA_DIR / "opacities" / "optool" / "preibisch_amorph_c_rv0.1.npy"
     grid, value = np.load(cont_opacity_file)
 
-    kappa_cont = Parameter(**STANDARD_PARAMETERS.kappa_cont)
+    kappa_cont = Parameter(**STANDARD_PARAMS.kappa_cont)
     kappa_cont.value, kappa_cont.grid = grid, value
     return kappa_cont
 
@@ -136,7 +136,7 @@ def star_flux() -> Parameter:
     wl_flux, flux = load_data(
         DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt"
     )
-    star_flux = Parameter(**STANDARD_PARAMETERS.f)
+    star_flux = Parameter(**STANDARD_PARAMS.f)
     star_flux.grid, star_flux.value = wl_flux, flux
     return star_flux
 
@@ -874,7 +874,7 @@ def test_assemble_components() -> None:
     values = [1.5, 0.5, 0.2, 45, 1.6]
     limits = [[0, 20], [0, 1], [0, 1], [0, 360], [1, 50]]
     params = {
-        name: Parameter(**getattr(STANDARD_PARAMETERS, name)) for name in param_names
+        name: Parameter(**getattr(STANDARD_PARAMS, name)) for name in param_names
     }
     for value, limit, param in zip(values, limits, params.values()):
         param.set(*limit)

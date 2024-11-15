@@ -114,6 +114,7 @@ inner_ring = basic_components.GreyBody(
     p=p1,
     sigma0=sigma01,
     cont_weight=cont_weight1,
+    inc=inc,
     **constant_params,
 )
 
@@ -124,6 +125,7 @@ outer_ring = basic_components.GreyBody(
     p=p2,
     sigma0=sigma02,
     cont_weight=cont_weight2,
+    inc=inc,
     **constant_params,
 )
 
@@ -138,12 +140,6 @@ result_dir = day_dir / dir_name
 result_dir.mkdir(parents=True, exist_ok=True)
 
 ndim = len(LABELS)
-
-# TODO: The next two lines are just for testing remove them
-theta = np.random.rand(ndim)
-components2 = set_components_from_theta(theta)
-breakpoint()
-
 rchi_sqs = compute_interferometric_chi_sq(
     *compute_observables(components),
     ndim=ndim,

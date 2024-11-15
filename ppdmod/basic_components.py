@@ -674,6 +674,7 @@ class TempGradient(Ring):
     def __init__(self, **kwargs):
         """The class's constructor."""
         super().__init__(**kwargs)
+        self.rin.unit = self.rout.unit = u.au
         self.dist = Parameter(**STANDARD_PARAMS.dist)
         self.eff_temp = Parameter(**STANDARD_PARAMS.eff_temp)
         self.eff_radius = Parameter(**STANDARD_PARAMS.eff_radius)

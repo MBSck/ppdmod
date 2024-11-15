@@ -9,7 +9,7 @@ import pytest
 from ppdmod import fitting
 from ppdmod.basic_components import assemble_components
 from ppdmod.data import set_data
-from ppdmod.options import OPTIONS, STANDARD_PARAMETERS
+from ppdmod.options import OPTIONS, STANDARD_PARAMS
 from ppdmod.parameter import Parameter
 
 
@@ -36,8 +36,8 @@ def mock_components_and_params() -> Dict[str, Dict]:
         [
             component,
             {
-                key: Parameter(**getattr(STANDARD_PARAMETERS, key))
-                for key in random.sample(list(vars(STANDARD_PARAMETERS).keys()), 4)
+                key: Parameter(**getattr(STANDARD_PARAMS, key))
+                for key in random.sample(list(vars(STANDARD_PARAMS).keys()), 4)
             },
         ]
         for component in components
@@ -48,8 +48,8 @@ def mock_components_and_params() -> Dict[str, Dict]:
 def mock_shared_params() -> Dict[str, Parameter]:
     """Mock shared parameters."""
     return {
-        key: Parameter(**getattr(STANDARD_PARAMETERS, key))
-        for key in random.sample(list(vars(STANDARD_PARAMETERS).keys()), 4)
+        key: Parameter(**getattr(STANDARD_PARAMS, key))
+        for key in random.sample(list(vars(STANDARD_PARAMS).keys()), 4)
     }
 
 
@@ -68,12 +68,12 @@ def constant_params() -> Dict:
 @pytest.fixture
 def components_and_params() -> List[Dict[str, Parameter]]:
     """Parameters connected to their components."""
-    rin = Parameter(**STANDARD_PARAMETERS.rin)
-    rout = Parameter(**STANDARD_PARAMETERS.rout)
-    p = Parameter(**STANDARD_PARAMETERS.p)
-    c = Parameter(**STANDARD_PARAMETERS.c)
-    s = Parameter(**STANDARD_PARAMETERS.s)
-    sigma0 = Parameter(**STANDARD_PARAMETERS.sigma0)
+    rin = Parameter(**STANDARD_PARAMS.rin)
+    rout = Parameter(**STANDARD_PARAMS.rout)
+    p = Parameter(**STANDARD_PARAMS.p)
+    c = Parameter(**STANDARD_PARAMS.c)
+    s = Parameter(**STANDARD_PARAMS.s)
+    sigma0 = Parameter(**STANDARD_PARAMS.sigma0)
 
     rin.value = 1.0
     rout.value = 7.0
@@ -98,9 +98,9 @@ def components_and_params() -> List[Dict[str, Parameter]]:
 @pytest.fixture
 def shared_params() -> Dict:
     """Shared parameters."""
-    pa = Parameter(**STANDARD_PARAMETERS.pa)
-    inc = Parameter(**STANDARD_PARAMETERS.inc)
-    cont_weight = Parameter(**STANDARD_PARAMETERS.cont_weight)
+    pa = Parameter(**STANDARD_PARAMS.pa)
+    inc = Parameter(**STANDARD_PARAMS.inc)
+    cont_weight = Parameter(**STANDARD_PARAMS.cont_weight)
 
     pa.value = 145
     inc.value = 0.5
@@ -162,7 +162,7 @@ def test_init_randomly(nwalkers: int) -> None:
     param_names = ["rin", "p", "c", "s", "cont_weight", "pa", "inc"]
     limits = [[0, 20], [0, 1], [-1, 1], [-1, 1], [0, 1], [0, 360], [1, 50]]
     params = {
-        name: Parameter(**getattr(STANDARD_PARAMETERS, name)) for name in param_names
+        name: Parameter(**getattr(STANDARD_PARAMS, name)) for name in param_names
     }
     for value, limit, param in zip(values, limits, params.values()):
         param.set(*limit)
@@ -275,7 +275,7 @@ def test_lnprior(values: List[float], expected: float) -> None:
     param_names = ["rin", "p", "c", "s", "cont_weight", "pa", "inc"]
     limits = [[0, 20], [0, 1], [-1, 1], [-1, 1], [0, 1], [0, 360], [1, 50]]
     params = {
-        name: Parameter(**getattr(STANDARD_PARAMETERS, name)) for name in param_names
+        name: Parameter(**getattr(STANDARD_PARAMS, name)) for name in param_names
     }
     for value, limit, param in zip(values, limits, params.values()):
         param.set(*limit)
@@ -329,7 +329,7 @@ def test_lnprob(fits_files: List[Path], wavelength: u.um) -> None:
         [1, 50],
     ]
     params = {
-        name: Parameter(**getattr(STANDARD_PARAMETERS, name)) for name in param_names
+        name: Parameter(**getattr(STANDARD_PARAMS, name)) for name in param_names
     }
 
     for value, limit, param in zip(values, limits, params.values()):

@@ -1,6 +1,6 @@
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import astropy.units as u
 import dynesty.utils as dyutils
@@ -14,16 +14,21 @@ from .parameter import Parameter
 from .utils import compute_t3, compute_vis
 
 
-def get_priors() -> np.ndarray:
+def get_priors(
+    components: List[Component], shared_params: Dict[str, Any]
+) -> np.ndarray:
     """Gets the priors from the model parameters."""
     priors = []
-    for _, params in OPTIONS.model.components_and_params:
-        for param in params.values():
-            priors.append([param.min, param.max])
+    for component in components:
+        priors.extend(
+            [
+                [param.min, param.max]
+                for param in component.get_params(free=True).values()
+            ]
+        )
 
-    if OPTIONS.model.shared_params is not None:
-        for param in OPTIONS.model.shared_params.values():
-            priors.append([param.min, param.max])
+    if shared_params is not None:
+        priors.extend([[param.min, param.max] for param in shared_params.values()])
 
     return np.array(priors)
 
@@ -91,7 +96,6 @@ def get_theta(
     return np.array(theta)
 
 
-# TODO: Think if this is the best way to do it -> Including the shared params
 def set_components_from_theta(theta: np.ndarray) -> List[Component]:
     """Sets the components from theta."""
     components = list(map(Component.copy, OPTIONS.model.components))
@@ -345,7 +349,7 @@ def compute_interferometric_chi_sq(
 
 def transform_uniform_prior(theta: List[float]) -> float:
     """Prior transform for uniform priors."""
-    priors = get_priors()
+    priors = get_priors(OPTIONS.model.components, OPTIONS.model.shared_params)
     return priors[:, 0] + (priors[:, 1] - priors[:, 0]) * theta
 
 
@@ -360,7 +364,8 @@ def ptform_one_disc(theta: List[float], labels: List[str]) -> np.ndarray:
     -----
     Only works with two components (as of now - could be extended).
     """
-    params, priors = transform_uniform_prior(theta), get_priors()
+    params = (transform_uniform_prior(theta),)
+    priors = get_priors(OPTIONS.model.components, OPTIONS.model.shared_params)
     indices_radii = list(
         map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
     )
@@ -392,7 +397,8 @@ def ptform_one_disc(theta: List[float], labels: List[str]) -> np.ndarray:
 # Use np.clip also
 def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray:
     """Transform that soft constrains successive radii to be smaller than the one before."""
-    params, priors = transform_uniform_prior(theta).tolist(), get_priors()
+    params = transform_uniform_prior(theta).tolist()
+    priors = get_priors(OPTIONS.model.components, OPTIONS.model.shared_params)
     radii = list(filter(lambda x: "rin" in x or "rout" in x, labels))
     if "rout" not in radii[-1]:
         radii.append(f"rout-{radii[-1].split('-')[1]}")
@@ -454,12 +460,11 @@ def lnprob(theta: np.ndarray) -> float:
     float
         The log of the probability.
     """
-    parameters, shared_params = set_components_from_theta(theta)
-
-    components = assemble_components(parameters, shared_params)
+    components = set_components_from_theta(theta)
+    observables = compute_observables(components)
     return sum(
         compute_interferometric_chi_sq(
-            *compute_observables(components), ndim=theta.size, method="logarithmic"
+            *observables, ndim=theta.size, method="logarithmic"
         )[1:]
     )
 
@@ -481,10 +486,10 @@ def lnprob_nband_fit(theta: np.ndarray) -> float:
     float
         The log of the probability.
     """
-    components = assemble_components(theta)
+    components = set_components_from_theta(theta)
     return compute_sed_chi_sq(
         components[0].compute_flux(OPTIONS.fit.wavelengths),
-        ndim=len(get_priors()),
+        ndim=theta.size,
         method="logarithmic",
     )
 
@@ -553,11 +558,12 @@ def run_fit(
     run_kwargs = {"dynamic": dynamic, "static": static}
 
     print(f"Executing Dynesty.\n{'':-^50}")
+    ndim = len(get_priors(OPTIONS.model.components, OPTIONS.model.shared_params))
     ptform = kwargs.pop("ptform", transform_uniform_prior)
     sampler = samplers[method](
         kwargs.pop("lnprob", lnprob),
         ptform,
-        len(get_priors()),
+        ndim,
         **general_kwargs,
         **sampler_kwargs[method],
     )
@@ -596,5 +602,4 @@ def get_best_fit(
         params = quantiles[:, 1]
 
     uncertainties = np.array([(quantile[0], quantile[1]) for quantile in quantiles])
-
     return params, uncertainties

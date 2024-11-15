@@ -6,7 +6,7 @@ import pytest
 from ppdmod.basic_components import Gaussian, Ring
 from ppdmod.component import FourierComponent
 from ppdmod.data import ReadoutFits
-from ppdmod.options import OPTIONS, STANDARD_PARAMETERS
+from ppdmod.options import OPTIONS, STANDARD_PARAMS
 from ppdmod.parameter import Parameter
 
 
@@ -71,11 +71,11 @@ def test_component(component: FourierComponent) -> None:
 
 def test_eval(component: FourierComponent) -> None:
     """Tests if the evaulation of the parameters works."""
-    x = Parameter(**STANDARD_PARAMETERS.fov)
+    x = Parameter(**STANDARD_PARAMS.fov)
     params = {"x": x, "y": 10, "dim": 512}
     component.eval(**params)
 
-    assert component.x == Parameter(**STANDARD_PARAMETERS.fov)
+    assert component.x == Parameter(**STANDARD_PARAMS.fov)
     assert component.y() == 10 * u.mas
     assert component.dim() == 512
 
