@@ -407,7 +407,6 @@ def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray
         radii_uniforms.append(1)
         radii_priors.append([0, 0])
 
-    # TODO: Fix this for the case where there is no outer radius set
     radii_values = radii_values[::-1]
     radii_uniforms, radii_priors = radii_uniforms[::-1], radii_priors[::-1]
 
@@ -415,11 +414,8 @@ def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray
     for index, (radius, uniform, prior) in enumerate(
         zip(radii_values[1:], radii_uniforms[1:], radii_priors[1:]), start=1
     ):
-        if radius > new_radii[index - 1]:
-            prior[-1] = new_radii[index - 1]
-            new_radii.append(prior[0] + (prior[1] - prior[0]) * uniform)
-        else:
-            new_radii.append(radius)
+        prior[-1] = new_radii[index - 1]
+        new_radii.append(prior[0] + (prior[1] - prior[0]) * uniform)
 
     new_radii = new_radii[::-1]
     for index, radius in zip(indices, new_radii):
