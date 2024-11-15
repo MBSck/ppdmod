@@ -33,7 +33,7 @@ class Component:
         """Copies the component."""
         return copy.deepcopy(self)
 
-    def get_params(self, free: bool = False, fixed: bool = False) -> dict:
+    def get_params(self, free: bool = False, shared: bool = False) -> dict:
         """Gets all the parameters of a component.
 
         Parameters
@@ -42,8 +42,8 @@ class Component:
             The component for which the parameters should be fetched.
         free : bool, optional
             If only the free parameters should be returned, by default False.
-        fixed : bool, optional
-            If only the fixed parameters should be returned, by default False.
+        shared : bool, optional
+            If only the shared parameters should be returned, by default False.
 
         Returns
         -------
@@ -53,11 +53,10 @@ class Component:
         for attribute in dir(self):
             value = getattr(self, attribute)
             if isinstance(value, Parameter):
-                if free and not value.free:
+                if (free and not value.free) or (free and value.shared):
                     continue
-                if free and value.shared:
-                    continue
-                elif fixed and value.free:
+
+                if shared and not value.shared:
                     continue
 
                 params[attribute] = value

@@ -125,7 +125,7 @@ outer_ring = basic_components.GreyBody(
 
 OPTIONS.model.components = components = [star, inner_ring, outer_ring]
 OPTIONS.model.shared_params = shared_params = {"inc": inc}
-LABELS = get_labels(components, shared_params)
+LABELS = get_labels(components)
 
 result_dir = Path("../model_results/") / "disc_fit"
 day_dir = result_dir / str(datetime.now().date())
@@ -153,8 +153,6 @@ if __name__ == "__main__":
     theta, uncertainties = get_best_fit(sampler, **fit_params)
     components = set_components_from_theta(theta)
 
-    np.save(result_dir / "theta.npy", theta)
-    np.save(result_dir / "uncertainties.npy", uncertainties)
     with open(result_dir / "components.pkl", "wb") as file:
         pickle.dump(components, file)
 

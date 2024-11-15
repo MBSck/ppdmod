@@ -10,7 +10,6 @@ from dynesty import DynamicNestedSampler, NestedSampler
 from .component import Component
 from .data import get_counts_data
 from .options import OPTIONS
-from .parameter import Parameter
 from .utils import compute_t3, compute_vis
 
 
@@ -33,24 +32,22 @@ def get_priors(
     return np.array(priors)
 
 
-def get_labels(
-    components: List[Component], shared_params: Dict[str, Parameter] | None = None
-) -> np.ndarray:
-    """Sets the theta vector from the components.
+def get_labels(components: List[Component], shared: bool = True) -> np.ndarray:
+    """Sets theta from the components.
 
     Parameters
     ----------
     components : list of Component
         The components to be used in the model.
-    shared_params : dict
-        The shared parameters.
+    shared : bool, optional
+        If true, gets the shared params from the components
 
     Returns
     -------
     theta : numpy.ndarray
     """
     disc_models = ["TempGrad", "AsymTempGrad", "GreyBody", "AsymGreyBody"]
-    labels, zone_count = [], 1
+    labels, labels_shared, zone_count = [], [], 1
     for component in components:
         component_labels = [key for key in component.get_params(free=True)]
         if component.shortname == "Star":
@@ -62,14 +59,50 @@ def get_labels(
 
         labels.extend(component_labels)
 
-    if shared_params is not None:
-        labels.extend([rf"{key}-\mathrm{{sh}}" for key in shared_params])
+        if shared:
+            labels_shared.append(
+                [rf"{key}-\mathrm{{sh}}" for key in component.get_params(shared=True)]
+            )
 
+    labels.extend(labels_shared[-1])
     return labels
 
 
+def get_units(
+    components: List[Component],
+    shared: bool = True,
+) -> np.ndarray:
+    """Sets the units from the components.
+
+    Parameters
+    ----------
+    components : list of Component
+        The components to be used in the model.
+    shared_params : dict
+        The shared parameters.
+    shared : bool, optional
+        If true, gets the shared params from the components
+
+    Returns
+    -------
+    units : numpy.ndarray
+    """
+    units, units_shared = [], []
+    for component in components:
+        units.extend([param.unit for param in component.get_params(free=True).values()])
+
+        if shared:
+            units_shared.append(
+                [param.unit for param in component.get_params(shared=True).values()]
+            )
+
+    units.extend(units_shared[-1])
+    return np.array(units)
+
+
 def get_theta(
-    components: List[Component], shared_params: Dict[str, Parameter] | None = None
+    components: List[Component],
+    shared: bool = True,
 ) -> np.ndarray:
     """Sets the theta vector from the components.
 
@@ -84,15 +117,18 @@ def get_theta(
     -------
     theta : numpy.ndarray
     """
-    theta = []
+    theta, theta_shared = [], []
     for component in components:
         theta.extend(
             [param.value for param in component.get_params(free=True).values()]
         )
 
-    if shared_params is not None:
-        theta.extend([param.value for param in shared_params.values()])
+        if shared:
+            theta_shared.append(
+                [param.value for param in component.get_params(shared=True).values()]
+            )
 
+    theta.extend(theta_shared[-1])
     return np.array(theta)
 
 
