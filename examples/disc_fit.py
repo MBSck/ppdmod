@@ -87,7 +87,7 @@ constant_params = {
     "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont,
     "pa": pa,
-    "weigths": temps.weights,
+    "weights": temps.weights,
     "radii": temps.radii,
     "matrix": temps.values,
 }
