@@ -76,16 +76,6 @@ kappa_cont = Parameter(grid=grid, value=value, base="kappa_cont")
 grid, value = np.loadtxt(OPACITY_DIR / "boekel" / "PAH.kappa", unpack=True)
 pah = Parameter(grid=grid, value=value, base="pah")
 
-tempc = Parameter(
-    value=390.08,
-    shortname="tempc",
-    name="tempc",
-    description="The temperature of the black body",
-    base="tempc",
-)
-
-weight_cont = Parameter(value=54, min=0, max=100, base="weight_cont")
-
 scale_pah = Parameter(
     value=1.66,
     unit=u.one,
@@ -100,23 +90,34 @@ f = Parameter(
     value=17.46, min=15, max=25, free=True, unit=u.one, description="Offset", base="f"
 )
 
-nband_fit = {"tempc": tempc, "scale_pah": scale_pah, "weight_cont": weight_cont, "f": f}
-weights = [[11.23, 13.40], [5.67, 5.85], [4.09, 3.77], [0.6, 0.24], [0.10, 0.10]]
-
 weight_params = {}
+weights = [[11.23, 13.40], [5.67, 5.85], [4.09, 3.77], [0.6, 0.24], [0.10, 0.10]]
 for w, key in zip(weights, NAMES.keys()):
     for index, size in enumerate(["small", "large"]):
         weight_name = f"weight_{key}_{size}"
-        weight = Parameter(base="weight_cont")
-        weight.shortname = weight.name = weight_name
-        weight.description = f"The mass fraction for {size} {key}"
-        weight.set(min=0, max=100)
-        weight.value, weight.unit = w[index], u.pct
+        weight = Parameter(
+            value=w[index],
+            shortname=weight_name,
+            name=weight_name,
+            description=f"The mass fraction for {size} {key}",
+            base="weight_cont",
+        )
 
 
-nband_fit = NBandFit()
+nband_fit = NBandFit(
+    tempc=390.08,
+    scale_pah=scale_pah,
+    weight_cont=54,
+    f=f,
+    kappa_cont=kappa_cont,
+    pah=pah,
+    **constant_params,
+    **weight_params,
+    **constant_params,
+)
 OPTIONS.model.components = components = [nband_fit]
 LABELS = get_labels(components)
+breakpoint()
 
 result_dir = Path("../model_results/") / "nband_fit"
 day_dir = result_dir / str(datetime.now().date())
@@ -145,7 +146,7 @@ if __name__ == "__main__":
 
     rchi_sq = compute_nband_fit_chi_sq(
         components[0].compute_flux(OPTIONS.fit.wavelengths),
-        ndim=len(UNITS),
+        ndim=theta.size,
         method="linear",
     )
     print(f"rchi_sq: {rchi_sq:.2f}")

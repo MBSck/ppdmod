@@ -1,15 +1,13 @@
 from functools import partial
-from typing import Dict, List
 
 import astropy.units as u
 import numpy as np
 from astropy.modeling.models import BlackBody
 from scipy.interpolate import interp1d
-from scipy.signal import fftconvolve
-from scipy.special import j0, j1, jv
+from scipy.special import j0, jv
 
 from .component import Component, FourierComponent
-from .options import OPTIONS, STANDARD_PARAMS
+from .options import OPTIONS
 from .parameter import Parameter
 from .utils import angular_to_distance, distance_to_angular
 
@@ -18,23 +16,22 @@ class NBandFit(Component):
     name = "NBandFit"
     shortname = "NBandFit"
     description = "A fit to the SED of a star."
-    label="NBandFit"
+    label = "NBandFit"
 
     def __init__(self, **kwargs):
         """The class's constructor."""
-        self.tempc = Parameter(**STANDARD_PARAMS.tempc)
+        self.tempc = Parameter(base="tempc")
+        self.pah = Parameter(base="pah")
+        self.scale_pah = Parameter(base="scale_pah")
 
-        self.pah = Parameter(**STANDARD_PARAMS.pah)
-        self.scale_pah = Parameter(**STANDARD_PARAMS.cont_weight)
-        self.scale_pah.shortname = self.scale_pah.name = "pah_scale"
-        self.scale_pah.description = "The mass fraction for the PAHs"
-        self.scale_pah.unit = u.one
-
-        self.f = Parameter(**STANDARD_PARAMS.fr)
-        self.f.shortname = self.f.name = "f"
-        self.f.description = "Offset term"
-        self.f.unit = u.one
-        self.f.free = True
+        self.f = Parameter(
+            shortname="f",
+            name="f",
+            unit=u.one,
+            free=True,
+            description="Offset",
+            base="f",
+        )
 
         self.materials = list(
             ["_".join(key.split("_")[1:]) for key in kwargs.keys() if "kappa" in key]
@@ -42,17 +39,22 @@ class NBandFit(Component):
 
         for material in self.materials:
             for prefix in ["kappa", "weight"]:
-                key = "kappa_abs" if prefix == "kappa" else "cont_weight"
-                param = Parameter(**getattr(STANDARD_PARAMS, key))
-                param.name = param.shortname = f"{prefix}_{material}"
-                param.description = f"The mass fraction for {param.name}"
-
+                key = "kappa_abs" if prefix == "kappa" else "weight_cont"
+                param_name = f"{prefix}_{material}"
                 if prefix == "kappa":
-                    param.unit = u.cm**2 / u.g
+                    unit = u.cm**2 / u.g
                 else:
-                    param.unit = u.pct
+                    unit = u.pct
 
-                setattr(self, param.name, param)
+                param = Parameter(
+                    name=param_name,
+                    shortname=param_name,
+                    unit=unit,
+                    description=f"The mass fraction for {param_name}",
+                    base=key,
+                )
+
+                setattr(self, param_name, param)
 
         self.eval(**kwargs)
 
@@ -190,10 +192,10 @@ class Star(FourierComponent):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.f = Parameter(**STANDARD_PARAMS.f)
-        self.dist = Parameter(**STANDARD_PARAMS.dist)
-        self.eff_temp = Parameter(**STANDARD_PARAMS.eff_temp)
-        self.eff_radius = Parameter(**STANDARD_PARAMS.eff_radius)
+        self.f = Parameter(base="f")
+        self.dist = Parameter(base="dist")
+        self.eff_temp = Parameter(base="eff_temp")
+        self.eff_radius = Parameter(base="eff_radius")
         self.eval(**kwargs)
 
         self.stellar_radius_angular = distance_to_angular(
@@ -284,9 +286,9 @@ class Ring(FourierComponent):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.rin = Parameter(**STANDARD_PARAMS.rin)
-        self.rout = Parameter(**STANDARD_PARAMS.rout)
-        self.width = Parameter(**STANDARD_PARAMS.width)
+        self.rin = Parameter(base="rin")
+        self.rout = Parameter(base="rout")
+        self.width = Parameter(base="width")
 
         if self.has_outer_radius:
             self.width.free = False
@@ -442,215 +444,6 @@ class Ring(FourierComponent):
         return image.astype(OPTIONS.data.dtype.real)
 
 
-class UniformDisk(FourierComponent):
-    name = "Uniform Disk"
-    shortname = "UniformDisk"
-    description = "A uniform disk."
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.diam = Parameter(**STANDARD_PARAMS.diam)
-        self.eval(**kwargs)
-
-    def vis_func(
-        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
-    ) -> np.ndarray:
-        """Computes the complex visibility
-
-        Parameters
-        ----------
-        baseline : 1/astropy.units.rad
-            The deprojected baselines.
-        baseline_angles : astropy.units.rad
-            The deprojected baseline angles.
-        wavelength : astropy.units.um
-            The wavelengths.
-        """
-        vis = (
-            2
-            * j1(np.pi * self.diam().to(u.rad) * baselines)
-            / (np.pi * self.diam().to(u.rad) * baselines)
-        )
-        return vis.value.astype(OPTIONS.data.dtype.complex)
-
-    def image_func(
-        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um
-    ) -> np.ndarray:
-        """Computes the image from a 2D grid.
-
-        Parameters
-        ----------
-        xx : u.mas
-        yy : u.mas
-        wavelength : u.um
-
-        Returns
-        -------
-        image : astropy.units.Jy
-        """
-        radius = np.hypot(xx, yy)[np.newaxis, ...]
-        return (radius <= self.diam() / 2).astype(OPTIONS.data.dtype.real)
-
-
-class Gaussian(FourierComponent):
-    name = "Gaussian"
-    shortname = "Gaussian"
-    description = "A simple 2D Gaussian."
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.hlr = Parameter(**STANDARD_PARAMS.hlr)
-        self.eval(**kwargs)
-
-    def vis_func(
-        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
-    ) -> np.ndarray:
-        """Computes the complex visibility
-
-        Parameters
-        ----------
-        baseline : 1/astropy.units.rad
-            The deprojected baselines.
-        baseline_angles : astropy.units.rad
-            The deprojected baseline angles.
-        wavelength : astropy.units.um
-            The wavelengths.
-        """
-        xx = np.pi * self.hlr().to(u.rad) * baselines
-        vis = np.exp(-(xx**2) / np.log(2))
-        return vis.value.astype(OPTIONS.data.dtype.complex)
-
-    def image_func(
-        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um
-    ) -> np.ndarray:
-        """Computes the image from a 2D grid.
-
-        Parameters
-        ----------
-        xx : u.mas
-        yy : u.mas
-        wavelength : u.um
-
-        Returns
-        -------
-        image : astropy.units.Jy
-        """
-        hlr = 2 * self.hlr() * (1 / self.inc())
-        radius = np.hypot(xx, yy)[np.newaxis, ...]
-        image = (
-            np.log(2) / (np.pi * hlr**2) * np.exp(-((radius / hlr) ** 2) * np.log(2))
-        )
-        return image.value.astype(OPTIONS.data.dtype.real)
-
-
-class Lorentzian(FourierComponent):
-    name = "Lorentzian"
-    shortname = "Lorentzian"
-    description = "A simple 2D Lorentzian."
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.hlr = Parameter(**STANDARD_PARAMS.hlr)
-        self.eval(**kwargs)
-
-    def vis_func(
-        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
-    ) -> np.ndarray:
-        """Computes the complex visibility
-
-        Parameters
-        ----------
-        baseline : 1/astropy.units.rad
-            The deprojected baselines.
-        baseline_angles : astropy.units.rad
-            The deprojected baseline angles.
-        wavelength : astropy.units.um
-            The wavelengths.
-        """
-        xx = np.pi * self.hlr().to(u.rad) * baselines
-        vis = np.exp(-2 * xx / np.sqrt(3))
-        return vis.value.astype(OPTIONS.data.dtype.complex)
-
-    def image_func(
-        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um
-    ) -> np.ndarray:
-        """Computes the image from a 2D grid.
-
-        Parameters
-        ----------
-        xx : u.mas
-        yy : u.mas
-        wavelength : u.um
-
-        Returns
-        -------
-        image : astropy.units.Jy
-        """
-        radius = np.hypot(xx, yy)[np.newaxis, ...]
-        hlr = self.hlr() * self.inc()
-        image = hlr / (2 * np.pi**2 * np.sqrt(3)) * (hlr**2 / 3 + radius**2) ** (-3 / 2)
-        return image.value.astype(OPTIONS.data.dtype.real)
-
-
-class GaussLorentzian(FourierComponent):
-    name = "Gauss-Lorentzian"
-    shortname = "GaussLorentzian"
-    description = "A simple 2D Gaussian combined with a Lorentzian."
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.flor = Parameter(**STANDARD_PARAMS.fr)
-        self.flor.name = self.flor.shortname = "flor"
-        self.flor.free = True
-        self.hlr = Parameter(**STANDARD_PARAMS.hlr)
-
-        self.eval(**kwargs)
-
-        self.gauss = Gaussian(hlr=self.hlr, inc=self.inc, pa=self.pa)
-        self.lor = Lorentzian(hlr=self.hlr, inc=self.inc, pa=self.pa)
-
-    def vis_func(
-        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
-    ) -> np.ndarray:
-        """Computes the complex visibility
-
-        Parameters
-        ----------
-        baseline : 1/astropy.units.rad
-            The deprojected baselines.
-        baseline_angles : astropy.units.rad
-            The deprojected baseline angles.
-        wavelength : astropy.units.um
-            The wavelengths.
-        """
-        vis_gauss = self.gauss.vis_func(
-            baselines, baseline_angles, wavelength, **kwargs
-        )
-        vis_lor = self.lor.vis_func(baselines, baseline_angles, wavelength, **kwargs)
-        vis = (1 - self.flor()) * vis_gauss + self.flor() * vis_lor
-        return vis.value.astype(OPTIONS.data.dtype.complex)
-
-    def image_func(
-        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um
-    ) -> np.ndarray:
-        """Computes the image from a 2D grid.
-
-        Parameters
-        ----------
-        xx : u.mas
-        yy : u.mas
-        wavelength : u.um
-
-        Returns
-        -------
-        image : astropy.units.Jy
-        """
-        image_gauss = self.gauss.image_func(xx, yy, pixel_size, wavelength)
-        image_lor = self.lor.image_func(xx, yy, pixel_size, wavelength)
-        image = (1 - self.flor()) * image_gauss + self.flor() * image_lor
-        return image.astype(OPTIONS.data.dtype.real)
-
-
 class TempGradient(Ring):
     """The base class for the component.
 
@@ -676,26 +469,26 @@ class TempGradient(Ring):
         """The class's constructor."""
         super().__init__(**kwargs)
         self.rin.unit = self.rout.unit = u.au
-        self.dist = Parameter(**STANDARD_PARAMS.dist)
-        self.eff_temp = Parameter(**STANDARD_PARAMS.eff_temp)
-        self.eff_radius = Parameter(**STANDARD_PARAMS.eff_radius)
+        self.dist = Parameter(base="dist")
+        self.eff_temp = Parameter(base="eff_temp")
+        self.eff_radius = Parameter(base="eff_radius")
 
-        self.r0 = Parameter(**STANDARD_PARAMS.r0)
-        self.q = Parameter(**STANDARD_PARAMS.q)
-        self.temp0 = Parameter(**STANDARD_PARAMS.temp0)
-        self.p = Parameter(**STANDARD_PARAMS.p)
-        self.sigma0 = Parameter(**STANDARD_PARAMS.sigma0)
+        self.r0 = Parameter(base="r0")
+        self.q = Parameter(base="q")
+        self.temp0 = Parameter(base="temp0")
+        self.p = Parameter(base="p")
+        self.sigma0 = Parameter(base="sigma0")
 
         self.weights, self.radii, self.matrix = None, None, None
-        self.kappa_abs = Parameter(**STANDARD_PARAMS.kappa_abs)
-        self.kappa_cont = Parameter(**STANDARD_PARAMS.kappa_cont)
-        self.cont_weight = Parameter(**STANDARD_PARAMS.cont_weight)
+        self.kappa_abs = Parameter(base="kappa_abs")
+        self.kappa_cont = Parameter(base="kappa_cont")
+        self.weight_cont = Parameter(base="weight_cont")
 
         if self.const_temperature:
             self.q.free = self.temp0.free = False
 
         if not self.continuum_contribution:
-            self.cont_weight.free = False
+            self.weight_cont.free = False
 
         self.eval(**kwargs)
 
@@ -704,7 +497,7 @@ class TempGradient(Ring):
         kappa_abs = self.kappa_abs(wavelength)
         if self.continuum_contribution:
             cont_weight, kappa_cont = (
-                self.cont_weight().value / 1e2,
+                self.weight_cont().value / 1e2,
                 self.kappa_cont(wavelength),
             )
             opacity = (1 - cont_weight) * kappa_abs + cont_weight * kappa_cont
@@ -722,7 +515,7 @@ class TempGradient(Ring):
         if self.const_temperature:
             if self.matrix is not None:
                 interp_op_temps = interp1d(self.weights, self.matrix, axis=0)(
-                    self.cont_weight().value / 1e2
+                    self.weight_cont().value / 1e2
                 )
                 temperature = np.interp(radius.value, self.radii, interp_op_temps) * u.K
             else:
@@ -835,142 +628,3 @@ class AsymmetricGreyBody(GreyBody):
     name = "Asymmetric Grey Body"
     shortname = "AsymGreyBody"
     asymmetric = True
-
-
-class StarHaloGauss(FourierComponent):
-    """A star, a disk and a halo model with a Gauss profile.
-
-    From Lazareff+2017.
-    """
-
-    name = "StarHaloGauss"
-    shortname = "StarHaloGauss"
-    is_gauss_lor = False
-    has_ring = False
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.fs = Parameter(**STANDARD_PARAMS.fr)
-        self.fs.name = self.fs.shortname = "fs"
-        self.fc = Parameter(**STANDARD_PARAMS.fr)
-        self.fc.name = self.fc.shortname = "fc"
-        self.fs.free = self.fc.free = True
-
-        self.la = Parameter(**STANDARD_PARAMS.la)
-
-        if self.has_ring:
-            self.lkr = Parameter(**STANDARD_PARAMS.lkr)
-
-        self.wl0 = Parameter(**STANDARD_PARAMS.wl)
-        self.ks = Parameter(**STANDARD_PARAMS.exp)
-        self.ks.name = self.ks.shortname = "ks"
-        self.ks.value = 1
-        self.ks.min, self.ks.max = -10, 10
-        self.ks.free = False
-        self.kc = Parameter(**STANDARD_PARAMS.exp)
-        self.kc.name = self.kc.shortname = "kc"
-        self.kc.min, self.kc.max = -10, 10
-        self.kc.value = 1
-
-        if self.is_gauss_lor:
-            self.flor = Parameter(**STANDARD_PARAMS.fr)
-            self.flor.name = self.flor.shortname = "flor"
-            self.flor.free = True
-
-        self.eval(**kwargs)
-        self.hlr = 10 ** self.la()
-        if self.has_ring:
-            self.rin = np.sqrt(10 ** (2 * self.la()) / (1 + 10 ** (2 * self.lkr())))
-            self.hlr = np.sqrt(10 ** (2 * self.la()) / (1 + 10 ** (-2 * self.lkr())))
-
-        if self.is_gauss_lor:
-            self.comp = GaussLorentzian(
-                flor=self.flor, hlr=self.hlr, inc=self.inc, pa=self.pa
-            )
-        else:
-            self.comp = Gaussian(hlr=self.hlr, inc=self.inc, pa=self.pa)
-
-        if self.has_ring:
-            self.ring = Ring(
-                rin=self.rin,
-                inc=self.inc,
-                pa=self.pa,
-                asymmetric=True,
-                c1=self.c1,
-                s1=self.s1,
-            )
-
-    def vis_func(
-        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
-    ) -> np.ndarray:
-        if self.wl0() == 0:
-            self.wl0.value = np.mean(wavelength)
-
-        wavelength_ratio = self.wl0() / wavelength
-        fs, ks = self.fs(wavelength), self.ks(wavelength)
-        complex_vis_star = (fs * wavelength_ratio**ks).astype(
-            OPTIONS.data.dtype.complex
-        )
-        component_ratio = (
-            1 - self.fc()
-        ) * wavelength_ratio**ks + self.fc() * wavelength_ratio ** self.kc()
-
-        complex_vis_comp = self.comp.vis_func(
-            baselines, baseline_angles, wavelength, **kwargs
-        )
-
-        if self.has_ring:
-            complex_vis_ring = self.ring.vis_func(
-                baselines, baseline_angles, wavelength, **kwargs
-            )
-            complex_vis_comp *= complex_vis_ring
-
-        complex_vis_comp = (
-            self.fc()
-            * complex_vis_comp
-            * wavelength_ratio[..., np.newaxis] ** self.kc()
-        )
-        vis = (complex_vis_star[..., np.newaxis] + complex_vis_comp) / component_ratio[
-            ..., np.newaxis
-        ]
-        return vis.value.astype(OPTIONS.data.dtype.complex)
-
-    def image_func(
-        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um
-    ) -> np.ndarray:
-        """Computes the image."""
-        fh = 1 - (self.fs(wavelength) + self.fc())
-        image = self.comp.image_func(xx, yy, pixel_size, wavelength)
-        if self.has_ring:
-            image_ring = self.ring.image_func(xx, yy, pixel_size, wavelength)
-            image = self.fc() * fftconvolve(image, image_ring, mode="same")
-
-        pt = PointSource(inc=self.inc, pa=self.pa)
-        image += (
-            self.fs(wavelength) * pt.image_func(xx, yy, pixel_size, wavelength) + fh
-        )
-        image /= total if (total := np.sum(image, axis=(-2, -1))) != 0 else 1
-        return (self.fr() * image).astype(OPTIONS.data.dtype.real)
-
-
-class StarHaloGaussLor(StarHaloGauss):
-    """A star, a disk and a halo model with a Gauss-Lorentzian profile.
-
-    From Lazareff+2017.
-    """
-
-    name = "StarHaloGaussLor"
-    shortname = "StarHaloGaussLor"
-    is_gauss_lor = True
-    has_ring = False
-
-
-class StarHaloRing(StarHaloGaussLor):
-    """A star, a disk and a halo model with a Gauss-Lorentzian profile convolved with a ring.
-
-    From Lazareff+2017.
-    """
-
-    name = "StarHaloRing"
-    shortname = "StarHaloRing"
-    has_ring = True

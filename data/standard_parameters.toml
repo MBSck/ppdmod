@@ -317,6 +317,15 @@ unit = "Jy"
 free = false
 description = "The flux curve of the PAHs"
 
+
+[STANDARD_PARAMETERS.scale_pah]
+name = "scale_pah"
+shortname = "scale_pah"
+value = 0
+unit = "one"
+free = true
+description = "The mass fraction for the PAHs"
+
 [STANDARD_PARAMETERS.dist]
 name = "dist"
 shortname = "dist"
