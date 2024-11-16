@@ -370,10 +370,12 @@ def compute_interferometric_chi_sq(
         chi_sqs.append(chi_sq)
 
     ndata = get_counts_data()
+    chi_sqs = np.array(chi_sqs).astype(float)
 
-    # TODO: Make sure the weights are correct for not only the vis, but
-    # also the closure phase fit
-    chi_sqs = np.array(chi_sqs).astype(float) * weights
+    # TODO: Make weights automatic and also account for t3
+    weights = 1 / (chi_sqs / min(chi_sqs))
+    chi_sqs *= weights
+
     if reduced:
         total_chi_sq = chi_sqs.sum() / np.abs(ndata.sum() - ndim)
         chi_sqs = chi_sqs / np.abs(ndata - ndim)
