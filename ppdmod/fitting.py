@@ -204,7 +204,7 @@ def compute_chi_sq(
         return chi_sq.sum()
 
     lnorm = np.log(2 * np.pi) * ndim + np.log(sigma_squared)
-    return -0.5 * (chi_sq + lnorm).sum()
+    return (chi_sq + lnorm).sum()
 
 
 # TODO: Write tests (ASPRO) that tests multiple components with the total flux
@@ -333,7 +333,7 @@ def compute_nband_fit_chi_sq(
     if reduced:
         return chi_sq / (flux.value.size - ndim - 1)
 
-    return chi_sq
+    return -0.5 * chi_sq
 
 
 def compute_interferometric_chi_sq(
@@ -396,7 +396,7 @@ def compute_interferometric_chi_sq(
         total_chi_sq = chi_sqs.sum() / np.abs(ndata.sum() - ndim)
         chi_sqs = chi_sqs / np.abs(ndata - ndim)
     else:
-        total_chi_sq = chi_sqs.sum()
+        total_chi_sq = -0.5 * chi_sqs.sum()
 
     return (total_chi_sq, *chi_sqs)
 
@@ -513,7 +513,7 @@ def lnprob(theta: np.ndarray) -> float:
     observables = compute_observables(components)
     return sum(
         compute_interferometric_chi_sq(
-            *observables, ndim=theta.size, method="logarithmic"
+            *observables, ndim=theta.size, method="linear"
         )[1:]
     )
 
@@ -539,7 +539,7 @@ def lnprob_nband_fit(theta: np.ndarray) -> float:
     return compute_nband_fit_chi_sq(
         components[0].compute_flux(OPTIONS.fit.wavelengths),
         ndim=theta.size,
-        method="logarithmic",
+        method="linear",
     )
 
 
@@ -631,7 +631,6 @@ def get_best_fit(
     """Gets the best fit from the emcee sampler."""
     results = sampler.results
     weights = results.importance_weights()
-
     quantiles = np.array(
         [
             dyutils.quantile(
