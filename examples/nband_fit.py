@@ -134,7 +134,7 @@ if __name__ == "__main__":
     fit_params = {"nlive_init": 2000, "lnprob": lnprob_nband_fit, "ptform": ptform}
     sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
 
-    theta, uncertainties = get_best_fit(sampler, **fit_params)
+    theta, uncertainties = get_best_fit(sampler)
     components = set_components_from_theta(theta)
 
     with open(result_dir / "components.pkl", "wb") as file:
