@@ -67,8 +67,9 @@ SOURCE_DIR = DATA_DIR / "model_results" / "hd142527"
 
 method = "grf"
 grid, value = np.load(SOURCE_DIR / f"silicate_{method}_opacities.npy")
-kappa_abs = Parameter(grid=value, value=value, base="kappa_abs")
+kappa_abs = Parameter(grid=grid, value=value, base="kappa_abs")
 
+# TODO: Check if the qval to opacity function is correct
 grid, value = load_data(
     DATA_DIR / "opacities" / "qval" / "Q_amorph_c_rv0.1.dat", load_func=qval_to_opacity
 )
