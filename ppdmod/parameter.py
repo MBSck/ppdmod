@@ -14,17 +14,17 @@ class Parameter:
     """Defines a parameter."""
 
     name: str | None = None
-    value: Any | None = None
-    unit: u.Quantity | None = None
     shortname: str | None = None
-    free: bool | None = None
-    shared: bool | None = None
     description: str | None = None
+    value: Any | None = None
+    grid: np.ndarray | None = None
+    unit: u.Quantity | None = None
     min: float | None = None
     max: float | None = None
     dtype: type | None = None
-    grid: np.ndarray | None = None
     smooth: bool | None = None
+    free: bool | None = None
+    shared: bool | None = None
     base: str | None = None
 
     def __setattr__(self, key: str, value: Any):
@@ -45,18 +45,14 @@ class Parameter:
         if base is None:
             return
 
-        for key, value in getattr(STANDARD_PARAMS, base).items():
+        base_param = getattr(STANDARD_PARAMS, base)
+        for key, value in base_param.items():
             if getattr(self, key) is None:
                 setattr(self, key, value)
 
-        if self.smooth is None:
-            self.smooth = False
-
-        if self.free is None:
-            self.free = False
-
-        if self.shared is None:
-            self.shared = False
+        for key in ["free", "shared", "smooth"]:
+            if key not in base_param:
+                setattr(self, key, False)
 
     def __call__(self, points: u.Quantity | None = None) -> np.ndarray:
         """Gets the value for the parameter or the corresponding

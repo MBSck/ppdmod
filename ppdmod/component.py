@@ -88,31 +88,27 @@ class FourierComponent(Component):
     name = "Fourier component"
     shortname = "FourierComp"
     description = "The component from which all analytical components are derived."
-    _elliptic = True
+    _elliptic = False
     _asymmetric = False
 
     def __init__(self, **kwargs):
         """The class's constructor."""
-        self.fr = Parameter(**STANDARD_PARAMS.fr)
-        self.x = Parameter(**STANDARD_PARAMS.x)
-        self.y = Parameter(**STANDARD_PARAMS.y)
-        self.pa = Parameter(**STANDARD_PARAMS.pa)
-        self.inc = Parameter(**STANDARD_PARAMS.inc)
-        self.dim = Parameter(**STANDARD_PARAMS.dim)
+        self.fr = Parameter(base="fr")
+        self.x = Parameter(base="x")
+        self.y = Parameter(base="y")
+        self.pa = Parameter(base="pa")
+        self.inc = Parameter(base="inc")
+        self.dim = Parameter(base="dim")
 
         for i in range(1, OPTIONS.model.modulation + 1):
-            setattr(self, f"c{i}", Parameter(**STANDARD_PARAMS.c))
-            setattr(self, f"s{i}", Parameter(**STANDARD_PARAMS.s))
+            c_str, s_str = f"c{i}", f"s{i}"  
+            c = Parameter(shortname=c_str, name=c_str, free=self.asymmetric, base="c")
+            s = Parameter(shortname=s_str, name=s_str, free=self.asymmetric, base="s")
+            setattr(self, c_str, c)
+            setattr(self, s_str, s)
 
-        if not self.elliptic:
-            self.inc.free = self.pa.free = False
-
-        for i in range(1, OPTIONS.model.modulation + 1):
-            s = getattr(self, f"s{i}")
-            c = getattr(self, f"c{i}")
-            s.name = s.shortname = f"s{i}"
-            c.name = c.shortname = f"c{i}"
-            c.free = s.free = self.asymmetric
+        if self.elliptic:
+            self.inc.free = self.pa.free = True
 
     @property
     def elliptic(self) -> bool:
@@ -136,9 +132,8 @@ class FourierComponent(Component):
         if elliptic is set."""
         self._asymmetric = value
         for i in range(1, OPTIONS.model.modulation + 1):
-            s = getattr(self, f"s{i}")
-            c = getattr(self, f"c{i}")
-            s.free = c.free = value
+            getattr(self, f"s{i}").free = value
+            getattr(self, f"c{i}").free = value
 
     def compute_internal_grid(
         self, dim: int, pixel_size: u.au
@@ -223,6 +218,7 @@ class FourierComponent(Component):
             wavelength = wavelength[:, np.newaxis, np.newaxis]
         except TypeError:
             wavelength = wavelength[np.newaxis, np.newaxis]
+
         pixel_size = (
             pixel_size
             if isinstance(pixel_size, u.Quantity)

@@ -87,9 +87,9 @@ constant_params = {
     "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont,
     "pa": pa,
-    "weights": temps.weights,
-    "radii": temps.radii,
-    "matrix": temps.values,
+    # "weights": temps.weights,
+    # "radii": temps.radii,
+    # "matrix": temps.values,
 }
 
 rin1 = Parameter(value=0.5, min=0, max=30, base="rin")
@@ -102,14 +102,17 @@ rout2 = Parameter(value=45, free=False, base="rout")
 p2 = Parameter(value=0.5, min=-30, max=20, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 
-star = basic_components.Star(label="Star", f=flux_star, **constant_params)
+OPTIONS.model.shared_params = shared_params = {"inc": inc}
+star = basic_components.Star(
+    label="Star", f=flux_star, **shared_params, **constant_params
+)
 inner_ring = basic_components.GreyBody(
     label="Inner Ring",
     rin=rin1,
     rout=rout1,
     p=p1,
     sigma0=sigma01,
-    inc=inc,
+    **shared_params,
     **constant_params,
 )
 
@@ -119,13 +122,13 @@ outer_ring = basic_components.GreyBody(
     rout=rout2,
     p=p2,
     sigma0=sigma02,
-    inc=inc,
+    **shared_params,
     **constant_params,
 )
 
 OPTIONS.model.components = components = [star, inner_ring, outer_ring]
-OPTIONS.model.shared_params = shared_params = {"inc": inc}
 LABELS = get_labels(components)
+breakpoint()
 
 result_dir = Path("../model_results/") / "disc_fit"
 day_dir = result_dir / str(datetime.now().date())
@@ -141,14 +144,15 @@ rchi_sqs = compute_interferometric_chi_sq(
     reduced=True,
 )
 print(f"rchi_sq: {rchi_sqs[0]:.2f}")
+breakpoint()
+# TODO: Use reflective and periodic
+# Check update interval and if it needs other value
 
 
 if __name__ == "__main__":
     ncores = 50
     fit_params = {"nlive_init": 2000, "ptform": ptform}
-    sampler = run_fit(
-        **fit_params, ncores=ncores, save_dir=result_dir, debug=False
-    )
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=True)
 
     theta, uncertainties = get_best_fit(sampler, **fit_params)
     components = set_components_from_theta(theta)

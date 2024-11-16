@@ -23,13 +23,12 @@ class NBandFit(Component):
         self.tempc = Parameter(base="tempc")
         self.pah = Parameter(base="pah")
         self.scale_pah = Parameter(base="scale_pah")
-
         self.f = Parameter(
             shortname="f",
             name="f",
             unit=u.one,
-            free=True,
             description="Offset",
+            free=True,
             base="f",
         )
 
@@ -41,15 +40,9 @@ class NBandFit(Component):
             for prefix in ["kappa", "weight"]:
                 key = "kappa_abs" if prefix == "kappa" else "weight_cont"
                 param_name = f"{prefix}_{material}"
-                if prefix == "kappa":
-                    unit = u.cm**2 / u.g
-                else:
-                    unit = u.pct
-
                 param = Parameter(
                     name=param_name,
                     shortname=param_name,
-                    unit=unit,
                     description=f"The mass fraction for {param_name}",
                     base=key,
                 )
@@ -103,7 +96,6 @@ class PointSource(FourierComponent):
     name = "Point Source"
     shortname = "Point"
     description = "Point source with flux contribution."
-    elliptic = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

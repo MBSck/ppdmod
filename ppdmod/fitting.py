@@ -136,7 +136,13 @@ def set_components_from_theta(theta: np.ndarray) -> List[Component]:
     """Sets the components from theta."""
     components = list(map(Component.copy, OPTIONS.model.components))
     nshared = len(OPTIONS.model.shared_params)
-    theta_list, shared_params = theta[:-nshared].copy().tolist(), theta[-nshared:]
+    if nshared != 0:
+        theta_list, shared_params = theta[:-nshared], theta[-nshared:]
+    else:
+        theta_list, shared_params = theta, []
+
+    theta_list = theta_list.copy().tolist()
+
     for component in components:
         for param in component.get_params(free=True).values():
             param.value = theta_list.pop(0)
@@ -288,7 +294,12 @@ def compute_observables(
     return flux_model, vis_model, t3_model
 
 
-def compute_nband_fit_chi_sq(flux_model: np.ndarray, ndim: int, method: str) -> float:
+def compute_nband_fit_chi_sq(
+    flux_model: np.ndarray,
+    ndim: int,
+    method: str,
+    reduced: bool = False,
+) -> float:
     """Calculates the sed model's chi square.
 
     Parameters
@@ -300,6 +311,8 @@ def compute_nband_fit_chi_sq(flux_model: np.ndarray, ndim: int, method: str) -> 
     method : str
         The method to determine the difference of the dataset,
         to the data. Either "linear" or "logarithmic".
+    reduced : bool, optional
+        Whether to return the reduced chi square.
 
     Returns
     -------
@@ -317,7 +330,10 @@ def compute_nband_fit_chi_sq(flux_model: np.ndarray, ndim: int, method: str) -> 
     )
 
     # NOTE: The -1 here indicates that one of the parameters is actually fixed
-    return chi_sq / (flux.value.size - ndim - 1)
+    if reduced:
+        return chi_sq / (flux.value.size - ndim - 1)
+
+    return chi_sq
 
 
 def compute_interferometric_chi_sq(
@@ -470,9 +486,9 @@ def ptform_nband_fit(theta: List[float], labels: List[str]) -> np.ndarray:
     remainder = 100
     for index in indices[:-1]:
         params[index] *= remainder / 1e2
-        remainder = max(0, remainder - params[index])
+        remainder -= params[index]
 
-    params[indices[-1]] = remainder if remainder > 1e-5 else 0
+    params[indices[-1]] = remainder
     return params
 
 
@@ -576,8 +592,6 @@ def run_fit(
         "pool": pool,
     }
 
-    # TODO: Check if update interval needs to be reimplemented
-    # TODO: Check what periodic and reflective does
     static_kwargs = {"nlive": kwargs.pop("nlive", 1000)}
     sampler_kwargs = {"dynamic": {}, "static": static_kwargs}
 
@@ -613,7 +627,6 @@ def run_fit(
 def get_best_fit(
     sampler: NestedSampler | DynamicNestedSampler,
     method: str = "max",
-    **kwargs,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Gets the best fit from the emcee sampler."""
     results = sampler.results

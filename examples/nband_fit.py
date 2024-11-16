@@ -72,10 +72,8 @@ grid, value = load_data(
     DATA_DIR / "opacities" / "qval" / "Q_amorph_c_rv0.1.dat", load_func=qval_to_opacity
 )
 kappa_cont = Parameter(grid=grid, value=value, base="kappa_cont")
-
 grid, value = np.loadtxt(OPACITY_DIR / "boekel" / "PAH.kappa", unpack=True)
 pah = Parameter(grid=grid, value=value, base="pah")
-
 scale_pah = Parameter(
     value=1.66,
     unit=u.one,
@@ -85,7 +83,6 @@ scale_pah = Parameter(
     name="scale_pah",
     base="weight_cont",
 )
-
 f = Parameter(
     value=17.46, min=15, max=25, free=True, unit=u.one, description="Offset", base="f"
 )
@@ -102,7 +99,7 @@ for w, key in zip(weights, NAMES.keys()):
             description=f"The mass fraction for {size} {key}",
             base="weight_cont",
         )
-
+        weight_params[weight_name] = weight
 
 nband_fit = NBandFit(
     tempc=390.08,
@@ -111,13 +108,11 @@ nband_fit = NBandFit(
     f=f,
     kappa_cont=kappa_cont,
     pah=pah,
-    **constant_params,
     **weight_params,
     **constant_params,
 )
 OPTIONS.model.components = components = [nband_fit]
 LABELS = get_labels(components)
-breakpoint()
 
 result_dir = Path("../model_results/") / "nband_fit"
 day_dir = result_dir / str(datetime.now().date())
@@ -129,6 +124,7 @@ rchi_sq = compute_nband_fit_chi_sq(
     components[0].compute_flux(OPTIONS.fit.wavelengths),
     ndim=len(LABELS),
     method="linear",
+    reduced=True,
 )
 print(f"rchi_sq: {rchi_sq:.2f}")
 
@@ -148,5 +144,6 @@ if __name__ == "__main__":
         components[0].compute_flux(OPTIONS.fit.wavelengths),
         ndim=theta.size,
         method="linear",
+        reduced=True,
     )
     print(f"rchi_sq: {rchi_sq:.2f}")
