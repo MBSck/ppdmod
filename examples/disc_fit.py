@@ -129,7 +129,6 @@ outer_ring = basic_components.GreyBody(
 
 OPTIONS.model.components = components = [star, inner_ring, outer_ring]
 LABELS = get_labels(components)
-breakpoint()
 
 result_dir = Path("../model_results/") / "disc_fit"
 day_dir = result_dir / str(datetime.now().date())
