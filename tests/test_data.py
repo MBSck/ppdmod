@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from astropy.io import fits
 
-from ppdmod.data import ReadoutFits, set_data, set_fit_wavelengths, set_weights
+from ppdmod.data import ReadoutFits, set_data, set_fit_wavelengths
 from ppdmod.options import OPTIONS
 
 
@@ -161,57 +161,3 @@ def test_set_data(fits_files: List[Path], wavelength: u.um) -> None:
     assert flux.value.size == 0 and flux.err.size == 0
     assert vis.value.size == 0 and vis.err.size == 0
     assert t3.value.size == 0 and t3.err.size == 0
-
-
-@pytest.mark.parametrize(
-    "fit_data",
-    [
-        ["flux"],
-        ["vis"],
-        ["t3"],
-        ["flux", "vis"],
-        ["flux", "t3"],
-        ["flux", "vis", "t3"],
-        ["flux", "vis2", "t3"],
-    ],
-)
-def test_set_weights(fits_files: List[Path], fit_data: List[str]) -> None:
-    """Tests the setting of the weights"""
-    set_data(fits_files, wavelengths=[3.5] * u.um, fit_data=fit_data)
-
-    weights = OPTIONS.fit.weights
-    assert weights
-
-    if len(fit_data) == 1 or len(fit_data) == 2:
-        if fit_data == ["flux"]:
-            assert weights.flux == 1
-            assert weights.vis == 0
-            assert weights.t3 == 0
-        elif fit_data == ["vis"]:
-            assert weights.flux == 0
-            assert weights.vis == 1
-            assert weights.t3 == 0
-        elif fit_data == ["t3"]:
-            assert weights.flux == 0
-            assert weights.vis == 0
-            assert weights.t3 == 1
-        elif fit_data == ["flux", "vis"]:
-            assert weights.flux != 1 and weights.flux != 0
-            assert weights.vis != 1 and weights.vis != 0
-            assert weights.t3 == 0
-        elif fit_data == ["flux", "t3"]:
-            assert weights.flux != 1 and weights.flux != 0
-            assert weights.vis == 0
-            assert weights.t3 != 1 and weights.t3 != 0
-    else:
-        assert weights.flux != 1 and weights.flux != 0
-        assert weights.vis != 1 and weights.vis != 0
-        assert weights.t3 != 1 and weights.t3 != 0
-
-    assert weights.flux + weights.vis + weights.t3 == 1
-
-    set_weights([0.5, 0.5, 0.5])
-    assert weights.flux == weights.vis == weights.t3
-    assert np.isclose(weights.flux, 1 / 3)
-
-    set_data(fit_data=fit_data)

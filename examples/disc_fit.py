@@ -57,7 +57,6 @@ data = set_data(
     wavelengths=wavelengths,
     fit_data=["flux", "vis"],
     set_std_err=["mband"],
-    weights=[1, 0.07258975120604641],
 )
 
 grid, _, value = np.load(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.npy")

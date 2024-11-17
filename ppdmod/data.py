@@ -238,16 +238,6 @@ def get_counts_data() -> np.ndarray[int]:
     return np.array(counts)
 
 
-def set_weights(weights: List[float] | None = None) -> None:
-    """Sets the weights of the fit parameters
-    from the observed data"""
-    if weights is None:
-        weights = [1, 1, 1]
-
-    for key, weight in zip(OPTIONS.fit.data, weights):
-        setattr(OPTIONS.fit.weights, key, weight)
-
-
 def set_data(
     fits_files: List[Path] | None = None,
     wavelengths: str | u.Quantity[u.um] | None = None,
@@ -362,5 +352,4 @@ def set_data(
             band_std[err_ind] = np.abs(band_data[err_ind]) * min_err
             data.err[ind, :] = band_std
 
-    set_weights(weights)
     return OPTIONS.data
