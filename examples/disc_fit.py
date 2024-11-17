@@ -144,13 +144,12 @@ rchi_sqs = compute_interferometric_chi_sq(
     reduced=True,
 )
 print(f"rchi_sq: {rchi_sqs[0]:.2f}")
-breakpoint()
 # TODO: Use reflective and periodic
 # Check update interval and if it needs other value
 
 
 if __name__ == "__main__":
-    ncores = 50
+    ncores = 100
     fit_params = {"nlive_init": 2000, "ptform": ptform}
     sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=True)
 
