@@ -52,6 +52,9 @@ class Parameter:
 
         for key in ["free", "shared", "smooth"]:
             if key not in base_param:
+                if getattr(self, key) is not None:
+                    continue
+
                 setattr(self, key, False)
 
     def __call__(self, points: u.Quantity | None = None) -> np.ndarray:
