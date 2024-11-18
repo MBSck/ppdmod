@@ -87,7 +87,6 @@ class FourierComponent(Component):
 
     name = "FourierComp"
     description = "The component from which all analytical components are derived."
-    _elliptic = False
     _asymmetric = False
 
     def __init__(self, **kwargs):
@@ -106,29 +105,15 @@ class FourierComponent(Component):
             setattr(self, c_str, c)
             setattr(self, s_str, s)
 
-        if self.elliptic:
-            self.cinc.free = self.pa.free = True
-
-    @property
-    def elliptic(self) -> bool:
-        """Gets if the component is elliptic."""
-        return self._elliptic
-
-    @elliptic.setter
-    def elliptic(self, value: bool) -> None:
-        """Sets the position angle and the parameters to free or false
-        if elliptic is set."""
-        self._elliptic = self.cinc.free = self.pa.free = value
-
     @property
     def asymmetric(self) -> bool:
-        """Gets if the component is elliptic."""
+        """Gets if the component is asymmetric."""
         return self._asymmetric
 
     @asymmetric.setter
     def asymmetric(self, value: bool) -> None:
         """Sets the position angle and the parameters to free or false
-        if elliptic is set."""
+        if asymmetry is set."""
         self._asymmetric = value
         for i in range(1, OPTIONS.model.modulation + 1):
             getattr(self, f"s{i}").free = value
@@ -226,12 +211,10 @@ class FourierComponent(Component):
 
         xx = np.linspace(-0.5, 0.5, dim) * pixel_size * dim
         xx, yy = self.translate_image_func(*np.meshgrid(xx, xx))
-
-        if self.elliptic:
-            pa_rad = self.pa().to(u.rad)
-            xr = xx * np.cos(pa_rad) - yy * np.sin(pa_rad)
-            yr = xx * np.sin(pa_rad) + yy * np.cos(pa_rad)
-            xx, yy = xr * (1 / self.cinc()), yr
+        pa_rad = self.pa().to(u.rad)
+        xr = xx * np.cos(pa_rad) - yy * np.sin(pa_rad)
+        yr = xx * np.sin(pa_rad) + yy * np.cos(pa_rad)
+        xx, yy = xr * (1 / self.cinc()), yr
 
         image = self.image_func(xx, yy, pixel_size, wavelength)
         return (self.fr() * image).value.astype(OPTIONS.data.dtype.real)

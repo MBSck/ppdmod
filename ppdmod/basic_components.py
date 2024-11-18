@@ -167,7 +167,6 @@ class Star(FourierComponent):
 
     name = "Star"
     description = "The flux of a star."
-    elliptic = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
