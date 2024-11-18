@@ -1,6 +1,5 @@
 [STANDARD_PARAMETERS.x]
 name = "x"
-shortname = "x"
 description = "The x position"
 value = 0
 unit = "mas"
@@ -9,7 +8,6 @@ max = 30
 
 [STANDARD_PARAMETERS.y]
 name = "y"
-shortname = "y"
 description = "The y position"
 value = 0
 unit = "mas"
@@ -17,8 +15,7 @@ min = -30
 max = 30
 
 [STANDARD_PARAMETERS.f]
-name = "flux"
-shortname = "f"
+name = "f"
 description = "The flux"
 value = 0
 unit = "Jy"
@@ -27,8 +24,7 @@ max = 10
 smooth = true
 
 [STANDARD_PARAMETERS.fr]
-name = "flux_ratio"
-shortname = "fr"
+name = "fr"
 description = "The flux ratio"
 value = 1
 unit = "one"
@@ -36,8 +32,7 @@ min = 0
 max = 1
 
 [STANDARD_PARAMETERS.inc]
-name = "inclination"
-shortname = "inc"
+name = "cinc"
 description = "The cosine of the inclination"
 value = 1
 unit = "one"
@@ -45,8 +40,7 @@ min = 0
 max = 1
 
 [STANDARD_PARAMETERS.pa]
-name = "position_angle"
-shortname = "pa"
+name = "pa"
 description = "The major-axis position angle"
 value = 0
 unit = "deg"
@@ -55,7 +49,6 @@ max = 180
 
 [STANDARD_PARAMETERS.pixel_size]
 name = "pixel_size"
-shortname = "pix_size"
 description = "The pixel size"
 value = 1
 unit = "mas"
@@ -64,7 +57,6 @@ max = 100
 
 [STANDARD_PARAMETERS.dim]
 name = "dim"
-shortname = "dim"
 description = "The pixel dimension"
 value = 128
 unit = "one"
@@ -72,7 +64,6 @@ dtype = "int"
 
 [STANDARD_PARAMETERS.exp]
 name = "exponent"
-shortname = "exp"
 description = "An exponent"
 value = 1
 unit = "one"
@@ -82,14 +73,12 @@ free = true
 
 [STANDARD_PARAMETERS.wl]
 name = "wl"
-shortname = "wl"
 description = "The wavelength"
 value = 0
 unit = "um"
 
 [STANDARD_PARAMETERS.fov]
 name = "fov"
-shortname = "fov"
 value = 0
 min = 0
 max = 100
@@ -98,7 +87,6 @@ unit = "mas"
 
 [STANDARD_PARAMETERS.width]
 name = "width"
-shortname = "width"
 description = "The width"
 value = 0
 unit = "mas"
@@ -108,14 +96,12 @@ free = true
 
 [STANDARD_PARAMETERS.r0]
 name = "r0"
-shortname = "r0"
 description = "Reference radius"
 value = 1
 unit = "au"
 
 [STANDARD_PARAMETERS.rin]
 name = "rin"
-shortname = "rin"
 value = 0
 unit = "mas"
 min = 0
@@ -125,7 +111,6 @@ free = true
 
 [STANDARD_PARAMETERS.rout]
 name = "rout"
-shortname = "rout"
 description = "The outer radius"
 min = 0
 unit = "mas"
@@ -134,8 +119,7 @@ value = 300
 
 [STANDARD_PARAMETERS.c]
 name = "c"
-shortname = "c"
-description = "An azimuthal modulation amplitude"
+description = "The x modulation amplitude"
 value = 0
 unit = "one"
 min = -1
@@ -144,8 +128,7 @@ free = true
 
 [STANDARD_PARAMETERS.s]
 name = "s"
-shortname = "s"
-description = "An azimuthal modulation amplitude"
+description = "The y modulation amplitude"
 value = 0
 unit = "one"
 min = -1
@@ -154,17 +137,15 @@ free = true
 
 [STANDARD_PARAMETERS.temp0]
 name = "temp0"
-shortname = "temp0"
+description = "The temperature at a reference radius"
 value = 0
 unit = "K"
 min = 0
 max = 3000
-description = "The temperature at a reference radius"
 free = true
 
 [STANDARD_PARAMETERS.tempc]
 name = "tempc"
-shortname = "tempc"
 description = "The characteristic temperature"
 value = 0
 unit = "K"
@@ -174,7 +155,6 @@ free = true
 
 [STANDARD_PARAMETERS.q]
 name = "q"
-shortname = "q"
 value = 0
 min = 0
 max = 1
@@ -184,7 +164,6 @@ free = true
 
 [STANDARD_PARAMETERS.p]
 name = "p"
-shortname = "p"
 description = "The power-law exponent for a dust surface density profile"
 value = 0
 unit = "one"
@@ -194,7 +173,6 @@ free = true
 
 [STANDARD_PARAMETERS.sigma0]
 name = "sigma0"
-shortname = "sigma0"
 description = "The surface density at a reference radius"
 value = 0
 unit = "g/cm^2"
@@ -204,7 +182,6 @@ free = true
 
 [STANDARD_PARAMETERS.kappa_abs]
 name = "kappa_abs"
-shortname = "kappa_abs"
 description = "The dust mass absorption coefficient"
 value = 0
 unit = "cm^2/g"
@@ -212,7 +189,6 @@ smooth = true
 
 [STANDARD_PARAMETERS.kappa_cont]
 name = "kappa_cont"
-shortname = "kappa_cont"
 description = "The continuum dust mass absorption coefficient"
 value = 0
 unit = "cm^2/g"
@@ -220,7 +196,6 @@ smooth = true
 
 [STANDARD_PARAMETERS.weight_cont]
 name = "weight_cont"
-shortname = "weight_cont"
 description = "The mass fraction of continuum vs. silicate"
 value = 0
 unit = "pct"
@@ -230,14 +205,12 @@ free = true
 
 [STANDARD_PARAMETERS.pah]
 name = "pah"
-shortname = "pah"
 description = "The flux curve of the PAHs"
 value = 0
 unit = "Jy"
 
 [STANDARD_PARAMETERS.scale_pah]
 name = "scale_pah"
-shortname = "scale_pah"
 description = "The mass fraction for the PAHs"
 value = 0
 unit = "one"
@@ -245,7 +218,6 @@ free = true
 
 [STANDARD_PARAMETERS.dist]
 name = "dist"
-shortname = "dist"
 description = "The Distance"
 value = 0
 unit = "pc"
@@ -254,7 +226,6 @@ max = 1000
 
 [STANDARD_PARAMETERS.eff_temp]
 name = "eff_temp"
-shortname = "eff_temp"
 description = "The star's effective temperature"
 value = 0
 unit = "K"
@@ -263,7 +234,6 @@ max = 30000
 
 [STANDARD_PARAMETERS.eff_radius]
 name = "eff_radius"
-shortname = "eff_radius"
 description = "The stellar radius"
 value = 0
 unit = "Rsun"

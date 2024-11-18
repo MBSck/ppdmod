@@ -19,10 +19,10 @@ from ppdmod.fitting import (
     compute_interferometric_chi_sq,
     compute_observables,
     get_best_fit,
+    get_labels,
     ptform_sequential_radii,
     run_fit,
     set_components_from_theta,
-    get_labels,
 )
 from ppdmod.options import OPTIONS
 from ppdmod.parameter import Parameter
@@ -102,7 +102,7 @@ rout2 = Parameter(value=45, free=False, base="rout")
 p2 = Parameter(value=0.5, min=-30, max=20, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 
-OPTIONS.model.shared_params = shared_params = {"inc": inc}
+shared_params = {"inc": inc}
 star = basic_components.Star(
     label="Star", f=flux_star, **shared_params, **constant_params
 )

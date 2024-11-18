@@ -13,8 +13,7 @@ from .utils import broadcast_baselines, compute_effective_baselines
 class Component:
     """The base class for the component."""
 
-    name = "Generic component"
-    shortname = "GenComp"
+    name = "GenComp"
     label = None
     description = "This is base component are derived."
 
@@ -86,8 +85,7 @@ class FourierComponent(Component):
         The dimension (px).
     """
 
-    name = "Fourier component"
-    shortname = "FourierComp"
+    name = "FourierComp"
     description = "The component from which all analytical components are derived."
     _elliptic = False
     _asymmetric = False
@@ -103,8 +101,8 @@ class FourierComponent(Component):
 
         for i in range(1, OPTIONS.model.modulation + 1):
             c_str, s_str = f"c{i}", f"s{i}"  
-            c = Parameter(shortname=c_str, name=c_str, free=self.asymmetric, base="c")
-            s = Parameter(shortname=s_str, name=s_str, free=self.asymmetric, base="s")
+            c = Parameter(name=c_str, free=self.asymmetric, base="c")
+            s = Parameter(name=s_str, free=self.asymmetric, base="s")
             setattr(self, c_str, c)
             setattr(self, s_str, s)
 
@@ -195,7 +193,7 @@ class FourierComponent(Component):
         shift = self.translate_vis_func(baselines, baseline_angles)
         shift = shift.reshape(shift.shape[:-1]) if shift.shape[-1] == 1 else shift
 
-        if self.shortname != "Point":
+        if self.name != "Point":
             vis *= self.fr()
 
         return (vis * shift).astype(OPTIONS.data.dtype.complex)

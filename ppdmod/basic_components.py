@@ -14,7 +14,6 @@ from .utils import angular_to_distance, distance_to_angular
 
 class NBandFit(Component):
     name = "NBandFit"
-    shortname = "NBandFit"
     description = "A fit to the SED of a star."
     label = "NBandFit"
 
@@ -24,7 +23,6 @@ class NBandFit(Component):
         self.pah = Parameter(base="pah")
         self.scale_pah = Parameter(base="scale_pah")
         self.f = Parameter(
-            shortname="f",
             name="f",
             unit=u.one,
             description="Offset",
@@ -42,7 +40,6 @@ class NBandFit(Component):
                 param_name = f"{prefix}_{material}"
                 param = Parameter(
                     name=param_name,
-                    shortname=param_name,
                     description=f"The mass fraction for {param_name}",
                     base=key,
                 )
@@ -87,14 +84,11 @@ class PointSource(FourierComponent):
     ----------
     name : str
         The component's name.
-    shortname : str
-        The component's short name.
     description : str
         The component's description.
     """
 
-    name = "Point Source"
-    shortname = "Point"
+    name = "Point"
     description = "Point source with flux contribution."
 
     def __init__(self, **kwargs):
@@ -170,15 +164,12 @@ class Star(FourierComponent):
     ----------
     name : str
         The component's name.
-    shortname : str
-        The component's short name.
     description : str
         The component's description.
      : dict of Parameter
     """
 
     name = "Star"
-    shortname = "Star"
     description = "The flux of a star."
     elliptic = False
 
@@ -272,7 +263,6 @@ class Ring(FourierComponent):
     """
 
     name = "Ring"
-    shortname = "Ring"
     description = "A simple ring."
     thin, has_outer_radius = True, False
 
@@ -449,8 +439,7 @@ class TempGradient(Ring):
         The dimension [px].
     """
 
-    name = "Temperature Gradient"
-    shortname = "TempGrad"
+    name = "TempGrad"
     thin = False
     has_outer_radius = True
     optically_thick = False
@@ -599,8 +588,7 @@ class AsymTempGradient(TempGradient):
     """An analytical implementation of an asymmetric temperature
     gradient."""
 
-    name = "Asymmetric Temperature Gradient"
-    shortname = "AsymTempGrad"
+    name = "AsymTempGrad"
     asymmetric = True
 
 
@@ -608,8 +596,7 @@ class GreyBody(TempGradient):
     """An analytical implementation of an asymmetric temperature
     gradient."""
 
-    name = "Grey Body"
-    shortname = "GreyBody"
+    name = "GreyBody"
     const_temperature = True
 
 
@@ -617,6 +604,5 @@ class AsymGreyBody(GreyBody):
     """An analytical implementation of an asymmetric temperature
     gradient."""
 
-    name = "Asymmetric Grey Body"
-    shortname = "AsymGreyBody"
+    name = "AsymGreyBody"
     asymmetric = True

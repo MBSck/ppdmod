@@ -62,7 +62,6 @@ for shortname, name in NAMES.items():
         param = Parameter(
             grid=grid,
             value=value,
-            shortname=param_name,
             name=param_name,
             base="kappa_abs",
         )
@@ -72,14 +71,15 @@ grid, value = load_data(
     DATA_DIR / "opacities" / "qval" / "Q_amorph_c_rv0.1.dat", load_func=qval_to_opacity
 )
 kappa_cont = Parameter(grid=grid, value=value, base="kappa_cont")
+
 grid, value = np.loadtxt(OPACITY_DIR / "boekel" / "PAH.kappa", unpack=True)
 pah = Parameter(grid=grid, value=value, base="pah")
+
 scale_pah = Parameter(
     value=1.66,
     unit=u.one,
     min=0,
     max=20,
-    shortname="scale_pah",
     name="scale_pah",
     base="weight_cont",
 )
@@ -94,7 +94,6 @@ for w, key in zip(weights, NAMES.keys()):
         weight_name = f"weight_{key}_{size}"
         weight = Parameter(
             value=w[index],
-            shortname=weight_name,
             name=weight_name,
             description=f"The mass fraction for {size} {key}",
             base="weight_cont",
@@ -120,9 +119,10 @@ dir_name = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 result_dir = day_dir / dir_name
 result_dir.mkdir(parents=True, exist_ok=True)
 
+ndim = len(LABELS)
 rchi_sq = compute_nband_fit_chi_sq(
     components[0].compute_flux(OPTIONS.fit.wavelengths),
-    ndim=len(LABELS),
+    ndim=ndim,
     method="linear",
     reduced=True,
 )
@@ -132,7 +132,7 @@ print(f"rchi_sq: {rchi_sq:.2f}")
 if __name__ == "__main__":
     ncores = 50
     fit_params = {"nlive_init": 2000, "lnprob": lnprob_nband_fit, "ptform": ptform}
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=True)
 
     theta, uncertainties = get_best_fit(sampler)
     components = set_components_from_theta(theta)
@@ -142,7 +142,7 @@ if __name__ == "__main__":
 
     rchi_sq = compute_nband_fit_chi_sq(
         components[0].compute_flux(OPTIONS.fit.wavelengths),
-        ndim=theta.size,
+        ndim=ndim,
         method="linear",
         reduced=True,
     )

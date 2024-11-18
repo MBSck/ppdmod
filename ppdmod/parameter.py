@@ -14,7 +14,6 @@ class Parameter:
     """Defines a parameter."""
 
     name: str | None = None
-    shortname: str | None = None
     description: str | None = None
     value: Any | None = None
     grid: np.ndarray | None = None
@@ -96,7 +95,6 @@ class Parameter:
         """Copies the parameter."""
         return Parameter(
             name=self.name,
-            shortname=self.shortname,
             description=self.description,
             value=self.value,
             grid=self.grid,

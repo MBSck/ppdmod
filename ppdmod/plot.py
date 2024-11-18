@@ -1412,7 +1412,7 @@ def plot_intermediate_products(
         )
         fluxes.append(flux)
 
-        if component.shortname in ["Star", "Point"]:
+        if component.name in ["Star", "Point"]:
             continue
 
         radius = component.compute_internal_grid()

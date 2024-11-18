@@ -579,7 +579,7 @@ def test_compute_t3(
 
     t3 = OPTIONS.data.t3
     component = component(**params)
-    if component.shortname == "Point":
+    if component.name == "Point":
         component.fr = fr
     component_vis = component.compute_complex_vis(
         t3.u123coord, t3.v123coord, wavelength
@@ -625,7 +625,7 @@ def test_compute_vis(
 
     vis = OPTIONS.data.vis2
     component = component(**params)
-    if component.shortname == "Point":
+    if component.name == "Point":
         component.fr = fr
     component_complex_vis = component.compute_complex_vis(
         vis.ucoord, vis.vcoord, wavelength

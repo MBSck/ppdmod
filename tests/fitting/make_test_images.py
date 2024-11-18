@@ -31,8 +31,8 @@ if __name__ == "__main__":
     ring = Ring(rin=2, has_outer_radius=False, width=width, inc=0.5, pa=33,
                 thin=False, asymmetric=True, c1=c1, s1=s1, c2=c2, s2=s2, c3=c3, s3=s3)
     plot_components(ring, dim, pixel_size, wl, zoom=5,
-                    savefig=test_dir / f"{ring.shortname}.png", save_as_fits=False, norm=1)
-    plot_components(ring, dim, pixel_size, wl, savefig=test_dir / f"{ring.shortname}.fits", save_as_fits=True)
+                    savefig=test_dir / f"{ring.name}.png", save_as_fits=False, norm=1)
+    plot_components(ring, dim, pixel_size, wl, savefig=test_dir / f"{ring.name}.fits", save_as_fits=True)
 
     # DATA_DIR_NBAND = Path("../data")
     # weights = np.array([73.2, 8.6, 0.6, 14.2, 2.4, 1.0])/100
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     #                           kappa_abs=kappa_abs, kappa_cont=kappa_cont, cont_weight=0.2)
     # model = [star, atg, atg2]
     # # model = [atg]
-    # model_names = "_".join([m.shortname for m in model])
+    # model_names = "_".join([m.name for m in model])
     #
     # plot_components(model, dim, pixel_size, wl, zoom=5,
     #                 savefig=test_dir / f"{model_names}.png", save_as_fits=False, norm=0.5)
