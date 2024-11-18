@@ -122,10 +122,6 @@ def test_get_priors(
             # ncomponent_free = len(component.get_params(free=True))
             # assert component_labels == sorted(free_params.keys())
 
-    # for component in
-    #     assert
-    #     breakpoint()
-
 
 # TODO: Finish this test
 def test_get_theta(components: List[Component]) -> None:

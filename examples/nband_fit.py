@@ -131,8 +131,8 @@ print(f"rchi_sq: {rchi_sq:.2f}")
 
 if __name__ == "__main__":
     ncores = 50
-    fit_params = {"nlive_init": 2000, "lnprob": lnprob_nband_fit, "ptform": ptform}
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=True)
+    fit_params = {"nlive_init": 2000, "batch_size": 1000, "lnprob": lnprob_nband_fit, "ptform": ptform}
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
 
     theta, uncertainties = get_best_fit(sampler)
     components = set_components_from_theta(theta)

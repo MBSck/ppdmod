@@ -325,19 +325,20 @@ def compute_nband_fit_chi_sq(
     chi_sq : float
         The chi square.
     """
+    # NOTE: The -1 here indicates that one of the parameters is actually fixed
+    ndim -= 1
     flux = OPTIONS.data.flux
     nan_indices = np.isnan(flux.value)
     chi_sq = compute_chi_sq(
         flux.value[~nan_indices],
         flux.err[~nan_indices],
         flux_model.flatten(),
-        ndim,
+        ndim - 1,
         method=method,
     )
 
-    # NOTE: The -1 here indicates that one of the parameters is actually fixed
     if reduced:
-        return chi_sq / (flux.value.size - ndim - 1)
+        return chi_sq / (flux.value.size - ndim)
 
     return chi_sq
 
@@ -409,8 +410,22 @@ def compute_interferometric_chi_sq(
 
 def transform_uniform_prior(theta: List[float]) -> float:
     """Prior transform for uniform priors."""
-    priors = get_priors(OPTIONS.model.components, OPTIONS.model.shared_params)
+    priors = get_priors(OPTIONS.model.components)
     return priors[:, 0] + (priors[:, 1] - priors[:, 0]) * theta
+
+
+def ptform_nband_fit(theta: List[float], labels: List[str]) -> np.ndarray:
+    """Transform that soft constrains successive radii to be smaller than the one before."""
+    indices = list(map(labels.index, filter(lambda x: "weight" in x, labels)))
+    params = transform_uniform_prior(theta)
+
+    remainder = 100
+    for index in indices[:-1]:
+        params[index] = remainder * theta[index]
+        remainder -= params[index]
+
+    params[indices[-1]] = remainder
+    return params
 
 
 # TODO: Improve this and make it work again
@@ -459,8 +474,11 @@ def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray
     indices = list(
         map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
     )
-    radii_values, radii_uniforms = params[indices].tolist(), theta[indices].tolist()
-    radii_priors = priors[indices].tolist()
+
+    radii_values = params[indices].copy().tolist()
+    radii_uniforms = theta[indices].copy().tolist()
+    radii_priors = priors[indices].copy().tolist()
+
     if "rout" not in radii_labels[-1]:
         radii_labels.append(f"rout-{radii_labels[-1].split('-')[1]}")
         radii_values.append(OPTIONS.model.components[-1].rout.value)
@@ -481,20 +499,6 @@ def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray
     for index, radius in zip(indices, new_radii):
         params[index] = radius
 
-    return params
-
-
-def ptform_nband_fit(theta: List[float], labels: List[str]) -> np.ndarray:
-    """Transform that soft constrains successive radii to be smaller than the one before."""
-    indices = list(map(labels.index, filter(lambda x: "weight" in x, labels)))
-    params = transform_uniform_prior(theta)
-
-    remainder = 100
-    for index in indices[:-1]:
-        params[index] *= remainder / 1e2
-        remainder -= params[index]
-
-    params[indices[-1]] = remainder
     return params
 
 
@@ -542,7 +546,6 @@ def lnprob_nband_fit(theta: np.ndarray) -> float:
         The log of the probability.
     """
     components = set_components_from_theta(theta)
-    breakpoint()
     return compute_nband_fit_chi_sq(
         components[0].compute_flux(OPTIONS.fit.wavelengths),
         ndim=theta.size,
@@ -604,15 +607,14 @@ def run_fit(
 
     static = {"dlogz": kwargs.pop("dlogz", 0.01)}
     dynamic = {
-        "nlive_batch": kwargs.pop("nlive_batch", 1000),
-        "maxbatch": kwargs.pop("maxbatch", 100),
+        "nlive_batch": kwargs.pop("nlive_batch", 500),
         "dlogz_init": kwargs.pop("dlogz_init", 0.01),
         "nlive_init": kwargs.pop("nlive_init", 1000),
     }
     run_kwargs = {"dynamic": dynamic, "static": static}
 
     print(f"Executing Dynesty.\n{'':-^50}")
-    ndim = len(get_priors(OPTIONS.model.components, OPTIONS.model.shared_params))
+    ndim = len(get_priors(OPTIONS.model.components))
     ptform = kwargs.pop("ptform", transform_uniform_prior)
     sampler = samplers[method](
         kwargs.pop("lnprob", lnprob),
