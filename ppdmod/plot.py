@@ -253,7 +253,7 @@ def format_labels(
         "sigma0": {"letter": r"\Sigma", "indices": ["0"]},
         "cont_weight": {"letter": "w", "indices": [r"\mathrm{cont}"]},
         "pa": {"letter": r"\theta", "indices": []},
-        "inc": {"letter": r"\cos\left(i\right)", "indices": []},
+        "cinc": {"letter": r"\cos\left(i\right)", "indices": []},
         "temp0": {"letter": "T", "indices": ["0"]},
         "tempc": {"letter": "T", "indices": [r"\mathrm{c}"]},
     }
