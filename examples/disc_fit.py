@@ -143,8 +143,6 @@ rchi_sqs = compute_interferometric_chi_sq(
     reduced=True,
 )
 print(f"rchi_sq: {rchi_sqs[0]:.2f}")
-# TODO: Use reflective and periodic
-# Check update interval and if it needs other value
 
 
 if __name__ == "__main__":
