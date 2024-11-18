@@ -31,7 +31,7 @@ unit = "one"
 min = 0
 max = 1
 
-[STANDARD_PARAMETERS.inc]
+[STANDARD_PARAMETERS.cinc]
 name = "cinc"
 description = "The cosine of the inclination"
 value = 1

@@ -96,7 +96,7 @@ class FourierComponent(Component):
         self.x = Parameter(base="x")
         self.y = Parameter(base="y")
         self.pa = Parameter(base="pa")
-        self.inc = Parameter(base="inc")
+        self.cinc = Parameter(base="cinc")
         self.dim = Parameter(base="dim")
 
         for i in range(1, OPTIONS.model.modulation + 1):
@@ -107,7 +107,7 @@ class FourierComponent(Component):
             setattr(self, s_str, s)
 
         if self.elliptic:
-            self.inc.free = self.pa.free = True
+            self.cinc.free = self.pa.free = True
 
     @property
     def elliptic(self) -> bool:
@@ -118,7 +118,7 @@ class FourierComponent(Component):
     def elliptic(self, value: bool) -> None:
         """Sets the position angle and the parameters to free or false
         if elliptic is set."""
-        self._elliptic = self.inc.free = self.pa.free = value
+        self._elliptic = self.cinc.free = self.pa.free = value
 
     @property
     def asymmetric(self) -> bool:
@@ -182,7 +182,7 @@ class FourierComponent(Component):
     ) -> np.ndarray:
         """Computes the correlated fluxes."""
         baselines, baseline_angles = compute_effective_baselines(
-            ucoord, vcoord, self.inc(), self.pa()
+            ucoord, vcoord, self.cinc(), self.pa()
         )
         wavelength, baselines, baseline_angles = broadcast_baselines(
             wavelength, baselines, baseline_angles, ucoord
@@ -231,7 +231,7 @@ class FourierComponent(Component):
             pa_rad = self.pa().to(u.rad)
             xr = xx * np.cos(pa_rad) - yy * np.sin(pa_rad)
             yr = xx * np.sin(pa_rad) + yy * np.cos(pa_rad)
-            xx, yy = xr * (1 / self.inc()), yr
+            xx, yy = xr * (1 / self.cinc()), yr
 
         image = self.image_func(xx, yy, pixel_size, wavelength)
         return (self.fr() * image).value.astype(OPTIONS.data.dtype.real)

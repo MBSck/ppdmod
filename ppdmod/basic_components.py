@@ -371,7 +371,7 @@ class Ring(FourierComponent):
                 else:
                     vis /= self.width().to(u.rad)
             else:
-                vis *= 2 * np.pi * self.inc()
+                vis *= 2 * np.pi * self.cinc()
 
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
@@ -527,7 +527,7 @@ class TempGradient(Ring):
             return np.array([1])[:, np.newaxis]
 
         optical_depth = self.compute_optical_depth(radius, wavelength)
-        emissivity = 1 - np.exp(-optical_depth / self.inc())
+        emissivity = 1 - np.exp(-optical_depth / self.cinc())
         return emissivity.astype(OPTIONS.data.dtype.real)
 
     def compute_intensity(self, radius: u.au, wavelength: u.um) -> u.Jy:
@@ -555,7 +555,7 @@ class TempGradient(Ring):
         if self.rin.unit == u.au:
             radius = distance_to_angular(radius, self.dist())
 
-        flux = 2 * np.pi * self.inc() * np.trapz(radius * intensity, radius).to(u.Jy)
+        flux = 2 * np.pi * self.cinc() * np.trapz(radius * intensity, radius).to(u.Jy)
         return flux.value.reshape((flux.shape[0], 1)).astype(OPTIONS.data.dtype.real)
 
     def vis_func(self, *args) -> np.ndarray:

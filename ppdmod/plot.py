@@ -1227,7 +1227,7 @@ def plot_interferometric_observables(
     effective_baselines, baseline_angles = compute_effective_baselines(
         vis_data.ucoord,
         vis_data.vcoord,
-        components[1].inc(),
+        components[1].cinc(),
         components[1].pa(),
         rzero=False,
     )
@@ -1283,7 +1283,7 @@ def plot_interferometric_observables(
         effective_baselines, baseline_angles = compute_effective_baselines(
             OPTIONS.data.t3.u123coord,
             OPTIONS.data.t3.v123coord,
-            components[1].inc(),
+            components[1].cinc(),
             components[1].pa(),
             longest=True,
             rzero=False,
@@ -1539,7 +1539,7 @@ def plot_intermediate_products(
     cumulative_total_flux = (
         2
         * np.pi
-        * components[-1].inc()
+        * components[-1].cinc()
         * np.trapz(merged_radii_mas * cumulative_intensity, merged_radii_mas).to(u.Jy)[
             :, np.newaxis
         ]
@@ -1550,7 +1550,7 @@ def plot_intermediate_products(
         cumulative_flux[:, index] = (
             2
             * np.pi
-            * components[-1].inc()
+            * components[-1].cinc()
             * np.trapz(
                 merged_radii_mas[:index] * cumulative_intensity[:, :index],
                 merged_radii_mas[:index],

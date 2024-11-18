@@ -45,11 +45,11 @@ def constant_params() -> Dict:
 def shared_params() -> Dict[str, Parameter]:
     """Shared parameters."""
     pa = Parameter(value=145, min=0, max=360, free=True, shared=True, base="pa")
-    inc = Parameter(value=0.5, min=0, max=1, free=True, shared=True, base="inc")
+    cinc = Parameter(value=0.5, min=0, max=1, free=True, shared=True, base="inc")
     weight_cont = Parameter(
         value=40, min=30, max=80, free=True, shared=True, base="weight_cont"
     )
-    return {"pa": pa, "inc": inc, "weight_cont": weight_cont}
+    return {"pa": pa, "cinc": cinc, "weight_cont": weight_cont}
 
 
 @pytest.fixture
@@ -113,7 +113,7 @@ def test_get_priors(
     zone_counter = 1
     for component in components:
         if component.get_params(shared=True):
-            for key, value in shared_params.items():
+            for key, value in sorted(shared_params.items()):
                 breakpoint()
 
             # component_labels = [
