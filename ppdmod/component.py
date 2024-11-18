@@ -4,7 +4,7 @@ from typing import Tuple
 import astropy.units as u
 import numpy as np
 
-from .options import OPTIONS, STANDARD_PARAMS
+from .options import OPTIONS
 from .parameter import Parameter
 from .utils import broadcast_baselines, compute_effective_baselines
 
@@ -22,14 +22,14 @@ class Component:
         for key, value in kwargs.items():
             if hasattr(self, key):
                 if isinstance(value, Parameter):
-                    setattr(self, key, value)
+                    setattr(self, key, value.copy())
                 else:
                     if isinstance(getattr(self, key), Parameter):
                         getattr(self, key).value = value
                     else:
                         setattr(self, key, value)
 
-    def copy(self):
+    def copy(self) -> "Component":
         """Copies the component."""
         return copy.deepcopy(self)
 

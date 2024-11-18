@@ -96,6 +96,24 @@ class Parameter:
 
         return array
 
+    def copy(self) -> "Parameter":
+        """Copies the parameter."""
+        return Parameter(
+            name=self.name,
+            shortname=self.shortname,
+            description=self.description,
+            value=self.value,
+            grid=self.grid,
+            unit=self.unit,
+            min=self.min,
+            max=self.max,
+            dtype=self.dtype,
+            smooth=self.smooth,
+            free=self.free,
+            shared=self.shared,
+            base=self.base,
+        )
+
     def set(self, min: float | None = None, max: float | None = None) -> None:
         """Sets the limits of the parameters."""
         self.min, self.max = min, max
