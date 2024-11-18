@@ -57,6 +57,7 @@ data = set_data(
     wavelengths=wavelengths,
     fit_data=["flux", "vis"],
     set_std_err=["mband"],
+    weights=[1, 0.02808218],
 )
 
 grid, _, value = np.load(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.npy")
@@ -136,13 +137,13 @@ result_dir = day_dir / dir_name
 result_dir.mkdir(parents=True, exist_ok=True)
 
 ndim = len(LABELS)
-rchi_sqs = compute_interferometric_chi_sq(
-    *compute_observables(components),
-    ndim=ndim,
-    method="linear",
-    reduced=True,
-)
-print(f"rchi_sq: {rchi_sqs[0]:.2f}")
+# rchi_sqs = compute_interferometric_chi_sq(
+#     *compute_observables(components),
+#     ndim=ndim,
+#     method="linear",
+#     reduced=True,
+# )
+# print(f"rchi_sq: {rchi_sqs[0]:.2f}")
 
 
 if __name__ == "__main__":

@@ -352,4 +352,8 @@ def set_data(
             band_std[err_ind] = np.abs(band_data[err_ind]) * min_err
             data.err[ind, :] = band_std
 
+    if weights is not None:
+        for key, weight in zip(OPTIONS.fit.data, weights):
+            setattr(OPTIONS.fit.weights, key, weight)
+
     return OPTIONS.data

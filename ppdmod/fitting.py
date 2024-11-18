@@ -394,9 +394,6 @@ def compute_interferometric_chi_sq(
 
     ndata = get_counts_data()
     chi_sqs = np.array(chi_sqs).astype(float)
-
-    # TODO: Make weights automatic and also account for t3
-    weights = 1 / (chi_sqs / max(chi_sqs))
     chi_sqs *= weights
 
     if reduced:
