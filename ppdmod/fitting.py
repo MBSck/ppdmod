@@ -440,7 +440,7 @@ def ptform_one_disc(theta: List[float], labels: List[str]) -> np.ndarray:
     Only works with two components (as of now - could be extended).
     """
     params = (transform_uniform_prior(theta),)
-    priors = get_priors(OPTIONS.model.components, OPTIONS.model.shared_params)
+    priors = get_priors(OPTIONS.model.components)
     indices_radii = list(
         map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
     )
@@ -467,7 +467,7 @@ def ptform_one_disc(theta: List[float], labels: List[str]) -> np.ndarray:
 
 def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray:
     """Transform that soft constrains successive radii to be smaller than the one before."""
-    priors = get_priors(OPTIONS.model.components, OPTIONS.model.shared_params)
+    priors = get_priors(OPTIONS.model.components)
     params = transform_uniform_prior(theta)
 
     radii_labels = list(filter(lambda x: "rin" in x or "rout" in x, labels))
