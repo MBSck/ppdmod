@@ -9,6 +9,7 @@ from .parameter import Parameter
 from .utils import broadcast_baselines, compute_effective_baselines
 
 
+# TODO: Implement automated assertion to make sure the parameters are the same and all
 class Component:
     """The base class for the component."""
 

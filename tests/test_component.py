@@ -1,12 +1,13 @@
 from pathlib import Path
+from typing import List
 
 import astropy.units as u
 import pytest
 
-from ppdmod.basic_components import Gaussian, Ring
-from ppdmod.component import FourierComponent
+from ppdmod.basic_components import Ring
+from ppdmod.component import Component, FourierComponent
 from ppdmod.data import ReadoutFits
-from ppdmod.options import OPTIONS, STANDARD_PARAMS
+from ppdmod.options import OPTIONS
 from ppdmod.parameter import Parameter
 
 
@@ -29,7 +30,7 @@ def component() -> FourierComponent:
 
 
 @pytest.fixture
-def fits_files() -> Path:
+def fits_files() -> List[Path]:
     """MATISSE (.fits)-files."""
     return list(Path("data/fits").glob("*2022-04-23*.fits"))
 
@@ -37,24 +38,45 @@ def fits_files() -> Path:
 @pytest.fixture
 def ring() -> Ring:
     """Initializes a gaussian component."""
-    return Ring(**{"dim": 512, "diam": 5, "width": 1})
+    return Ring(dim=512, rin=5, width=1)
 
 
-@pytest.fixture
-def gaussian() -> Gaussian:
-    """Initializes a gaussian component."""
-    return Gaussian(**{"dim": 512, "fwhm": 0.5})
-
-
-def test_component(component: FourierComponent) -> None:
-    """Tests if the initialization of the component works."""
-    assert component.pa.free and component.inc.free
-
-    component.elliptic = True
-    assert component.pa.free and component.inc.free
+def test_component(component: Component) -> None:
     assert hasattr(component, "x")
     assert hasattr(component, "y")
     assert hasattr(component, "dim")
+
+
+def test_eval(component: Component) -> None:
+    """Tests if the evaulation of the parameters works."""
+    component.eval(**{"x": Parameter(base="fov"), "y": 10, "dim": 512})
+
+    assert component.x == Parameter(base="fov")
+    assert component.y() == 10 * u.mas
+    assert component.dim.value == 512
+
+
+def test_get_params(component: Component):
+    """Tests the fetching of params from a component."""
+    assert component.get_params()
+    assert not component.get_params(free=True)
+    assert not component.get_params(shared=True)
+
+    component.x.free = True
+    component.y.free = component.y.shared = True
+    assert component.get_params(free=True)
+    assert "x" in component.get_params(free=True).keys()
+    assert "y" not in component.get_params(free=True).keys()
+    assert component.get_params(shared=True)
+    assert "y" in component.get_params(shared=True).keys()
+
+
+def test_fourier_component(component: FourierComponent) -> None:
+    """Tests if the initialization of the component works."""
+    assert not (component.pa.free and component.inc.free)
+
+    component.elliptic = True
+    assert component.pa.free and component.inc.free
 
     component.asymmetric = True
     assert hasattr(component, "c1")
@@ -69,25 +91,6 @@ def test_component(component: FourierComponent) -> None:
     OPTIONS.model.modulation = 1
 
 
-def test_eval(component: FourierComponent) -> None:
-    """Tests if the evaulation of the parameters works."""
-    x = Parameter(**STANDARD_PARAMS.fov)
-    params = {"x": x, "y": 10, "dim": 512}
-    component.eval(**params)
-
-    assert component.x == Parameter(**STANDARD_PARAMS.fov)
-    assert component.y() == 10 * u.mas
-    assert component.dim() == 512
-
-
-# TODO: Finish this test
-def test_get_params(component: FourierComponent):
-    """Tests the fetching of params from a component."""
-    params = component.get_params()
-    params_free = component.get_params(free=True)
-    assert params and params_free
-
-
 # TODO: Needs better test
 def test_translate_coordinates(component: FourierComponent) -> None:
     """Tests if the translation of the coordinates works."""
@@ -97,46 +100,7 @@ def test_translate_coordinates(component: FourierComponent) -> None:
     assert component.translate_image_func(0, 0) == (-10 * u.mas, -10 * u.mas)
 
 
-# TODO: Switch the direction to fix theses tests
-# @pytest.mark.parametrize(
-#         "fits_file, pos_angle",
-#         [
-#         ("bin_sep5_pa0_extended.fits", 0*u.deg),
-#          ("bin_sep5_pa180_extended.fits", 180*u.deg),
-#          ("bin_sep5_pa-180_extended.fits", -180*u.deg),
-#          ("bin_sep5_pa90_extended.fits", 90*u.deg),
-#          ("bin_sep5_pa-90_extended.fits", -90*u.deg),
-#          ("bin_sep5_pa45_extended.fits", 45*u.deg),
-#          ("bin_sep5_pa-45_extended.fits", -45*u.deg),
-#          ("bin_sep5_pa33_extended.fits", 33*u.deg)
-#         ])
-# def test_translate_fourier(
-#         fits_file: List[Path], pos_angle: u.mas) -> None:
-#     """Tests if the translation of the fourier transform works."""
-#     fits_file = Path("data/aspro") / fits_file
-#     wavelength = [3]*u.um
-#     data = set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
-#     fluxes = [2, 8]*u.Jy
-#
-#     vis = data.vis
-#     component_one = Star(f=fluxes[0], x=0, y=0)
-#     component_two = Star(f=fluxes[1], x=0, y=5, pa=pos_angle)
-#     vis_one = component_one.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
-#     vis_two = component_two.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
-#     vis_combined = compute_vis(vis_one + vis_two)
-#     vis_combined /= vis_combined[:, 0]
-#
-#     assert np.allclose(vis_combined[:, 1:], vis.value, atol=1e-2)
-#
-#     t3 = data.t3
-#     t3_one = component_one.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength)
-#     t3_two = component_two.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength)
-#     t3_combined = compute_t3(t3_one + t3_two)
-#
-#     diff = np.ptp(np.hstack(
-#         (t3.value[0][:, np.newaxis], t3_combined[:, 1:][0][:, np.newaxis])), axis=1)
-#     assert diff.max() < 1
-#     set_data(fit_data=["vis", "t3"])
+def test_copy(component: FourierComponent) -> None: ...
 
 
 def test_flux_func() -> None: ...

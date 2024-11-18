@@ -1,90 +1,90 @@
 [STANDARD_PARAMETERS.x]
 name = "x"
 shortname = "x"
-value = 0
 description = "The x position"
+value = 0
+unit = "mas"
 min = -30
 max = 30
-unit = "mas"
 
 [STANDARD_PARAMETERS.y]
 name = "y"
 shortname = "y"
-value = 0
 description = "The y position"
+value = 0
+unit = "mas"
 min = -30
 max = 30
-unit = "mas"
 
 [STANDARD_PARAMETERS.f]
 name = "flux"
 shortname = "f"
-value = "null"
 description = "The flux"
+value = 0
+unit = "Jy"
 min = 0
 max = 10
-unit = "Jy"
 smooth = true
 
 [STANDARD_PARAMETERS.fr]
 name = "flux_ratio"
 shortname = "fr"
-value = 1
 description = "The flux ratio"
+value = 1
+unit = "one"
 min = 0
 max = 1
-unit = "one"
 
 [STANDARD_PARAMETERS.inc]
 name = "inclination"
 shortname = "inc"
+description = "The cosine of the inclination"
 value = 1
+unit = "one"
 min = 0
 max = 1
-unit = "one"
-description = "The cosine of the inclination"
 
 [STANDARD_PARAMETERS.pa]
 name = "position_angle"
 shortname = "pa"
+description = "The major-axis position angle"
 value = 0
+unit = "deg"
 min = 0
 max = 180
-unit = "deg"
-description = "The major-axis position angle"
 
 [STANDARD_PARAMETERS.pixel_size]
 name = "pixel_size"
 shortname = "pix_size"
+description = "The pixel size"
 value = 1
+unit = "mas"
 min = 0
 max = 100
-description = "The pixel size"
-unit = "mas"
 
 [STANDARD_PARAMETERS.dim]
 name = "dim"
 shortname = "dim"
-value = 128
 description = "The pixel dimension"
+value = 128
 unit = "one"
 dtype = "int"
 
 [STANDARD_PARAMETERS.exp]
 name = "exponent"
 shortname = "exp"
+description = "An exponent"
 value = 1
+unit = "one"
 min = 0
 max = 1
-unit = "one"
-description = "An exponent"
 free = true
 
 [STANDARD_PARAMETERS.wl]
 name = "wl"
 shortname = "wl"
-value = 0
 description = "The wavelength"
+value = 0
 unit = "um"
 
 [STANDARD_PARAMETERS.fov]
@@ -99,19 +99,19 @@ unit = "mas"
 [STANDARD_PARAMETERS.width]
 name = "width"
 shortname = "width"
+description = "The width"
 value = 0
+unit = "mas"
 min = 0
 max = 300
-description = "The width"
-unit = "mas"
 free = true
 
 [STANDARD_PARAMETERS.r0]
 name = "r0"
 shortname = "r0"
+description = "Reference radius"
 value = 1
 unit = "au"
-description = "Reference radius"
 
 [STANDARD_PARAMETERS.rin]
 name = "rin"
@@ -126,30 +126,30 @@ free = true
 [STANDARD_PARAMETERS.rout]
 name = "rout"
 shortname = "rout"
+description = "The outer radius"
 min = 0
+unit = "mas"
 max = 300
 value = 300
-unit = "mas"
-description = "The outer radius"
 
 [STANDARD_PARAMETERS.c]
 name = "c"
 shortname = "c"
+description = "An azimuthal modulation amplitude"
 value = 0
+unit = "one"
 min = -1
 max = 1
-unit = "one"
-description = "An azimuthal modulation amplitude"
 free = true
 
 [STANDARD_PARAMETERS.s]
 name = "s"
 shortname = "s"
+description = "An azimuthal modulation amplitude"
 value = 0
+unit = "one"
 min = -1
 max = 1
-unit = "one"
-description = "An azimuthal modulation amplitude"
 free = true
 
 [STANDARD_PARAMETERS.temp0]
@@ -165,11 +165,11 @@ free = true
 [STANDARD_PARAMETERS.tempc]
 name = "tempc"
 shortname = "tempc"
+description = "The characteristic temperature"
 value = 0
 unit = "K"
 min = 0
 max = 3000
-description = "The characteristic temperature"
 free = true
 
 [STANDARD_PARAMETERS.q]
@@ -185,88 +185,87 @@ free = true
 [STANDARD_PARAMETERS.p]
 name = "p"
 shortname = "p"
+description = "The power-law exponent for a dust surface density profile"
 value = 0
+unit = "one"
 min = 0
 max = 1
-unit = "one"
-description = "The power-law exponent for a dust surface density profile"
 free = true
 
 [STANDARD_PARAMETERS.sigma0]
 name = "sigma0"
 shortname = "sigma0"
+description = "The surface density at a reference radius"
 value = 0
 unit = "g/cm^2"
 min = 0
 max = 0.01
-description = "The surface density at a reference radius"
 free = true
 
 [STANDARD_PARAMETERS.kappa_abs]
 name = "kappa_abs"
 shortname = "kappa_abs"
+description = "The dust mass absorption coefficient"
 value = 0
 unit = "cm^2/g"
-description = "The dust mass absorption coefficient"
 smooth = true
 
 [STANDARD_PARAMETERS.kappa_cont]
 name = "kappa_cont"
 shortname = "kappa_cont"
+description = "The continuum dust mass absorption coefficient"
 value = 0
 unit = "cm^2/g"
-description = "The continuum dust mass absorption coefficient"
 smooth = true
 
 [STANDARD_PARAMETERS.weight_cont]
 name = "weight_cont"
 shortname = "weight_cont"
+description = "The mass fraction of continuum vs. silicate"
 value = 0
 unit = "pct"
 min = 0
 max = 100
-description = "The mass fraction of continuum vs. silicate"
 free = true
 
 [STANDARD_PARAMETERS.pah]
 name = "pah"
 shortname = "pah"
+description = "The flux curve of the PAHs"
 value = 0
 unit = "Jy"
-description = "The flux curve of the PAHs"
-
 
 [STANDARD_PARAMETERS.scale_pah]
 name = "scale_pah"
 shortname = "scale_pah"
+description = "The mass fraction for the PAHs"
 value = 0
 unit = "one"
-description = "The mass fraction for the PAHs"
 free = true
 
 [STANDARD_PARAMETERS.dist]
 name = "dist"
 shortname = "dist"
+description = "The Distance"
 value = 0
 unit = "pc"
 min = 0
 max = 1000
-description = "The Distance"
 
 [STANDARD_PARAMETERS.eff_temp]
 name = "eff_temp"
 shortname = "eff_temp"
+description = "The star's effective temperature"
 value = 0
+unit = "K"
 min = 0
 max = 30000
-unit = "K"
-description = "The star's effective temperature"
 
 [STANDARD_PARAMETERS.eff_radius]
 name = "eff_radius"
 shortname = "eff_radius"
+description = "The stellar radius"
 value = 0
+unit = "Rsun"
 min = 0
 max = 10
-unit = "Rsun"
-description = "The stellar radius"

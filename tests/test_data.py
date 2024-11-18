@@ -41,9 +41,9 @@ def test_read_into_namespace(
 
             u1coord, u2coord = map(lambda x: t3.data[f"u{x}coord"], ["1", "2"])
             v1coord, v2coord = map(lambda x: t3.data[f"v{x}coord"], ["1", "2"])
-            u3coord, v3coord = (u1coord + u2coord), (v1coord + v2coord)
-            u123coord = np.array([u1coord, u2coord, u3coord])
-            v123coord = np.array([v1coord, v2coord, v3coord])
+            u3coord, v3coord = u1coord + u2coord, v1coord + v2coord
+            u123coord = np.array([u1coord, u2coord, -u3coord])
+            v123coord = np.array([v1coord, v2coord, -v3coord])
 
             assert np.array_equal(readout.t3.value, t3.data["t3phi"][:, wl_index:])
             assert np.array_equal(readout.t3.err, t3.data["t3phierr"][:, wl_index:])

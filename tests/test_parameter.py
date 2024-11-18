@@ -3,7 +3,6 @@ import numpy as np
 import pytest
 from numpy.typing import ArrayLike
 
-from ppdmod.options import STANDARD_PARAMS
 from ppdmod.parameter import Parameter
 
 VALUE = np.arange(0, 10) * u.mas
@@ -14,7 +13,12 @@ WAVELENGTHS_AND_VALUES = list(zip(WAVELENGTH, VALUE))
 @pytest.fixture
 def x() -> Parameter:
     """Parameter x."""
-    return Parameter(**STANDARD_PARAMS.x)
+    return Parameter(base="x")
+
+
+@pytest.fixture
+def x_filled() -> Parameter:
+    return Parameter(value=10, min=0, max=100, free=True, base="x")
 
 
 def test_parameter(x: Parameter) -> None:
@@ -24,12 +28,6 @@ def test_parameter(x: Parameter) -> None:
     assert x.unit == u.mas
     assert x() == 0 * u.mas
     assert not x.free
-
-
-def test_set_parameter_limits(x: Parameter) -> None:
-    """Check set limit function"""
-    x.set(min=5, max=10)
-    assert x.min == 5 and x.max == 10
 
 
 @pytest.mark.parametrize(
@@ -84,3 +82,28 @@ def test_multiple_wavelength_calling(x: Parameter) -> None:
     multiple wavelengths."""
     x.value, x.grid = VALUE, WAVELENGTH
     assert np.allclose(x(WAVELENGTH), VALUE)
+
+
+def test_process_base(x_filled: Parameter) -> None:
+    """Tests the setting of a base class without overriding given values."""
+    x_filled = Parameter(value=10, min=0, max=100, free=True, base="x")
+    assert x_filled.free
+    assert x_filled.value == 10
+    assert x_filled() == 10 * u.mas
+    assert x_filled.min == 0
+    assert x_filled.max == 100
+
+
+def test_get_limits(x: Parameter):
+    assert x.get_limits() == (-30, 30)
+
+
+def test_post_init(x_filled: Parameter): ...
+
+
+def test_copy(x: Parameter):
+    x_new = x.copy()
+    assert x == x_new
+
+    x_new.value = 5.33
+    assert x() != x_new()

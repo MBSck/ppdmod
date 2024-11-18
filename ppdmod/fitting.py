@@ -1,6 +1,6 @@
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import List, Tuple
 
 import astropy.units as u
 import dynesty.utils as dyutils
@@ -13,22 +13,22 @@ from .options import OPTIONS
 from .utils import compute_t3, compute_vis
 
 
-def get_priors(
-    components: List[Component], shared_params: Dict[str, Any]
-) -> np.ndarray:
+def get_priors(components: List[Component], shared: bool = True) -> np.ndarray:
     """Gets the priors from the model parameters."""
-    priors = []
+    priors, priors_shared = [], []
     for component in components:
         priors.extend(
-            [
-                [param.min, param.max]
-                for param in component.get_params(free=True).values()
-            ]
+            [param.get_limits() for param in component.get_params(free=True).values()]
         )
 
-    if shared_params is not None:
-        priors.extend([[param.min, param.max] for param in shared_params.values()])
-
+        if shared:
+            priors_shared.append(
+                [
+                    param.get_limits()
+                    for param in component.get_params(shared=True).values()
+                ]
+            )
+    priors.extend(priors_shared[-1])
     return np.array(priors)
 
 
@@ -135,7 +135,7 @@ def get_theta(
 def set_components_from_theta(theta: np.ndarray) -> List[Component]:
     """Sets the components from theta."""
     components = list(map(Component.copy, OPTIONS.model.components))
-    nshared = len(OPTIONS.model.shared_params)
+    nshared = len(components[-1].get_params(shared=True))
     if nshared != 0:
         theta_list, shared_params = theta[:-nshared], theta[-nshared:]
     else:
@@ -536,6 +536,7 @@ def lnprob_nband_fit(theta: np.ndarray) -> float:
         The log of the probability.
     """
     components = set_components_from_theta(theta)
+    breakpoint()
     return compute_nband_fit_chi_sq(
         components[0].compute_flux(OPTIONS.fit.wavelengths),
         ndim=theta.size,

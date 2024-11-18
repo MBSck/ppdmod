@@ -595,7 +595,7 @@ class TempGradient(Ring):
         return super().image_func(*args, intensity_func=self.compute_intensity)
 
 
-class AsymmetricTempGradient(TempGradient):
+class AsymTempGradient(TempGradient):
     """An analytical implementation of an asymmetric temperature
     gradient."""
 
@@ -613,7 +613,7 @@ class GreyBody(TempGradient):
     const_temperature = True
 
 
-class AsymmetricGreyBody(GreyBody):
+class AsymGreyBody(GreyBody):
     """An analytical implementation of an asymmetric temperature
     gradient."""
 

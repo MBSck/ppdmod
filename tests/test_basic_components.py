@@ -9,25 +9,21 @@ import pytest
 
 from ppdmod import utils
 from ppdmod.basic_components import (
-    AsymmetricGreyBody,
-    Gaussian,
+    AsymGreyBody,
     GreyBody,
     PointSource,
     Ring,
     Star,
     TempGradient,
-    UniformDisk,
-    assemble_components,
 )
 from ppdmod.data import ReadoutFits, set_data
-from ppdmod.options import OPTIONS, STANDARD_PARAMS
+from ppdmod.options import OPTIONS
 from ppdmod.parameter import Parameter
 from ppdmod.utils import (
     compute_t3,
     compute_vis,
     get_opacity,
     load_data,
-    qval_to_opacity,
 )
 
 DIMENSION = [2**power for power in range(9, 13)]
@@ -60,25 +56,13 @@ def point_source() -> PointSource:
 @pytest.fixture
 def star() -> Star:
     """Initializes a star component."""
-    return Star(**{"dim": 512, "dist": 145, "eff_temp": 7800, "eff_radius": 1.8})
+    return Star(dim=512, dist=145, eff_temp=7800, eff_radius=1.8)
 
 
 @pytest.fixture
 def ring() -> Ring:
-    """Initializes a gaussian component."""
-    return Ring(**{"dim": 512, "diam": 5, "width": 1})
-
-
-@pytest.fixture
-def uniform_disk() -> UniformDisk:
-    """Initializes a gaussian component."""
-    return UniformDisk(**{"dim": 512, "diam": 5})
-
-
-@pytest.fixture
-def gaussian() -> Gaussian:
-    """Initializes a gaussian component."""
-    return Gaussian(**{"dim": 512, "fwhm": 0.5})
+    """Initializes a ring component."""
+    return Ring(dim=512, diam=5, width=1)
 
 
 @pytest.fixture
@@ -95,15 +79,13 @@ def dist() -> float:
 def temp_gradient() -> TempGradient:
     """Initializes a numerical component."""
     temp_grad = TempGradient(
-        **{
-            "rin": 0.5,
-            "q": 0.5,
-            "temp0": 1500,
-            "dist": 148.3,
-            "sigma0": 2000,
-            "pixel_size": 0.1,
-            "p": 0.5,
-        }
+        rin=0.5,
+        q=0.5,
+        temp0=1500,
+        dist=148.3,
+        sigma0=2000,
+        pixel_size=0.1,
+        p=0.5,
     )
     temp_grad.optically_thick = True
     temp_grad.asymmetric = True
@@ -114,31 +96,25 @@ def temp_gradient() -> TempGradient:
 def kappa_abs() -> Parameter:
     weights = np.array([0.0, 73.2, 8.6, 0.0, 0.6, 14.2, 2.4, 1.0]) / 100
     names = ["pyroxene", "forsterite", "enstatite", "silica"]
-
     grid, value = get_opacity(DATA_DIR / "opacities", weights, names, "boekel")
-    kappa_abs = Parameter(**STANDARD_PARAMS.kappa_abs)
-    kappa_abs.grid, kappa_abs.value = grid, value
-    return kappa_abs
+    return Parameter(grid=grid, value=value, base="kappa_abs")
 
 
 @pytest.fixture
 def kappa_cont() -> Parameter:
-    cont_opacity_file = DATA_DIR / "opacities" / "optool" / "preibisch_amorph_c_rv0.1.npy"
+    cont_opacity_file = (
+        DATA_DIR / "opacities" / "optool" / "preibisch_amorph_c_rv0.1.npy"
+    )
     grid, value = np.load(cont_opacity_file)
-
-    kappa_cont = Parameter(**STANDARD_PARAMS.kappa_cont)
-    kappa_cont.value, kappa_cont.grid = grid, value
-    return kappa_cont
+    return Parameter(grid=grid, value=value, base="kappa_cont")
 
 
 @pytest.fixture
 def star_flux() -> Parameter:
-    wl_flux, flux = load_data(
+    grid, value = load_data(
         DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt"
     )
-    star_flux = Parameter(**STANDARD_PARAMS.f)
-    star_flux.grid, star_flux.value = wl_flux, flux
-    return star_flux
+    return Parameter(grid=grid, value=value, base="f")
 
 
 @pytest.fixture
@@ -504,117 +480,6 @@ def test_ring_compute_vis(
     OPTIONS.model.modulation = 1
 
 
-def test_uniform_disk_init(uniform_disk: UniformDisk) -> None:
-    """Tests the uniform disk's initialization."""
-    assert "diam" in vars(uniform_disk).keys()
-
-
-@pytest.mark.parametrize(
-    "fits_file, compression, pos_angle",
-    [
-        ("ud.fits", None, None),
-        ("ud_inc.fits", 0.351 * u.one, None),
-        ("ud_inc_rot.fits", 0.351 * u.one, 33 * u.deg),
-    ],
-)
-def test_uniform_disk_compute_vis(
-    uniform_disk: UniformDisk, fits_file: Path, compression: float, pos_angle: u.deg
-) -> None:
-    """Tests the calculation of uniform disk's visibilities."""
-    wavelength = [10] * u.um
-    fits_file = DATA_DIR / "aspro" / fits_file
-    data = set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
-    vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
-
-    uniform_disk.diam.value = 20 * u.mas
-    if compression is not None:
-        uniform_disk.elliptic = True
-
-    uniform_disk.inc.value = compression if compression is not None else 1
-    uniform_disk.pa.value = pos_angle if pos_angle is not None else 0
-
-    vis_ud = compute_vis(
-        uniform_disk.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
-    )
-    t3_ud = compute_t3(
-        uniform_disk.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength)
-    )
-
-    assert vis_ud.shape == (wavelength.size, vis.ucoord.shape[1])
-    assert np.allclose(vis.value, vis_ud[:, 1:], atol=1e-2)
-
-    assert t3_ud.shape == (wavelength.size, t3.u123coord.shape[1])
-    assert np.allclose(t3.value, t3_ud[:, 1:], atol=1e-2)
-
-    set_data(fit_data=["vis", "t3"])
-
-
-def test_uniform_disk_image_func() -> None:
-    """Tests the calculation of the uniform disk's image function."""
-    ...
-
-
-def test_gaussian_init(gaussian: Gaussian) -> None:
-    """Tests the gaussian's initialization."""
-    assert "hlr" in vars(gaussian).keys()
-
-
-@pytest.mark.parametrize(
-    "fits_file, compression, pos_angle",
-    [
-        ("gaussian.fits", None, None),
-        ("gaussian_inc.fits", 0.351 * u.one, None),
-        ("gaussian_inc_rot.fits", 0.351 * u.one, 33 * u.deg),
-    ],
-)
-def test_gaussian_compute_vis(
-    gaussian: Gaussian, fits_file: Path, compression: float, pos_angle: u.deg
-) -> None:
-    """Tests the calculation of the total flux."""
-    wavelength = [10] * u.um
-    fits_file = DATA_DIR / "aspro" / fits_file
-    data = set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
-
-    gaussian.hlr.value = 10 * u.mas / 2
-    vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
-    if compression is not None:
-        gaussian.elliptic = True
-
-    gaussian.inc.value = compression if compression is not None else 1
-    gaussian.pa.value = pos_angle if pos_angle is not None else 0
-
-    vis_gauss = compute_vis(
-        gaussian.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
-    )
-    t3_gauss = compute_t3(
-        gaussian.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength)
-    )
-
-    assert vis_gauss.shape == (wavelength.size, vis.ucoord.shape[1])
-    assert np.allclose(vis.value, vis_gauss[:, 1:], atol=1e-2)
-
-    assert t3_gauss.shape == (wavelength.size, t3.u123coord.shape[1])
-    assert np.allclose(t3.value, t3_gauss[:, 1:], atol=1e-2)
-
-    set_data(fit_data=["vis", "t3"])
-
-
-# TODO: Finish this test for the gaussian
-# @pytest.mark.parametrize(
-#         "compression, pos_angle",
-#         [(None, None)])
-# def test_gaussian_image_func(
-#         gaussian: Gaussian, fits_file: Path, compression: float,
-#         pos_angle: u.deg, wavelength: u.um) -> None:
-#     """Tests the calculation of the total flux."""
-#     fits_file = Path("data/aspro") / fits_file
-#     image = gaussian.compute_image(512, 0.1*u.mas, wavelength)
-#     assert image.shape == (wavelength.size, 512, 512)
-#     assert image.unit == u.one
-#
-#     gaussian.elliptic = False
-
-
 @pytest.mark.parametrize("grid_type", ["linear", "logarithmic"])
 def test_temp_gradient_compute_grid(
     temp_gradient: TempGradient, grid_type: str
@@ -669,7 +534,7 @@ def test_temp_gradient_compute_vis(
     c, s = c if c is not None else 0, s if s is not None else 0
     inc = inc if inc is not None else 1
     pa = pos_angle if pos_angle is not None else 0
-    atg = AsymmetricGreyBody(
+    atg = AsymGreyBody(
         rin=0.237765,
         rout=0.31702,
         inc=inc,
@@ -866,45 +731,3 @@ def test_temp_gradient_resolution(
     OPTIONS.model.modulation = 0
     temp_gradient.optically_thick = False
     temp_gradient.asymmetric = False
-
-
-def test_assemble_components() -> None:
-    """Tests the model's assemble_model method."""
-    param_names = ["rin", "p", "cont_weight", "pa", "inc"]
-    values = [1.5, 0.5, 0.2, 45, 1.6]
-    limits = [[0, 20], [0, 1], [0, 1], [0, 360], [1, 50]]
-    params = {
-        name: Parameter(**getattr(STANDARD_PARAMS, name)) for name in param_names
-    }
-    for value, limit, param in zip(values, limits, params.values()):
-        param.set(*limit)
-        param.value = value
-    shared_params = {"p": params["p"]}
-    del params["p"]
-
-    components_and_params = [["Star", params], ["GreyBody", params]]
-    components = assemble_components(components_and_params, shared_params)
-    assert isinstance(components[0], Star)
-    assert isinstance(components[1], GreyBody)
-    assert all(
-        not hasattr(components[0], param)
-        for param in param_names
-        if param not in ["pa", "inc"]
-    )
-    assert all(hasattr(components[1], param) for param in param_names)
-    assert all(
-        getattr(components[1], name).value == value
-        for name, value in zip(["pa", "inc"], values[-2:])
-    )
-    assert all(
-        getattr(components[1], name).value == value
-        for name, value in zip(param_names, values)
-    )
-    assert all(
-        [getattr(components[0], name).min, getattr(components[0], name).max] == limit
-        for name, limit in zip(["pa", "inc"], limits[-2:])
-    )
-    assert all(
-        [getattr(components[1], name).min, getattr(components[1], name).max] == limit
-        for name, limit in zip(param_names, limits)
-    )
