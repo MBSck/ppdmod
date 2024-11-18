@@ -13,25 +13,6 @@ from .options import OPTIONS
 from .utils import compute_t3, compute_vis
 
 
-def get_priors(components: List[Component], shared: bool = True) -> np.ndarray:
-    """Gets the priors from the model parameters."""
-    priors, priors_shared = [], []
-    for component in components:
-        priors.extend(
-            [param.get_limits() for param in component.get_params(free=True).values()]
-        )
-
-        if shared:
-            priors_shared.append(
-                [
-                    param.get_limits()
-                    for param in component.get_params(shared=True).values()
-                ]
-            )
-    priors.extend(priors_shared[-1])
-    return np.array(priors)
-
-
 def get_labels(components: List[Component], shared: bool = True) -> np.ndarray:
     """Sets theta from the components.
 
@@ -50,10 +31,10 @@ def get_labels(components: List[Component], shared: bool = True) -> np.ndarray:
     labels, labels_shared, zone_count = [], [], 1
     for component in components:
         component_labels = [key for key in component.get_params(free=True)]
-        if component.shortname == "Star":
+        if component.name == "Star":
             component_labels = [rf"{label}-\star" for label in component_labels]
 
-        if component.shortname in disc_models:
+        if component.name in disc_models:
             component_labels = [f"{label}-{zone_count}" for label in component_labels]
             zone_count += 1
 
@@ -66,6 +47,25 @@ def get_labels(components: List[Component], shared: bool = True) -> np.ndarray:
 
     labels.extend(labels_shared[-1])
     return labels
+
+
+def get_priors(components: List[Component], shared: bool = True) -> np.ndarray:
+    """Gets the priors from the model parameters."""
+    priors, priors_shared = [], []
+    for component in components:
+        priors.extend(
+            [param.get_limits() for param in component.get_params(free=True).values()]
+        )
+
+        if shared:
+            priors_shared.append(
+                [
+                    param.get_limits()
+                    for param in component.get_params(shared=True).values()
+                ]
+            )
+    priors.extend(priors_shared[-1])
+    return np.array(priors)
 
 
 def get_units(
@@ -142,14 +142,17 @@ def set_components_from_theta(theta: np.ndarray) -> List[Component]:
         theta_list, shared_params = theta, []
 
     theta_list = theta_list.copy().tolist()
+    shared_params_labels = [
+        label.split("-")[0] for label in get_labels(components) if "sh" in label
+    ]
 
     for component in components:
         for param in component.get_params(free=True).values():
             param.value = theta_list.pop(0)
 
-        for param_name, value in zip(OPTIONS.model.shared_params.keys(), shared_params):
-            param = getattr(component, param_name)
-            param.value, param.shared, param.free = value, True, True
+        for param_name, value in zip(shared_params_labels, shared_params):
+            if hasattr(component, param_name):
+                getattr(component, param_name).value = value
 
     return components
 
@@ -250,7 +253,7 @@ def compute_observables(
 
     # TODO: Make this implementation work again
     # for comp in components:
-    #     if "Point" == comp.shortname:
+    #     if "Point" == comp.name:
     #         flux_ratio = comp.compute_flux(wavelength)
     #         if OPTIONS.model.output == "normed":
     #             stellar_flux = flux_ratio
