@@ -566,7 +566,7 @@ def plot_datapoints(
 
     flux_model, vis_model, t3_model = compute_observables(components)
 
-    pos_angle, inclination = components[0].pa(), components[1].inc()
+    pos_angle, inclination = components[0].pa(), components[1].cinc()
     effective_baselines, _ = compute_effective_baselines(
         vis.ucoord, vis.vcoord, inclination, pos_angle
     )

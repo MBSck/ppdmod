@@ -98,7 +98,7 @@ p1 = Parameter(value=0.5, min=-20, max=20, base="p")
 sigma01 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 
 rin2 = Parameter(value=2, min=0, max=30, unit=u.au, base="rin")
-rout2 = Parameter(value=45, unit=u.au, free=False, base="rout")
+rout2 = Parameter(value=45, unit=u.au, free=True, base="rout")
 p2 = Parameter(value=0.5, min=-30, max=20, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 

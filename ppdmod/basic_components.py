@@ -147,10 +147,6 @@ class Star(FourierComponent):
 
     Parameters
     ----------
-    x : int
-        x pos of the component (mas).
-    y : int
-        y pos of the component (mas).
     f : astropy.units.Jy
         The flux of the star.
     dist : astropy.units.pc
