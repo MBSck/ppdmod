@@ -134,7 +134,7 @@ def get_theta(
 
 def set_components_from_theta(theta: np.ndarray) -> List[Component]:
     """Sets the components from theta."""
-    components = list(map(Component.copy, OPTIONS.model.components))
+    components = [component.copy() for component in OPTIONS.model.components]
     nshared = len(components[-1].get_params(shared=True))
     if nshared != 0:
         theta_list, shared_params = theta[:-nshared], theta[-nshared:]
@@ -149,10 +149,13 @@ def set_components_from_theta(theta: np.ndarray) -> List[Component]:
     for component in components:
         for param in component.get_params(free=True).values():
             param.value = theta_list.pop(0)
+            param.free = True
 
         for param_name, value in zip(shared_params_labels, shared_params):
             if hasattr(component, param_name):
-                getattr(component, param_name).value = value
+                param = getattr(component, param_name)
+                param.value = value
+                param.shared = True
 
     return components
 

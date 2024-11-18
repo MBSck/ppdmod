@@ -45,7 +45,7 @@ def constant_params() -> Dict:
 def shared_params() -> Dict[str, Parameter]:
     """Shared parameters."""
     pa = Parameter(value=145, min=0, max=360, free=True, shared=True, base="pa")
-    cinc = Parameter(value=0.5, min=0, max=1, free=True, shared=True, base="inc")
+    cinc = Parameter(value=0.5, min=0, max=1, free=True, shared=True, base="cinc")
     weight_cont = Parameter(
         value=40, min=30, max=80, free=True, shared=True, base="weight_cont"
     )
@@ -100,6 +100,7 @@ def test_get_labels(
             assert component_labels == sorted(free_params.keys())
 
 
+# TODO: Finish this test
 def test_get_priors(
     components: List[Component],
     free_params: Dict[str, Parameter],
@@ -110,57 +111,49 @@ def test_get_priors(
 
     assert priors.shape[0] == (nfree + nshared)
 
-    zone_counter = 1
     for component in components:
         if component.get_params(shared=True):
-            for key, value in sorted(shared_params.items()):
-                breakpoint()
+            for index, (key, value) in enumerate(sorted(shared_params.items())):
+                assert getattr(component, key) == value
+                assert np.array_equal(
+                    np.array([value.min, value.max]), priors[-nshared:][index]
+                )
 
-            # component_labels = [
-            #     label.split("-")[0]
-            #     for label in labels[:-nshared]
-            #     if zone_counter == int(label.split("-")[-1])
-            # ]
-            # zone_counter += 1
-
-            assert component_labels == sorted(free_params.keys())
+            # ncomponent_free = len(component.get_params(free=True))
+            # assert component_labels == sorted(free_params.keys())
 
     # for component in
     #     assert
     #     breakpoint()
 
 
+# TODO: Finish this test
 def test_get_theta(components: List[Component]) -> None:
     """Tests the get_theta function."""
-    theta = get_theta(components)
-    breakpoint()
+    # theta = get_theta(components)
     # len_params = sum(len(params) for (_, params) in components)
-    assert theta.size == len_params + len(shared_params)
-    assert all(
-        theta[-len(shared_params) :]
-        == [parameter.value for parameter in shared_params.values()]
-    )
+    # assert theta.size == len_params + len(shared_params)
+    # assert all(
+    #     theta[-len(shared_params) :]
+    #     == [parameter.value for parameter in shared_params.values()]
+    # )
 
 
-# def test_set_params_from_theta(theta: np.ndarray) -> None:
-#     """Tests the set_params_from_theta function."""
-#     OPTIONS.model.components = mock_components_and_params
-#     theta = set_theta_from_params(mock_components_and_params, mock_shared_params)
-#     new_components_and_params, new_shared_parameters = set_components_from_theta(theta)
-#     all_params = []
-#     for _, params in mock_components_and_params:
-#         all_params.extend(list(map(lambda x: x.value, params.values())))
-#     new_params = []
-#     for _, params in new_components_and_params:
-#         new_params.extend(list(params.values()))
-#     assert all_params == new_params
-#     assert list(map(lambda x: x.value, mock_shared_params.values())) == list(
-#         new_shared_parameters.values()
-#     )
-#
-#     OPTIONS.model.components = {}
-#
-#
+def test_set_params_from_theta(
+    components: List[Component],
+    free_params: Dict[str, Parameter],
+    shared_params: Dict[str, Parameter],
+) -> None:
+    """Tests the set_params_from_theta function."""
+    nfree, nshared = len(free_params), len(shared_params)
+
+    OPTIONS.model.components = components
+    theta = np.array([0, 10, 2.33, 3, 4.245, 5235, 6.7, 7.3, 8.2])
+    components = set_components_from_theta(theta)
+
+    OPTIONS.model.components = {}
+
+
 # # TODO: Finish test.
 # # TODO: Test exponential chi_sq.
 # # @pytest.mark.parametrize(

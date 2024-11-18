@@ -153,7 +153,7 @@ if __name__ == "__main__":
     sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
 
     theta, uncertainties = get_best_fit(sampler)
-    components = set_components_from_theta(theta)
+    OPTIONS.model.components = components = set_components_from_theta(theta)
     np.save(result_dir / "uncertainties.npy", uncertainties)
 
     with open(result_dir / "components.pkl", "wb") as file:
