@@ -74,7 +74,7 @@ grid, value = load_data(
 )
 kappa_cont = Parameter(grid=grid, value=value, base="kappa_cont")
 pa = Parameter(value=352, free=False, base="pa")
-inc = Parameter(value=0.915, free=True, shared=True, base="inc")
+cinc = Parameter(value=0.915, free=True, shared=True, base="cinc")
 
 with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
     temps = pickle.load(save_file)
@@ -102,7 +102,7 @@ rout2 = Parameter(value=45, free=False, base="rout")
 p2 = Parameter(value=0.5, min=-30, max=20, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 
-shared_params = {"inc": inc}
+shared_params = {"cinc": cinc}
 star = basic_components.Star(
     label="Star", f=flux_star, **shared_params, **constant_params
 )
