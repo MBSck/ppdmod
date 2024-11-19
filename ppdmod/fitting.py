@@ -376,16 +376,17 @@ def compute_interferometric_chi_sq(
         The total and the individual chi squares.
     """
     params = {"flux": flux_model, "vis": vis_model, "t3": t3_model}
-    weights = [getattr(OPTIONS.fit.weights, key) for key in OPTIONS.fit.data]
 
-    chi_sqs = []
+    chi_sqs, weights = [], []
     for key in OPTIONS.fit.data:
         data = getattr(OPTIONS.data, key)
         nan_indices = np.isnan(data.value)
+        key = key if key != "vis2" else "vis"
+        weights.append(getattr(OPTIONS.fit.weights, key))
         chi_sq = compute_chi_sq(
             data.value[~nan_indices],
             data.err[~nan_indices],
-            params[key if key != "vis2" else "vis"][~nan_indices],
+            params[key][~nan_indices],
             ndim=ndim,
             diff_method="linear" if key != "t3" else "exponential",
             method=method,
