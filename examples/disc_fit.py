@@ -60,7 +60,11 @@ data = set_data(
     weights=[1, 0.02808218],
 )
 
-grid, _, value = np.load(DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.npy")
+grid, value = np.loadtxt(
+    DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt",
+    usecols=(0, 2),
+    unpack=True,
+)
 flux_star = Parameter(grid=grid, value=value, base="f")
 
 SOURCE_DIR = DATA_DIR / "model_results" / "hd142527"
@@ -80,7 +84,7 @@ cinc = Parameter(value=0.915, free=True, shared=True, base="cinc")
 with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
     temps = pickle.load(save_file)
 
-constant_params = {
+shared_params = {
     "dim": 32,
     "dist": 158.51,
     "eff_temp": 6500,
@@ -103,10 +107,7 @@ rout2 = Parameter(value=4, unit=u.au, free=False, base="rout")
 p2 = Parameter(value=0.5, min=-30, max=20, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 
-shared_params = {"cinc": cinc}
-star = basic_components.Star(
-    label="Star", f=flux_star, **shared_params, **constant_params
-)
+star = basic_components.Star(label="Star", f=flux_star, **shared_params)
 inner_ring = basic_components.GreyBody(
     label="Inner Ring",
     rin=rin1,
@@ -114,9 +115,7 @@ inner_ring = basic_components.GreyBody(
     p=p1,
     sigma0=sigma01,
     **shared_params,
-    **constant_params,
 )
-
 outer_ring = basic_components.GreyBody(
     label="Outer Ring",
     rin=rin2,
@@ -124,7 +123,6 @@ outer_ring = basic_components.GreyBody(
     p=p2,
     sigma0=sigma02,
     **shared_params,
-    **constant_params,
 )
 
 OPTIONS.model.components = components = [star, inner_ring, outer_ring]
@@ -137,13 +135,13 @@ result_dir = day_dir / dir_name
 result_dir.mkdir(parents=True, exist_ok=True)
 
 ndim = len(LABELS)
-# rchi_sqs = compute_interferometric_chi_sq(
-#     *compute_observables(components),
-#     ndim=ndim,
-#     method="linear",
-#     reduced=True,
-# )
-# print(f"rchi_sq: {rchi_sqs[0]:.2f}")
+rchi_sqs = compute_interferometric_chi_sq(
+    *compute_observables(components),
+    ndim=ndim,
+    method="linear",
+    reduced=True,
+)
+print(f"rchi_sq: {rchi_sqs[0]:.2f}")
 
 
 if __name__ == "__main__":
@@ -160,7 +158,7 @@ if __name__ == "__main__":
 
     rchi_sqs = compute_interferometric_chi_sq(
         *compute_observables(components),
-        ndim=theta.size,
+        ndim=ndim,
         method="linear",
         reduced=True,
     )
