@@ -75,7 +75,6 @@ rchi_sqs = compute_interferometric_chi_sq(
     reduced=True,
 )
 print(f"rchi_sq: {rchi_sqs[0]:.2f}")
-breakpoint()
 
 
 if __name__ == "__main__":
