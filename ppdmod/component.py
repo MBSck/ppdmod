@@ -211,6 +211,7 @@ class FourierComponent(Component):
 
         xx = np.linspace(-0.5, 0.5, dim) * pixel_size * dim
         xx, yy = self.translate_image_func(*np.meshgrid(xx, xx))
+
         pa_rad = self.pa().to(u.rad)
         xr = xx * np.cos(pa_rad) - yy * np.sin(pa_rad)
         yr = xx * np.sin(pa_rad) + yy * np.cos(pa_rad)

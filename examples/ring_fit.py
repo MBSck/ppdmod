@@ -12,7 +12,7 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 import astropy.units as u
 import numpy as np
 
-from ppdmod.basic_components import Ring
+from ppdmod.basic_components import Point, Ring
 from ppdmod.data import set_data
 from ppdmod.fitting import (
     compute_interferometric_chi_sq,
@@ -56,6 +56,7 @@ SOURCE_DIR = DATA_DIR / "model_results" / "hd142527"
 rin = Parameter(value=0.95308189, min=0, max=3, base="rin")
 pa = Parameter(value=352, free=False, base="pa")
 cinc = Parameter(value=1.0, free=True, base="cinc")
+star = Point()
 ring = Ring(rin=rin, pa=pa, cinc=cinc)
 
 OPTIONS.model.components = components = [ring]
