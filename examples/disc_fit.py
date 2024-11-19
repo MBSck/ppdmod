@@ -57,7 +57,7 @@ data = set_data(
     wavelengths=wavelengths,
     fit_data=["flux", "vis", "t3"],
     set_std_err=["mband"],
-    weights=[1.0, 0.10794083, 0.03295288],
+    weights=[1.0, 0.05184253, 0.00782729],
 )
 
 grid, value = np.loadtxt(
@@ -141,19 +141,19 @@ result_dir = day_dir / dir_name
 result_dir.mkdir(parents=True, exist_ok=True)
 
 ndim = len(LABELS)
-rchi_sqs = compute_interferometric_chi_sq(
-    *compute_observables(components),
-    ndim=ndim,
-    method="linear",
-    reduced=True,
-)
-print(f"rchi_sq: {rchi_sqs[0]:.2f}")
+# rchi_sqs = compute_interferometric_chi_sq(
+#     *compute_observables(components),
+#     ndim=ndim,
+#     method="linear",
+#     reduced=True,
+# )
+# print(f"rchi_sq: {rchi_sqs[0]:.2f}")
 
 
 if __name__ == "__main__":
     ncores = 50
     fit_params = {"nlive_init": 1000, "nlive_batch": 500, "ptform": ptform}
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=True)
 
     theta, uncertainties = get_best_fit(sampler)
     OPTIONS.model.components = components = set_components_from_theta(theta)
