@@ -148,13 +148,12 @@ rchi_sqs = compute_interferometric_chi_sq(
     reduced=True,
 )
 print(f"rchi_sq: {rchi_sqs[0]:.2f}")
-breakpoint()
 
 
 if __name__ == "__main__":
     ncores = 50
     fit_params = {"nlive_init": 1000, "nlive_batch": 500, "ptform": ptform}
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=True)
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
 
     theta, uncertainties = get_best_fit(sampler)
     OPTIONS.model.components = components = set_components_from_theta(theta)
