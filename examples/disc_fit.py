@@ -92,9 +92,9 @@ shared_params = {
     "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont,
     "pa": pa,
-    # "weights": temps.weights,
-    # "radii": temps.radii,
-    # "matrix": temps.values,
+    "weights": temps.weights,
+    "radii": temps.radii,
+    "matrix": temps.values,
 }
 
 rin1 = Parameter(value=0.5, min=0, max=30, unit=u.au, base="rin")
