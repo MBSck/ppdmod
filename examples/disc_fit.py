@@ -84,6 +84,18 @@ cinc = Parameter(value=0.915, free=True, shared=True, base="cinc")
 with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
     temps = pickle.load(save_file)
 
+rin1 = Parameter(value=0.15107301, min=0, max=30, unit=u.au, free=False, base="rin")
+rout1 = Parameter(value=1.5, min=0, max=30, unit=u.au, free=True, base="rout")
+p1 = Parameter(value=0.5, min=-20, max=20, base="p")
+sigma01 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
+c1 = Parameter(value=1, free=True, shared=True, base="c")
+s1 = Parameter(value=1, free=True, shared=True, base="s")
+
+rin2 = Parameter(value=2, min=0, max=30, unit=u.au, base="rin")
+rout2 = Parameter(value=4, unit=u.au, free=False, base="rout")
+p2 = Parameter(value=0.5, min=-30, max=20, base="p")
+sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
+
 shared_params = {
     "dim": 32,
     "dist": 158.51,
@@ -92,23 +104,17 @@ shared_params = {
     "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont,
     "pa": pa,
+    "cinc": cinc,
+    "c1": c1,
+    "s1": s1,
     # "weights": temps.weights,
     # "radii": temps.radii,
     # "matrix": temps.values,
 }
 
-rin1 = Parameter(value=0.15107301, min=0, max=30, unit=u.au, free=False, base="rin")
-rout1 = Parameter(value=1.5, min=0, max=30, unit=u.au, free=True, base="rout")
-p1 = Parameter(value=0.5, min=-20, max=20, base="p")
-sigma01 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
-
-rin2 = Parameter(value=2, min=0, max=30, unit=u.au, base="rin")
-rout2 = Parameter(value=4, unit=u.au, free=False, base="rout")
-p2 = Parameter(value=0.5, min=-30, max=20, base="p")
-sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 
 star = basic_components.Star(label="Star", f=flux_star, **shared_params)
-inner_ring = basic_components.GreyBody(
+inner_ring = basic_components.AsymGreyBody(
     label="Inner Ring",
     rin=rin1,
     rout=rout1,
@@ -116,7 +122,7 @@ inner_ring = basic_components.GreyBody(
     sigma0=sigma01,
     **shared_params,
 )
-outer_ring = basic_components.GreyBody(
+outer_ring = basic_components.AsymGreyBody(
     label="Outer Ring",
     rin=rin2,
     rout=rout2,
@@ -142,12 +148,13 @@ rchi_sqs = compute_interferometric_chi_sq(
     reduced=True,
 )
 print(f"rchi_sq: {rchi_sqs[0]:.2f}")
+breakpoint()
 
 
 if __name__ == "__main__":
     ncores = 50
     fit_params = {"nlive_init": 1000, "nlive_batch": 500, "ptform": ptform}
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=True)
 
     theta, uncertainties = get_best_fit(sampler)
     OPTIONS.model.components = components = set_components_from_theta(theta)
