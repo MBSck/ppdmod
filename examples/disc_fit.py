@@ -57,7 +57,7 @@ data = set_data(
     wavelengths=wavelengths,
     fit_data=["flux", "vis"],
     set_std_err=["mband"],
-    weights=[1, 0.02808218],
+    weights=[1, 0.02094934],
 )
 
 grid, value = np.loadtxt(
@@ -97,7 +97,7 @@ shared_params = {
     # "matrix": temps.values,
 }
 
-rin1 = Parameter(value=0.5, min=0, max=30, unit=u.au, base="rin")
+rin1 = Parameter(value=0.15107301, min=0, max=30, unit=u.au, free=False, base="rin")
 rout1 = Parameter(value=1.5, min=0, max=30, unit=u.au, free=True, base="rout")
 p1 = Parameter(value=0.5, min=-20, max=20, base="p")
 sigma01 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
@@ -145,7 +145,7 @@ print(f"rchi_sq: {rchi_sqs[0]:.2f}")
 
 
 if __name__ == "__main__":
-    ncores = 100
+    ncores = 50
     fit_params = {"nlive_init": 1000, "nlive_batch": 500, "ptform": ptform}
     sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
 
