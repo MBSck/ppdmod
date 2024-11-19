@@ -209,7 +209,7 @@ def compute_chi_sq(
     if method == "linear":
         return chi_sq.sum()
 
-    lnorm = np.log(2 * np.pi * sigma_squared)
+    lnorm = np.log(2 * np.pi) * ndim + np.log(sigma_squared)
     return -0.5 * (chi_sq + lnorm).sum()
 
 
