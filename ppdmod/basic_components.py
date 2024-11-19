@@ -267,7 +267,7 @@ class Ring(FourierComponent):
         self.rout = Parameter(base="rout")
         self.width = Parameter(base="width")
 
-        if self.has_outer_radius:
+        if self.has_outer_radius or self.thin:
             self.width.free = False
 
         self.eval(**kwargs)

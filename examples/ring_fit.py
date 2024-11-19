@@ -61,7 +61,7 @@ ring = Ring(rin=rin, pa=pa, cinc=cinc)
 OPTIONS.model.components = components = [ring]
 LABELS = get_labels(components)
 
-result_dir = Path("../model_results/") / "disc_fit"
+result_dir = Path("../model_results/") / "ring_fit"
 day_dir = result_dir / str(datetime.now().date())
 dir_name = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 result_dir = day_dir / dir_name
