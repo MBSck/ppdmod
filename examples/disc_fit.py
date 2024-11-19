@@ -55,9 +55,9 @@ wavelengths = np.concatenate(
 data = set_data(
     fits_files,
     wavelengths=wavelengths,
-    fit_data=["flux", "vis"],
+    fit_data=["flux", "vis", "t3"],
     set_std_err=["mband"],
-    weights=[1, 0.02094934],
+    weights=[1.0, 0.10794083, 0.03295288],
 )
 
 grid, value = np.loadtxt(
