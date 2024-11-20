@@ -679,12 +679,12 @@ def plot_datapoints(
                     **vars(scatter_params),
                 )
                 upper_ax.axhline(y=0, color=hline_color, linestyle="--")
-                lower_ax.scatter(
+                lower_ax.errorbar(
                     longest_baselines_mlambda.value[nan_t3],
                     restrict_phase(t3.value[index][nan_t3] - t3_model[index][nan_t3]),
                     t3.err[index][nan_t3],
                     fmt="o",
-                    **vars(errobar_params),
+                    **vars(errorbar_params),
                 )
                 lower_ax.axhline(y=0, color=hline_color, linestyle="--")
 
