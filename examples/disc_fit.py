@@ -13,7 +13,7 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 import astropy.units as u
 import numpy as np
 
-from ppdmod import basic_components
+from ppdmod.basic_components import Star, GreyBody, AsymGreyBody
 from ppdmod.data import set_data
 from ppdmod.fitting import (
     compute_interferometric_chi_sq,
@@ -55,9 +55,10 @@ wavelengths = np.concatenate(
 data = set_data(
     fits_files,
     wavelengths=wavelengths,
-    fit_data=["flux", "vis", "t3"],
+    fit_data=["t3"],
+    # fit_data=["flux", "vis", "t3"],
     set_std_err=["mband"],
-    weights=[1.0, 0.05184253, 0.00782729],
+    # weights=[1.0, 0.05184253, 0.00782729],
 )
 
 grid, value = np.loadtxt(
@@ -73,7 +74,6 @@ method = "grf"
 grid, value = np.load(SOURCE_DIR / f"silicate_{method}_opacities.npy")
 kappa_abs = Parameter(grid=grid, value=value, base="kappa_abs")
 
-# TODO: Check if the qval to opacity function is correct
 grid, value = load_data(
     DATA_DIR / "opacities" / "qval" / "Q_amorph_c_rv0.1.dat", load_func=qval_to_opacity
 )
@@ -84,7 +84,7 @@ cinc = Parameter(value=0.915, free=True, shared=True, base="cinc")
 with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
     temps = pickle.load(save_file)
 
-rin1 = Parameter(value=0.15107301, min=0, max=30, unit=u.au, free=True, base="rin")
+rin1 = Parameter(value=0.1, min=0, max=30, unit=u.au, free=False, base="rin")
 rout1 = Parameter(value=1.5, min=0, max=30, unit=u.au, free=True, base="rout")
 p1 = Parameter(value=0.5, min=-20, max=20, base="p")
 sigma01 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
@@ -92,7 +92,7 @@ c1 = Parameter(value=1, free=True, base="c")
 s1 = Parameter(value=1, free=True, base="s")
 
 rin2 = Parameter(value=2, min=0, max=30, unit=u.au, base="rin")
-rout2 = Parameter(value=4, unit=u.au, free=True, base="rout")
+rout2 = Parameter(value=4, unit=u.au, free=False, base="rout")
 p2 = Parameter(value=0.5, min=-30, max=20, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 
@@ -111,18 +111,16 @@ shared_params = {
 }
 
 
-star = basic_components.Star(label="Star", f=flux_star, **shared_params)
-inner_ring = basic_components.AsymGreyBody(
+star = Star(label="Star", f=flux_star, **shared_params)
+inner_ring = GreyBody(
     label="Inner Ring",
     rin=rin1,
     rout=rout1,
     p=p1,
     sigma0=sigma01,
-    c1=c1,
-    s1=s1,
     **shared_params,
 )
-outer_ring = basic_components.AsymGreyBody(
+outer_ring = AsymGreyBody(
     label="Outer Ring",
     rin=rin2,
     rout=rout2,
@@ -136,10 +134,13 @@ outer_ring = basic_components.AsymGreyBody(
 OPTIONS.model.components = components = [star, inner_ring, outer_ring]
 LABELS = get_labels(components)
 
+DIR_NAME = None
+if DIR_NAME is None:
+    day_dir = Path(str(datetime.now().date()))
+    DIR_NAME = day_dir / f"results_model_{datetime.now().strftime('%H:%M:%S')}"
+
 result_dir = Path("../model_results/") / "disc_fit"
-day_dir = result_dir / str(datetime.now().date())
-dir_name = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
-result_dir = day_dir / dir_name
+result_dir /= DIR_NAME
 result_dir.mkdir(parents=True, exist_ok=True)
 
 ndim = len(LABELS)
@@ -155,7 +156,7 @@ print(f"rchi_sq: {rchi_sqs[0]:.2f}")
 if __name__ == "__main__":
     ncores = 100
     fit_params = {"nlive_init": 1000, "nlive_batch": 500, "ptform": ptform}
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=True)
 
     theta, uncertainties = get_best_fit(sampler)
     OPTIONS.model.components = components = set_components_from_theta(theta)
