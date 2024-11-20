@@ -84,7 +84,7 @@ cinc = Parameter(value=0.915, free=True, shared=True, base="cinc")
 with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
     temps = pickle.load(save_file)
 
-rin1 = Parameter(value=0.15107301, min=0, max=30, unit=u.au, free=False, base="rin")
+rin1 = Parameter(value=0.15107301, min=0, max=30, unit=u.au, free=True, base="rin")
 rout1 = Parameter(value=1.5, min=0, max=30, unit=u.au, free=True, base="rout")
 p1 = Parameter(value=0.5, min=-20, max=20, base="p")
 sigma01 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
@@ -92,7 +92,7 @@ c1 = Parameter(value=1, free=True, base="c")
 s1 = Parameter(value=1, free=True, base="s")
 
 rin2 = Parameter(value=2, min=0, max=30, unit=u.au, base="rin")
-rout2 = Parameter(value=4, unit=u.au, free=False, base="rout")
+rout2 = Parameter(value=4, unit=u.au, free=True, base="rout")
 p2 = Parameter(value=0.5, min=-30, max=20, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 
