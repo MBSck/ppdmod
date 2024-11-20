@@ -213,8 +213,6 @@ def compute_chi_sq(
     return -0.5 * (chi_sq + lnorm).sum()
 
 
-# TODO: Write tests (ASPRO) that tests multiple components with the total flux
-# TODO: Make it so that both point source and star can be used at the same time
 def compute_observables(
     components: List[Component],
     wavelength: np.ndarray | None = None,
@@ -241,13 +239,9 @@ def compute_observables(
             component.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength)
         )
 
-    complex_vis_comps = np.array(complex_vis_comps)
-    complex_t3_comps = np.array(complex_t3_comps)
-
-    # TODO: This summation is done twice, can it be reduced to once?
-    vis_model = complex_vis_comps.sum(axis=0)
-    flux_model = vis_model[:, 0].reshape(-1, 1)
-    t3_model = compute_t3(complex_t3_comps.sum(axis=0))
+    vis_model = np.sum(complex_vis_comps, axis=0)
+    flux_model = vis_model[:, 0].reshape(-1, 1) if vis_model.size > 0 else vis_model
+    t3_model = compute_t3(np.sum(complex_t3_comps, axis=0))
 
     if OPTIONS.model.output == "normed":
         vis_model /= flux_model
@@ -255,8 +249,10 @@ def compute_observables(
     if "vis2" in OPTIONS.fit.data:
         vis_model *= vis_model
 
+    vis_model = vis_model[:, 1:] if vis_model.size > 0 else vis_model
+    t3_model = t3_model[:, 1:] if t3_model.size > 0 else t3_model
     if flux_model.size > 0:
-        flux_model = np.tile(flux_model, (len(OPTIONS.data.readouts))).real
+        flux_model = np.tile(flux_model, len(OPTIONS.data.readouts)).real
 
     return flux_model, vis_model, t3_model
 
