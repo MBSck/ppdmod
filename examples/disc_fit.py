@@ -55,10 +55,10 @@ wavelengths = np.concatenate(
 data = set_data(
     fits_files,
     wavelengths=wavelengths,
-    fit_data=["flux", "vis"],
-    # fit_data=["t3"],
+    # fit_data=["flux", "vis"],
+    fit_data=["t3"],
     set_std_err=["mband"],
-    weights=[1.0, 0.02094934],
+    # weights=[1.0, 0.02094934],
     # weights=[1.0, 0.05184253, 0.00782729],
 )
 
@@ -80,7 +80,7 @@ grid, value = load_data(
 )
 kappa_cont = Parameter(grid=grid, value=value, base="kappa_cont")
 pa = Parameter(value=352, free=False, base="pa")
-cinc = Parameter(value=0.915, free=True, shared=True, base="cinc")
+cinc = Parameter(value=1.0, free=False, base="cinc")
 
 with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
     temps = pickle.load(save_file)
@@ -89,8 +89,8 @@ rin1 = Parameter(value=0.1, min=0, max=30, unit=u.au, free=False, base="rin")
 rout1 = Parameter(value=1.5, min=0, max=30, unit=u.au, free=True, base="rout")
 p1 = Parameter(value=0.5, min=-20, max=20, base="p")
 sigma01 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
-# c1 = Parameter(value=1, free=True, base="c")
-# s1 = Parameter(value=1, free=True, base="s")
+c1 = Parameter(value=1, free=True, base="c")
+s1 = Parameter(value=1, free=True, base="s")
 
 rin2 = Parameter(value=2, min=0, max=30, unit=u.au, base="rin")
 rout2 = Parameter(value=4, unit=u.au, free=False, base="rout")
@@ -121,14 +121,14 @@ inner_ring = GreyBody(
     sigma0=sigma01,
     **shared_params,
 )
-outer_ring = GreyBody(
+outer_ring = AsymGreyBody(
     label="Outer Ring",
     rin=rin2,
     rout=rout2,
     p=p2,
     sigma0=sigma02,
-    # c1=c1,
-    # s1=s1,
+    c1=c1,
+    s1=s1,
     **shared_params,
 )
 
@@ -137,11 +137,11 @@ LABELS = get_labels(components)
 
 DIR_NAME = None
 if DIR_NAME is None:
-    day_dir = Path(str(datetime.now().date()))
-    DIR_NAME = day_dir / f"results_model_{datetime.now().strftime('%H:%M:%S')}"
+    DIR_NAME = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 
 result_dir = Path("../model_results/") / "disc_fit"
-result_dir /= DIR_NAME
+day_dir = Path(str(datetime.now().date()))
+result_dir /= day_dir / DIR_NAME
 result_dir.mkdir(parents=True, exist_ok=True)
 
 ndim = len(LABELS)
@@ -157,7 +157,7 @@ print(f"rchi_sq: {rchi_sqs[0]:.2f}")
 if __name__ == "__main__":
     ncores = 100
     fit_params = {"nlive_init": 1000, "nlive_batch": 500, "ptform": ptform}
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=True)
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
 
     theta, uncertainties = get_best_fit(sampler)
     OPTIONS.model.components = components = set_components_from_theta(theta)
