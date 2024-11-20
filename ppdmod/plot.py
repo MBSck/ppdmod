@@ -1229,7 +1229,7 @@ def plot_interferometric_observables(
         vis_data.vcoord,
         components[1].cinc(),
         components[1].pa(),
-        rzero=False,
+        return_zero=False,
     )
     baseline_angles = baseline_angles.to(u.deg)
 
@@ -1286,7 +1286,7 @@ def plot_interferometric_observables(
             components[1].cinc(),
             components[1].pa(),
             longest=True,
-            rzero=False,
+            return_zero=False,
         )
         baseline_angles = baseline_angles.to(u.deg)
 

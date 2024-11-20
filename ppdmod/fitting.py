@@ -218,9 +218,6 @@ def compute_chi_sq(
 def compute_observables(
     components: List[Component],
     wavelength: np.ndarray | None = None,
-    rzero: bool = False,
-    rcomponents: bool = False,
-    rraw: bool = False,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Calculates the observables from the model.
 
@@ -230,72 +227,36 @@ def compute_observables(
         The components to be used in the model.
     wavelength : numpy.ndarray, optional
         The wavelength to be used in the model.
-    rzero : bool, optional
-        Whether to include the zero baseline.
-    rcomponents : bool, optional
-        Whether to return the individual components.
-    rraw : bool, optional
-        Whether to return the raw observables.
     """
     wavelength = OPTIONS.fit.wavelengths if wavelength is None else wavelength
     vis = OPTIONS.data.vis2 if "vis2" in OPTIONS.fit.data else OPTIONS.data.vis
+    t3 = OPTIONS.data.t3
 
     complex_vis_comps, complex_t3_comps = [], []
-    for component in [comp for comp in components if comp.name != "Point Source"]:
+    for component in components:
         complex_vis_comps.append(
             component.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
         )
         complex_t3_comps.append(
-            component.compute_complex_vis(
-                OPTIONS.data.t3.u123coord, OPTIONS.data.t3.v123coord, wavelength
-            )
+            component.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength)
         )
 
     complex_vis_comps = np.array(complex_vis_comps)
     complex_t3_comps = np.array(complex_t3_comps)
 
-    # TODO: Make this implementation work again
-    # for comp in components:
-    #     if "Point" == comp.name:
-    #         flux_ratio = comp.compute_flux(wavelength)
-    #         if OPTIONS.model.output == "normed":
-    #             stellar_flux = flux_ratio
-    #         else:
-    #             stellar_flux = (flux_model/(1-flux_ratio))*flux_ratio
-    #
-    #         flux_model += stellar_flux
-    #         # complex_vis_model += stellar_flux
-    #         # complex_t3_model += stellar_flux
-    #         break
-
     # TODO: This summation is done twice, can it be reduced to once?
-    flux_model = complex_vis_comps[..., 0].sum(axis=0).reshape(-1, 1)
+    vis_model = complex_vis_comps.sum(axis=0)
+    flux_model = vis_model[:, 0].reshape(-1, 1)
     t3_model = compute_t3(complex_t3_comps.sum(axis=0))
 
     if OPTIONS.model.output == "normed":
-        complex_vis_comps /= flux_model
-
-    if flux_model.size > 0:
-        flux_model = np.tile(flux_model, (len(OPTIONS.data.readouts))).real
-
-    if not rzero:
-        complex_vis_comps = complex_vis_comps[:, :, 1:]
-        if t3_model.size > 0:
-            t3_model = t3_model[:, 1:]
-
-    vis_model = complex_vis_comps.sum(axis=0)
-    if not rraw:
-        vis_model = compute_vis(vis_model)
+        vis_model /= flux_model
 
     if "vis2" in OPTIONS.fit.data:
         vis_model *= vis_model
 
-    if rcomponents:
-        vis_comps = compute_vis(complex_vis_comps)
-        if "vis2" in OPTIONS.fit.data:
-            vis_comps *= vis_comps
-
-        return flux_model, vis_model, t3_model, vis_comps
+    if flux_model.size > 0:
+        flux_model = np.tile(flux_model, (len(OPTIONS.data.readouts))).real
 
     return flux_model, vis_model, t3_model
 
