@@ -88,8 +88,8 @@ rin1 = Parameter(value=0.15107301, min=0, max=30, unit=u.au, free=False, base="r
 rout1 = Parameter(value=1.5, min=0, max=30, unit=u.au, free=True, base="rout")
 p1 = Parameter(value=0.5, min=-20, max=20, base="p")
 sigma01 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
-c1 = Parameter(value=1, free=True, shared=True, base="c")
-s1 = Parameter(value=1, free=True, shared=True, base="s")
+c1 = Parameter(value=1, free=True, base="c")
+s1 = Parameter(value=1, free=True, base="s")
 
 rin2 = Parameter(value=2, min=0, max=30, unit=u.au, base="rin")
 rout2 = Parameter(value=4, unit=u.au, free=False, base="rout")
@@ -105,8 +105,6 @@ shared_params = {
     "kappa_cont": kappa_cont,
     "pa": pa,
     "cinc": cinc,
-    "c1": c1,
-    "s1": s1,
     # "weights": temps.weights,
     # "radii": temps.radii,
     # "matrix": temps.values,
@@ -120,6 +118,8 @@ inner_ring = basic_components.AsymGreyBody(
     rout=rout1,
     p=p1,
     sigma0=sigma01,
+    c1=c1,
+    s1=s1,
     **shared_params,
 )
 outer_ring = basic_components.AsymGreyBody(
@@ -128,6 +128,8 @@ outer_ring = basic_components.AsymGreyBody(
     rout=rout2,
     p=p2,
     sigma0=sigma02,
+    c1=c1,
+    s1=s1,
     **shared_params,
 )
 
@@ -141,17 +143,17 @@ result_dir = day_dir / dir_name
 result_dir.mkdir(parents=True, exist_ok=True)
 
 ndim = len(LABELS)
-# rchi_sqs = compute_interferometric_chi_sq(
-#     *compute_observables(components),
-#     ndim=ndim,
-#     method="linear",
-#     reduced=True,
-# )
-# print(f"rchi_sq: {rchi_sqs[0]:.2f}")
+rchi_sqs = compute_interferometric_chi_sq(
+    *compute_observables(components),
+    ndim=ndim,
+    method="linear",
+    reduced=True,
+)
+print(f"rchi_sq: {rchi_sqs[0]:.2f}")
 
 
 if __name__ == "__main__":
-    ncores = 50
+    ncores = 100
     fit_params = {"nlive_init": 1000, "nlive_batch": 500, "ptform": ptform}
     sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
 
