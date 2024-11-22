@@ -55,10 +55,10 @@ wavelengths = np.concatenate(
 data = set_data(
     fits_files,
     wavelengths=wavelengths,
-    # fit_data=["flux", "vis"],
-    fit_data=["t3"],
+    fit_data=["flux", "vis"],
+    # fit_data=["t3"],
     set_std_err=["mband"],
-    # weights=[1.0, 0.02094934],
+    weights=[1.0, 0.02094934],
     # weights=[1.0, 0.05184253, 0.00782729],
 )
 
@@ -100,7 +100,7 @@ sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 shared_params = {
     "dim": 32,
     "dist": 158.51,
-    "eff_temp": 6500,
+    "eff_temp": 6750,
     "eff_radius": 3.46,
     "kappa_abs": kappa_abs,
     "kappa_cont": kappa_cont,
@@ -155,7 +155,7 @@ print(f"rchi_sq: {rchi_sqs[0]:.2f}")
 
 
 if __name__ == "__main__":
-    ncores = 100
+    ncores = 50
     fit_params = {"nlive_init": 1000, "nlive_batch": 500, "ptform": ptform}
     sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
 
