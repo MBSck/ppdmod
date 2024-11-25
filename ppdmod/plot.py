@@ -25,7 +25,6 @@ from .fitting import compute_observables, get_best_fit
 from .options import OPTIONS, get_colormap
 from .utils import (
     angular_to_distance,
-    distance_to_angular,
     compute_effective_baselines,
     distance_to_angular,
     restrict_phase,
@@ -60,78 +59,6 @@ def set_legend_color(legend: Legend, background_color: str) -> None:
     opposite_color = "white" if background_color == "black" else "black"
     plt.setp(legend.get_texts(), color=opposite_color)
     legend.get_frame().set_facecolor(background_color)
-
-
-def plot_component_mosaic(
-    components: List[FourierComponent],
-    dim: int,
-    pixel_size: u.mas,
-    norm: float = 0.5,
-    zoom: float = None,
-    cols: int = 4,
-    cmap: str = "inferno",
-    savefig: Path | None = None,
-) -> None:
-    """Plots a mosaic of components for the different wavelengths."""
-    wavelengths = OPTIONS.plot.ticks * u.um
-    num_plots = np.array(wavelengths).size
-    rows = int(np.ceil(num_plots / cols))
-    fig, axes = plt.subplots(
-        rows,
-        cols,
-        figsize=(20, 8),
-        gridspec_kw={"hspace": 0, "wspace": 0},
-        facecolor=OPTIONS.plot.color.background,
-    )
-
-    images = []
-    for index, (ax, wavelength) in enumerate(zip(axes.flatten(), wavelengths.value)):
-        _, top_ax, right_ax, image = plot_components(
-            components,
-            dim,
-            pixel_size,
-            wavelength,
-            no_text=True,
-            norm=norm,
-            zoom=zoom,
-            ax=ax,
-            cmap=cmap,
-        )
-
-        # set_axes_color(ax, "black", set_label=False, direction="in")
-        # set_axes_color(top_ax, "black", set_label=False, direction="in")
-        # set_axes_color(right_ax, "black", set_label=False, direction="in")
-
-        # if index // cols != 0:
-        #     top_ax.tick_params(top=False)
-        # if index // cols != (wavelength.size // cols) - 1:
-        #     ax.tick_params(bottom=False)
-        # if rows:
-        # ax.tick_params(labelbottom=False)
-
-        images.append(image)
-
-        ax.text(
-            0.18,
-            0.95,
-            rf"$\lambda$ = {wavelength} $\mathrm{{\mu}}$m",
-            transform=ax.transAxes,
-            fontsize=12,
-            color="white",
-            ha="center",
-        )
-
-    images = np.array(images)
-
-    [fig.delaxes(ax) for ax in axes.flatten()[num_plots:]]
-
-    plt.tight_layout()
-
-    if savefig is not None:
-        plt.savefig(savefig, format=Path(savefig).suffix[1:])
-    else:
-        plt.show()
-    plt.close()
 
 
 def plot_components(
@@ -219,6 +146,78 @@ def plot_components(
             plt.savefig(savefig, format=Path(savefig).suffix[1:])
 
         return ax, top_ax, right_ax, image
+
+
+def plot_component_mosaic(
+    components: List[FourierComponent],
+    dim: int,
+    pixel_size: u.mas,
+    norm: float = 0.5,
+    zoom: float = None,
+    cols: int = 4,
+    cmap: str = "inferno",
+    savefig: Path | None = None,
+) -> None:
+    """Plots a mosaic of components for the different wavelengths."""
+    wavelengths = OPTIONS.plot.ticks * u.um
+    num_plots = np.array(wavelengths).size
+    rows = int(np.ceil(num_plots / cols))
+    fig, axes = plt.subplots(
+        rows,
+        cols,
+        figsize=(20, 8),
+        gridspec_kw={"hspace": 0, "wspace": 0},
+        facecolor=OPTIONS.plot.color.background,
+    )
+
+    images = []
+    for index, (ax, wavelength) in enumerate(zip(axes.flatten(), wavelengths.value)):
+        _, top_ax, right_ax, image = plot_components(
+            components,
+            dim,
+            pixel_size,
+            wavelength,
+            no_text=True,
+            norm=norm,
+            zoom=zoom,
+            ax=ax,
+            cmap=cmap,
+        )
+
+        # set_axes_color(ax, "black", set_label=False, direction="in")
+        # set_axes_color(top_ax, "black", set_label=False, direction="in")
+        # set_axes_color(right_ax, "black", set_label=False, direction="in")
+
+        # if index // cols != 0:
+        #     top_ax.tick_params(top=False)
+        # if index // cols != (wavelength.size // cols) - 1:
+        #     ax.tick_params(bottom=False)
+        # if rows:
+        # ax.tick_params(labelbottom=False)
+
+        images.append(image)
+
+        ax.text(
+            0.18,
+            0.95,
+            rf"$\lambda$ = {wavelength} $\mathrm{{\mu}}$m",
+            transform=ax.transAxes,
+            fontsize=12,
+            color="white",
+            ha="center",
+        )
+
+    images = np.array(images)
+
+    [fig.delaxes(ax) for ax in axes.flatten()[num_plots:]]
+
+    plt.tight_layout()
+
+    if savefig is not None:
+        plt.savefig(savefig, format=Path(savefig).suffix[1:])
+    else:
+        plt.show()
+    plt.close()
 
 
 def format_labels(
@@ -337,6 +336,7 @@ def format_labels(
 
 
 def needs_sci_notation(ax):
+    """Checks if scientific notation is needed"""
     x_min, x_max = ax.get_xlim()
     y_min, y_max = ax.get_ylim()
     return (
@@ -347,7 +347,8 @@ def needs_sci_notation(ax):
     )
 
 
-def get_exponent(num):
+def get_exponent(num: float) -> int:
+    """Gets the exponent of a number for scientific notation"""
     if num == 0:
         raise ValueError("Number must be non-zero")
 
@@ -467,59 +468,9 @@ def plot_chains(
     plt.close()
 
 
-def plot_all(
-    model_file: Path,
-    pixel_size: u.mas,
-    wavelengths: u.um,
-    zoom: float = 25,
-    save_dir: Path | None = None,
-) -> None:
-    """Plots all the plots.
-
-    Parameters
-    ----------
-    model_file : pathlib.Path
-    pixel_size : astropy.units.Quantity
-    wavelengths : astropy.units.Quantity
-    zoom : float
-    """
-    for wavelength in wavelengths:
-        wavelength = wavelength.value
-        plot_model(
-            model_file,
-            data_type="image",
-            wavelength=wavelength,
-            pixel_size=pixel_size.value,
-            savefig=f"image{wavelength:.2f}.pdf",
-            zoom=zoom,
-        )
-    plot_model(
-        model_file, data_type="temperature", savefig=save_dir / "temperature.pdf"
-    )
-    plot_model(model_file, data_type="flux", savefig=save_dir / "flux.pdf")
-    plot_model(model_file, data_type="brightness", savefig=save_dir / "brightness.pdf")
-    plot_model(model_file, data_type="density", savefig=save_dir / "density.pdf")
-    plot_model(model_file, data_type="emissivity", savefig=save_dir / "emissivity.pdf")
-    plot_model(
-        model_file, data_type="depth", factor=0.505, savefig=save_dir / "depth.pdf"
-    )
-
-
-# TODO: Implement here Sebastian's code
-# def add_subplot_axes(ax, rect, axisbg='w'):
-#     axins = ax.inset_axes([0.5, 0.025, 0.49, 0.43])
-
-#     yhat_basaltic = savitzky_golay(fpfs_basaltic, 25, 4) # window size 51, polynomial order 3
-#     axins.plot(wvl_surf,yhat_basaltic, c='darkred', lw=2, label='basaltic')
-#     yhat_ultramafic = savitzky_golay(fpfs_ultramafic, 25, 4) # window size 51, polynomial order 3
-#     axins.plot(wvl_surf,yhat_ultramafic, c='r', ls=':', lw=2, label='ultramafic')
-#     yhat_granitoid = savitzky_golay(fpfs_granitoid, 25, 4) # window size 51, polynomial order 3
-#     axins.plot(wvl_surf,yhat_granitoid, c='orange', ls=':', lw=2, label='granitoid')
-# axins.errorbar([4.5], [380], xerr= [0.5], yerr = [40], fmt='.', c='k', label='Spitzer',
-#              markeredgecolor='k', markerfacecolor='w', markersize=12)
-
-
 class LogNorm(mcolors.Normalize):
+    """Gets the log norm."""
+
     def __init__(self, vmin=None, vmax=None, clip=False):
         super().__init__(vmin, vmax, clip)
 
@@ -531,172 +482,84 @@ class LogNorm(mcolors.Normalize):
         return np.expm1(value * np.log1p(self.vmax - self.vmin)) + self.vmin
 
 
-def plot_datapoints(
+def plot_data_vs_model(
     axarr,
-    wavelengths: u.um,
-    components: List | None = None,
-    data_to_plot: List[str] = OPTIONS.fit.data,
-    norm: np.ndarray | None = None,
-    wavelength_range: List[float] | None = None,
-    plot_nan: bool = False,
+    wavelengths: np.ndarray,
+    data: np.ndarray,
+    err: np.ndarray,
+    baselines: np.ndarray | None = None,
+    model_data: np.ndarray | None = None,
     colormap: str = OPTIONS.plot.color.colormap,
-) -> None:
-    """Plots the deviation of a model from real data of an object for
-    total flux, visibilities and closure phases.
-
-    Parameters
-    ----------
-    inclination : astropy.units.one
-        The axis ratio.
-    pos_angle : astropy.units.deg
-        The position angle.
-    data_to_plot : list of str, optional
-        The data to plot. The default is OPTIONS.fit.data.
-    savefig : pathlib.Path, optional
-        The save path. The default is None.
-    plot_nan : bool, optional
-        If True plots the model values at points where the real data
-        is nan (not found in the file for the wavelength specified).
-    """
+    norm=None,
+    plot_nan: bool = False,
+):
     colormap, alpha = get_colormap(colormap), 0.7
     hline_color = "gray" if OPTIONS.plot.color.background == "white" else "white"
-
-    flux, t3 = OPTIONS.data.flux, OPTIONS.data.t3
-    vis = OPTIONS.data.vis if "vis" in OPTIONS.fit.data else OPTIONS.data.vis2
-
-    flux_model, vis_model, t3_model = compute_observables(components)
-
-    pos_angle, inclination = components[0].pa(), components[0].cinc()
-    effective_baselines, _ = compute_effective_baselines(
-        vis.ucoord, vis.vcoord, inclination, pos_angle
-    )
-
-    if "t3" in data_to_plot:
-        longest_baselines, _ = compute_effective_baselines(
-            t3.u123coord, t3.v123coord, inclination, pos_angle, longest=True
-        )
-
-    errorbar_params = OPTIONS.plot.errorbar
-    scatter_params = OPTIONS.plot.scatter
+    errorbar_params, scatter_params = OPTIONS.plot.errorbar, OPTIONS.plot.scatter
     if OPTIONS.plot.color.background == "black":
         errorbar_params.markeredgecolor = "white"
         scatter_params.edgecolor = "white"
 
-    for index, wavelength in enumerate(wavelengths):
-        if wavelength_range is not None:
-            if not (wavelength_range[0] <= wavelength <= wavelength_range[1]):
-                continue
+    if len(axarr) == 2:
+        upper_ax, lower_ax = axarr
+    else:
+        upper_ax, lower_ax = axarr, None
 
-        effective_baselines_mlambda = (effective_baselines / wavelength.value)[1:]
-        if "t3" in data_to_plot:
-            longest_baselines_mlambda = (longest_baselines / wavelength.value)[1:]
+    set_axes_color(upper_ax, OPTIONS.plot.color.background)
+    set_axes_color(lower_ax, OPTIONS.plot.color.background)
 
-        color = colormap(norm(wavelength.value))
-        errorbar_params.color = scatter_params.color = color
+    color = colormap(norm(wavelengths.value))
+    if baselines is None:
+        grid = [wl.repeat(data.shape[-1]) for wl in wavelengths.value]
+    else:
+        grid = (baselines / wavelengths.value[:, np.newaxis])[:, 1:]
 
-        for key in data_to_plot:
-            ax_key = "vis" if key in ["vis", "vis2"] else key
-            upper_ax, lower_ax = axarr[ax_key]
-            set_axes_color(upper_ax, OPTIONS.plot.color.background)
-            set_axes_color(lower_ax, OPTIONS.plot.color.background)
+    if not plot_nan:
+        nan_indices = [~np.isnan(data)[index] for index, _ in enumerate(wavelengths)]
+        data = [data[i][index] for i, index in enumerate(nan_indices)]
+        err = [err[i][index] for i, index in enumerate(nan_indices)]
+        if model_data is not None:
+            model_data = [model_data[i][index] for i, index in enumerate(nan_indices)]
+        grid = [grid[i][index] for i, index in enumerate(nan_indices)]
 
-            if key == "flux":
-                if not plot_nan:
-                    nan_flux = ~np.isnan(flux.value[index])
-                else:
-                    nan_flux = None
+    for index, _ in enumerate(wavelengths.value):
+        errorbar_params.color = scatter_params.color = color[index]
+        upper_ax.errorbar(
+            grid[index],
+            data[index],
+            err[index],
+            alpha=alpha,
+            fmt="o",
+            **vars(errorbar_params),
+        )
+        if model_data is not None and lower_ax is not None:
+            upper_ax.scatter(
+                grid[index],
+                model_data[index],
+                marker="X",
+                **vars(scatter_params),
+            )
 
-                upper_ax.errorbar(
-                    wavelength.value.repeat(flux.err[index].size)[nan_flux],
-                    flux.value[index][nan_flux],
-                    flux.err[index][nan_flux],
-                    alpha=alpha,
-                    fmt="o",
-                    **vars(errorbar_params),
-                )
-                upper_ax.scatter(
-                    wavelength.value.repeat(flux.err[index].size)[nan_flux],
-                    flux_model[index][nan_flux],
-                    marker="X",
-                    **vars(scatter_params),
-                )
-                lower_ax.errorbar(
-                    wavelength.value.repeat(flux.err[index].size)[nan_flux],
-                    flux.value[index][nan_flux] - flux_model[index][nan_flux],
-                    flux.err[index][nan_flux],
-                    fmt="o",
-                    **vars(errorbar_params),
-                )
-                lower_ax.axhline(y=0, color=hline_color, linestyle="--")
+            # TODO: Think of how to include phase restriction here
+            diff = data[index] - model_data[index]
+            lower_ax.errorbar(
+                grid,
+                diff,
+                err[index],
+                fmt="o",
+                **vars(errorbar_params),
+            )
+            lower_ax.axhline(y=0, color=hline_color, linestyle="--")
 
-            if key in ["vis", "vis2"]:
-                if not plot_nan:
-                    nan_vis = ~np.isnan(vis.value[index])
-                else:
-                    nan_vis = None
-
-                upper_ax.errorbar(
-                    effective_baselines_mlambda.value[nan_vis],
-                    vis.value[index][nan_vis],
-                    vis.err[index][nan_vis],
-                    alpha=alpha,
-                    fmt="o",
-                    **vars(errorbar_params),
-                )
-                upper_ax.scatter(
-                    effective_baselines_mlambda.value[nan_vis],
-                    vis_model[index][nan_vis],
-                    marker="X",
-                    **vars(scatter_params),
-                )
-                lower_ax.errorbar(
-                    effective_baselines_mlambda.value[nan_vis],
-                    vis.value[index][nan_vis] - vis_model[index][nan_vis],
-                    vis.err[index][nan_vis],
-                    fmt="o",
-                    **vars(errorbar_params),
-                )
-                lower_ax.axhline(y=0, color=hline_color, linestyle="--")
-
-            if key == "t3":
-                if not plot_nan:
-                    nan_t3 = ~np.isnan(t3.value[index])
-                else:
-                    nan_t3 = None
-
-                upper_ax.errorbar(
-                    longest_baselines_mlambda.value[nan_t3],
-                    t3.value[index][nan_t3],
-                    t3.err[index][nan_t3],
-                    alpha=alpha,
-                    fmt="o",
-                    **vars(errorbar_params),
-                )
-                upper_ax.scatter(
-                    longest_baselines_mlambda.value[nan_t3],
-                    t3_model[index][nan_t3],
-                    marker="X",
-                    **vars(scatter_params),
-                )
-                upper_ax.axhline(y=0, color=hline_color, linestyle="--")
-                lower_ax.errorbar(
-                    longest_baselines_mlambda.value[nan_t3],
-                    restrict_phase(t3.value[index][nan_t3] - t3_model[index][nan_t3]),
-                    t3.err[index][nan_t3],
-                    fmt="o",
-                    **vars(errorbar_params),
-                )
-                lower_ax.axhline(y=0, color=hline_color, linestyle="--")
-
-    errorbar_params.color = None
+    errorbar_params.color = scatter_params.color = None
 
 
 def plot_fit(
     components: List | None = None,
-    data_to_plot: List[str | None] = None,
+    data_to_plot: List[str | None] | None = None,
     cmap: str = OPTIONS.plot.color.colormap,
     ylimits: Dict[str, List[float]] = {},
-    wavelength_range: List[float | None] = None,
+    wavelength_range: List[float | None] | None = None,
     plot_nan: bool = False,
     title: str | None = None,
     savefig: Path | None = None,
@@ -723,9 +586,13 @@ def plot_fit(
         The save path. The default is None.
     """
     data_to_plot = OPTIONS.fit.data if data_to_plot is None else data_to_plot
+    flux, t3 = OPTIONS.data.flux, OPTIONS.data.t3
+    vis = OPTIONS.data.vis if "vis" in data_to_plot else OPTIONS.data.vis2
     wavelengths = OPTIONS.fit.wavelengths
-    norm = LogNorm(vmin=wavelengths[0].value, vmax=wavelengths[-1].value)
 
+    norm = LogNorm(vmin=wavelengths[0].value, vmax=wavelengths[-1].value)
+    # TODO: Finish this
+    # data_to_plot = [key for key in data_to_plot]
     data_types, nplots = [], 0
     for key in data_to_plot:
         if key in ["vis", "vis2"] and "vis" not in data_types:
@@ -733,6 +600,9 @@ def plot_fit(
         else:
             data_types.append(key)
         nplots += 1
+
+    model_flux, model_vis, model_t3 = compute_observables(components)
+    pos_angle, inclination = components[0].pa(), components[0].cinc()
 
     figsize = (16, 5) if nplots == 3 else ((12, 5) if nplots == 2 else None)
     fig = plt.figure(figsize=figsize, facecolor=OPTIONS.plot.color.background)
@@ -751,16 +621,45 @@ def plot_fit(
         )
     }
 
-    plot_datapoints(
-        axarr,
-        wavelengths,
-        components=components,
-        wavelength_range=wavelength_range,
-        norm=norm,
-        data_to_plot=data_to_plot,
-        plot_nan=plot_nan,
-        colormap=cmap,
-    )
+    plot_kwargs = {"plot_nan": plot_nan, "norm": norm, "colormap": cmap}
+    if "flux" in data_to_plot:
+        plot_data_vs_model(
+            axarr["flux"],
+            wavelengths,
+            flux.value,
+            flux.err,
+            model_data=model_flux,
+            **plot_kwargs
+        )
+
+    if "vis" in data_to_plot or "vis2" in data_to_plot:
+        effective_baselines, _ = compute_effective_baselines(
+            vis.ucoord, vis.vcoord, inclination, pos_angle
+        )
+        plot_data_vs_model(
+            axarr["vis" if "vis" in data_to_plot else "vis2"],
+            wavelengths,
+            vis.value,
+            vis.err,
+            baselines=effective_baselines,
+            model_data=model_vis,
+            **plot_kwargs
+        )
+
+    if "t3" in data_to_plot:
+        longest_baselines, _ = compute_effective_baselines(
+            t3.u123coord, t3.v123coord, inclination, pos_angle, longest=True
+        )
+
+        plot_data_vs_model(
+            axarr["t3"],
+            wavelengths,
+            t3.value,
+            t3.err,
+            baselines=longest_baselines,
+            model_data=model_t3,
+            **plot_kwargs
+        )
 
     sm = cm.ScalarMappable(cmap=get_colormap(cmap), norm=norm)
     sm.set_array([])
