@@ -491,6 +491,7 @@ def plot_data_vs_model(
     baselines: np.ndarray | None = None,
     model_data: np.ndarray | None = None,
     colormap: str = OPTIONS.plot.color.colormap,
+    bands: List[str] | str = "all",
     norm=None,
     plot_nan: bool = False,
 ):
@@ -501,14 +502,22 @@ def plot_data_vs_model(
         errorbar_params.markeredgecolor = "white"
         scatter_params.edgecolor = "white"
 
-    if len(axarr) == 2:
+    wavelength_to_bands = np.array(list(map(get_band, wavelengths.value)))
+    band_indices = np.where(wavelength_to_bands.astype(bool))[0]
+    if bands != "all":
+        band_indices = np.where(np.any([wavelength_to_bands == band for band in bands], axis=0))
+
+    wavelengths = wavelengths[band_indices]
+    data, err = data[band_indices], err[band_indices]
+    model_data = model_data[band_indices] if model_data is not None else model_data
+
+    if isinstance(axarr, list):
         upper_ax, lower_ax = axarr
+        set_axes_color(lower_ax, OPTIONS.plot.color.background)
     else:
         upper_ax, lower_ax = axarr, None
 
     set_axes_color(upper_ax, OPTIONS.plot.color.background)
-    set_axes_color(lower_ax, OPTIONS.plot.color.background)
-
     color = colormap(norm(wavelengths.value))
     if baselines is None:
         grid = [wl.repeat(data.shape[-1]) for wl in wavelengths.value]
@@ -559,7 +568,7 @@ def plot_fit(
     components: List | None = None,
     data_to_plot: List[str | None] | None = None,
     cmap: str = OPTIONS.plot.color.colormap,
-    ylimits: Dict[str, List[float]] = {},
+    ylims: Dict[str, List[float]] = {},
     bands: List[str] | str = "all",
     plot_nan: bool = False,
     title: str | None = None,
@@ -626,20 +635,16 @@ def plot_fit(
             ],
         )
     }
-    wavelength_to_bands = np.array(list(map(get_band, wavelengths.value)))
-    band_indices = np.where(wavelength_to_bands.astype(bool))[0]
-    if bands != "all":
-        band_indices = np.where(np.any([wavelength_to_bands == band for band in bands], axis=0))
 
-    wavelengths = wavelengths[band_indices]
     plot_kwargs = {"plot_nan": plot_nan, "norm": norm, "colormap": cmap}
     if "flux" in data_to_plot:
         plot_data_vs_model(
             axarr["flux"],
             wavelengths,
-            flux.value[band_indices],
-            flux.err[band_indices],
-            model_data=model_flux[band_indices],
+            flux.value,
+            flux.err,
+            bands=bands,
+            model_data=model_flux,
             **plot_kwargs
         )
 
@@ -650,10 +655,11 @@ def plot_fit(
         plot_data_vs_model(
             axarr["vis" if "vis" in data_to_plot else "vis2"],
             wavelengths,
-            vis.value[band_indices],
-            vis.err[band_indices],
+            vis.value,
+            vis.err,
+            bands=bands,
             baselines=effective_baselines,
-            model_data=model_vis[band_indices],
+            model_data=model_vis,
             **plot_kwargs
         )
 
@@ -665,10 +671,11 @@ def plot_fit(
         plot_data_vs_model(
             axarr["t3"],
             wavelengths,
-            t3.value[band_indices],
-            t3.err[band_indices],
+            t3.value,
+            t3.err,
+            bands=bands,
             baselines=longest_baselines,
-            model_data=model_t3[band_indices],
+            model_data=model_t3,
             **plot_kwargs
         )
 
@@ -710,8 +717,8 @@ def plot_fit(
             lower_ax.set_ylabel("Residuals (Jy)")
             upper_ax.tick_params(**tick_settings)
             upper_ax.set_ylabel("Fluxes (Jy)")
-            if "flux" in ylimits:
-                upper_ax.set_ylim(ylimits["flux"])
+            if "flux" in ylims:
+                upper_ax.set_ylim(ylims["flux"])
             else:
                 upper_ax.set_ylim([0, None])
             if not len(axarr) > 1:
@@ -732,13 +739,13 @@ def plot_fit(
                     upper_ax.set_ylim([0, 1])
 
                 residual_label = f"Residuals ({unit})"
-                if "vis" in ylimits:
-                    upper_ax.set_ylim(ylimits["vis"])
+                if "vis" in ylims:
+                    upper_ax.set_ylim(ylims["vis"])
             else:
                 residual_label = "Residuals (Normalized)"
                 y_label = "Visibilities Squared (Normalized)"
-                if "vis2" in ylimits:
-                    upper_ax.set_ylim(ylimits["vis2"])
+                if "vis2" in ylims:
+                    upper_ax.set_ylim(ylims["vis2"])
                 else:
                     upper_ax.set_ylim([0, 1])
 
@@ -764,8 +771,8 @@ def plot_fit(
             upper_bound = t3.value[~nan_t3].max()
             upper_bound += upper_bound * 0.25
             upper_ax.tick_params(**tick_settings)
-            if "t3" in ylimits:
-                upper_ax.set_ylim(ylimits["t3"])
+            if "t3" in ylims:
+                upper_ax.set_ylim(ylims["t3"])
             else:
                 upper_ax.set_ylim([lower_bound, upper_bound])
 
@@ -787,12 +794,12 @@ def plot_fit(
 def plot_overview(
     data_to_plot: List[str | None] = None,
     colormap: str = OPTIONS.plot.color.colormap,
-    wavelength_range: List[float | None] = None,
-    ylimits: Dict[str, List[float]] = {},
+    ylims: Dict[str, List[float]] = {},
     title: str | None = None,
     raxis: bool = False,
     inclination: float | None = None,
     pos_angle: float | None = None,
+    bands: List[str] | str = "all",
     savefig: Path | None = None,
 ) -> None:
     """Plots an overview over the total data for baselines [Mlambda].
@@ -827,9 +834,6 @@ def plot_overview(
     axarr = axarr.flatten() if isinstance(axarr, np.ndarray) else [axarr]
     axarr = dict(zip(data_types, axarr))
 
-    colormap = get_colormap(colormap)
-    hline_color = "gray" if OPTIONS.plot.color.background == "white" else "white"
-
     flux, t3 = OPTIONS.data.flux, OPTIONS.data.t3
     vis = OPTIONS.data.vis if "vis" in OPTIONS.fit.data else OPTIONS.data.vis2
 
@@ -838,60 +842,45 @@ def plot_overview(
     if OPTIONS.plot.color.background == "black":
         errorbar_params.markeredgecolor = "white"
 
-    for index, wavelength in enumerate(wavelengths):
-        if wavelength_range is not None:
-            if not (wavelength_range[0] <= wavelength <= wavelength_range[1]):
-                continue
+    plot_kwargs = {"norm": norm, "colormap": colormap}
+    if "flux" in data_to_plot:
+        plot_data_vs_model(
+            axarr["flux"],
+            wavelengths,
+            flux.value,
+            flux.err,
+            bands=bands,
+            **plot_kwargs
+        )
 
+    if "vis" in data_to_plot or "vis2" in data_to_plot:
         effective_baselines, _ = compute_effective_baselines(
             vis.ucoord, vis.vcoord, inclination, pos_angle
         )
-        effective_baselines_mlambda = (effective_baselines / wavelength.value)[1:]
+        plot_data_vs_model(
+            axarr["vis" if "vis" in data_to_plot else "vis2"],
+            wavelengths,
+            vis.value,
+            vis.err,
+            bands=bands,
+            baselines=effective_baselines,
+            **plot_kwargs
+        )
 
-        if "t3" in data_to_plot:
-            longest_baselines, _ = compute_effective_baselines(
-                t3.u123coord, t3.v123coord, inclination, pos_angle, longest=True
-            )
-            longest_baselines, _ = compute_effective_baselines(
-                t3.u123coord, t3.v123coord, longest=True
-            )
-            longest_baselines_mlambda = (longest_baselines / wavelength.value)[1:]
+    if "t3" in data_to_plot:
+        longest_baselines, _ = compute_effective_baselines(
+            t3.u123coord, t3.v123coord, inclination, pos_angle, longest=True
+        )
 
-        color = colormap(norm(wavelength.value))
-        errorbar_params.color = color
-
-        for key in data_to_plot:
-            ax_key = "vis" if key in ["vis", "vis2"] else key
-            ax = axarr[ax_key]
-            if key == "flux":
-                ax.errorbar(
-                    wavelength.value.repeat(flux.err[index].size),
-                    flux.value[index],
-                    flux.err[index],
-                    fmt="o",
-                    **vars(errorbar_params),
-                )
-
-            if key in ["vis", "vis2"]:
-                ax.errorbar(
-                    effective_baselines_mlambda.value,
-                    vis.value[index],
-                    vis.err[index],
-                    fmt="o",
-                    **vars(errorbar_params),
-                )
-
-            if key == "t3":
-                ax.errorbar(
-                    longest_baselines_mlambda.value,
-                    t3.value[index],
-                    t3.err[index],
-                    fmt="o",
-                    **vars(errorbar_params),
-                )
-                ax.axhline(y=0, color=hline_color, linestyle="--")
-
-    errorbar_params.color = None
+        plot_data_vs_model(
+            axarr["t3"],
+            wavelengths,
+            t3.value,
+            t3.err,
+            bands=bands,
+            baselines=longest_baselines,
+            **plot_kwargs
+        )
 
     sm = cm.ScalarMappable(cmap=colormap, norm=norm)
     sm.set_array([])
@@ -917,8 +906,8 @@ def plot_overview(
         if key == "flux":
             ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
             ax.set_ylabel(r"$F_\nu$ (Jy)")
-            if "flux" in ylimits:
-                ax.set_ylim(ylimits["flux"])
+            if "flux" in ylims:
+                ax.set_ylim(ylims["flux"])
             else:
                 ax.set_ylim([0, None])
 
@@ -935,8 +924,8 @@ def plot_overview(
                 label = "$V$ (Normalized)"
 
             ax.set_ylabel(label)
-            if "vis" in ylimits:
-                ax.set_ylim(ylimits["vis"])
+            if "vis" in ylims:
+                ax.set_ylim(ylims["vis"])
             ax.set_ylim([0, None])
             ax.set_xlim([0, None])
             ax.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.2f"))
@@ -944,8 +933,8 @@ def plot_overview(
         if key == "vis2":
             ax.set_xlabel(label)
             ax.set_ylabel("Squared Visibilities (Normalized)")
-            if "vis2" in ylimits:
-                ax.set_ylim(ylimits["vis2"])
+            if "vis2" in ylims:
+                ax.set_ylim(ylims["vis2"])
             else:
                 ax.set_ylim([0, 1])
             ax.set_xlim([0, None])
@@ -959,8 +948,8 @@ def plot_overview(
             lower_bound += lower_bound * 0.25
             upper_bound = t3.value[~nan_t3].max()
             upper_bound += upper_bound * 0.25
-            if "t3" in ylimits:
-                ax.set_ylim(ylimits["t3"])
+            if "t3" in ylims:
+                ax.set_ylim(ylims["t3"])
             else:
                 ax.set_ylim([lower_bound, upper_bound])
             ax.set_xlim([0, None])
