@@ -28,6 +28,7 @@ from .utils import (
     compute_effective_baselines,
     distance_to_angular,
     restrict_phase,
+    get_band,
 )
 
 matplotlib.use("Agg")
@@ -543,7 +544,7 @@ def plot_data_vs_model(
             # TODO: Think of how to include phase restriction here
             diff = data[index] - model_data[index]
             lower_ax.errorbar(
-                grid,
+                grid[index],
                 diff,
                 err[index],
                 fmt="o",
@@ -559,7 +560,7 @@ def plot_fit(
     data_to_plot: List[str | None] | None = None,
     cmap: str = OPTIONS.plot.color.colormap,
     ylimits: Dict[str, List[float]] = {},
-    wavelength_range: List[float | None] | None = None,
+    bands: List[str] | str = "all",
     plot_nan: bool = False,
     title: str | None = None,
     savefig: Path | None = None,
@@ -575,6 +576,10 @@ def plot_fit(
         The position angle.
     data_to_plot : list of str, optional
         The data to plot. The default is OPTIONS.fit.data.
+    ylimits : dict of list of float, optional
+        The ylimits for the individual keys.
+    bands : list of str or str, optional
+        The bands to be plotted. The default is "all".
     cmap : str, optional
         The colormap.
     plot_nan : bool, optional
@@ -591,6 +596,7 @@ def plot_fit(
     wavelengths = OPTIONS.fit.wavelengths
 
     norm = LogNorm(vmin=wavelengths[0].value, vmax=wavelengths[-1].value)
+
     # TODO: Finish this
     # data_to_plot = [key for key in data_to_plot]
     data_types, nplots = [], 0
@@ -620,15 +626,20 @@ def plot_fit(
             ],
         )
     }
+    wavelength_to_bands = np.array(list(map(get_band, wavelengths.value)))
+    band_indices = np.where(wavelength_to_bands.astype(bool))[0]
+    if bands != "all":
+        band_indices = np.where(np.any([wavelength_to_bands == band for band in bands], axis=0))
 
+    wavelengths = wavelengths[band_indices]
     plot_kwargs = {"plot_nan": plot_nan, "norm": norm, "colormap": cmap}
     if "flux" in data_to_plot:
         plot_data_vs_model(
             axarr["flux"],
             wavelengths,
-            flux.value,
-            flux.err,
-            model_data=model_flux,
+            flux.value[band_indices],
+            flux.err[band_indices],
+            model_data=model_flux[band_indices],
             **plot_kwargs
         )
 
@@ -639,10 +650,10 @@ def plot_fit(
         plot_data_vs_model(
             axarr["vis" if "vis" in data_to_plot else "vis2"],
             wavelengths,
-            vis.value,
-            vis.err,
+            vis.value[band_indices],
+            vis.err[band_indices],
             baselines=effective_baselines,
-            model_data=model_vis,
+            model_data=model_vis[band_indices],
             **plot_kwargs
         )
 
@@ -654,10 +665,10 @@ def plot_fit(
         plot_data_vs_model(
             axarr["t3"],
             wavelengths,
-            t3.value,
-            t3.err,
+            t3.value[band_indices],
+            t3.err[band_indices],
             baselines=longest_baselines,
-            model_data=model_t3,
+            model_data=model_t3[band_indices],
             **plot_kwargs
         )
 

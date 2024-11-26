@@ -225,6 +225,7 @@ def distance_to_angular(diameter: u.au, distance: u.pc) -> u.mas:
     return ((diameter.to(u.m) / distance.to(u.m)) * u.rad).to(u.mas)
 
 
+# TODO: I think the return_zero here can be removed
 def compute_effective_baselines(
     ucoord: u.m,
     vcoord: u.m,
@@ -273,9 +274,6 @@ def compute_effective_baselines(
 
     baselines_eff = np.hypot(ucoord_eff, vcoord_eff)
     baseline_angles_eff = np.arctan2(vcoord_eff, ucoord_eff)
-
-    # HACK: For some reason all my phases are mirrored?
-    # baseline_angles_eff -= (180*u.deg).to(u.rad)
 
     if longest:
         indices = baselines_eff.argmax(0)
