@@ -1,7 +1,8 @@
 import re
 from itertools import chain, zip_longest
 from pathlib import Path
-from typing import Dict, List, Tuple
+from types import SimpleNamespace
+from typing import Any, Dict, List, Tuple
 
 import astropy.constants as const
 import astropy.units as u
@@ -27,8 +28,8 @@ from .utils import (
     angular_to_distance,
     compute_effective_baselines,
     distance_to_angular,
-    restrict_phase,
     get_band,
+    restrict_phase,
 )
 
 matplotlib.use("Agg")
@@ -81,14 +82,13 @@ def plot_components(
         [comp.compute_image(dim, pixel_size, wavelength) for comp in components]
     )
 
-    pixel_size *= u.mas
     if any(hasattr(component, "dist") for component in components):
         dist = [component for component in components if hasattr(component, "dist")][
             0
         ].dist()
         pixel_size = angular_to_distance(pixel_size, dist).to(u.au).value
 
-    extent = [sign * dim * pixel_size / 2 for sign in [-1, 1, 1, -1]]
+    extent = u.Quantity([sign * dim * pixel_size / 2 for sign in [-1, 1, 1, -1]])
     if save_as_fits:
         wcs = WCS(naxis=2)
         wcs.wcs.crpix = (dim // 2, dim // 2)
@@ -101,7 +101,11 @@ def plot_components(
             _, ax = plt.subplots(1, 1)
 
         ax.imshow(
-            image[0], extent=extent, norm=mcolors.PowerNorm(gamma=norm), cmap=cmap
+            image[0],
+            extent=extent,
+            norm=mcolors.PowerNorm(gamma=norm),
+            cmap=cmap,
+            origin="lower",
         )
 
         top_ax, right_ax = None, None
@@ -144,7 +148,7 @@ def plot_components(
         ax.set_ylabel(r"$\delta$ (au)")
 
         if savefig is not None:
-            plt.savefig(savefig, format=Path(savefig).suffix[1:])
+            plt.savefig(savefig, format=Path(savefig).suffix[1:], dpi=300)
 
         return ax, top_ax, right_ax, image
 
@@ -483,6 +487,88 @@ class LogNorm(mcolors.Normalize):
         return np.expm1(value * np.log1p(self.vmax - self.vmin)) + self.vmin
 
 
+def get_axis_information(key: str) -> Dict[str, Any]:
+    upper_ax, lower_ax = SimpleNamespace(), SimpleNamespace()
+    upper_ax.tick_params = {
+        "axis": "x",
+        "which": "both",
+        "bottom": True,
+        "top": False,
+        "labelbottom": False,
+    }
+    if key == "flux":
+        upper_ax.ylabel = "Fluxes (Jy)"
+        lower_ax.xlabel = r"$\lambda$ ($\mathrm{\mu}$m)"
+        lower_ax.y_label = "Residuals (Jy)"
+        # lower_ax.set_xlabel()
+        # lower_ax.set_ylabel()
+        # upper_ax.tick_params(**tick_settings)
+        # upper_ax.set_ylabel()
+        # if "flux" in ylims:
+        #     upper_ax.set_ylim(ylims["flux"])
+        # else:
+        #     upper_ax.set_ylim([0, None])
+        # if not len(axarr) > 1:
+        #     legend = upper_ax.legend(handles=[dot_label, x_label])
+        #     set_legend_color(legend, OPTIONS.plot.color.background)
+
+    if key in ["vis", "vis2"]:
+        lower_ax.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}$ (M$\lambda$)")
+
+        if key == "vis":
+            if OPTIONS.model.output != "normed":
+                y_label = "Correlated fluxes (Jy)"
+                upper_ax.set_ylim([0, None])
+                unit = "Jy"
+            else:
+                y_label = "Visibilities (Normalized)"
+                unit = "Normalized"
+                upper_ax.set_ylim([0, 1])
+
+            residual_label = f"Residuals ({unit})"
+            if "vis" in ylims:
+                upper_ax.set_ylim(ylims["vis"])
+        else:
+            residual_label = "Residuals (Normalized)"
+            y_label = "Visibilities Squared (Normalized)"
+            if "vis2" in ylims:
+                upper_ax.set_ylim(ylims["vis2"])
+            else:
+                upper_ax.set_ylim([0, 1])
+
+        upper_ax.set_xlim([0, None])
+        lower_ax.set_xlim([0, None])
+        lower_ax.set_ylabel(residual_label)
+        upper_ax.set_ylabel(y_label)
+        upper_ax.tick_params(**tick_settings)
+        upper_ax.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.2f"))
+
+        if not len(axarr) > 1:
+            legend = upper_ax.legend(handles=[dot_label, x_label])
+            set_legend_color(legend, OPTIONS.plot.color.background)
+
+    if key == "t3":
+        upper_ax.set_ylabel(r"Closure Phases ($^\circ$)")
+        lower_ax.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}$ (M$\lambda$)")
+        lower_ax.set_ylabel(r"Residuals ($^\circ$)")
+        t3 = OPTIONS.data.t3
+        nan_t3 = np.isnan(t3.value)
+        lower_bound = t3.value[~nan_t3].min()
+        lower_bound += lower_bound * 0.25
+        upper_bound = t3.value[~nan_t3].max()
+        upper_bound += upper_bound * 0.25
+        upper_ax.tick_params(**tick_settings)
+        if "t3" in ylims:
+            upper_ax.set_ylim(ylims["t3"])
+        else:
+            upper_ax.set_ylim([lower_bound, upper_bound])
+
+        upper_ax.set_xlim([0, None])
+        lower_ax.set_xlim([0, None])
+        legend = upper_ax.legend(handles=[dot_label, x_label])
+        set_legend_color(legend, OPTIONS.plot.color.background)
+
+
 def plot_data_vs_model(
     axarr,
     wavelengths: np.ndarray,
@@ -505,7 +591,9 @@ def plot_data_vs_model(
     wavelength_to_bands = np.array(list(map(get_band, wavelengths.value)))
     band_indices = np.where(wavelength_to_bands.astype(bool))[0]
     if bands != "all":
-        band_indices = np.where(np.any([wavelength_to_bands == band for band in bands], axis=0))
+        band_indices = np.where(
+            np.any([wavelength_to_bands == band for band in bands], axis=0)
+        )
 
     wavelengths = wavelengths[band_indices]
     data, err = data[band_indices], err[band_indices]
@@ -515,7 +603,7 @@ def plot_data_vs_model(
         upper_ax, lower_ax = axarr
         set_axes_color(lower_ax, OPTIONS.plot.color.background)
     else:
-        upper_ax, lower_ax = axarr, None
+        upper_ax, lower_ax, alpha = axarr, None, None
 
     set_axes_color(upper_ax, OPTIONS.plot.color.background)
     color = colormap(norm(wavelengths.value))
@@ -531,6 +619,8 @@ def plot_data_vs_model(
         if model_data is not None:
             model_data = [model_data[i][index] for i, index in enumerate(nan_indices)]
         grid = [grid[i][index] for i, index in enumerate(nan_indices)]
+
+    get_axis_information("flux")
 
     for index, _ in enumerate(wavelengths.value):
         errorbar_params.color = scatter_params.color = color[index]
@@ -645,7 +735,7 @@ def plot_fit(
             flux.err,
             bands=bands,
             model_data=model_flux,
-            **plot_kwargs
+            **plot_kwargs,
         )
 
     if "vis" in data_to_plot or "vis2" in data_to_plot:
@@ -660,7 +750,7 @@ def plot_fit(
             bands=bands,
             baselines=effective_baselines,
             model_data=model_vis,
-            **plot_kwargs
+            **plot_kwargs,
         )
 
     if "t3" in data_to_plot:
@@ -676,7 +766,7 @@ def plot_fit(
             bands=bands,
             baselines=longest_baselines,
             model_data=model_t3,
-            **plot_kwargs
+            **plot_kwargs,
         )
 
     sm = cm.ScalarMappable(cmap=get_colormap(cmap), norm=norm)
@@ -700,86 +790,6 @@ def plot_fit(
     x_label = mlines.Line2D(
         [], [], color=label_color, marker="X", linestyle="None", label="Model"
     )
-    tick_settings = {
-        "axis": "x",
-        "which": "both",
-        "bottom": True,
-        "top": False,
-        "labelbottom": False,
-    }
-
-    for key in data_to_plot:
-        ax_key = "vis" if key in ["vis", "vis2"] else key
-        upper_ax, lower_ax = axarr[ax_key]
-
-        if key == "flux":
-            lower_ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
-            lower_ax.set_ylabel("Residuals (Jy)")
-            upper_ax.tick_params(**tick_settings)
-            upper_ax.set_ylabel("Fluxes (Jy)")
-            if "flux" in ylims:
-                upper_ax.set_ylim(ylims["flux"])
-            else:
-                upper_ax.set_ylim([0, None])
-            if not len(axarr) > 1:
-                legend = upper_ax.legend(handles=[dot_label, x_label])
-                set_legend_color(legend, OPTIONS.plot.color.background)
-
-        if key in ["vis", "vis2"]:
-            lower_ax.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}$ (M$\lambda$)")
-
-            if key == "vis":
-                if OPTIONS.model.output != "normed":
-                    y_label = "Correlated fluxes (Jy)"
-                    upper_ax.set_ylim([0, None])
-                    unit = "Jy"
-                else:
-                    y_label = "Visibilities (Normalized)"
-                    unit = "Normalized"
-                    upper_ax.set_ylim([0, 1])
-
-                residual_label = f"Residuals ({unit})"
-                if "vis" in ylims:
-                    upper_ax.set_ylim(ylims["vis"])
-            else:
-                residual_label = "Residuals (Normalized)"
-                y_label = "Visibilities Squared (Normalized)"
-                if "vis2" in ylims:
-                    upper_ax.set_ylim(ylims["vis2"])
-                else:
-                    upper_ax.set_ylim([0, 1])
-
-            upper_ax.set_xlim([0, None])
-            lower_ax.set_xlim([0, None])
-            lower_ax.set_ylabel(residual_label)
-            upper_ax.set_ylabel(y_label)
-            upper_ax.tick_params(**tick_settings)
-            upper_ax.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.2f"))
-
-            if not len(axarr) > 1:
-                legend = upper_ax.legend(handles=[dot_label, x_label])
-                set_legend_color(legend, OPTIONS.plot.color.background)
-
-        if key == "t3":
-            upper_ax.set_ylabel(r"Closure Phases ($^\circ$)")
-            lower_ax.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}$ (M$\lambda$)")
-            lower_ax.set_ylabel(r"Residuals ($^\circ$)")
-            t3 = OPTIONS.data.t3
-            nan_t3 = np.isnan(t3.value)
-            lower_bound = t3.value[~nan_t3].min()
-            lower_bound += lower_bound * 0.25
-            upper_bound = t3.value[~nan_t3].max()
-            upper_bound += upper_bound * 0.25
-            upper_ax.tick_params(**tick_settings)
-            if "t3" in ylims:
-                upper_ax.set_ylim(ylims["t3"])
-            else:
-                upper_ax.set_ylim([lower_bound, upper_bound])
-
-            upper_ax.set_xlim([0, None])
-            lower_ax.set_xlim([0, None])
-            legend = upper_ax.legend(handles=[dot_label, x_label])
-            set_legend_color(legend, OPTIONS.plot.color.background)
 
     if title is not None:
         plt.title(title)
@@ -845,12 +855,7 @@ def plot_overview(
     plot_kwargs = {"norm": norm, "colormap": colormap}
     if "flux" in data_to_plot:
         plot_data_vs_model(
-            axarr["flux"],
-            wavelengths,
-            flux.value,
-            flux.err,
-            bands=bands,
-            **plot_kwargs
+            axarr["flux"], wavelengths, flux.value, flux.err, bands=bands, **plot_kwargs
         )
 
     if "vis" in data_to_plot or "vis2" in data_to_plot:
@@ -864,7 +869,7 @@ def plot_overview(
             vis.err,
             bands=bands,
             baselines=effective_baselines,
-            **plot_kwargs
+            **plot_kwargs,
         )
 
     if "t3" in data_to_plot:
@@ -879,7 +884,7 @@ def plot_overview(
             t3.err,
             bands=bands,
             baselines=longest_baselines,
-            **plot_kwargs
+            **plot_kwargs,
         )
 
     sm = cm.ScalarMappable(cmap=colormap, norm=norm)

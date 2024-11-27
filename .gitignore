@@ -19,6 +19,7 @@ data/opacities
 data/gravity
 
 # Results of tests
+tests/images/
 fluxes/
 component/
 opacities/
