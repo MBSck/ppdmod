@@ -1,38 +1,69 @@
 from pathlib import Path
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
-from ppdmod.basic_components import AsymmetricGreyBody, GreyBody, Ring, Star, StarHaloRing
-from ppdmod.data import set_data, get_all_wavelengths
+
+from ppdmod.basic_components import AsymGreyBody, GreyBody, Ring, Star
+from ppdmod.data import get_all_wavelengths, set_data
+from ppdmod.options import OPTIONS
 from ppdmod.parameter import Parameter
-from ppdmod.options import STANDARD_PARAMS, OPTIONS
 from ppdmod.plot import plot_components
-from ppdmod.utils import compute_photometric_slope, compute_t3, \
-    compute_vis, compute_stellar_radius, load_data, qval_to_opacity, get_opacity
+from ppdmod.utils import (
+    compute_photometric_slope,
+    compute_stellar_radius,
+    compute_t3,
+    compute_vis,
+    get_opacity,
+    load_data,
+    qval_to_opacity,
+)
+
+
+def image_ring(save_dir: Path) -> None:
+    OPTIONS.model.modulation = 3
+    modulation_amps = [(1, 0), (0, 0), (0, 0)]
+    modulation_amps = modulation_amps[: OPTIONS.model.modulation]
+    modulation_dict = {f"c{i+1}": amp[0] for i, amp in enumerate(modulation_amps)}
+    modulation_dict.update({f"s{i+1}": amp[1] for i, amp in enumerate(modulation_amps)})
+
+    dim, pixel_size, wl = 4096, 0.02, 3.5
+    params = {"rin": 2, "width": 0.5, "inc": 0.5, "pa": 33}
+
+    ring = Ring(
+        has_outer_radius=False, asymmetric=True, thin=False, **params, **modulation_dict
+    )
+
+    plot_components(
+        [ring],
+        dim,
+        pixel_size,
+        wl,
+        zoom=5,
+        savefig=save_dir / f"{ring.name}.png",
+        save_as_fits=False,
+        norm=1,
+    )
+
+    plot_components(
+        [ring],
+        dim,
+        pixel_size,
+        wl,
+        savefig=save_dir / f"{ring.name}.fits",
+        save_as_fits=True,
+    )
+
+    OPTIONS.model.modulation = 1
 
 
 if __name__ == "__main__":
-    DATA_DIR = Path("../data/fits/hd142527/")
-    fits_files = list((DATA_DIR).glob("*HAW*fits"))
+    fitting_dir = Path(__file__).parent.parent / "data" / "fits" / "hd142527"
+    fits_files = list((fitting_dir).glob("*_L_*.fits"))
     data = set_data(fits_files, wavelengths="all", fit_data=["vis2", "t3"])
-    wl = get_all_wavelengths()
 
-    result_dir = Path("results/")
-    test_dir = Path("results/test")
-    test_dir.mkdir(parents=True, exist_ok=True)
-
-    OPTIONS.model.modulation = 3
-    dim, pixel_size, wl = 4096, 0.02, 3.5
-    width = 0.5
-    inc, pa = 0.5, 33
-    c1, s1 = 1, 0
-    c2, s2 = 0, 0
-    c3, s3 = 0, 0
-         # ("cm_ring_rin2_rout25_inc05_pa33_c05_s05_w0_extended.fits", 2, 3.5, 0.5, 33, 0.5, [0.5, 1], [0.5, 0]),
-    ring = Ring(rin=2, has_outer_radius=False, width=width, inc=0.5, pa=33,
-                thin=False, asymmetric=True, c1=c1, s1=s1, c2=c2, s2=s2, c3=c3, s3=s3)
-    plot_components(ring, dim, pixel_size, wl, zoom=5,
-                    savefig=test_dir / f"{ring.name}.png", save_as_fits=False, norm=1)
-    plot_components(ring, dim, pixel_size, wl, savefig=test_dir / f"{ring.name}.fits", save_as_fits=True)
+    image_dir = Path("images/")
+    image_dir.mkdir(parents=True, exist_ok=True)
+    image_ring(image_dir / "test" / "ring")
 
     # DATA_DIR_NBAND = Path("../data")
     # weights = np.array([73.2, 8.6, 0.6, 14.2, 2.4, 1.0])/100
