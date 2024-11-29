@@ -91,10 +91,11 @@ def plot_components(
     extent = u.Quantity([sign * dim * pixel_size / 2 for sign in [-1, 1, 1, -1]])
     if save_as_fits:
         wcs = WCS(naxis=2)
-        wcs.wcs.crpix = (dim // 2, dim // 2)
-        wcs.wcs.cdelt = (pixel_size * u.mas.to(u.deg), pixel_size * u.mas.to(u.deg))
+        wcs.wcs.crpix = (dim / 2, dim / 2)
+        wcs.wcs.cdelt = (pixel_size * u.mas.to(u.rad), pixel_size * u.mas.to(u.rad))
         wcs.wcs.crval = (0.0, 0.0)
-        hdu = fits.HDUList([fits.PrimaryHDU(image, header=wcs.to_header())])
+        wcs.wcs.cunit = (u.rad, u.rad)
+        hdu = fits.HDUList([fits.PrimaryHDU(image[0], header=wcs.to_header())])
         hdu.writeto(savefig, overwrite=True)
     else:
         if ax is None:
@@ -105,7 +106,6 @@ def plot_components(
             extent=extent,
             norm=mcolors.PowerNorm(gamma=norm),
             cmap=cmap,
-            origin="lower",
         )
 
         top_ax, right_ax = None, None

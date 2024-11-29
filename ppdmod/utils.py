@@ -273,7 +273,7 @@ def compute_effective_baselines(
         ucoord_eff *= inclination
 
     baselines_eff = np.hypot(ucoord_eff, vcoord_eff)
-    baseline_angles_eff = np.arctan2(vcoord_eff, ucoord_eff)
+    baseline_angles_eff = np.arctan2(ucoord_eff, vcoord_eff)
 
     if longest:
         indices = baselines_eff.argmax(0)
@@ -676,9 +676,10 @@ def compute_t3(vis: np.ndarray) -> np.ndarray:
     """Computes the closure phase from the visibility function."""
     if vis.size == 0:
         return np.array([])
-    return np.angle(vis[:, 0] * vis[:, 1] * vis[:, 2].conj(), deg=True).astype(
-        OPTIONS.data.dtype.real
-    )
+
+    vis /= vis[:, :, 0][..., np.newaxis].real
+    bispectrum = vis[:, 0] * vis[:, 1] * vis[:, 2].conj()
+    return np.angle(bispectrum, deg=True).real
 
 
 def compute_vis(vis: np.ndarray) -> np.ndarray:
