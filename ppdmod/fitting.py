@@ -249,7 +249,7 @@ def compute_observables(
     if "vis2" in OPTIONS.fit.data:
         vis_model *= vis_model
 
-    vis_model = vis_model[:, 1:] if vis_model.size > 0 else vis_model
+    vis_model = compute_vis(vis_model[:, 1:] if vis_model.size > 0 else vis_model)
     t3_model = t3_model[:, 1:] if t3_model.size > 0 else t3_model
     if flux_model.size > 0:
         flux_model = np.tile(flux_model, len(OPTIONS.data.readouts)).real
