@@ -116,8 +116,8 @@ class ReadoutFits:
         v1coord, v2coord = map(lambda x: data.data[f"v{x}coord"], ["1", "2"])
 
         u3coord, v3coord = u1coord + u2coord, v1coord + v2coord
-        u123coord = np.array([u1coord, u2coord, -u3coord])
-        v123coord = np.array([v1coord, v2coord, -v3coord])
+        u123coord = np.array([u1coord, u2coord, u3coord])
+        v123coord = np.array([v1coord, v2coord, v3coord])
         return SimpleNamespace(
             value=value, err=err, u123coord=u123coord, v123coord=v123coord
         )

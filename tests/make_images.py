@@ -8,18 +8,18 @@ from ppdmod.plot import plot_components
 
 def image_ring(save_dir: Path) -> None:
     OPTIONS.model.modulation = 1
-    modulation_amps = [(1, 0), (0, 0), (0, 0)]
+    modulation_amps = [(-0.18, 0.98), (0, 0)]
     modulation_amps = modulation_amps[: OPTIONS.model.modulation]
     modulation_dict = {f"c{i+1}": amp[0] for i, amp in enumerate(modulation_amps)}
     modulation_dict.update({f"s{i+1}": amp[1] for i, amp in enumerate(modulation_amps)})
 
-    dim, pixel_size, wl = 4096, 0.02, 3.5
-    params = {"rin": 2, "width": 0.5, "cinc": 1, "pa": 0}
-    thin, asymmetric = False, False
+    asymmetric = True
+    dim, pixel_size, wl = 512, 0.02, 3.5
+    params = {"rin": 1.5, "width": 0.25, "cinc": 0.63, "pa": 68}
     ring = Ring(
         has_outer_radius=False,
         asymmetric=asymmetric,
-        thin=thin,
+        thin=False,
         **params,
         **modulation_dict,
     )

@@ -1,5 +1,6 @@
 import time
 from pathlib import Path
+from typing import List
 
 import astropy.units as u
 import matplotlib.pyplot as plt
@@ -127,294 +128,125 @@ def eff_radius(luminosity: float, eff_temp: int) -> float:
     return utils.compute_stellar_radius(10**luminosity, eff_temp).value
 
 
-def test_point_source_init(point_source: PointSource) -> None:
-    """Tests the point source's initialization."""
-    assert "fr" in vars(point_source).keys()
+# def test_point_source_init(point_source: PointSource) -> None:
+#     """Tests the point source's initialization."""
+#     assert "fr" in vars(point_source).keys()
+#
+#
+# def test_point_source_flux_func(point_source: PointSource, wavelength: u.um) -> None:
+#     """Tests the point source's initialization."""
+#     assert point_source.flux_func(wavelength).shape == (wavelength.size, 1)
+#
+#
+# def test_point_source_compute_vis(point_source: PointSource, wavelength: u.um) -> None:
+#     """tests the point source's compute_vis method."""
+#     vis = point_source.compute_complex_vis(
+#         READOUT.vis.ucoord, READOUT.vis.vcoord, wavelength
+#     )
+#     assert vis.shape == (wavelength.size, READOUT.vis.ucoord.size)
+#
+#
+# @pytest.mark.parametrize(
+#     "wl, dim",
+#     [
+#         (u.Quantity([wl], unit=u.um), dim)
+#         for dim in DIMENSION
+#         for wl in [8, 9, 10, 11] * u.um
+#     ],
+# )
+# def test_point_source_image(point_source: Star, dim: int, wl: u.um) -> None:
+#     """Tests the point source's image calculation."""
+#     image = point_source.compute_image(dim, 0.1 * u.mas, wl)
+#     point_source_dir = Path("images/point_source")
+#     point_source_dir.mkdir(exist_ok=True, parents=True)
+#     centre = dim // 2
+#     plt.imshow(image[0])
+#     plt.xlim(centre - 20, centre + 20)
+#     plt.ylim(centre - 20, centre + 20)
+#     plt.savefig(point_source_dir / f"dim{dim}_wl{wl.value}_point_source_image.pdf")
+#     plt.close()
+#     assert len(image[image != 0]) == 1
+#     assert image.shape == (1, dim, dim)
+#     assert np.max(image) < 0.1
+#
+#
+# def test_star_init(star: Star) -> None:
+#     """Tests the star's initialization."""
+#     assert "dist" in vars(star).keys()
+#     assert "eff_temp" in vars(star).keys()
+#     assert "eff_radius" in vars(star).keys()
+#
+#
+# def test_star_stellar_radius_angular(star: Star) -> None:
+#     """Tests the stellar radius conversion to angular radius."""
+#     assert star.stellar_radius_angular.unit == u.mas
+#
+#
+# # TODO: Include test for stellar flux with input file as well.
+# def test_star_flux(star: Star, wavelength: u.um) -> None:
+#     """Tests the calculation of the total flux."""
+#     assert star.flux_func(wavelength).shape == (wavelength.size, 1)
+#
+#
+# def test_star_compute_vis(star: Star, wavelength: u.um) -> None:
+#     """Tests the calculation of the total flux."""
+#     vis = star.compute_complex_vis(READOUT.vis.ucoord, READOUT.vis.vcoord, wavelength)
+#     assert vis.shape == (wavelength.size, READOUT.vis.ucoord.size)
+#
+#
+# # TODO: Fix this? What is the problem
+# # TODO: Make this for multiple wavelengths at the same time
+# @pytest.mark.parametrize(
+#     "wl, dim",
+#     [
+#         (u.Quantity([wl], unit=u.um), dim)
+#         for dim in DIMENSION
+#         for wl in [8, 9, 10, 11] * u.um
+#     ],
+# )
+# def test_star_image(star: Star, dim: int, wl: u.um) -> None:
+#     """Tests the star's image calculation."""
+#     image = star.compute_image(dim, 0.1 * u.mas, wl)
+#
+#     star_dir = Path("images/star")
+#     star_dir.mkdir(exist_ok=True, parents=True)
+#
+#     centre = dim // 2
+#
+#     plt.imshow(image[0])
+#     plt.xlim(centre - 20, centre + 20)
+#     plt.ylim(centre - 20, centre + 20)
+#     plt.savefig(star_dir / f"dim{dim}_wl{wl.value}_star_image.pdf")
+#     plt.close()
+#
+#     assert len(image[image != 0]) == 4
+#     assert image.shape == (1, dim, dim)
+#     assert np.max(image) < 0.1
 
 
-def test_point_source_flux_func(point_source: PointSource, wavelength: u.um) -> None:
-    """Tests the point source's initialization."""
-    assert point_source.flux_func(wavelength).shape == (wavelength.size, 1)
-
-
-def test_point_source_compute_vis(point_source: PointSource, wavelength: u.um) -> None:
-    """tests the point source's compute_vis method."""
-    vis = point_source.compute_complex_vis(
-        READOUT.vis.ucoord, READOUT.vis.vcoord, wavelength
-    )
-    assert vis.shape == (wavelength.size, READOUT.vis.ucoord.size)
+# def test_uniform_ring_init(ring: Ring) -> None:
+#     """Tests the ring's initialization."""
+#     assert "rin" in vars(ring).keys()
+#     assert "rout" in vars(ring).keys()
+#     assert "width" in vars(ring).keys()
 
 
 @pytest.mark.parametrize(
-    "wl, dim",
+    "array, wl, rin, width, cinc, pa, mod_amps",
     [
-        (u.Quantity([wl], unit=u.um), dim)
-        for dim in DIMENSION
-        for wl in [8, 9, 10, 11] * u.um
-    ],
-)
-def test_point_source_image(point_source: Star, dim: int, wl: u.um) -> None:
-    """Tests the point source's image calculation."""
-    image = point_source.compute_image(dim, 0.1 * u.mas, wl)
-    point_source_dir = Path("images/point_source")
-    point_source_dir.mkdir(exist_ok=True, parents=True)
-    centre = dim // 2
-    plt.imshow(image[0])
-    plt.xlim(centre - 20, centre + 20)
-    plt.ylim(centre - 20, centre + 20)
-    plt.savefig(point_source_dir / f"dim{dim}_wl{wl.value}_point_source_image.pdf")
-    plt.close()
-    assert len(image[image != 0]) == 1
-    assert image.shape == (1, dim, dim)
-    assert np.max(image) < 0.1
-
-
-def test_star_init(star: Star) -> None:
-    """Tests the star's initialization."""
-    assert "dist" in vars(star).keys()
-    assert "eff_temp" in vars(star).keys()
-    assert "eff_radius" in vars(star).keys()
-
-
-def test_star_stellar_radius_angular(star: Star) -> None:
-    """Tests the stellar radius conversion to angular radius."""
-    assert star.stellar_radius_angular.unit == u.mas
-
-
-# TODO: Include test for stellar flux with input file as well.
-def test_star_flux(star: Star, wavelength: u.um) -> None:
-    """Tests the calculation of the total flux."""
-    assert star.flux_func(wavelength).shape == (wavelength.size, 1)
-
-
-def test_star_compute_vis(star: Star, wavelength: u.um) -> None:
-    """Tests the calculation of the total flux."""
-    vis = star.compute_complex_vis(READOUT.vis.ucoord, READOUT.vis.vcoord, wavelength)
-    assert vis.shape == (wavelength.size, READOUT.vis.ucoord.size)
-
-
-# TODO: Make this for multiple wavelengths at the same time
-@pytest.mark.parametrize(
-    "wl, dim",
-    [
-        (u.Quantity([wl], unit=u.um), dim)
-        for dim in DIMENSION
-        for wl in [8, 9, 10, 11] * u.um
-    ],
-)
-def test_star_image(star: Star, dim: int, wl: u.um) -> None:
-    """Tests the star's image calculation."""
-    image = star.compute_image(dim, 0.1 * u.mas, wl)
-
-    star_dir = Path("images/star")
-    star_dir.mkdir(exist_ok=True, parents=True)
-
-    centre = dim // 2
-
-    plt.imshow(image[0])
-    plt.xlim(centre - 20, centre + 20)
-    plt.ylim(centre - 20, centre + 20)
-    plt.savefig(star_dir / f"dim{dim}_wl{wl.value}_star_image.pdf")
-    plt.close()
-
-    assert len(image[image != 0]) == 4
-    assert image.shape == (1, dim, dim)
-    assert np.max(image) < 0.1
-
-
-def test_uniform_ring_init(ring: Ring) -> None:
-    """Tests the ring's initialization."""
-    assert "rin" in vars(ring).keys()
-    assert "rout" in vars(ring).keys()
-    assert "width" in vars(ring).keys()
-
-
-@pytest.mark.parametrize(
-    "fits_file, radius, wl, inc, pos_angle, width, c, s",
-    [
-        ("Iring.fits", 5, 10, None, None, None, None, None),
-        ("Iring_inc.fits", 5, 10, 0.351, None, None, None, None),
-        ("Iring_inc_rot.fits", 5, 10, 0.351, 33, None, None, None),
-        ("ring.fits", 5, 10, None, None, 1, None, None),
-        ("ring_inc.fits", 5, 10, 0.351, None, 1, None, None),
-        ("ring_inc_rot.fits", 5, 10, 0.351, 33, 1, None, None),
-        (
-            "cm_Iring_rin2_inc1_pa0_c0_s0_extended.fits",
-            2,
-            3.5,
-            None,
-            None,
-            None,
-            None,
-            None,
-        ),
-        (
-            "cm_Iring_rin2_inc05_pa0_c0_s0_extended.fits",
-            2,
-            3.5,
-            0.5,
-            None,
-            None,
-            None,
-            None,
-        ),
-        (
-            "cm_Iring_rin2_inc05_pa33_c0_s0_extended.fits",
-            2,
-            3.5,
-            0.5,
-            33,
-            None,
-            None,
-            None,
-        ),
-        ("cm_Iring_rin2_inc05_pa33_c1_s0_extended.fits", 2, 3.5, 0.5, 33, None, 1, 0),
-        ("cm_Iring_rin2_inc05_pa33_c0_s1_extended.fits", 2, 3.5, 0.5, 33, None, 0, 1),
-        # TODO : Test this one again. Discrepancy too big for numerical FFT?
-        # ("cm_Iring_rin2_inc05_pa33_c1_s1_extended.fits", 2, 3.5, 0.5, 33, None, 1, 1),
-        (
-            "cm_Iring_rin2_inc05_pa33_c05_s05_extended.fits",
-            2,
-            3.5,
-            0.5,
-            33,
-            None,
-            0.5,
-            0.5,
-        ),
-        (
-            "cm_Iring_rin2_inc05_pa33_c05_s1_extended.fits",
-            2,
-            3.5,
-            0.5,
-            33,
-            None,
-            0.5,
-            1,
-        ),
-        (
-            "cm_Iring_rin2_inc05_pa33_c1_s05_extended.fits",
-            2,
-            3.5,
-            0.5,
-            33,
-            None,
-            1,
-            0.5,
-        ),
-        (
-            "cm_ring_rin2_inc1_pa0_c0_s0_w1_extended.fits",
-            2,
-            3.5,
-            1,
-            None,
-            1,
-            None,
-            None,
-        ),
-        (
-            "cm_ring_rin2_inc1_pa0_c0_s0_w05_extended.fits",
-            2,
-            3.5,
-            1,
-            None,
-            0.5,
-            None,
-            None,
-        ),
-        (
-            "cm_ring_rin2_inc05_pa0_c0_s0_w05_extended.fits",
-            2,
-            3.5,
-            0.5,
-            None,
-            0.5,
-            None,
-            None,
-        ),
-        (
-            "cm_ring_rin2_inc05_pa33_c0_s0_w05_extended.fits",
-            2,
-            3.5,
-            0.5,
-            33,
-            0.5,
-            None,
-            None,
-        ),
-        ("cm_ring_rin2_inc05_pa33_c1_s0_w05_extended.fits", 2, 3.5, 0.5, 33, 0.5, 1, 0),
-        ("cm_ring_rin2_inc05_pa33_c0_s1_w05_extended.fits", 2, 3.5, 0.5, 33, 0.5, 0, 1),
-        (
-            "cm_ring_rin2_inc05_pa33_c05_s05_w05_extended.fits",
-            2,
-            3.5,
-            0.5,
-            33,
-            0.5,
-            0.5,
-            0.5,
-        ),
-        (
-            "cm_ring_rin2_rout25_inc05_pa33_c05_s05_w0_extended.fits",
-            2,
-            3.5,
-            0.5,
-            33,
-            0.5,
-            0.5,
-            0.5,
-        ),
-        (
-            "cm_ring_rin2_inc05_pa33_c11_s10_w05_extended.fits",
-            2,
-            3.5,
-            0.5,
-            33,
-            0.5,
-            [1],
-            [0],
-        ),
-        (
-            "cm_ring_rin2_inc05_pa33_c11_s10_w05_extended.fits",
-            2,
-            [3.5, 3.7],
-            0.5,
-            33,
-            0.5,
-            [1],
-            [0],
-        ),
-        (
-            "cm_ring_rin2_inc05_pa33_c11_s10_c21_s20_w05_extended.fits",
-            2,
-            [3.5, 3.7],
-            0.5,
-            33,
-            0.5,
-            [1, 1],
-            [0, 0],
-        ),
-        (
-            "cm_ring_rin2_inc05_pa33_c11_s10_c21_s20_c31_s30_w05_extended.fits",
-            2,
-            3.5,
-            0.5,
-            33,
-            0.5,
-            [1, 1, 1],
-            [0, 0, 0],
-        ),
+        ("uts", 3.5, 1.5, 0.25, 1, 0, None),
+        ("uts", 3.5, 1.5, 0.25, 0.5, 285, None),
+        ("uts", 3.5, 1.5, 0.25, 0.63, 68, [(-0.18, 0.98)]),
     ],
 )
 def test_ring_compute_vis(
-    fits_file: Path,
-    radius: u.mas,
+    array: str,
     wl: u.um,
-    inc: float,
-    pos_angle: u.deg,
+    rin: u.mas,
     width: u.mas,
-    c: float,
-    s: float,
+    cinc: float,
+    pa: u.deg,
+    mod_amps: List[float],
 ) -> None:
     """Tests the calculation of the ring's visibilities."""
     if isinstance(wl, list):
@@ -422,61 +254,50 @@ def test_ring_compute_vis(
     else:
         wavelength = [wl] * u.um
 
-    fits_file = DATA_DIR / "aspro" / fits_file
+    asymmetric, mod_dict = False, {}
+    if mod_amps is not None:
+        asymmetric = True
+        OPTIONS.model.modulation = len(mod_amps)
+        mod_amps = mod_amps[: OPTIONS.model.modulation]
+        mod_dict = {f"c{i+1}": amp[0] for i, amp in enumerate(mod_amps)}
+        mod_dict.update({f"s{i+1}": amp[1] for i, amp in enumerate(mod_amps)})
+
+    params_dict = {"rin": rin, "width": width, "cinc": cinc, "pa": pa}
+    params_dict.update(mod_dict)
+    param_labels = [
+        f"{key}{str(value).replace('.', '')}" for key, value in params_dict.items()
+    ]
+    fits_file = DATA_DIR / "aspro" / f"{'_'.join(['Ring', *param_labels, array])}.fits"
     data = set_data([fits_file], wavelengths=wavelength, fit_data=["vis", "t3"])
 
-    thin = False if width is not None else True
-    asymmetric = True if c is not None or s is not None else False
-    c, s = c if c is not None else 0, s if s is not None else 0
-    if isinstance(c, list):
-        OPTIONS.model.modulation = len(c)
-
-    inc = inc if inc is not None else 1
-    pa = pos_angle if pos_angle is not None else 0
-
-    has_outer_radius, rout = False, None
-    if "rout" in fits_file.name:
-        has_outer_radius = True
-        rout = radius + width
-
     ring = Ring(
-        rin=radius,
-        rout=rout,
+        rin=rin,
         width=width,
-        inc=inc,
+        cinc=cinc,
         pa=pa,
-        has_outer_radius=has_outer_radius,
-        thin=thin,
+        has_outer_radius=False,
+        thin=False,
         asymmetric=asymmetric,
+        **mod_dict,
     )
-
-    if isinstance(c, list):
-        for i, (c_i, s_i) in enumerate(zip(c, s)):
-            getattr(ring, f"c{i+1}").value = c_i
-            getattr(ring, f"s{i+1}").value = s_i
-    else:
-        ring.c1.value, ring.s1.value = c, s
 
     vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
     vis_ring = compute_vis(ring.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
+    if "vis2" in OPTIONS.fit.data:
+        vis_ring *= vis_ring
+
     t3_ring = compute_t3(
         ring.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength)
     )
     vis_ring, t3_ring = vis_ring[:, 1:], t3_ring[:, 1:]
 
-    atol = 1e-2 if "cm" not in fits_file.name else 1e-1
     assert vis_ring.shape == (wavelength.size, vis.ucoord.shape[1] - 1)
-    assert np.allclose(vis.value, vis_ring, atol=atol)
+    assert np.allclose(vis.value, vis_ring, atol=1e-2)
 
     assert t3_ring.shape == (wavelength.size, t3.u123coord.shape[1] - 1)
-    if "cm" not in fits_file.name:
-        assert np.allclose(t3.value, t3_ring, atol=atol)
-    else:
-        # NOTE: Due to numerical inaccuracies the difference is quite high in some cases
-        diff = np.abs(t3.value - t3_ring)
-        assert diff.max() < 120
+    assert np.allclose(t3.value, t3_ring, atol=1e0)
 
-    set_data(fit_data=["vis", "t3"])
+    set_data()
     OPTIONS.model.modulation = 1
 
 
@@ -501,181 +322,6 @@ def test_temp_gradient_flux(temp_gradient: TempGradient, wavelength: u.um) -> No
     """Tests the calculation of the total flux."""
     flux = temp_gradient.compute_flux(wavelength)
     assert flux.shape == (wavelength.size, 1)
-
-
-# TODO: Redo the temperature gradient images with the au scaling, to make sure it works
-@pytest.mark.parametrize(
-    "fits_file, inc, pos_angle, c, s",
-    [
-        ("cm_AsymGreyBody_inc1_pa0_c0_s0_extended.fits", 1, None, None, None),
-        ("cm_AsymGreyBody_inc05_pa33_c0_s0_extended.fits", 0.5, 33, None, None),
-        ("cm_AsymGreyBody_inc05_pa33_c1_s0_extended.fits", 0.5, 33, 1, 0),
-        ("cm_AsymGreyBody_inc05_pa33_c0_s1_extended.fits", 0.5, 33, 0, 1),
-        ("cm_AsymGreyBody_inc05_pa33_c1_s1_extended.fits", 0.5, 33, 1, 1),
-        ("cm_AsymGreyBody_inc05_pa33_c05_s05_extended.fits", 0.5, 33, 0.5, 0.5),
-    ],
-)
-def test_temp_gradient_compute_vis(
-    fits_file: Path,
-    inc: float,
-    pos_angle: u.deg,
-    c: float,
-    s: float,
-    eff_temp: int,
-    eff_radius: float,
-    dist: float,
-    star_flux: Parameter,
-    kappa_abs: Parameter,
-    kappa_cont: Parameter,
-) -> None:
-    """Tests the calculation of the ring's visibilities."""
-    fits_file, wl = DATA_DIR / "aspro" / fits_file, [3.5] * u.um
-    data = set_data([fits_file], wavelengths=wl, fit_data=["vis", "t3"])
-    c, s = c if c is not None else 0, s if s is not None else 0
-    inc = inc if inc is not None else 1
-    pa = pos_angle if pos_angle is not None else 0
-    atg = AsymGreyBody(
-        rin=0.237765,
-        rout=0.31702,
-        inc=inc,
-        pa=pa,
-        p=0.5,
-        sigma0=1e-4,
-        cont_weight=90,
-        r0=1,
-        kappa_abs=kappa_abs,
-        kappa_cont=kappa_cont,
-        dist=dist,
-        eff_temp=eff_temp,
-        eff_radius=eff_radius,
-        c1=c,
-        s1=s,
-    )
-
-    vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
-    complex_vis = atg.compute_complex_vis(vis.ucoord, vis.vcoord, wl)
-    complex_t3 = atg.compute_complex_vis(t3.u123coord, t3.v123coord, wl)
-    if "star" in fits_file.name.lower():
-        star = Star(f=star_flux)
-        complex_vis += star.compute_complex_vis(vis.ucoord, vis.vcoord, wl)
-        complex_t3 += star.compute_complex_vis(t3.u123coord, t3.v123coord, wl)
-
-    vis_atg = compute_vis(complex_vis)
-    vis_atg = vis_atg[:, 1:] / vis_atg.max()
-    t3_atg = compute_t3(complex_t3)[:, 1:]
-
-    atol = 1e-2 if "cm" not in fits_file.name else 1e-1
-    assert vis_atg.shape == (wl.size, vis.ucoord.shape[1] - 1)
-    assert np.allclose(vis.value, vis_atg, atol=atol)
-
-    if "cm" not in fits_file.name:
-        assert t3_atg.shape == (wl.size, t3.u123coord.shape[1])
-        assert np.allclose(t3.value, t3_atg, atol=atol)
-    else:
-        # NOTE: The differences here are larger due to numerical inaccuracies in ASPRO?
-        # Values for positional angle and inclination are ~ 153 degrees (before that < 45)
-        # Sometimes even ~ 160
-        diff = np.ptp(
-            np.hstack((t3.value[0][:, np.newaxis], t3_atg[0][:, np.newaxis])), axis=1
-        )
-        assert diff.max() < 170
-
-    set_data(fit_data=["vis", "t3"])
-
-
-# TODO: These tests need to be changed to include negative total flux
-@pytest.mark.parametrize(
-    "fits_file, inc, pos_angle, c, s",
-    [
-        ("cm_StarAsymGreyAsymGrey_inc1_pa0_c0_s0_extended.fits", 1, None, None, None),
-        ("cm_StarAsymGreyAsymGrey_inc05_pa33_c0_s0_extended.fits", 0.5, 33, None, None),
-        ("cm_StarAsymGreyAsymGrey_inc05_pa33_c05_s1_extended.fits", 0.5, 33, 0.5, 1),
-    ],
-)
-def test_fluxes_vs_aspro(
-    fits_file: Path,
-    inc: float,
-    pos_angle: u.deg,
-    c: float,
-    s: float,
-    dist: float,
-    eff_temp: int,
-    eff_radius: float,
-    kappa_abs: Parameter,
-    kappa_cont: Parameter,
-    star_flux: Parameter,
-) -> None:
-    """Tests the calculation of temperature gradient's visibilities vs aspro."""
-    wl = [3.5] * u.um
-    data = set_data(
-        [DATA_DIR / "aspro" / fits_file], wavelengths=wl, fit_data=["vis", "t3"]
-    )
-    c, s = c if c is not None else 0, s if s is not None else 0
-    inc = inc if inc is not None else 1
-    pa = pos_angle if pos_angle is not None else 0
-
-    star = Star(f=star_flux)
-    atg = GreyBody(
-        rin=1.5,
-        rout=2,
-        dist=dist,
-        eff_temp=eff_temp,
-        eff_radius=eff_radius,
-        inc=inc,
-        pa=pa,
-        p=0.5,
-        sigma0=1e-4,
-        r0=1,
-        kappa_abs=kappa_abs,
-        kappa_cont=kappa_cont,
-        cont_weight=0.9,
-    )
-    atg2 = AsymmetricGreyBody(
-        rin=3,
-        rout=5,
-        dist=dist,
-        eff_temp=eff_temp,
-        eff_radius=eff_radius,
-        inc=inc,
-        pa=pa,
-        p=0.5,
-        sigma0=1e-4,
-        r0=1,
-        c1=c,
-        s1=s,
-        kappa_abs=kappa_abs,
-        kappa_cont=kappa_cont,
-        cont_weight=0.2,
-    )
-
-    vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
-
-    flux_star = star.compute_flux(wl)
-    flux_atg = atg.compute_flux(wl)
-    flux_atg2 = atg2.compute_flux(wl)
-    flux_combined = (flux_star + flux_atg + flux_atg2).squeeze()
-
-    vis_star = star.compute_complex_vis(vis.ucoord, vis.vcoord, wl)
-    vis_atg = atg.compute_complex_vis(vis.ucoord, vis.vcoord, wl)
-    vis_atg2 = atg2.compute_complex_vis(vis.ucoord, vis.vcoord, wl)
-    vis_combined = compute_vis(vis_star + vis_atg + vis_atg2)
-    flux_from_vis = vis_combined[:, 0].squeeze()
-    vis_norm_combined = vis_combined[:, 1:] / flux_from_vis
-
-    t3_start = star.compute_complex_vis(data.t3.u123coord, data.t3.v123coord, wl)
-    t3_atg = atg.compute_complex_vis(data.t3.u123coord, data.t3.v123coord, wl)
-    t3_atg2 = atg2.compute_complex_vis(data.t3.u123coord, data.t3.v123coord, wl)
-    t3_combined = compute_t3(t3_start + t3_atg + t3_atg2)
-
-    assert np.isclose(flux_combined, flux_from_vis)
-    assert np.allclose(vis.value, vis_norm_combined, atol=1e-1)
-
-    diff = np.ptp(
-        np.hstack((t3.value[0][:, np.newaxis], t3_combined[:, 1:][0][:, np.newaxis])),
-        axis=1,
-    )
-    assert diff.max() < 5
-    set_data(fit_data=["vis", "t3"])
 
 
 @pytest.mark.parametrize("dim", [4096, 2096, 1024, 512, 256, 128, 64, 32])

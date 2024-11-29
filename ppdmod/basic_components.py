@@ -355,10 +355,10 @@ class Ring(FourierComponent):
 
             radius = radius.to(u.rad)
             vis = _vis_func(2 * np.pi * radius * baselines)
-            if intensity_func is not None:
-                vis = np.trapz(radius * intensity * vis, radius).to(u.Jy)
-            else:
+            if intensity_func is None:
                 vis = np.trapz(vis, radius)
+            else:
+                vis = np.trapz(radius * intensity * vis, radius).to(u.Jy)
 
             if intensity_func is None:
                 if self.has_outer_radius:
@@ -409,7 +409,8 @@ class Ring(FourierComponent):
 
         image = intensity * radial_profile
         if self.asymmetric:
-            polar_angle, modulations = np.arctan2(xx, yy), []
+            # TODO: Is this polar angle calculation correct? -> Check that
+            polar_angle, modulations = np.arctan2(yy, xx), []
             for i in range(1, OPTIONS.model.modulation + 1):
                 c, s = getattr(self, f"c{i}")(), getattr(self, f"s{i}")()
                 modulations.append(
