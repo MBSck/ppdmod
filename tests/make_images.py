@@ -1,37 +1,34 @@
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
 
-import numpy as np
-
-from ppdmod.basic_components import AsymGreyBody, GreyBody, Ring, Star
-from ppdmod.data import get_all_wavelengths, set_data
+from ppdmod.basic_components import Ring
+from ppdmod.data import set_data
 from ppdmod.options import OPTIONS
-from ppdmod.parameter import Parameter
 from ppdmod.plot import plot_components
-from ppdmod.utils import (
-    compute_photometric_slope,
-    compute_stellar_radius,
-    compute_t3,
-    compute_vis,
-    get_opacity,
-    load_data,
-    qval_to_opacity,
-)
 
 
 def image_ring(save_dir: Path) -> None:
-    OPTIONS.model.modulation = 3
+    OPTIONS.model.modulation = 1
     modulation_amps = [(1, 0), (0, 0), (0, 0)]
     modulation_amps = modulation_amps[: OPTIONS.model.modulation]
     modulation_dict = {f"c{i+1}": amp[0] for i, amp in enumerate(modulation_amps)}
     modulation_dict.update({f"s{i+1}": amp[1] for i, amp in enumerate(modulation_amps)})
 
     dim, pixel_size, wl = 4096, 0.02, 3.5
-    params = {"rin": 2, "width": 0.5, "inc": 0.5, "pa": 33}
-
+    params = {"rin": 2, "width": 0.5, "cinc": 1, "pa": 0}
+    thin, asymmetric = False, False
     ring = Ring(
-        has_outer_radius=False, asymmetric=True, thin=False, **params, **modulation_dict
+        has_outer_radius=False,
+        asymmetric=asymmetric,
+        thin=thin,
+        **params,
+        **modulation_dict,
     )
+
+    param_labels = [f"{key}{value}" for key, value in params.items()]
+    if asymmetric:
+        param_labels.extend([f"{key}{value}" for key, value in modulation_dict.items()])
+
+    save_name = "_".join([label for label in [ring.name, *param_labels] if label]).replace(".", "")
 
     plot_components(
         [ring],
@@ -39,7 +36,7 @@ def image_ring(save_dir: Path) -> None:
         pixel_size,
         wl,
         zoom=5,
-        savefig=save_dir / f"{ring.name}.png",
+        savefig=save_dir / f"{save_name}.png",
         save_as_fits=False,
         norm=1,
     )
@@ -49,7 +46,7 @@ def image_ring(save_dir: Path) -> None:
         dim,
         pixel_size,
         wl,
-        savefig=save_dir / f"{ring.name}.fits",
+        savefig=save_dir / f"{save_name}.fits",
         save_as_fits=True,
     )
 
@@ -63,7 +60,7 @@ if __name__ == "__main__":
 
     image_dir = Path("images/")
     image_dir.mkdir(parents=True, exist_ok=True)
-    image_ring(image_dir / "test" / "ring")
+    image_ring(image_dir / "ring")
 
     # DATA_DIR_NBAND = Path("../data")
     # weights = np.array([73.2, 8.6, 0.6, 14.2, 2.4, 1.0])/100
