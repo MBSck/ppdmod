@@ -58,9 +58,7 @@ data = set_data(
     wavelengths=wavelengths,
     fit_data=["flux", "vis"],
     # fit_data=["t3"],
-    set_std_err=["mband"],
-    # weights=[1.0, 0.03301841],
-    # weights=[1.0, 0.05184253, 0.00782729],
+    weights=[1.0, 0.00699423],
     average=True,
 )
 
