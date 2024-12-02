@@ -82,7 +82,7 @@ grid, value = load_data(
 )
 kappa_cont = Parameter(grid=grid, value=value, base="kappa_cont")
 pa = Parameter(value=352, free=False, base="pa")
-cinc = Parameter(value=1.0, free=False, base="cinc")
+cinc = Parameter(value=1.0, free=True, base="cinc")
 
 with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
     temps = pickle.load(save_file)
@@ -123,21 +123,21 @@ inner_ring = GreyBody(
     sigma0=sigma01,
     **shared_params,
 )
-outer_ring = AsymGreyBody(
+outer_ring = GreyBody(
     label="Outer Ring",
     rin=rin2,
     rout=rout2,
     p=p2,
     sigma0=sigma02,
-    c1=c1,
-    s1=s1,
+    # c1=c1,
+    # s1=s1,
     **shared_params,
 )
 
 OPTIONS.model.components = components = [star, inner_ring, outer_ring]
 LABELS = get_labels(components)
 
-DIR_NAME = None
+DIR_NAME = "test_average"
 if DIR_NAME is None:
     DIR_NAME = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 

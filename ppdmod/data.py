@@ -25,6 +25,7 @@ class ReadoutFits:
     ) -> None:
         """The class's constructor."""
         self.fits_file = Path(fits_file)
+        self.name = self.fits_file.name
         self.wavelength_range = wavelength_range
         self.band = "unknown"
         self.read_file()
@@ -246,6 +247,7 @@ def set_data(
     wavelength_range: u.Quantity[u.um] | None = None,
     set_std_err: List[str] = ["mband"],
     min_err: float = 0.05,
+    average: bool = False,
     **kwargs,
 ) -> SimpleNamespace:
     """Sets the data as a global variable from the input files.
@@ -270,12 +272,11 @@ def set_data(
         Default is ["mband"].
     min_err : float, optional
         The minimum error of the data to be kept. Will set the error to be that at least.
+    average : bool, optional
+        If toggled will average the flux over all files and set an offset for the correlated fluxes/visibilities.
     """
+    fit_data = OPTIONS.fit.data = OPTIONS.fit.data if fit_data is None else fit_data
     OPTIONS.data.readouts = []
-
-    fit_data = OPTIONS.fit.data if fit_data is None else fit_data
-    OPTIONS.fit.data = fit_data
-
     for key in ["flux", "vis", "vis2", "t3"]:
         data = getattr(OPTIONS.data, key)
         data.value, data.err = [np.array([]) for _ in range(2)]
@@ -301,6 +302,8 @@ def set_data(
         raise ValueError("No wavelengths given and/or not 'all' specified!")
 
     wavelengths = set_fit_wavelengths(wavelengths)
+
+    nbaselines = []
     for readout in OPTIONS.data.readouts:
         for key in fit_data:
             data = getattr(OPTIONS.data, key)
@@ -313,7 +316,7 @@ def set_data(
 
             if key in ["vis", "vis2", "t3"]:
                 ind = np.where(np.abs(err / value) < min_err)
-                err[ind] = np.abs(value[ind]) * min_err
+                err[ind] += np.abs(value[ind]) * min_err
 
             if data.value.size == 0:
                 data.value, data.err = value, err
@@ -333,6 +336,9 @@ def set_data(
                         (data.vcoord, data_readout.vcoord), axis=-1
                     )
 
+                # TODO: If both vis2 and vis is fit this might not work
+                nbaselines.append(data_readout.ucoord.size)
+
             elif key == "t3":
                 if data.u123coord.size == 0:
                     data.u123coord = np.insert(data_readout.u123coord, 0, 0, axis=1)
@@ -351,6 +357,42 @@ def set_data(
             err_ind = np.where(np.abs(band_std / band_data) < min_err)
             band_std[err_ind] = np.abs(band_data[err_ind]) * min_err
             data.err[ind, :] = band_std
+
+    # TODO: Convert all arrays to masked arrays here
+    if average:
+        fluxdata = OPTIONS.data.flux
+        visdata = OPTIONS.data.vis2 if "vis2" in fit_data else OPTIONS.data.vis
+        flux, flux_err = (
+            np.ma.masked_invalid(fluxdata.value),
+            np.ma.masked_invalid(fluxdata.err),
+        )
+        flux_averaged = np.ma.average(flux, weights=1 / flux_err**2, axis=-1)
+        flux_std = np.ma.std(flux, axis=-1) / np.ma.sqrt(np.ma.count(flux, axis=-1))
+        inv_sigma = 1 / np.ma.sum(flux_err, axis=-1)
+        flux_err_averaged = np.sqrt(inv_sigma**2 + flux_std**2)
+        ind = np.where(flux_err_averaged < flux_averaged * 0.05)
+        flux_err_averaged[ind] += np.sqrt(
+            inv_sigma[ind] ** 2 + flux_std[ind] ** 2 + (flux_averaged[ind] * 0.05) ** 2
+        )
+        flux_averaged, flux_err_averaged = (
+            flux_averaged.data[:, np.newaxis],
+            flux_err_averaged.data[:, np.newaxis],
+        )
+
+        OPTIONS.data.flux.value = flux_averaged
+        OPTIONS.data.flux.err = flux_err_averaged
+
+        flux_ratio = flux / flux_averaged
+        vis = np.ma.masked_invalid(visdata.value)
+
+        split_indices = np.cumsum(nbaselines[:-1])
+        for index, current_slice in enumerate(split_indices):
+            prev_slice = None if index == 0 else split_indices[index - 1]
+            current_slice = current_slice if index != len(split_indices) - 1 else None
+            OPTIONS.data.vis.value[:, prev_slice:current_slice] = (
+                vis[:, prev_slice:current_slice].data
+                * flux_ratio[:, index].data[:, np.newaxis]
+            )
 
     if weights is not None:
         for key, weight in zip(OPTIONS.fit.data, weights):
