@@ -13,6 +13,11 @@ from scipy.special import j1
 from .options import OPTIONS
 
 
+def windowed_linspace(start: float, end: float, window: float) -> np.ndarray:
+    """Creates a numpy.linspace with a number of points so that the windowing doesn't overlap"""
+    return np.linspace(start, end, int((end - start) // (2 * window)) + 1)
+
+
 def get_band_limits(band: str) -> Tuple[float, float]:
     """Gets the limits of the respective band"""
     match band:

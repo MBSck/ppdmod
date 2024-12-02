@@ -13,7 +13,7 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 import astropy.units as u
 import numpy as np
 
-from ppdmod.basic_components import Star, GreyBody, AsymGreyBody
+from ppdmod.basic_components import AsymGreyBody, GreyBody, Star
 from ppdmod.data import set_data
 from ppdmod.fitting import (
     compute_interferometric_chi_sq,
@@ -26,20 +26,21 @@ from ppdmod.fitting import (
 )
 from ppdmod.options import OPTIONS
 from ppdmod.parameter import Parameter
-from ppdmod.utils import load_data, qval_to_opacity
+from ppdmod.utils import load_data, qval_to_opacity, windowed_linspace
 
 
 def ptform(theta: List[float]) -> np.ndarray:
     return ptform_sequential_radii(theta, LABELS)
 
 
+binning = OPTIONS.data.binning
 DATA_DIR = Path(__file__).parent.parent / "data"
 wavelengths = {
     "hband": [1.7] * u.um,
     "kband": [2.15] * u.um,
-    "lband": np.linspace(3.1, 3.4, 6) * u.um,
-    "mband": np.linspace(4.7, 4.9, 4) * u.um,
-    "nband": np.linspace(8, 15, 35) * u.um,
+    "lband": windowed_linspace(3.1, 3.4, binning.lband.value) * u.um,
+    "mband": windowed_linspace(4.7, 4.9, binning.mband.value) * u.um,
+    "nband": windowed_linspace(8, 13, binning.nband.value) * u.um,
 }
 
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
@@ -55,11 +56,12 @@ wavelengths = np.concatenate(
 data = set_data(
     fits_files,
     wavelengths=wavelengths,
-    # fit_data=["flux", "vis"],
-    fit_data=["t3"],
+    fit_data=["flux", "vis"],
+    # fit_data=["t3"],
     set_std_err=["mband"],
     # weights=[1.0, 0.03301841],
     # weights=[1.0, 0.05184253, 0.00782729],
+    average=True,
 )
 
 grid, value = np.loadtxt(
