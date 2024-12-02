@@ -86,7 +86,7 @@ def plot_components(
         dist = [component for component in components if hasattr(component, "dist")][
             0
         ].dist()
-        pixel_size = angular_to_distance(pixel_size, dist).to(u.au).value
+        pixel_size = angular_to_distance(pixel_size * u.mas, dist).to(u.au).value
 
     extent = u.Quantity([sign * dim * pixel_size / 2 for sign in [-1, 1, 1, -1]])
     if save_as_fits:
