@@ -80,7 +80,7 @@ grid, value = load_data(
 )
 kappa_cont = Parameter(grid=grid, value=value, base="kappa_cont")
 pa = Parameter(value=352, free=False, base="pa")
-cinc = Parameter(value=1.0, free=True, base="cinc")
+cinc = Parameter(value=1.0, free=True, shared=True, base="cinc")
 
 with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
     temps = pickle.load(save_file)
@@ -157,7 +157,7 @@ ndim = len(LABELS)
 if __name__ == "__main__":
     ncores = 50
     fit_params = {"nlive_init": 1000, "nlive_batch": 500, "ptform": ptform}
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=True)
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
 
     theta, uncertainties = get_best_fit(sampler)
     OPTIONS.model.components = components = set_components_from_theta(theta)
