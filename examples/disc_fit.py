@@ -56,9 +56,11 @@ wavelengths = np.concatenate(
 data = set_data(
     fits_files,
     wavelengths=wavelengths,
-    fit_data=["flux", "vis"],
+    # fit_data=["flux", "vis"],
+    fit_data=["flux", "vis", "t3"],
     # fit_data=["t3"],
-    weights=[1.0, 0.00699423],
+    # weights=[1.0, 0.00699423],
+    weights=[1.0, 0.04419693, 0.11344363],
     average=True,
 )
 
