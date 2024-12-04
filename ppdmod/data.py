@@ -32,16 +32,7 @@ class ReadoutFits:
 
     def read_file(self) -> None:
         """Reads the data of the (.fits)-files into vectors."""
-        try:
-            hdul = fits.open(self.fits_file)
-        # TODO: This will also have a problem opening anything else than a (.fits)-file
-        except OSError:
-            hdul = None
-            wl, flux, flux_err = np.loadtxt(self.fits_file, unpack=True)
-            self.wavelength = wl * u.um
-            self.flux = SimpleNamespace(value=flux, err=flux_err)
-
-        if hdul is not None:
+        with fits.open(self.fits_file) as hdul:
             instrument = None
             if "instrume" in hdul[0].header:
                 instrument = hdul[0].header["instrume"].lower()
@@ -59,6 +50,7 @@ class ReadoutFits:
                 )
                 self.wavelength = self.wavelength[indices]
 
+            self.array = self.read_into_namespace(hdul, "array")
             self.flux = self.read_into_namespace(
                 hdul, "flux", sci_index, wl_index, indices
             )
@@ -69,7 +61,6 @@ class ReadoutFits:
             self.vis2 = self.read_into_namespace(
                 hdul, "vis2", sci_index, wl_index, indices
             )
-            hdul.close()
 
     def read_into_namespace(
         self,
@@ -90,6 +81,12 @@ class ReadoutFits:
                 vcoord=np.array([]).reshape(1, -1),
             )
 
+        if key == "array":
+            return SimpleNamespace(
+                tel_names=data.data["tel_name"].reshape(1, -1),
+                sta_index=data.data["sta_index"].reshape(1, -1),
+            )
+
         if key == "flux":
             try:
                 return SimpleNamespace(
@@ -99,16 +96,20 @@ class ReadoutFits:
             except KeyError:
                 return SimpleNamespace(value=np.array([]), err=np.array([]))
 
+        # TODO: There might be keyerrors here
         if key in ["vis", "vis2"]:
             if key == "vis":
                 value_key, err_key = "visamp", "visamperr"
             else:
                 value_key, err_key = "vis2data", "vis2err"
+
+            sta_index = data.data["sta_index"]
             return SimpleNamespace(
                 value=data.data[value_key][:, wl_index:][:, indices],
                 err=data.data[err_key][:, wl_index:][:, indices],
                 ucoord=data.data["ucoord"].reshape(1, -1),
                 vcoord=data.data["vcoord"].reshape(1, -1),
+                sta_index=sta_index.reshape(1, *sta_index.shape),
             )
 
         value = data.data["t3phi"][:, wl_index:][:, indices]
@@ -119,6 +120,9 @@ class ReadoutFits:
         u3coord, v3coord = u1coord + u2coord, v1coord + v2coord
         u123coord = np.array([u1coord, u2coord, u3coord])
         v123coord = np.array([v1coord, v2coord, v3coord])
+
+        # x = data.data["sta_index"][0].tolist()
+        # comb = [(x[i], x[(i + 1) % len(x)]) for i in range(len(x))]
         return SimpleNamespace(
             value=value, err=err, u123coord=u123coord, v123coord=v123coord
         )
@@ -239,44 +243,11 @@ def get_counts_data() -> np.ndarray[int]:
     return np.array(counts)
 
 
-def set_data(
-    fits_files: List[Path] | None = None,
-    wavelengths: str | u.Quantity[u.um] | None = None,
-    fit_data: List[str] = ["flux", "vis", "t3"],
-    weights: List[float] | None = None,
-    wavelength_range: u.Quantity[u.um] | None = None,
-    set_std_err: List[str] = ["mband"],
-    min_err: float = 0.05,
-    average: bool = False,
-    **kwargs,
-) -> SimpleNamespace:
-    """Sets the data as a global variable from the input files.
-
-    If called without parameters or recalled, it will clear the data.
-
-    Parameters
-    ----------
-    fits_files : list of Path
-        The paths to the MATISSE (.fits)-files.
-    wavelengts : str or numpy.ndarray
-        The wavelengths to be fitted as a numpy array or "all" if all are to be
-        fitted.
-    fit_data : list of str, optional
-        The data to be fitted.
-    weights : list of float, optional
-        The weights of the fit parameters from the observed data.
-    wavelength_range : astropy.units.um, optional
-        A range of wavelengths to be kept. Other wavelengths will be omitted.
-    set_std_err : list of str, optional
-        The data to be set the standard error from the variance of the datasets from.
-        Default is ["mband"].
-    min_err : float, optional
-        The minimum error of the data to be kept. Will set the error to be that at least.
-    average : bool, optional
-        If toggled will average the flux over all files and set an offset for the correlated fluxes/visibilities.
-    """
-    fit_data = OPTIONS.fit.data = OPTIONS.fit.data if fit_data is None else fit_data
+def clear_data() -> List[str]:
+    """Clears data and returns the keys of the cleared data."""
+    OPTIONS.fit.wavelengths = None
     OPTIONS.data.readouts = []
+
     for key in ["flux", "vis", "vis2", "t3"]:
         data = getattr(OPTIONS.data, key)
         data.value, data.err = [np.array([]) for _ in range(2)]
@@ -285,34 +256,27 @@ def set_data(
         elif key in "t3":
             data.u123coord, data.v123coord = [np.array([]) for _ in range(2)]
 
-    OPTIONS.fit.wavelengths = None
-    if fits_files is None:
-        return
+    return ["flux", "vis", "vis2", "t3"]
 
-    OPTIONS.data.readouts = list(
-        map(partial(ReadoutFits, wavelength_range=wavelength_range), fits_files)
-    )
-    OPTIONS.data.bands = list(map(lambda x: x.band, OPTIONS.data.readouts))
 
-    no_binning = False
-    if wavelengths == "all":
-        wavelengths = get_all_wavelengths(OPTIONS.data.readouts)
-        no_binning = True
-    elif wavelengths is None:
-        raise ValueError("No wavelengths given and/or not 'all' specified!")
-
-    wavelengths = set_fit_wavelengths(wavelengths)
-
-    nbaselines = []
+# TODO: Convert all arrays to masked arrays here
+def read_data(
+    data_to_read: List[str], wavelengths: u.um, min_err: float
+) -> None:
+    """Reads in the data from the keys."""
+    OPTIONS.data.nbaselines = []
+    # TODO: Make sure to avoid error if vis doesn't exists in OIFITS file
     for readout in OPTIONS.data.readouts:
-        for key in fit_data:
+        for key in data_to_read:
             data = getattr(OPTIONS.data, key)
             data_readout = getattr(readout, key)
 
             value = readout.get_data_for_wavelength(
-                wavelengths, key, "value", no_binning
+                wavelengths, key, "value", OPTIONS.data.no_binning
             )
-            err = readout.get_data_for_wavelength(wavelengths, key, "err", no_binning)
+            err = readout.get_data_for_wavelength(
+                wavelengths, key, "err", OPTIONS.data.no_binning
+            )
 
             if key in ["vis", "vis2", "t3"]:
                 ind = np.where(np.abs(err / value) < min_err)
@@ -336,8 +300,8 @@ def set_data(
                         (data.vcoord, data_readout.vcoord), axis=-1
                     )
 
-                # TODO: If both vis2 and vis is fit this might not work
-                nbaselines.append(data_readout.ucoord.size)
+                if key == "vis2":
+                    OPTIONS.data.nbaselines.append(data_readout.ucoord.size)
 
             elif key == "t3":
                 if data.u123coord.size == 0:
@@ -347,7 +311,50 @@ def set_data(
                     data.u123coord = np.hstack((data.u123coord, data_readout.u123coord))
                     data.v123coord = np.hstack((data.v123coord, data_readout.v123coord))
 
-    for key in fit_data:
+
+def average_data() -> None:
+    """Averages the flux data and applys a correction factor to the correlated flux."""
+    fluxdata = OPTIONS.data.flux
+    flux, flux_err = (
+        np.ma.masked_invalid(fluxdata.value),
+        np.ma.masked_invalid(fluxdata.err),
+    )
+    flux_averaged = np.ma.average(flux, weights=1 / flux_err**2, axis=-1)
+    flux_std = np.ma.std(flux, axis=-1) / np.ma.sqrt(np.ma.count(flux, axis=-1))
+    inv_sigma = 1 / np.ma.sum(flux_err, axis=-1)
+    flux_err_averaged = np.sqrt(inv_sigma**2 + flux_std**2)
+    ind = np.where(flux_err_averaged < flux_averaged * 0.05)
+    flux_err_averaged[ind] += np.sqrt(
+        inv_sigma[ind] ** 2 + flux_std[ind] ** 2 + (flux_averaged[ind] * 0.05) ** 2
+    )
+    flux_averaged, flux_err_averaged = (
+        flux_averaged.data[:, np.newaxis],
+        flux_err_averaged.data[:, np.newaxis],
+    )
+
+    OPTIONS.data.flux.value = flux_averaged
+    OPTIONS.data.flux.err = flux_err_averaged
+
+    flux_ratio = flux / flux_averaged
+    for key in ["vis", "vis2"]:
+        data = getattr(OPTIONS.data, key)
+        values = np.ma.masked_invalid(data.value)
+
+        split_indices = np.cumsum(OPTIONS.data.nbaselines[:-1])
+        for index, current_slice in enumerate(split_indices):
+            prev_slice = None if index == 0 else split_indices[index - 1]
+            current_slice = current_slice if index != len(split_indices) - 1 else None
+            data.value[:, prev_slice:current_slice] = (
+                values.data[:, prev_slice:current_slice]
+                * flux_ratio.data[:, index][:, np.newaxis]
+            )
+
+
+def correct_data_errors(
+    data_to_read: List[str], wavelengths: u.um, set_std_err: List[str], min_err: float
+) -> None:
+    """Corrects the errors for the data."""
+    for key in data_to_read:
         data = getattr(OPTIONS.data, key)
         bands = np.array(list(map(get_band, wavelengths)))
         for band in set_std_err:
@@ -358,41 +365,66 @@ def set_data(
             band_std[err_ind] = np.abs(band_data[err_ind]) * min_err
             data.err[ind, :] = band_std
 
-    # TODO: Convert all arrays to masked arrays here
+
+def set_data(
+    fits_files: List[Path] | None = None,
+    wavelengths: str | u.Quantity[u.um] | None = None,
+    fit_data: List[str] = ["flux", "vis", "t3"],
+    weights: List[float] | None = None,
+    wavelength_range: u.Quantity[u.um] | None = None,
+    set_std_err: List[str] | None = None,
+    min_err: float = 0.05,
+    average: bool = False,
+    **kwargs,
+) -> SimpleNamespace:
+    """Sets the data as a global variable from the input files.
+
+    If called without parameters or recalled, it will clear the data.
+
+    Parameters
+    ----------
+    fits_files : list of Path
+        The paths to the MATISSE (.fits)-files.
+    wavelengts : str or numpy.ndarray
+        The wavelengths to be fitted as a numpy array or "all" if all are to be
+        fitted.
+    fit_data : list of str, optional
+        The data to be fitted.
+    weights : list of float, optional
+        The weights of the fit parameters from the observed data.
+    wavelength_range : astropy.units.um, optional
+        A range of wavelengths to be kept. Other wavelengths will be omitted.
+    set_std_err : list of str, optional
+        The data to be set the standard error from the variance of the datasets from.
+    min_err : float, optional
+        The minimum error of the data to be kept. Will set the error to be that at least.
+    average : bool, optional
+        If toggled will average the flux over all files and set an offset for the correlated fluxes/visibilities.
+    """
+    data_to_read = clear_data()
+    if fits_files is None:
+        return OPTIONS.data
+
+    OPTIONS.fit.data = fit_data
+    OPTIONS.data.readouts = list(
+        map(partial(ReadoutFits, wavelength_range=wavelength_range), fits_files)
+    )
+    OPTIONS.data.bands = list(map(lambda x: x.band, OPTIONS.data.readouts))
+
+    if wavelengths == "all":
+        wavelengths = get_all_wavelengths(OPTIONS.data.readouts)
+        OPTIONS.data.no_binning = True
+
+    if wavelengths is None:
+        raise ValueError("No wavelengths given and/or not 'all' specified!")
+
+    wavelengths = set_fit_wavelengths(wavelengths)
+    read_data(data_to_read, wavelengths, min_err)
     if average:
-        fluxdata = OPTIONS.data.flux
-        visdata = OPTIONS.data.vis2 if "vis2" in fit_data else OPTIONS.data.vis
-        flux, flux_err = (
-            np.ma.masked_invalid(fluxdata.value),
-            np.ma.masked_invalid(fluxdata.err),
-        )
-        flux_averaged = np.ma.average(flux, weights=1 / flux_err**2, axis=-1)
-        flux_std = np.ma.std(flux, axis=-1) / np.ma.sqrt(np.ma.count(flux, axis=-1))
-        inv_sigma = 1 / np.ma.sum(flux_err, axis=-1)
-        flux_err_averaged = np.sqrt(inv_sigma**2 + flux_std**2)
-        ind = np.where(flux_err_averaged < flux_averaged * 0.05)
-        flux_err_averaged[ind] += np.sqrt(
-            inv_sigma[ind] ** 2 + flux_std[ind] ** 2 + (flux_averaged[ind] * 0.05) ** 2
-        )
-        flux_averaged, flux_err_averaged = (
-            flux_averaged.data[:, np.newaxis],
-            flux_err_averaged.data[:, np.newaxis],
-        )
+        average_data()
 
-        OPTIONS.data.flux.value = flux_averaged
-        OPTIONS.data.flux.err = flux_err_averaged
-
-        flux_ratio = flux / flux_averaged
-        vis = np.ma.masked_invalid(visdata.value)
-
-        split_indices = np.cumsum(nbaselines[:-1])
-        for index, current_slice in enumerate(split_indices):
-            prev_slice = None if index == 0 else split_indices[index - 1]
-            current_slice = current_slice if index != len(split_indices) - 1 else None
-            OPTIONS.data.vis.value[:, prev_slice:current_slice] = (
-                vis[:, prev_slice:current_slice].data
-                * flux_ratio[:, index].data[:, np.newaxis]
-            )
+    if set_std_err is not None:
+        correct_data_errors(data_to_read, wavelengths, set_std_err, min_err)
 
     if weights is not None:
         for key, weight in zip(OPTIONS.fit.data, weights):
