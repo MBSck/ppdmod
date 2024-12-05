@@ -53,7 +53,7 @@ def load_toml_to_namespace(toml_file: Path):
 
 
 STANDARD_PARAMS = load_toml_to_namespace(
-    Path(__file__).parent.parent / "data" / "standard_parameters.toml"
+    Path(__file__).parent / "config" / "standard_parameters.toml"
 )
 
 
