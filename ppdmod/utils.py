@@ -677,16 +677,31 @@ def broadcast_baselines(
     return wavelength, baselines / u.rad, baseline_angles
 
 
+def compute_vis(vis: np.ndarray) -> np.ndarray:
+    """Computes the visibilities from the visibility function."""
+    return np.abs(vis).astype(OPTIONS.data.dtype.real)
+
+
 def compute_t3(vis: np.ndarray) -> np.ndarray:
     """Computes the closure phase from the visibility function."""
     if vis.size == 0:
         return np.array([])
 
+    # TODO: Make sure the calculation here is correct
     vis /= vis[:, :, 0][..., np.newaxis].real
     bispectrum = vis[:, 0] * vis[:, 1] * vis[:, 2].conj()
     return np.angle(bispectrum, deg=True).real
 
 
-def compute_vis(vis: np.ndarray) -> np.ndarray:
-    """Computes the visibilities from the visibility function."""
-    return np.abs(vis).astype(OPTIONS.data.dtype.real)
+def get_t3_from_vis(complex_vis: np.ndarray) -> np.ndarray:
+    """Gets the t3 complex visibility function from the vis2 indices"""
+    complex_t3 = np.array(
+        [complex_vis[:, ind] for ind in OPTIONS.data.t3.sta_vis_index.T]
+    )
+    mask = np.repeat(OPTIONS.data.t3.sta_conj_flag.T[:, np.newaxis, 1:], complex_t3.shape[1], axis=1)
+    breakpoint()
+
+    # TODO: Make sure this works
+    complex_t3[mask] = np.conjugate(complex_t3[mask])
+    bispectrum = complex_t3[0] * complex_t3[1] * complex_t3[-1].conj()
+    return np.angle(bispectrum, deg=True).real

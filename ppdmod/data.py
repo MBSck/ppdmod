@@ -257,28 +257,31 @@ def clear_data() -> List[str]:
 
 
 def map_sta_indices(sta_index: np.ndarray, sta_pair: np.ndarray) -> np.ndarray:
+    """Maps the station pairs of the t3 to the station indices of the vis2.
+
+    Parameters
+    ----------
+    sta_index : ndarray
+        The station indices of the vis2.
+    sta_pair : ndarray
+        The station index pairs for the t3.
+
+    Returns
+    -------
+    vis_indices : np.ndarray
+        The indices pertaining to the vis for the t3.
     """
-    Maps the indices of a (6, 2) reference array to match elements in a (4, 3, 2) input array.
-
-    Parameters:
-    - input_array: ndarray of shape (4, 3, 2), containing values to compare.
-    - reference_array: ndarray of shape (6, 2), containing reference rows.
-
-    Returns:
-    - output_array: ndarray of shape (4, 3, 1), with indices of matching rows from the reference array.
-    """
-    output_array = np.empty(sta_pair.shape[:-1], dtype=int)
-
+    vis_indices = np.empty(sta_pair.shape[:-1], dtype=int)
     for col_index, col in enumerate(sta_pair):
         for row_index, row in enumerate(col):
             match = np.where((row == sta_index).all(axis=1))[0]
             if match.size == 0:
                 match = np.where((row[::-1] == sta_index).all(axis=1))[0]
-                OPTIONS.data.t3.sta_conj_flag[col_index, row_index] = 1
+                OPTIONS.data.t3.sta_conj_flag[col_index, row_index] = True
 
-            output_array[col_index, row_index] = match[0]
+            vis_indices[col_index, row_index] = match[0]
 
-    return output_array
+    return vis_indices
 
 
 # TODO: Convert all arrays to masked arrays here
@@ -308,7 +311,7 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
 
             if key in ["vis", "vis2", "t3"]:
                 ind = np.where(np.abs(err / value) < min_err)
-                err[ind] += np.abs(value[ind]) * min_err
+                err[ind] = np.abs(value[ind]) * min_err
 
             if data.value.size == 0:
                 data.value, data.err = value, err
@@ -336,6 +339,8 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
 
             elif key == "t3":
                 sta_index = replace_sta(data_readout.sta_index)
+
+                # TODO: Make sure this rolling here is correct!
                 sta_pair = np.stack(
                     [sta_index, np.roll(sta_index, shift=2, axis=-1)], axis=-1
                 )
@@ -351,8 +356,12 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
                     data.sta_pair = np.vstack((data.sta_pair, sta_pair))
 
     OPTIONS.data.t3.sta_pair[:, -1] = OPTIONS.data.t3.sta_pair[:, -1, ::-1]
-    OPTIONS.data.t3.sta_conj_flag = np.zeros(OPTIONS.data.t3.sta_index.shape).astype(int)
-    OPTIONS.data.t3.sta_vis_index = map_sta_indices(OPTIONS.data.vis2.sta_index, OPTIONS.data.t3.sta_pair)
+    OPTIONS.data.t3.sta_conj_flag = np.zeros(OPTIONS.data.t3.sta_index.shape).astype(
+        bool
+    )
+    OPTIONS.data.t3.sta_vis_index = map_sta_indices(
+        OPTIONS.data.vis2.sta_index, OPTIONS.data.t3.sta_pair
+    )
 
 
 # TODO: Make sure that this is correct in setting it
