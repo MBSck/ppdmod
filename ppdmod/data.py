@@ -70,9 +70,9 @@ class ReadoutFits:
         wl_index: int | None = None,
         indices: int | None = None,
     ) -> SimpleNamespace:
-        """Reads a (.fits) Card into a SimpleNamespace."""
+        """Reads a (.fits) card into a namespace."""
         try:
-            data = hdul[f"oi_{key}", sci_index]
+            data = hdul[f"oi_{key}", sci_index].data
         except KeyError:
             return SimpleNamespace(
                 value=np.array([]),
@@ -83,48 +83,44 @@ class ReadoutFits:
 
         if key == "array":
             return SimpleNamespace(
-                tel_names=data.data["tel_name"].reshape(1, -1),
-                sta_index=data.data["sta_index"].reshape(1, -1),
+                tel_name=data["tel_name"],
+                sta_index=data["sta_index"],
             )
 
         if key == "flux":
             try:
                 return SimpleNamespace(
-                    value=data.data["fluxdata"][:, indices][:, wl_index:],
-                    err=data.data["fluxerr"][:, indices][:, wl_index:],
+                    value=data["fluxdata"][:, indices][:, wl_index:],
+                    err=data["fluxerr"][:, indices][:, wl_index:],
                 )
             except KeyError:
                 return SimpleNamespace(value=np.array([]), err=np.array([]))
 
-        # TODO: There might be keyerrors here
+        # TODO: There might be keyerrors here -> Fix it if there is no vis in the file
         if key in ["vis", "vis2"]:
             if key == "vis":
                 value_key, err_key = "visamp", "visamperr"
             else:
                 value_key, err_key = "vis2data", "vis2err"
 
-            sta_index = data.data["sta_index"]
             return SimpleNamespace(
-                value=data.data[value_key][:, wl_index:][:, indices],
-                err=data.data[err_key][:, wl_index:][:, indices],
-                ucoord=data.data["ucoord"].reshape(1, -1),
-                vcoord=data.data["vcoord"].reshape(1, -1),
-                sta_index=sta_index.reshape(1, *sta_index.shape),
+                value=data[value_key][:, wl_index:][:, indices],
+                err=data[err_key][:, wl_index:][:, indices],
+                ucoord=data["ucoord"].reshape(1, -1),
+                vcoord=data["vcoord"].reshape(1, -1),
+                sta_index=data["sta_index"],
             )
 
-        value = data.data["t3phi"][:, wl_index:][:, indices]
-        err = data.data["t3phierr"][:, wl_index:][:, indices]
-        u1coord, u2coord = map(lambda x: data.data[f"u{x}coord"], ["1", "2"])
-        v1coord, v2coord = map(lambda x: data.data[f"v{x}coord"], ["1", "2"])
-
+        u1coord, u2coord = map(lambda x: data[f"u{x}coord"], ["1", "2"])
+        v1coord, v2coord = map(lambda x: data[f"v{x}coord"], ["1", "2"])
         u3coord, v3coord = u1coord + u2coord, v1coord + v2coord
-        u123coord = np.array([u1coord, u2coord, u3coord])
-        v123coord = np.array([v1coord, v2coord, v3coord])
 
-        # x = data.data["sta_index"][0].tolist()
-        # comb = [(x[i], x[(i + 1) % len(x)]) for i in range(len(x))]
         return SimpleNamespace(
-            value=value, err=err, u123coord=u123coord, v123coord=v123coord
+            value=data["t3phi"][:, wl_index:][:, indices],
+            err=data["t3phierr"][:, wl_index:][:, indices],
+            u123coord=np.array([u1coord, u2coord, u3coord]),
+            v123coord=np.array([v1coord, v2coord, v3coord]),
+            sta_index=data["sta_index"],
         )
 
     def get_data_for_wavelength(
@@ -253,6 +249,7 @@ def clear_data() -> List[str]:
         data.value, data.err = [np.array([]) for _ in range(2)]
         if key in ["vis", "vis2"]:
             data.ucoord, data.vcoord = [np.array([]).reshape(1, -1) for _ in range(2)]
+            data.sta_index = np.array([]).reshape(2, -1)
         elif key in "t3":
             data.u123coord, data.v123coord = [np.array([]) for _ in range(2)]
 
@@ -260,13 +257,20 @@ def clear_data() -> List[str]:
 
 
 # TODO: Convert all arrays to masked arrays here
-def read_data(
-    data_to_read: List[str], wavelengths: u.um, min_err: float
-) -> None:
+def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> None:
     """Reads in the data from the keys."""
     OPTIONS.data.nbaselines = []
     # TODO: Make sure to avoid error if vis doesn't exists in OIFITS file
-    for readout in OPTIONS.data.readouts:
+    for index, readout in enumerate(OPTIONS.data.readouts):
+        array = readout.array
+        sta_index_conversion = dict(
+            zip(
+                array.sta_index.tolist(),
+                map(lambda x: index * 10 + x, range(1, len(array.sta_index) + 1)),
+            )
+        )
+        replace_sta = np.vectorize(lambda x: sta_index_conversion.get(x, x))
+
         for key in data_to_read:
             data = getattr(OPTIONS.data, key)
             data_readout = getattr(readout, key)
@@ -289,9 +293,11 @@ def read_data(
                 data.err = np.hstack((data.err, err))
 
             if key in ["vis", "vis2"]:
+                sta_index = replace_sta(data_readout.sta_index)
                 if data.ucoord.size == 0:
                     data.ucoord = np.insert(data_readout.ucoord, 0, 0, axis=1)
                     data.vcoord = np.insert(data_readout.vcoord, 0, 0, axis=1)
+                    data.sta_index = np.insert(sta_index, 0, (0, 0), axis=0)
                 else:
                     data.ucoord = np.concatenate(
                         (data.ucoord, data_readout.ucoord), axis=-1
@@ -299,19 +305,26 @@ def read_data(
                     data.vcoord = np.concatenate(
                         (data.vcoord, data_readout.vcoord), axis=-1
                     )
+                    data.sta_index = np.vstack((data.sta_index, sta_index))
+                    breakpoint()
 
                 if key == "vis2":
                     OPTIONS.data.nbaselines.append(data_readout.ucoord.size)
 
             elif key == "t3":
+                sta_index = replace_sta(data_readout.sta_index)
                 if data.u123coord.size == 0:
                     data.u123coord = np.insert(data_readout.u123coord, 0, 0, axis=1)
                     data.v123coord = np.insert(data_readout.v123coord, 0, 0, axis=1)
+                    data.sta_index = np.insert(sta_index, 0, (0, 0, 0), axis=0)
+                    breakpoint()
                 else:
                     data.u123coord = np.hstack((data.u123coord, data_readout.u123coord))
                     data.v123coord = np.hstack((data.v123coord, data_readout.v123coord))
+                    data.sta_index = np.vstack((data.sta_index, sta_index))
 
 
+# TODO: Make sure that this is correct in setting it
 def average_data() -> None:
     """Averages the flux data and applys a correction factor to the correlated flux."""
     fluxdata = OPTIONS.data.flux
