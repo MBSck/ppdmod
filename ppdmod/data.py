@@ -256,6 +256,31 @@ def clear_data() -> List[str]:
     return ["flux", "vis", "vis2", "t3"]
 
 
+def map_sta_indices(sta_index: np.ndarray, sta_pair: np.ndarray) -> np.ndarray:
+    """
+    Maps the indices of a (6, 2) reference array to match elements in a (4, 3, 2) input array.
+
+    Parameters:
+    - input_array: ndarray of shape (4, 3, 2), containing values to compare.
+    - reference_array: ndarray of shape (6, 2), containing reference rows.
+
+    Returns:
+    - output_array: ndarray of shape (4, 3, 1), with indices of matching rows from the reference array.
+    """
+    output_array = np.empty(sta_pair.shape[:-1], dtype=int)
+
+    for col_index, col in enumerate(sta_pair):
+        for row_index, row in enumerate(col):
+            match = np.where((row == sta_index).all(axis=1))[0]
+            if match.size == 0:
+                match = np.where((row[::-1] == sta_index).all(axis=1))[0]
+                OPTIONS.data.t3.sta_conj_flag[col_index, row_index] = 1
+
+            output_array[col_index, row_index] = match[0]
+
+    return output_array
+
+
 # TODO: Convert all arrays to masked arrays here
 def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> None:
     """Reads in the data from the keys."""
@@ -274,7 +299,6 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
         for key in data_to_read:
             data = getattr(OPTIONS.data, key)
             data_readout = getattr(readout, key)
-
             value = readout.get_data_for_wavelength(
                 wavelengths, key, "value", OPTIONS.data.no_binning
             )
@@ -306,22 +330,29 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
                         (data.vcoord, data_readout.vcoord), axis=-1
                     )
                     data.sta_index = np.vstack((data.sta_index, sta_index))
-                    breakpoint()
 
                 if key == "vis2":
                     OPTIONS.data.nbaselines.append(data_readout.ucoord.size)
 
             elif key == "t3":
                 sta_index = replace_sta(data_readout.sta_index)
+                sta_pair = np.stack(
+                    [sta_index, np.roll(sta_index, shift=2, axis=-1)], axis=-1
+                )
                 if data.u123coord.size == 0:
                     data.u123coord = np.insert(data_readout.u123coord, 0, 0, axis=1)
                     data.v123coord = np.insert(data_readout.v123coord, 0, 0, axis=1)
                     data.sta_index = np.insert(sta_index, 0, (0, 0, 0), axis=0)
-                    breakpoint()
+                    data.sta_pair = sta_pair
                 else:
                     data.u123coord = np.hstack((data.u123coord, data_readout.u123coord))
                     data.v123coord = np.hstack((data.v123coord, data_readout.v123coord))
                     data.sta_index = np.vstack((data.sta_index, sta_index))
+                    data.sta_pair = np.vstack((data.sta_pair, sta_pair))
+
+    OPTIONS.data.t3.sta_pair[:, -1] = OPTIONS.data.t3.sta_pair[:, -1, ::-1]
+    OPTIONS.data.t3.sta_conj_flag = np.zeros(OPTIONS.data.t3.sta_index.shape).astype(int)
+    OPTIONS.data.t3.sta_vis_index = map_sta_indices(OPTIONS.data.vis2.sta_index, OPTIONS.data.t3.sta_pair)
 
 
 # TODO: Make sure that this is correct in setting it

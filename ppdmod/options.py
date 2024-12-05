@@ -79,6 +79,8 @@ t3 = SimpleNamespace(
     v123coord=np.array([]),
     sta_index=np.array([]),
     sta_pair=np.array([]),
+    sta_vis_index=np.array([]),
+    sta_conj_flag=np.array([]),
 )
 flux = SimpleNamespace(value=np.array([]), err=np.array([]))
 gravity = SimpleNamespace(index=20)
