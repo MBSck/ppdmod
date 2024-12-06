@@ -233,6 +233,63 @@ def eff_radius(luminosity: float, eff_temp: int) -> float:
 
 
 @pytest.mark.parametrize(
+    "globs",
+    [
+        ["PION*"],
+        ["GRAV*"],
+        ["*_L_*"],
+        ["*_N_*"],
+        ["PION*", "GRAV*"],
+        ["PION*", "GRAV*", "_L_"],
+        ["PION*", "GRAV*", "_L_", "_N_"],
+    ],
+)
+def test_uv_coord_assignment(globs: List[str]) -> None:
+    fits_files = []
+    for glob in globs:
+        fits_files.extend(list((DATA_DIR / "fits" / "hd142527").glob(f"{glob}.fits")))
+
+    binning = OPTIONS.data.binning
+    wavelengths = {
+        "hband": [1.7] * u.um,
+        "kband": [2.15] * u.um,
+        "lband": utils.windowed_linspace(3.1, 3.4, binning.lband.value) * u.um,
+        "mband": utils.windowed_linspace(4.7, 4.9, binning.mband.value) * u.um,
+        "nband": utils.windowed_linspace(8, 13, binning.nband.value) * u.um,
+    }
+    wavelengths = np.concatenate(
+        (
+            wavelengths["hband"],
+            wavelengths["kband"],
+            wavelengths["lband"],
+            wavelengths["mband"],
+            wavelengths["nband"],
+        )
+    )
+    data = set_data(fits_files, wavelengths=wavelengths)
+    t3_u123coord = np.array(
+        [data.vis.ucoord[:, ind] for ind in OPTIONS.data.t3.sta_vis_index.T]
+    ).reshape(3, -1)
+    t3_v123coord = np.array(
+        [data.vis.vcoord[:, ind] for ind in OPTIONS.data.t3.sta_vis_index.T]
+    ).reshape(3, -1)
+
+    mask = data.t3.sta_conj_flag.T
+    t3_u123coord[mask] = -t3_u123coord[mask]
+    t3_v123coord[mask] = -t3_v123coord[mask]
+
+    try:
+        assert np.allclose(t3_u123coord, data.t3.u123coord[:, 1:], atol=1e-2)
+    except AssertionError:
+        assert np.all(np.abs(t3_u123coord - data.t3.u123coord[:, 1:]) < 2)
+
+    try:
+        assert np.allclose(t3_v123coord, data.t3.v123coord[:, 1:], atol=1e-2)
+    except AssertionError:
+        assert np.all(np.abs(t3_v123coord - data.t3.v123coord[:, 1:]) < 2)
+
+
+@pytest.mark.parametrize(
     "array, wl, rin, width, cinc, pa, mod_amps",
     [
         ("uts", 3.5, 1.5, 0.25, 1, 0, None),
@@ -376,3 +433,6 @@ def test_temp_gradient_resolution(
     OPTIONS.model.modulation = 0
     temp_gradient.optically_thick = False
     temp_gradient.asymmetric = False
+
+
+# TODO: Also run tests with temperature gradient models

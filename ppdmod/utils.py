@@ -693,6 +693,7 @@ def compute_t3(vis: np.ndarray) -> np.ndarray:
     return np.angle(bispectrum, deg=True).real
 
 
+# TODO: Find a way how to deal with files that have the same sta indices but different (u, v)-coords
 def get_t3_from_vis(complex_vis: np.ndarray) -> np.ndarray:
     """Gets the t3 complex visibility function from the vis2 indices"""
     # TODO: This does not get the right indices -> Is it because not all of the sta indices are matching?
