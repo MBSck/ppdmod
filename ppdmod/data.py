@@ -1,7 +1,7 @@
 from functools import partial
 from pathlib import Path
 from types import SimpleNamespace
-from typing import List
+from typing import List, Tuple
 
 import astropy.units as u
 import numpy as np
@@ -256,6 +256,11 @@ def clear_data() -> List[str]:
     return ["flux", "vis", "vis2", "t3"]
 
 
+def get_sta_pair(x: List[int]) -> List[Tuple[int, int]]:
+    """Gets a station pair from a t3 station index"""
+    return [(x[0], x[1]), (x[1], x[-1]), (x[0], x[-1])]
+
+
 def map_sta_indices(sta_index: np.ndarray, sta_pair: np.ndarray) -> np.ndarray:
     """Maps the station pairs of the t3 to the station indices of the vis2.
 
@@ -271,7 +276,7 @@ def map_sta_indices(sta_index: np.ndarray, sta_pair: np.ndarray) -> np.ndarray:
     vis_indices : np.ndarray
         The indices pertaining to the vis for the t3.
     """
-    vis_indices = np.empty(sta_pair.shape[:-1], dtype=int)
+    vis_indices = np.zeros(sta_pair.shape[:-1], dtype=int)
     for col_index, col in enumerate(sta_pair):
         for row_index, row in enumerate(col):
             match = np.where((row == sta_index).all(axis=1))[0]
@@ -339,11 +344,8 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
 
             elif key == "t3":
                 sta_index = replace_sta(data_readout.sta_index)
+                sta_pair = np.array([get_sta_pair(row) for row in sta_index])
 
-                # TODO: Make sure this rolling here is correct!
-                sta_pair = np.stack(
-                    [sta_index, np.roll(sta_index, shift=2, axis=-1)], axis=-1
-                )
                 if data.u123coord.size == 0:
                     data.u123coord = np.insert(data_readout.u123coord, 0, 0, axis=1)
                     data.v123coord = np.insert(data_readout.v123coord, 0, 0, axis=1)
@@ -355,10 +357,9 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
                     data.sta_index = np.vstack((data.sta_index, sta_index))
                     data.sta_pair = np.vstack((data.sta_pair, sta_pair))
 
-    OPTIONS.data.t3.sta_pair[:, -1] = OPTIONS.data.t3.sta_pair[:, -1, ::-1]
     OPTIONS.data.t3.sta_conj_flag = np.zeros(OPTIONS.data.t3.sta_index.shape).astype(
         bool
-    )
+    )[1:]
     OPTIONS.data.t3.sta_vis_index = map_sta_indices(
         OPTIONS.data.vis2.sta_index, OPTIONS.data.t3.sta_pair
     )

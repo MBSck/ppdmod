@@ -24,6 +24,7 @@ from ppdmod.utils import (
     compute_t3,
     compute_vis,
     get_opacity,
+    get_t3_from_vis,
     load_data,
 )
 
@@ -282,20 +283,18 @@ def test_ring_compute_vis(
     )
 
     vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
-    vis_ring = compute_vis(ring.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength))
+    complex_vis = ring.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
+    vis_ring, t3_ring = compute_vis(complex_vis), get_t3_from_vis(complex_vis)
     if "vis2" in OPTIONS.fit.data:
         vis_ring *= vis_ring
 
-    t3_ring = compute_t3(
-        ring.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength)
-    )
-    vis_ring, t3_ring = vis_ring[:, 1:], t3_ring[:, 1:]
+    vis_ring, t3_ring = vis_ring[:, 1:7], t3_ring[:, :4]
 
-    assert vis_ring.shape == (wavelength.size, vis.ucoord.shape[1] - 1)
-    assert np.allclose(vis.value, vis_ring, atol=1e-2)
+    assert vis_ring.shape == (wavelength.size, 6)
+    assert np.allclose(vis.value[:, :6], vis_ring, atol=1e-2)
 
-    assert t3_ring.shape == (wavelength.size, t3.u123coord.shape[1] - 1)
-    assert np.allclose(t3.value, t3_ring, atol=1e0)
+    assert t3_ring.shape == (wavelength.size, 4)
+    assert np.allclose(t3.value[:, :4], t3_ring, atol=1e0)
 
     set_data()
     OPTIONS.model.modulation = 1
