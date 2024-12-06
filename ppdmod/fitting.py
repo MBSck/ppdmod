@@ -10,7 +10,7 @@ from dynesty import DynamicNestedSampler, NestedSampler
 from .component import Component
 from .data import get_counts_data
 from .options import OPTIONS
-from .utils import compute_t3, compute_vis
+from .utils import compute_t3, compute_vis, get_t3_from_vis
 
 
 def get_labels(components: List[Component], shared: bool = True) -> np.ndarray:
@@ -228,33 +228,25 @@ def compute_observables(
     """
     wavelength = OPTIONS.fit.wavelengths if wavelength is None else wavelength
     vis = OPTIONS.data.vis2 if "vis2" in OPTIONS.fit.data else OPTIONS.data.vis
-    t3 = OPTIONS.data.t3
+    complex_vis = np.sum([
+        comp.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
+        for comp in components
+    ], axis=0)
 
-    complex_vis_comps, complex_t3_comps = [], []
-    for component in components:
-        complex_vis_comps.append(
-            component.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
-        )
-        complex_t3_comps.append(
-            component.compute_complex_vis(t3.u123coord, t3.v123coord, wavelength)
-        )
-
-    vis_model = np.sum(complex_vis_comps, axis=0)
-    flux_model = vis_model[:, 0].reshape(-1, 1) if vis_model.size > 0 else vis_model
-    t3_model = compute_t3(np.sum(complex_t3_comps, axis=0))
+    flux_model = complex_vis[:, 0].reshape(-1, 1)
+    t3_model = get_t3_from_vis(complex_vis)
 
     if OPTIONS.model.output == "normed":
-        vis_model /= flux_model
+        complex_vis /= flux_model
 
     if "vis2" in OPTIONS.fit.data:
-        vis_model *= vis_model
+        complex_vis *= complex_vis
 
-    vis_model = compute_vis(vis_model[:, 1:] if vis_model.size > 0 else vis_model)
-    t3_model = t3_model[:, 1:] if t3_model.size > 0 else t3_model
+    complex_vis = compute_vis(complex_vis[:, 1:])
     if flux_model.size > 0:
         flux_model = np.tile(flux_model, OPTIONS.data.flux.value.shape[-1]).real
 
-    return flux_model, vis_model, t3_model
+    return flux_model, complex_vis, t3_model
 
 
 def compute_nband_fit_chi_sq(
