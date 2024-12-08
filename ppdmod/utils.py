@@ -687,23 +687,21 @@ def compute_t3(vis: np.ndarray) -> np.ndarray:
     if vis.size == 0:
         return np.array([])
 
-    # TODO: Make sure the calculation here is correct
     vis /= vis[:, :, 0][..., np.newaxis].real
     bispectrum = vis[:, 0] * vis[:, 1] * vis[:, 2].conj()
     return np.angle(bispectrum, deg=True).real
 
 
 # TODO: Find a way how to deal with files that have the same sta indices but different (u, v)-coords
+# That means different observations/time stamps
 def get_t3_from_vis(complex_vis: np.ndarray) -> np.ndarray:
     """Gets the t3 complex visibility function from the vis2 indices"""
-    # TODO: This does not get the right indices -> Is it because not all of the sta indices are matching?
+    complex_vis = complex_vis / complex_vis[:, 0][:, np.newaxis]
     complex_t3 = np.array(
         [complex_vis[:, ind] for ind in OPTIONS.data.t3.sta_vis_index.T]
     )
     mask = np.repeat(OPTIONS.data.t3.sta_conj_flag.T[:, np.newaxis, :], complex_t3.shape[1], axis=1)
-    complex_t3[mask] = np.conjugate(complex_t3[mask])
+    complex_t3[mask] = complex_t3[mask].conj()
 
-    # TODO: Make norm work
-    # norm = complex_vis[:, 0, :]
     bispectrum = complex_t3[0] * complex_t3[1] * complex_t3[-1].conj()
     return np.angle(bispectrum, deg=True)

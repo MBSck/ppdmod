@@ -10,7 +10,7 @@ from dynesty import DynamicNestedSampler, NestedSampler
 from .component import Component
 from .data import get_counts_data
 from .options import OPTIONS
-from .utils import compute_t3, compute_vis, get_t3_from_vis
+from .utils import compute_vis, get_t3_from_vis
 
 
 def get_labels(components: List[Component], shared: bool = True) -> np.ndarray:
