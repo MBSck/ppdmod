@@ -228,10 +228,13 @@ def compute_observables(
     """
     wavelength = OPTIONS.fit.wavelengths if wavelength is None else wavelength
     vis = OPTIONS.data.vis2 if "vis2" in OPTIONS.fit.data else OPTIONS.data.vis
-    complex_vis = np.sum([
-        comp.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
-        for comp in components
-    ], axis=0)
+    complex_vis = np.sum(
+        [
+            comp.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
+            for comp in components
+        ],
+        axis=0,
+    )
 
     flux_model = complex_vis[:, 0].reshape(-1, 1)
     t3_model = get_t3_from_vis(complex_vis)
@@ -277,12 +280,12 @@ def compute_nband_fit_chi_sq(
     # NOTE: The -1 here indicates that one of the parameters is actually fixed
     ndim -= 1
     flux = OPTIONS.data.flux
-    nan_indices = np.isnan(flux.value)
+    mask = flux.value.mask
     chi_sq = compute_chi_sq(
-        flux.value[~nan_indices],
-        flux.err[~nan_indices],
-        flux_model.flatten(),
-        ndim - 1,
+        flux.value.data[~mask].astype(OPTIONS.data.dtype.real),
+        flux.err.data[~mask].astype(OPTIONS.data.dtype.real),
+        flux_model[~mask],
+        ndim,
         method=method,
     )
 
@@ -329,13 +332,13 @@ def compute_interferometric_chi_sq(
     chi_sqs, weights = [], []
     for key in OPTIONS.fit.data:
         data = getattr(OPTIONS.data, key)
-        nan_indices = np.isnan(data.value)
         key = key if key != "vis2" else "vis"
         weights.append(getattr(OPTIONS.fit.weights, key))
+        mask = data.value.mask
         chi_sq = compute_chi_sq(
-            data.value[~nan_indices],
-            data.err[~nan_indices],
-            params[key][~nan_indices],
+            data.value.data[~mask].astype(OPTIONS.data.dtype.real),
+            data.err.data[~mask].astype(OPTIONS.data.dtype.real),
+            params[key][~mask],
             ndim=ndim,
             diff_method="linear" if key != "t3" else "exponential",
             method=method,

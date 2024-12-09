@@ -357,6 +357,11 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
                     data.sta_index = np.vstack((data.sta_index, sta_index))
                     data.sta_pair = np.vstack((data.sta_pair, sta_pair))
 
+    for key in data_to_read:
+        data = getattr(OPTIONS.data, key)
+        data.value = np.ma.masked_invalid(data.value)
+        data.err = np.ma.masked_invalid(data.err)
+
     OPTIONS.data.t3.sta_conj_flag = np.zeros(OPTIONS.data.t3.sta_index.shape).astype(
         bool
     )[1:]
@@ -368,39 +373,23 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
 # TODO: Make sure that this is correct in setting it
 def average_data() -> None:
     """Averages the flux data and applys a correction factor to the correlated flux."""
-    fluxdata = OPTIONS.data.flux
-    flux, flux_err = (
-        np.ma.masked_invalid(fluxdata.value),
-        np.ma.masked_invalid(fluxdata.err),
-    )
+    flux, flux_err = OPTIONS.data.flux.value, OPTIONS.data.flux.err
     flux_averaged = np.ma.average(flux, weights=1 / flux_err**2, axis=-1)
-    flux_std = np.ma.std(flux, axis=-1) / np.ma.sqrt(np.ma.count(flux, axis=-1))
-    inv_sigma = 1 / np.ma.sum(flux_err, axis=-1)
-    flux_err_averaged = np.sqrt(inv_sigma**2 + flux_std**2)
+    flux_err_averaged = np.ma.sqrt(1 / np.ma.sum(flux_err, axis=-1) ** 2)
     ind = np.where(flux_err_averaged < flux_averaged * 0.05)
-    flux_err_averaged[ind] += np.sqrt(
-        inv_sigma[ind] ** 2 + flux_std[ind] ** 2 + (flux_averaged[ind] * 0.05) ** 2
-    )
-    flux_averaged, flux_err_averaged = (
-        flux_averaged.data[:, np.newaxis],
-        flux_err_averaged.data[:, np.newaxis],
-    )
+    flux_err_averaged[ind] = flux_averaged[ind] * 0.05
+    OPTIONS.data.flux.value = flux_averaged[:, np.newaxis]
+    OPTIONS.data.flux.err = flux_err_averaged[:, np.newaxis]
 
-    OPTIONS.data.flux.value = flux_averaged
-    OPTIONS.data.flux.err = flux_err_averaged
-
-    flux_ratio = flux / flux_averaged
+    flux_ratio = flux / OPTIONS.data.flux.value
     for key in ["vis", "vis2"]:
-        data = getattr(OPTIONS.data, key)
-        values = np.ma.masked_invalid(data.value)
-
+        value = getattr(OPTIONS.data, key).value
         split_indices = np.cumsum(OPTIONS.data.nbaselines[:-1])
         for index, current_slice in enumerate(split_indices):
             prev_slice = None if index == 0 else split_indices[index - 1]
             current_slice = current_slice if index != len(split_indices) - 1 else None
-            data.value[:, prev_slice:current_slice] = (
-                values.data[:, prev_slice:current_slice]
-                * flux_ratio.data[:, index][:, np.newaxis]
+            value[:, prev_slice:current_slice] = (
+                value[:, prev_slice:current_slice] * flux_ratio[:, index][:, np.newaxis]
             )
 
 
