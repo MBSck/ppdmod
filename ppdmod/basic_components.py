@@ -315,12 +315,12 @@ class Ring(FourierComponent):
                 rho, theta = getattr(self, f"rho{i}")(), getattr(self, f"theta{i}")()
                 angle_diff = np.angle(
                     (
-                        np.exp(1j * baseline_angles.value)
-                        * np.exp(-1j * theta.to(u.rad).value)
+                        np.exp(1j * i * baseline_angles.value)
+                        * np.exp(-1j * i * theta.to(u.rad).value)
                     )
                 )
                 mod_amps.append((-1j) ** i * rho)
-                cos_diff.append(np.cos(i * angle_diff))
+                cos_diff.append(angle_diff.real)
                 bessel_funcs.append(partial(jv, i))
 
             mod_amps = np.array(mod_amps)
@@ -419,7 +419,7 @@ class Ring(FourierComponent):
                 diff = np.angle(
                     np.exp(1j * i * polar_angle) * np.exp(-1j * theta.to(u.rad).value)
                 )
-                modulations.append(rho * np.cos(diff))
+                modulations.append(rho * diff.real)
 
             image *= 1 + np.sum(modulations, axis=0)
 
