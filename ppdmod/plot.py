@@ -251,8 +251,8 @@ def format_labels(
         "rout": {"letter": "R", "indices": [r"\mathrm{out}"]},
         "p": {"letter": "p", "indices": []},
         "q": {"letter": "q", "indices": []},
-        "c": {"letter": "c", "indices": []},
-        "s": {"letter": "s", "indices": []},
+        "rho": {"letter": r"\rho", "indices": []},
+        "theta": {"letter": r"\theta", "indices": []},
         "logsigma0": {"letter": r"\Sigma", "indices": ["0"]},
         "sigma0": {"letter": r"\Sigma", "indices": ["0"]},
         "cont_weight": {"letter": "w", "indices": [r"\mathrm{cont}"]},
@@ -269,10 +269,10 @@ def format_labels(
         else:
             name, index = label, ""
 
-        if name in nice_labels or (len(name) == 2 and name[0] in nice_labels):
-            if name[0] in ["c", "s"] and len(name) == 2:
-                letter = nice_labels[name[0]]["letter"]
-                indices = [name[1]]
+        if name in nice_labels or name[-1].isdigit():
+            if name not in nice_labels and name[-1].isdigit():
+                letter = nice_labels[name[:-1]]["letter"]
+                indices = [name[-1]]
                 if index:
                     indices.append(index)
             else:

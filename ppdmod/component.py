@@ -98,12 +98,13 @@ class FourierComponent(Component):
         self.cinc = Parameter(base="cinc")
         self.dim = Parameter(base="dim")
 
+        # TODO: Switch this to a more intiutive modulation (in polar coordinates)
         for i in range(1, OPTIONS.model.modulation + 1):
-            c_str, s_str = f"c{i}", f"s{i}"  
-            c = Parameter(name=c_str, free=self.asymmetric, base="c")
-            s = Parameter(name=s_str, free=self.asymmetric, base="s")
-            setattr(self, c_str, c)
-            setattr(self, s_str, s)
+            rho_str, theta_str = f"rho{i}", f"theta{i}"
+            rho = Parameter(name=rho_str, free=self.asymmetric, base="rho")
+            theta = Parameter(name=theta_str, free=self.asymmetric, base="theta")
+            setattr(self, rho_str, rho)
+            setattr(self, theta_str, theta)
 
     @property
     def asymmetric(self) -> bool:
@@ -116,8 +117,8 @@ class FourierComponent(Component):
         if asymmetry is set."""
         self._asymmetric = value
         for i in range(1, OPTIONS.model.modulation + 1):
-            getattr(self, f"s{i}").free = value
-            getattr(self, f"c{i}").free = value
+            getattr(self, f"rho{i}").free = value
+            getattr(self, f"theta{i}").free = value
 
     def compute_internal_grid(
         self, dim: int, pixel_size: u.au
