@@ -56,11 +56,8 @@ wavelengths = np.concatenate(
 data = set_data(
     fits_files,
     wavelengths=wavelengths,
-    # fit_data=["flux", "vis"],
     fit_data=["flux", "vis", "t3"],
-    # fit_data=["t3"],
-    # weights=[1.0, 0.00699423],
-    weights=[1.0, 0.04419693, 0.11344363],
+    weights=[1.0, 0.07779568, 0.18831988],
     average=True,
 )
 
@@ -91,8 +88,8 @@ rin1 = Parameter(value=0.1, min=0, max=30, unit=u.au, free=True, base="rin")
 rout1 = Parameter(value=1.5, min=0, max=30, unit=u.au, free=True, base="rout")
 p1 = Parameter(value=0.5, min=-20, max=20, base="p")
 sigma01 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
-c1 = Parameter(value=1, free=True, base="c")
-s1 = Parameter(value=1, free=True, base="s")
+rho1 = Parameter(value=0.6, free=True, base="rho")
+theta1 = Parameter(value=33, free=True, base="theta")
 
 rin2 = Parameter(value=2, min=0, max=30, unit=u.au, base="rin")
 rout2 = Parameter(value=4, unit=u.au, free=True, base="rout")
@@ -123,14 +120,14 @@ inner_ring = GreyBody(
     sigma0=sigma01,
     **shared_params,
 )
-outer_ring = GreyBody(
+outer_ring = AsymGreyBody(
     label="Outer Ring",
     rin=rin2,
     rout=rout2,
     p=p2,
     sigma0=sigma02,
-    # c1=c1,
-    # s1=s1,
+    rho1=rho1,
+    theta1=theta1,
     **shared_params,
 )
 
@@ -147,13 +144,13 @@ result_dir /= day_dir / DIR_NAME
 result_dir.mkdir(parents=True, exist_ok=True)
 
 ndim = len(LABELS)
-# rchi_sqs = compute_interferometric_chi_sq(
-#     *compute_observables(components),
-#     ndim=ndim,
-#     method="linear",
-#     reduced=True,
-# )
-# print(f"rchi_sq: {rchi_sqs[0]:.2f}")
+rchi_sqs = compute_interferometric_chi_sq(
+    *compute_observables(components),
+    ndim=ndim,
+    method="linear",
+    reduced=True,
+)
+print(f"rchi_sq: {rchi_sqs[0]:.2f}")
 
 
 if __name__ == "__main__":
