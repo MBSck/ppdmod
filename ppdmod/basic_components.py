@@ -308,14 +308,18 @@ class Ring(FourierComponent):
         brightness : astropy.unit.mas
             The radial brightness distribution
         """
+        # TODO: Check if this is slow
         mod_amps, cos_diff, bessel_funcs = [], [], []
         if self.asymmetric:
             for i in range(1, OPTIONS.model.modulation + 1):
-                c, s = getattr(self, f"c{i}")(), getattr(self, f"s{i}")()
+                rho, theta = getattr(self, f"rho{i}")(), getattr(self, f"theta{i}")()
                 angle_diff = np.angle(
-                    np.exp(1j * (baseline_angles - np.arctan2(c, s)).value)
+                    (
+                        np.exp(1j * baseline_angles.value)
+                        * np.exp(-1j * theta.to(u.rad).value)
+                    )
                 )
-                mod_amps.append((-1j) ** i * np.hypot(c, s))
+                mod_amps.append((-1j) ** i * rho)
                 cos_diff.append(np.cos(i * angle_diff))
                 bessel_funcs.append(partial(jv, i))
 
@@ -324,7 +328,7 @@ class Ring(FourierComponent):
             bessel_funcs = np.array(bessel_funcs)
 
         # TODO: Check that the calculation for the fluxes is still ok or if there needs to be a different order
-        # due to the wavelengths. Rn the modulation is the first element
+        # due to the wavelengths. Rn the modulation is the first element -> Check modulation here
         def _vis_func(xx: np.ndarray):
             """Shorthand for the vis calculation."""
             nonlocal mod_amps, cos_diff, bessel_funcs
@@ -409,13 +413,13 @@ class Ring(FourierComponent):
 
         image = intensity * radial_profile
         if self.asymmetric:
-            # TODO: Is this polar angle calculation correct? -> Check that
             polar_angle, modulations = np.arctan2(yy, xx), []
             for i in range(1, OPTIONS.model.modulation + 1):
-                c, s = getattr(self, f"c{i}")(), getattr(self, f"s{i}")()
-                modulations.append(
-                    c * np.cos(i * polar_angle) + s * np.sin(i * polar_angle)
+                rho, theta = getattr(self, f"rho{i}")(), getattr(self, f"theta{i}")()
+                diff = np.angle(
+                    np.exp(1j * i * polar_angle) * np.exp(-1j * theta.to(u.rad).value)
                 )
+                modulations.append(rho * np.cos(diff))
 
             image *= 1 + np.sum(modulations, axis=0)
 
