@@ -9,7 +9,7 @@ from scipy.special import j0, jv
 from .component import Component, FourierComponent
 from .options import OPTIONS
 from .parameter import Parameter
-from .utils import angular_to_distance, distance_to_angular
+from .utils import angular_to_distance, distance_to_angular, subtract_angles
 
 
 class NBandFit(Component):
@@ -309,18 +309,14 @@ class Ring(FourierComponent):
             The radial brightness distribution
         """
         # TODO: Check if this is slow
+        # TODO: Check this all again
         mod_amps, cos_diff, bessel_funcs = [], [], []
         if self.asymmetric:
             for i in range(1, OPTIONS.model.modulation + 1):
                 rho, theta = getattr(self, f"rho{i}")(), getattr(self, f"theta{i}")()
-                angle_diff = np.angle(
-                    (
-                        np.exp(1j * i * baseline_angles.value)
-                        * np.exp(-1j * i * theta.to(u.rad).value)
-                    )
-                )
+                diff = subtract_angles(i * baseline_angles, i * theta.to(u.rad))
                 mod_amps.append((-1j) ** i * rho)
-                cos_diff.append(angle_diff.real)
+                cos_diff.append(diff.real)
                 bessel_funcs.append(partial(jv, i))
 
             mod_amps = np.array(mod_amps)
@@ -416,9 +412,7 @@ class Ring(FourierComponent):
             polar_angle, modulations = np.arctan2(yy, xx), []
             for i in range(1, OPTIONS.model.modulation + 1):
                 rho, theta = getattr(self, f"rho{i}")(), getattr(self, f"theta{i}")()
-                diff = np.angle(
-                    np.exp(1j * i * polar_angle) * np.exp(-1j * theta.to(u.rad).value)
-                )
+                diff = subtract_angles(i * polar_angle, theta.to(u.rad))
                 modulations.append(rho * diff.real)
 
             image *= 1 + np.sum(modulations, axis=0)

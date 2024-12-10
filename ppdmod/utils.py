@@ -13,6 +13,18 @@ from scipy.special import j1
 from .options import OPTIONS
 
 
+def subtract_angles(angle1: u.rad, angle2: u.rad) -> complex:
+    """Subtracts two angles and returns the result as a complex number
+    to avoid wrapping around the 2pi boundary."""
+    if isinstance(angle1, u.Quantity):
+        angle1 = angle1.value
+
+    if isinstance(angle2, u.Quantity):
+        angle2 = angle2.value
+
+    return np.exp(1j * angle1) * np.exp(-1j * angle2)
+
+
 def windowed_linspace(start: float, end: float, window: float) -> np.ndarray:
     """Creates a numpy.linspace with a number of points so that the windowing doesn't overlap"""
     return np.linspace(start, end, int((end - start) // (2 * window)) + 1)
@@ -692,15 +704,15 @@ def compute_t3(vis: np.ndarray) -> np.ndarray:
     return np.angle(bispectrum, deg=True).real
 
 
-# TODO: Find a way how to deal with files that have the same sta indices but different (u, v)-coords
-# That means different observations/time stamps
 def get_t3_from_vis(complex_vis: np.ndarray) -> np.ndarray:
     """Gets the t3 complex visibility function from the vis2 indices"""
     complex_vis = complex_vis / complex_vis[:, 0][:, np.newaxis]
     complex_t3 = np.array(
         [complex_vis[:, ind] for ind in OPTIONS.data.t3.sta_vis_index.T]
     )
-    mask = np.repeat(OPTIONS.data.t3.sta_conj_flag.T[:, np.newaxis, :], complex_t3.shape[1], axis=1)
+    mask = np.repeat(
+        OPTIONS.data.t3.sta_conj_flag.T[:, np.newaxis, :], complex_t3.shape[1], axis=1
+    )
     complex_t3[mask] = complex_t3[mask].conj()
 
     bispectrum = complex_t3[0] * complex_t3[1] * complex_t3[-1].conj()
