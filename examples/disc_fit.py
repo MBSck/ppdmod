@@ -110,7 +110,7 @@ shared_params = {
 }
 
 
-star = Star(label="Star", f=flux_star, **shared_params)
+star = Star(label="Star", x=x, y=y, f=flux_star, **shared_params)
 inner_ring = GreyBody(
     label="Inner Ring",
     rin=rin1,

@@ -147,6 +147,7 @@ class FourierComponent(Component):
         xx, yy = xx - self.x(), yy - self.y()
         return xx.astype(OPTIONS.data.dtype.real), yy.astype(OPTIONS.data.dtype.real)
 
+    # TODO: Check this again
     def translate_vis_func(
         self, baselines: 1 / u.rad, baseline_angles: u.rad
     ) -> np.ndarray:
