@@ -58,21 +58,21 @@ STANDARD_PARAMS = load_toml_to_namespace(
 
 
 # NOTE: Data
-vis = SimpleNamespace(
+vis_data = SimpleNamespace(
     value=np.array([]),
     err=np.array([]),
     ucoord=np.array([]).reshape(1, -1),
     vcoord=np.array([]).reshape(1, -1),
     sta_index=np.array([]),
 )
-vis2 = SimpleNamespace(
+vis2_data = SimpleNamespace(
     value=np.array([]),
     err=np.array([]),
     ucoord=np.array([]).reshape(1, -1),
     vcoord=np.array([]).reshape(1, -1),
     sta_index=np.array([]),
 )
-t3 = SimpleNamespace(
+t3_data = SimpleNamespace(
     value=np.array([]),
     err=np.array([]),
     u123coord=np.array([]),
@@ -82,7 +82,7 @@ t3 = SimpleNamespace(
     sta_vis_index=np.array([]),
     sta_conj_flag=np.array([]),
 )
-flux = SimpleNamespace(value=np.array([]), err=np.array([]))
+flux_data = SimpleNamespace(value=np.array([]), err=np.array([]))
 gravity = SimpleNamespace(index=20)
 dtype = SimpleNamespace(complex=np.complex64, real=np.float32)
 binning = SimpleNamespace(
@@ -101,10 +101,10 @@ data = SimpleNamespace(
     resolutions=[],
     nbaselines=[],
     no_binning=False,
-    flux=flux,
-    vis=vis,
-    vis2=vis2,
-    t3=t3,
+    flux=flux_data,
+    vis=vis_data,
+    vis2=vis2_data,
+    t3=t3_data,
     gravity=gravity,
     binning=binning,
     dtype=dtype,
@@ -142,8 +142,13 @@ plot = SimpleNamespace(
     scatter=scatter,
 )
 
+# NOTE: Weights
+flux_weights = SimpleNamespace(overall=1, hband=1, kband=1, lband=1, mband=1, nband=1)
+t3_weights = SimpleNamespace(overall=1, hband=1, kband=1, lband=1, mband=1, nband=1)
+vis_weights = SimpleNamespace(overall=1, hband=1, kband=1, lband=1, mband=1, nband=1)
+weights = SimpleNamespace(flux=flux_weights, t3=t3_weights, vis=vis_weights)
+
 # NOTE: Fitting
-weights = SimpleNamespace(flux=1, t3=1, vis=1)
 fit = SimpleNamespace(
     weights=weights,
     data=["flux", "vis", "t3"],

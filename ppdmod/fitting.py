@@ -10,7 +10,7 @@ from dynesty import DynamicNestedSampler, NestedSampler
 from .component import Component
 from .data import get_counts_data
 from .options import OPTIONS
-from .utils import compute_vis, get_t3_from_vis, subtract_angles
+from .utils import compute_vis, get_t3_from_vis, subtract_angles, get_band
 
 
 def get_labels(components: List[Component], shared: bool = True) -> np.ndarray:
@@ -333,22 +333,33 @@ def compute_interferometric_chi_sq(
     for key in OPTIONS.fit.data:
         data = getattr(OPTIONS.data, key)
         key = key if key != "vis2" else "vis"
-        weights.append(getattr(OPTIONS.fit.weights, key))
+        weights.append(getattr(OPTIONS.fit.weights, key).overall)
+        bands = np.array(list(map(get_band, OPTIONS.fit.wavelengths)))
+        sorted_bands = sorted(map(str, set(bands)))
+        band_indices = [np.where(bands == band)[0] for band in sorted_bands]
         mask = data.value.mask
-        chi_sq = compute_chi_sq(
-            data.value.data[~mask].astype(OPTIONS.data.dtype.real),
-            data.err.data[~mask].astype(OPTIONS.data.dtype.real),
-            params[key][~mask],
-            ndim=ndim,
-            diff_method="linear" if key != "t3" else "exponential",
-            method=method,
-        )
-        chi_sqs.append(chi_sq)
 
-    ndata = get_counts_data()
+        band_chi_sqs, band_weights = [], []
+        for band, indices in zip(sorted_bands, band_indices):
+            band_mask = mask[indices]
+            band_chi_sqs.append(
+                compute_chi_sq(
+                    data.value[indices].data[~band_mask],
+                    data.err[indices].data[~band_mask],
+                    params[key][indices][~band_mask],
+                    ndim=ndim,
+                    diff_method="linear" if key != "t3" else "exponential",
+                    method=method,
+                ) / data.value[indices].data[~band_mask].size
+            )
+            band_weights.append(getattr(getattr(OPTIONS.fit.weights, key), band))
+
+        chi_sqs.append(np.sum(np.array(band_chi_sqs) * np.array(band_weights)))
+
     chi_sqs = np.array(chi_sqs).astype(float)
 
     if reduced:
+        ndata = get_counts_data()
         total_chi_sq = chi_sqs.sum() / np.abs(ndata.sum() - ndim)
         chi_sqs = chi_sqs / np.abs(ndata - ndim)
     else:

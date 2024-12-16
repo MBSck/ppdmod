@@ -1,7 +1,7 @@
 from functools import partial
 from pathlib import Path
 from types import SimpleNamespace
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import astropy.units as u
 import numpy as np
@@ -413,7 +413,8 @@ def set_data(
     fits_files: List[Path] | None = None,
     wavelengths: str | u.Quantity[u.um] | None = None,
     fit_data: List[str] = ["flux", "vis", "t3"],
-    weights: List[float] | None = None,
+    weights: Dict[str, float] | None = None,
+    band_weights: Dict[str, Dict[str, float]] | None = None,
     wavelength_range: u.Quantity[u.um] | None = None,
     set_std_err: List[str] | None = None,
     min_err: float = 0.05,
@@ -434,7 +435,9 @@ def set_data(
     fit_data : list of str, optional
         The data to be fitted.
     weights : list of float, optional
-        The weights of the fit parameters from the observed data.
+        The weights of the interferometric datasets used for fitting.
+    band_weights : dict of dict
+        The weights for the bands within the individual datasets.
     wavelength_range : astropy.units.um, optional
         A range of wavelengths to be kept. Other wavelengths will be omitted.
     set_std_err : list of str, optional
@@ -470,7 +473,13 @@ def set_data(
         correct_data_errors(data_to_read, wavelengths, set_std_err, min_err)
 
     if weights is not None:
-        for key, weight in zip(OPTIONS.fit.data, weights):
-            setattr(OPTIONS.fit.weights, key, weight)
+        for key, weight in weights.items():
+            getattr(OPTIONS.fit.weights, key).overall = weight
+
+    if band_weights is not None:
+        for key, weight in band_weights.items():
+            fit_weights = getattr(OPTIONS.fit.weights, key)
+            for band, value in weight.items():
+                setattr(fit_weights, band, value)
 
     return OPTIONS.data
