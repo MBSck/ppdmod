@@ -356,6 +356,8 @@ def compute_interferometric_chi_sq(
         chi_sqs.append(np.sum(band_chi_sqs))
 
     chi_sqs = np.array(chi_sqs).astype(float)
+    # print(list(map(float, (chi_sqs / max(chi_sqs)) ** -1)))
+    # print(chi_sqs * weights)
 
     if reduced:
         ndata = get_counts_data()
