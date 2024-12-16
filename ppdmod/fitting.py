@@ -339,8 +339,8 @@ def compute_interferometric_chi_sq(
         band_indices = [np.where(bands == band)[0] for band in sorted_bands]
         mask = data.value.mask
 
-        band_chi_sqs, band_weights = [], []
-        for band, indices in zip(sorted_bands, band_indices):
+        band_chi_sqs = []
+        for indices in band_indices:
             band_mask = mask[indices]
             band_chi_sqs.append(
                 compute_chi_sq(
@@ -352,9 +352,8 @@ def compute_interferometric_chi_sq(
                     method=method,
                 ) / data.value[indices].data[~band_mask].size
             )
-            band_weights.append(getattr(getattr(OPTIONS.fit.weights, key), band))
 
-        chi_sqs.append(np.sum(np.array(band_chi_sqs) * np.array(band_weights)))
+        chi_sqs.append(np.sum(band_chi_sqs))
 
     chi_sqs = np.array(chi_sqs).astype(float)
 

@@ -46,19 +46,14 @@ wavelengths = {
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
 bands = ["hband", "kband", "lband", "mband", "nband"]
 wavelengths = np.concatenate([wavelengths[band] for band in bands])
+
 observables = ["flux", "vis", "t3"]
 observable_weights = [1.0, 0.29461696]
-flux_weights = [40.1551701, 18.30663948, 11.0700609 , 10.25144212,  1.0]
-t3_weights = [49.896873474121094, 1.2675206661224365, 2.1168625354766846, 1.0628070831298828, 1.0]
-vis_weights = [376.87628173828125, 156.22006225585938, 44.00520324707031, 65.53958892822266, 1.0]
-band_weights = {key: dict(zip(bands, values)) for key, values
-                in zip(observables, [flux_weights, vis_weights, t3_weights])}
 data = set_data(
     fits_files,
     wavelengths=wavelengths,
     fit_data=["flux", "vis"],
-    weights=dict(zip(observables, observable_weights)),
-    band_weights=band_weights,
+    # weights=dict(zip(observables, observable_weights)),
     average=True,
 )
 

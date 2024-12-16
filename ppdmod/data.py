@@ -414,7 +414,6 @@ def set_data(
     wavelengths: str | u.Quantity[u.um] | None = None,
     fit_data: List[str] = ["flux", "vis", "t3"],
     weights: Dict[str, float] | None = None,
-    band_weights: Dict[str, Dict[str, float]] | None = None,
     wavelength_range: u.Quantity[u.um] | None = None,
     set_std_err: List[str] | None = None,
     min_err: float = 0.05,
@@ -436,8 +435,6 @@ def set_data(
         The data to be fitted.
     weights : list of float, optional
         The weights of the interferometric datasets used for fitting.
-    band_weights : dict of dict
-        The weights for the bands within the individual datasets.
     wavelength_range : astropy.units.um, optional
         A range of wavelengths to be kept. Other wavelengths will be omitted.
     set_std_err : list of str, optional
@@ -475,11 +472,5 @@ def set_data(
     if weights is not None:
         for key, weight in weights.items():
             getattr(OPTIONS.fit.weights, key).overall = weight
-
-    if band_weights is not None:
-        for key, weight in band_weights.items():
-            fit_weights = getattr(OPTIONS.fit.weights, key)
-            for band, value in weight.items():
-                setattr(fit_weights, band, value)
 
     return OPTIONS.data
