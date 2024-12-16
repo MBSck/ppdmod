@@ -151,10 +151,9 @@ class FourierComponent(Component):
         self, baselines: 1 / u.rad, baseline_angles: u.rad
     ) -> np.ndarray:
         """Translates a coordinate shift in image space to Fourier space."""
-        uv_coords = self.x() * np.cos(baseline_angles) + self.y() * np.sin(
-            baseline_angles
-        )
-        translation = np.exp(2j * np.pi * baselines * uv_coords.to(u.rad))
+        uv_coords = np.exp((1j * self.x().to(u.rad) * np.cos(baseline_angles)).value) \
+            * np.exp((1j * self.y().to(u.rad) * np.sin(baseline_angles)).value)
+        translation = np.exp(2j * np.pi * baselines * np.angle(uv_coords) * u.rad)
         return translation.value.astype(OPTIONS.data.dtype.complex)
 
     def vis_func(
