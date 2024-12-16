@@ -79,7 +79,7 @@ grid, value = load_data(
 )
 kappa_cont = Parameter(grid=grid, value=value, base="kappa_cont")
 pa = Parameter(value=352, free=False, base="pa")
-cinc = Parameter(value=1.0, free=True, shared=True, base="cinc")
+cinc = Parameter(value=0.84, free=False, base="cinc")
 
 with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
     temps = pickle.load(save_file)
