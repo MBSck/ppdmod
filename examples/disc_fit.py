@@ -143,7 +143,7 @@ ndim = len(LABELS)
 
 
 if __name__ == "__main__":
-    ncores = 50
+    ncores = 70
     fit_params = {"nlive_init": 1000, "nlive_batch": 500, "ptform": ptform}
     sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
 
