@@ -48,7 +48,7 @@ bands = ["hband", "kband", "lband", "mband", "nband"]
 wavelengths = np.concatenate([wavelengths[band] for band in bands])
 
 observables = ["flux", "vis", "t3"]
-observable_weights = [0.4202481638575209, 0.7402248003131207, 1.0]
+observable_weights = [0.6, 0.7, 1.0]
 data = set_data(
     fits_files,
     wavelengths=wavelengths,
@@ -148,7 +148,7 @@ ndim = len(LABELS)
 
 if __name__ == "__main__":
     ncores = 70
-    fit_params = {"dlogz": 0.5, "nlive_init": 1000, "nlive_batch": 500, "ptform": ptform}
+    fit_params = {"dlogz": 0.5, "nlive_init": 2000, "nlive_batch": 200, "ptform": ptform}
     sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
 
     theta, uncertainties = get_best_fit(sampler)
