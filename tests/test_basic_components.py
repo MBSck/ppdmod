@@ -256,15 +256,8 @@ def test_uv_coord_assignment(globs: List[str]) -> None:
         "mband": utils.windowed_linspace(4.7, 4.9, binning.mband.value) * u.um,
         "nband": utils.windowed_linspace(8, 13, binning.nband.value) * u.um,
     }
-    wavelengths = np.concatenate(
-        (
-            wavelengths["hband"],
-            wavelengths["kband"],
-            wavelengths["lband"],
-            wavelengths["mband"],
-            wavelengths["nband"],
-        )
-    )
+    bands = ["hband", "kband", "lband", "mband", "nband"]
+    wavelengths = np.concatenate([wavelengths[band] for band in bands])
     data = set_data(fits_files, wavelengths=wavelengths)
     t3_u123coord = np.array(
         [data.vis.ucoord[:, ind] for ind in OPTIONS.data.t3.sta_vis_index.T]

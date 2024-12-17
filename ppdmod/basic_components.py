@@ -308,7 +308,6 @@ class Ring(FourierComponent):
         brightness : astropy.unit.mas
             The radial brightness distribution
         """
-        # TODO: Check this all again
         mod_amps, cos_diff, bessel_funcs = [], [], []
         if self.asymmetric:
             for i in range(1, OPTIONS.model.modulation + 1):
@@ -321,8 +320,6 @@ class Ring(FourierComponent):
             cos_diff = np.array(cos_diff)
             bessel_funcs = np.array(bessel_funcs)
 
-        # TODO: Check that the calculation for the fluxes is still ok or if there needs to be a different order
-        # due to the wavelengths. Rn the modulation is the first element -> Check modulation here
         def _vis_func(xx: np.ndarray):
             """Shorthand for the vis calculation."""
             nonlocal mod_amps, cos_diff, bessel_funcs
