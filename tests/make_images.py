@@ -8,10 +8,10 @@ from ppdmod.plot import plot_components
 
 def image_ring(save_dir: Path) -> None:
     OPTIONS.model.modulation = 1
-    modulation_amps = [(-0.18, 0.98), (0, 0)]
+    modulation_amps = [(1, 90), (0, 0)]
     modulation_amps = modulation_amps[: OPTIONS.model.modulation]
-    modulation_dict = {f"c{i+1}": amp[0] for i, amp in enumerate(modulation_amps)}
-    modulation_dict.update({f"s{i+1}": amp[1] for i, amp in enumerate(modulation_amps)})
+    modulation_dict = {f"rho{i+1}": amp[0] for i, amp in enumerate(modulation_amps)}
+    modulation_dict.update({f"theta{i+1}": amp[1] for i, amp in enumerate(modulation_amps)})
 
     asymmetric = True
     dim, pixel_size, wl = 512, 0.02, 3.5

@@ -293,7 +293,7 @@ def test_uv_coord_assignment(globs: List[str]) -> None:
     [
         ("uts", 3.5, 1.5, 0.25, 1, 0, None),
         ("uts", 3.5, 1.5, 0.25, 0.5, 285, None),
-        # ("uts", 3.5, 1.5, 0.25, 0.63, 68, [(0.5, 90)]),
+        ("uts", 3.5, 1.5, 0.25, 0.63, 68, [(1, 90)]),
     ],
 )
 def test_ring_compute_vis(
