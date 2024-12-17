@@ -314,7 +314,7 @@ class Ring(FourierComponent):
             for i in range(1, OPTIONS.model.modulation + 1):
                 rho, theta = getattr(self, f"rho{i}")(), getattr(self, f"theta{i}")()
                 mod_amps.append((-1j) ** i * rho)
-                cos_diff.append(np.cos(compare_angles(i * baseline_angles, i * theta)))
+                cos_diff.append(np.cos(i * compare_angles(baseline_angles, theta)))
                 bessel_funcs.append(partial(jv, i))
 
             mod_amps = np.array(mod_amps)
@@ -410,8 +410,7 @@ class Ring(FourierComponent):
             polar_angle, modulations = np.arctan2(yy, xx), []
             for i in range(1, OPTIONS.model.modulation + 1):
                 rho, theta = getattr(self, f"rho{i}")(), getattr(self, f"theta{i}")()
-                modulations.append(rho * np.cos(compare_angles(i * polar_angle, theta)))
-                breakpoint()
+                modulations.append(rho * np.cos(compare_angles(theta, i * polar_angle)))
 
             image *= 1 + np.sum(modulations, axis=0)
 
