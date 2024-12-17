@@ -9,7 +9,7 @@ from scipy.special import j0, jv
 from .component import Component, FourierComponent
 from .options import OPTIONS
 from .parameter import Parameter
-from .utils import angular_to_distance, distance_to_angular, subtract_angles
+from .utils import angular_to_distance, distance_to_angular, compare_angles
 
 
 class NBandFit(Component):
@@ -182,7 +182,7 @@ class Star(FourierComponent):
 
     def flux_func(self, wavelength: u.um) -> np.ndarray:
         """Computes the flux of the star."""
-        if self.f.value is not None:
+        if np.any(self.f.value != 0):
             stellar_flux = self.f(wavelength)
         else:
             plancks_law = BlackBody(temperature=self.eff_temp())
@@ -308,15 +308,13 @@ class Ring(FourierComponent):
         brightness : astropy.unit.mas
             The radial brightness distribution
         """
-        # TODO: Check if this is slow
         # TODO: Check this all again
         mod_amps, cos_diff, bessel_funcs = [], [], []
         if self.asymmetric:
             for i in range(1, OPTIONS.model.modulation + 1):
                 rho, theta = getattr(self, f"rho{i}")(), getattr(self, f"theta{i}")()
-                diff = subtract_angles(i * baseline_angles, i * theta.to(u.rad))
                 mod_amps.append((-1j) ** i * rho)
-                cos_diff.append(diff.real)
+                cos_diff.append(np.cos(compare_angles(i * baseline_angles, i * theta)))
                 bessel_funcs.append(partial(jv, i))
 
             mod_amps = np.array(mod_amps)
@@ -412,8 +410,8 @@ class Ring(FourierComponent):
             polar_angle, modulations = np.arctan2(yy, xx), []
             for i in range(1, OPTIONS.model.modulation + 1):
                 rho, theta = getattr(self, f"rho{i}")(), getattr(self, f"theta{i}")()
-                diff = subtract_angles(i * polar_angle, theta.to(u.rad))
-                modulations.append(rho * diff.real)
+                modulations.append(rho * np.cos(compare_angles(i * polar_angle, theta)))
+                breakpoint()
 
             image *= 1 + np.sum(modulations, axis=0)
 

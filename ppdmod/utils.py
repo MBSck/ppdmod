@@ -13,16 +13,17 @@ from scipy.special import j1
 from .options import OPTIONS
 
 
-def subtract_angles(angle1: u.rad, angle2: u.rad) -> complex:
+def compare_angles(angle1: u.rad, angle2: u.rad) -> complex:
     """Subtracts two angles and returns the result as a complex number
     to avoid wrapping around the 2pi boundary."""
     if isinstance(angle1, u.Quantity):
-        angle1 = angle1.value
+        angle1 = angle1.to(u.rad).value
 
     if isinstance(angle2, u.Quantity):
-        angle2 = angle2.value
+        angle2 = angle2.to(u.rad).value
 
-    return np.exp(1j * angle1) * np.exp(-1j * angle2)
+    diff = angle1 - angle2
+    return np.arctan2(np.sin(diff), np.cos(diff))
 
 
 def windowed_linspace(start: float, end: float, window: float) -> np.ndarray:

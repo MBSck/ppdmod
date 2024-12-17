@@ -10,7 +10,7 @@ from dynesty import DynamicNestedSampler, NestedSampler
 from .component import Component
 from .data import get_counts_data
 from .options import OPTIONS
-from .utils import compute_vis, get_t3_from_vis, subtract_angles, get_band
+from .utils import compute_vis, get_t3_from_vis, compare_angles, get_band
 
 
 def get_labels(components: List[Component], shared: bool = True) -> np.ndarray:
@@ -202,8 +202,7 @@ def compute_chi_sq(
 
     diff = data - model_data
     if diff_method != "linear":
-        diff = subtract_angles(np.deg2rad(data), np.deg2rad(model_data))
-        diff = np.angle(diff, deg=True)
+        diff = np.rad2deg(compare_angles(np.deg2rad(data), np.deg2rad(model_data)))
 
     chi_sq = diff**2 / sigma_squared
     if method == "linear":

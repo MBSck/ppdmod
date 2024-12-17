@@ -44,7 +44,7 @@ name = "pa"
 description = "The major-axis position angle"
 value = 0
 unit = "deg"
-min = 0
+min = -180
 max = 180
 
 [STANDARD_PARAMETERS.pixel_size]
