@@ -164,7 +164,6 @@ def compute_chi_sq(
     data: u.Quantity,
     error: u.Quantity,
     model_data: u.Quantity,
-    ndim: int,
     diff_method: str = "linear",
     method: str = "logarithmic",
     lnf: float | None = None,
@@ -179,8 +178,6 @@ def compute_chi_sq(
         The real data's error.
     model_data : numpy.ndarray
         The model data.
-    ndim : int
-        The number of (parameter) dimensions.
     diff_method : str, optional
         The method to determine the difference of the dataset,
         to the data. Either "linear" or "exponential".
@@ -208,8 +205,7 @@ def compute_chi_sq(
     if method == "linear":
         return chi_sq.sum()
 
-    lnorm = np.log(2 * np.pi) * ndim + np.log(sigma_squared)
-    return -0.5 * (chi_sq + lnorm).sum()
+    return -0.5 * (chi_sq + np.log(2 * np.pi * sigma_squared)).sum()
 
 
 def compute_observables(
@@ -284,7 +280,6 @@ def compute_nband_fit_chi_sq(
         flux.value.data[~mask].astype(OPTIONS.data.dtype.real),
         flux.err.data[~mask].astype(OPTIONS.data.dtype.real),
         flux_model[~mask],
-        ndim,
         method=method,
     )
 
@@ -346,7 +341,6 @@ def compute_interferometric_chi_sq(
                     data.value[indices].data[~band_mask],
                     data.err[indices].data[~band_mask],
                     params[key][indices][~band_mask],
-                    ndim=ndim,
                     diff_method="linear" if key != "t3" else "exponential",
                     method=method,
                 ) / data.value[indices].data[~band_mask].size

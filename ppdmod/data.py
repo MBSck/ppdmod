@@ -50,7 +50,6 @@ class ReadoutFits:
                 )
                 self.wavelength = self.wavelength[indices]
 
-            self.array = self.read_into_namespace(hdul, "array")
             self.flux = self.read_into_namespace(
                 hdul, "flux", sci_index, wl_index, indices
             )
@@ -81,12 +80,6 @@ class ReadoutFits:
                 vcoord=np.array([]).reshape(1, -1),
             )
 
-        if key == "array":
-            return SimpleNamespace(
-                tel_name=data["tel_name"],
-                sta_index=data["sta_index"],
-            )
-
         if key == "flux":
             try:
                 return SimpleNamespace(
@@ -108,7 +101,6 @@ class ReadoutFits:
                 err=data[err_key][:, wl_index:][:, indices],
                 ucoord=data["ucoord"].reshape(1, -1),
                 vcoord=data["vcoord"].reshape(1, -1),
-                sta_index=data["sta_index"],
             )
 
         u1coord, u2coord = map(lambda x: data[f"u{x}coord"], ["1", "2"])
@@ -120,7 +112,6 @@ class ReadoutFits:
             err=data["t3phierr"][:, wl_index:][:, indices],
             u123coord=np.array([u1coord, u2coord, u3coord]),
             v123coord=np.array([v1coord, v2coord, v3coord]),
-            sta_index=data["sta_index"],
         )
 
     def get_data_for_wavelength(
@@ -249,44 +240,10 @@ def clear_data() -> List[str]:
         data.value, data.err = [np.array([]) for _ in range(2)]
         if key in ["vis", "vis2"]:
             data.ucoord, data.vcoord = [np.array([]).reshape(1, -1) for _ in range(2)]
-            data.sta_index = np.array([]).reshape(2, -1)
         elif key in "t3":
             data.u123coord, data.v123coord = [np.array([]) for _ in range(2)]
 
     return ["flux", "vis", "vis2", "t3"]
-
-
-def get_sta_pair(x: List[int]) -> List[Tuple[int, int]]:
-    """Gets a station pair from a t3 station index"""
-    return [(x[0], x[1]), (x[1], x[-1]), (x[0], x[-1])]
-
-
-def map_sta_indices(sta_index: np.ndarray, sta_pair: np.ndarray) -> np.ndarray:
-    """Maps the station pairs of the t3 to the station indices of the vis2.
-
-    Parameters
-    ----------
-    sta_index : ndarray
-        The station indices of the vis2.
-    sta_pair : ndarray
-        The station index pairs for the t3.
-
-    Returns
-    -------
-    vis_indices : np.ndarray
-        The indices pertaining to the vis for the t3.
-    """
-    vis_indices = np.zeros(sta_pair.shape[:-1], dtype=int)
-    for col_index, col in enumerate(sta_pair):
-        for row_index, row in enumerate(col):
-            match = np.where((row == sta_index).all(axis=1))[0]
-            if match.size == 0:
-                match = np.where((row[::-1] == sta_index).all(axis=1))[0]
-                OPTIONS.data.t3.sta_conj_flag[col_index, row_index] = True
-
-            vis_indices[col_index, row_index] = match[0]
-
-    return vis_indices
 
 
 # TODO: Convert all arrays to masked arrays here
@@ -295,14 +252,7 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
     OPTIONS.data.nbaselines = []
     # TODO: Make sure to avoid error if vis doesn't exists in OIFITS file
     for index, readout in enumerate(OPTIONS.data.readouts):
-        array = readout.array
-        sta_index_conversion = dict(
-            zip(
-                array.sta_index.tolist(),
-                map(lambda x: index * 10 + x, range(1, len(array.sta_index) + 1)),
-            )
-        )
-        replace_sta = np.vectorize(lambda x: sta_index_conversion.get(x, x))
+        # TODO: Make sure that the uv coords are determined by file and uniqueness
 
         for key in data_to_read:
             data = getattr(OPTIONS.data, key)
@@ -325,11 +275,9 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
                 data.err = np.hstack((data.err, err))
 
             if key in ["vis", "vis2"]:
-                sta_index = replace_sta(data_readout.sta_index)
                 if data.ucoord.size == 0:
                     data.ucoord = np.insert(data_readout.ucoord, 0, 0, axis=1)
                     data.vcoord = np.insert(data_readout.vcoord, 0, 0, axis=1)
-                    data.sta_index = np.insert(sta_index, 0, (0, 0), axis=0)
                 else:
                     data.ucoord = np.concatenate(
                         (data.ucoord, data_readout.ucoord), axis=-1
@@ -337,37 +285,23 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
                     data.vcoord = np.concatenate(
                         (data.vcoord, data_readout.vcoord), axis=-1
                     )
-                    data.sta_index = np.vstack((data.sta_index, sta_index))
 
                 if key == "vis2":
                     OPTIONS.data.nbaselines.append(data_readout.ucoord.size)
 
             elif key == "t3":
-                sta_index = replace_sta(data_readout.sta_index)
-                sta_pair = np.array([get_sta_pair(row) for row in sta_index])
-
                 if data.u123coord.size == 0:
                     data.u123coord = np.insert(data_readout.u123coord, 0, 0, axis=1)
                     data.v123coord = np.insert(data_readout.v123coord, 0, 0, axis=1)
-                    data.sta_index = np.insert(sta_index, 0, (0, 0, 0), axis=0)
-                    data.sta_pair = sta_pair
                 else:
                     data.u123coord = np.hstack((data.u123coord, data_readout.u123coord))
                     data.v123coord = np.hstack((data.v123coord, data_readout.v123coord))
-                    data.sta_index = np.vstack((data.sta_index, sta_index))
-                    data.sta_pair = np.vstack((data.sta_pair, sta_pair))
+                breakpoint()
 
     for key in data_to_read:
         data = getattr(OPTIONS.data, key)
         data.value = np.ma.masked_invalid(data.value)
         data.err = np.ma.masked_invalid(data.err)
-
-    OPTIONS.data.t3.sta_conj_flag = np.zeros(OPTIONS.data.t3.sta_index.shape).astype(
-        bool
-    )[1:]
-    OPTIONS.data.t3.sta_vis_index = map_sta_indices(
-        OPTIONS.data.vis2.sta_index, OPTIONS.data.t3.sta_pair
-    )
 
 
 # TODO: Make sure that this is correct in setting it
