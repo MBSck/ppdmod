@@ -48,12 +48,12 @@ bands = ["hband", "kband", "lband", "mband", "nband"]
 wavelengths = np.concatenate([wavelengths[band] for band in bands])
 
 observables = ["flux", "vis", "t3"]
-observable_weights = [0.6, 0.7, 1.0]
+observable_weights = [10, 1, 1]
 data = set_data(
     fits_files,
     wavelengths=wavelengths,
     fit_data=["flux", "vis", "t3"],
-    # weights=dict(zip(observables, observable_weights)),
+    weights=dict(zip(observables, observable_weights)),
     average=True,
 )
 
@@ -108,7 +108,6 @@ shared_params = {
     # "radii": temps.radii,
     # "matrix": temps.values,
 }
-
 
 # star = Star(label="Star", x=x, y=y, f=flux_star, **shared_params)
 star = Star(label="Star", f=flux_star, **shared_params)
