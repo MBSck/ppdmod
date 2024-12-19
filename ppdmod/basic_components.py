@@ -351,9 +351,9 @@ class Ring(FourierComponent):
             radius = radius.to(u.rad)
             vis = _vis_func(2 * np.pi * radius * baselines)
             if intensity_func is None:
-                vis = np.trapz(vis, radius)
+                vis = np.trapezoid(vis, radius)
             else:
-                vis = np.trapz(radius * intensity * vis, radius).to(u.Jy)
+                vis = np.trapezoid(radius * intensity * vis, radius).to(u.Jy)
 
             if intensity_func is None:
                 if self.has_outer_radius:
