@@ -1,7 +1,7 @@
 from functools import partial
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import astropy.units as u
 import numpy as np
@@ -96,22 +96,26 @@ class ReadoutFits:
             else:
                 value_key, err_key = "vis2data", "vis2err"
 
+            ucoord = data["ucoord"].reshape(1, -1).astype(OPTIONS.data.dtype.real)
+            vcoord = data["vcoord"].reshape(1, -1).astype(OPTIONS.data.dtype.real)
             return SimpleNamespace(
                 value=data[value_key][:, wl_index:][:, indices],
                 err=data[err_key][:, wl_index:][:, indices],
-                ucoord=data["ucoord"].reshape(1, -1),
-                vcoord=data["vcoord"].reshape(1, -1),
+                ucoord=np.round(ucoord, 2),
+                vcoord=np.round(vcoord, 2),
             )
 
         u1coord, u2coord = map(lambda x: data[f"u{x}coord"], ["1", "2"])
         v1coord, v2coord = map(lambda x: data[f"v{x}coord"], ["1", "2"])
         u3coord, v3coord = u1coord + u2coord, v1coord + v2coord
+        u123coord = np.array([u1coord, u2coord, u3coord]).astype(OPTIONS.data.dtype.real)
+        v123coord = np.array([v1coord, v2coord, v3coord]).astype(OPTIONS.data.dtype.real)
 
         return SimpleNamespace(
             value=data["t3phi"][:, wl_index:][:, indices],
             err=data["t3phierr"][:, wl_index:][:, indices],
-            u123coord=np.array([u1coord, u2coord, u3coord]),
-            v123coord=np.array([v1coord, v2coord, v3coord]),
+            u123coord=np.round(u123coord, 2),
+            v123coord=np.round(v123coord, 2),
         )
 
     def get_data_for_wavelength(
@@ -290,13 +294,22 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
                     OPTIONS.data.nbaselines.append(data_readout.ucoord.size)
 
             elif key == "t3":
+                uvcoords = np.stack((data_readout.u123coord, data_readout.v123coord), axis=-1)
+                unique_uvcoords = np.unique(uvcoords.reshape(-1, 2), axis=0)
+                ucoord, vcoord = unique_uvcoords[:, 0], unique_uvcoords[:, 1]
+                index123 = np.vectorize(lambda x: np.where(ucoord == x)[0][0])(data_readout.u123coord)
                 if data.u123coord.size == 0:
-                    data.u123coord = np.insert(data_readout.u123coord, 0, 0, axis=1)
-                    data.v123coord = np.insert(data_readout.v123coord, 0, 0, axis=1)
+                    data.u123coord = data_readout.u123coord
+                    data.v123coord = data_readout.v123coord
+                    data.ucoord = np.insert(ucoord, 0, 0).reshape(1, -1)
+                    data.vcoord = np.insert(vcoord, 0, 0).reshape(1, -1)
+                    data.index123 = index123 + 1
                 else:
                     data.u123coord = np.hstack((data.u123coord, data_readout.u123coord))
                     data.v123coord = np.hstack((data.v123coord, data_readout.v123coord))
-                breakpoint()
+                    data.ucoord = np.concatenate((data.ucoord, ucoord.reshape(1, -1)), axis=-1)
+                    data.vcoord = np.concatenate((data.vcoord, vcoord.reshape(1, -1)), axis=-1)
+                    data.index123 = np.hstack((data.index123, index123 + data.index123.max() + 1))
 
     for key in data_to_read:
         data = getattr(OPTIONS.data, key)

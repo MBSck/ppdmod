@@ -10,7 +10,7 @@ from dynesty import DynamicNestedSampler, NestedSampler
 from .component import Component
 from .data import get_counts_data
 from .options import OPTIONS
-from .utils import compute_vis, get_t3_from_vis, compare_angles, get_band
+from .utils import compute_vis, compute_t3, compare_angles, get_band
 
 
 def get_labels(components: List[Component], shared: bool = True) -> np.ndarray:
@@ -223,6 +223,7 @@ def compute_observables(
     """
     wavelength = OPTIONS.fit.wavelengths if wavelength is None else wavelength
     vis = OPTIONS.data.vis2 if "vis2" in OPTIONS.fit.data else OPTIONS.data.vis
+    t3 = OPTIONS.data.t3
     complex_vis = np.sum(
         [
             comp.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
@@ -230,9 +231,16 @@ def compute_observables(
         ],
         axis=0,
     )
+    complex_t3 = np.sum(
+        [
+            comp.compute_complex_vis(t3.ucoord, t3.vcoord, wavelength)
+            for comp in components
+        ],
+        axis=0,
+    )
 
+    t3_model = compute_t3(complex_t3[:, t3.index123])
     flux_model = complex_vis[:, 0].reshape(-1, 1)
-    t3_model = get_t3_from_vis(complex_vis)
 
     if OPTIONS.model.output == "normed":
         complex_vis /= flux_model

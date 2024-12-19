@@ -23,7 +23,6 @@ from ppdmod.utils import (
     compute_t3,
     compute_vis,
     get_opacity,
-    get_t3_from_vis,
     load_data,
 )
 
@@ -259,28 +258,21 @@ def test_uv_coord_assignment(globs: List[str]) -> None:
     bands = ["hband", "kband", "lband", "mband", "nband"]
     wavelengths = np.concatenate([wavelengths[band] for band in bands])
     data = set_data(fits_files, wavelengths=wavelengths)
-    t3_u123coord = np.array(
-        [data.vis.ucoord[:, ind] for ind in OPTIONS.data.t3.sta_vis_index.T]
-    ).reshape(3, -1)
-    t3_v123coord = np.array(
-        [data.vis.vcoord[:, ind] for ind in OPTIONS.data.t3.sta_vis_index.T]
-    ).reshape(3, -1)
-
-    mask = data.t3.sta_conj_flag.T
-    t3_u123coord[mask] = -t3_u123coord[mask]
-    t3_v123coord[mask] = -t3_v123coord[mask]
+    t3_u123coord = np.array([data.t3.ucoord[0, data.t3.index123]])
+    t3_v123coord = np.array([data.t3.vcoord[0, data.t3.index123]])
 
     try:
-        assert np.allclose(t3_u123coord, data.t3.u123coord[:, 1:], atol=1e-2)
+        assert np.allclose(t3_u123coord, data.t3.u123coord, atol=1e-2)
     except AssertionError:
-        assert np.all(np.abs(t3_u123coord - data.t3.u123coord[:, 1:]) < 2)
+        assert np.all(np.abs(t3_u123coord - data.t3.u123coord) < 2)
 
     try:
-        assert np.allclose(t3_v123coord, data.t3.v123coord[:, 1:], atol=1e-2)
+        assert np.allclose(t3_v123coord, data.t3.v123coord, atol=1e-2)
     except AssertionError:
-        assert np.all(np.abs(t3_v123coord - data.t3.v123coord[:, 1:]) < 2)
+        assert np.all(np.abs(t3_v123coord - data.t3.v123coord) < 2)
 
 
+# TODO: For the asymmetric case the uv-coords are not 100 % the same here -> Check why
 @pytest.mark.parametrize(
     "array, wl, rin, width, cinc, pa, mod_amps",
     [
@@ -333,7 +325,8 @@ def test_ring_compute_vis(
 
     vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
     complex_vis = ring.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
-    vis_ring, t3_ring = compute_vis(complex_vis), get_t3_from_vis(complex_vis)
+    complex_t3 = ring.compute_complex_vis(t3.ucoord, t3.vcoord, wavelength)
+    vis_ring, t3_ring = compute_vis(complex_vis), compute_t3(complex_t3[:, t3.index123])
     if "vis2" in OPTIONS.fit.data:
         vis_ring *= vis_ring
 
@@ -425,57 +418,3 @@ def test_temp_gradient_resolution(
     OPTIONS.model.modulation = 0
     temp_gradient.optically_thick = False
     temp_gradient.asymmetric = False
-
-
-def test_t3_calculation(kappa_abs: Parameter, kappa_cont: Parameter) -> None:
-    """Tests the calculation of the ring's visibilities."""
-    binning = OPTIONS.data.binning
-    wavelengths = {
-        "hband": [1.7] * u.um,
-        "kband": [2.15] * u.um,
-        "lband": utils.windowed_linspace(3.1, 3.4, binning.lband.value) * u.um,
-        "mband": utils.windowed_linspace(4.7, 4.9, binning.mband.value) * u.um,
-        "nband": utils.windowed_linspace(8, 13, binning.nband.value) * u.um,
-    }
-    wavelengths = np.concatenate(
-        (
-            wavelengths["hband"],
-            wavelengths["kband"],
-            wavelengths["lband"],
-            wavelengths["mband"],
-            wavelengths["nband"],
-        )
-    )
-
-    data = set_data(
-        list((DATA_DIR / "fits" / "hd142527").glob("*.fits")),
-        wavelengths=wavelengths,
-    )
-
-    disc = AsymGreyBody(
-        dim=32,
-        dist=158.51,
-        eff_temp=6750,
-        eff_radius=3.46,
-        kappa_abs=kappa_abs,
-        kappa_cont=kappa_cont,
-        pa=33,
-        cinc=0.8,
-        rin=0.1,
-        rout=1.5,
-        p=0.6,
-        sigma0=1e-3,
-        c1=0.5,
-        s1=-1,
-    )
-
-    vis, t3 = data.vis2 if "vis2" in OPTIONS.fit.data else data.vis, data.t3
-    complex_vis = disc.compute_complex_vis(vis.ucoord, vis.vcoord, wavelengths)
-    complex_vis_t3 = disc.compute_complex_vis(t3.u123coord, t3.v123coord, wavelengths)
-    t3_ring_calc = compute_t3(complex_vis_t3)
-    t3_ring_get = get_t3_from_vis(complex_vis)
-
-    assert np.allclose(t3_ring_calc[:, 1:], t3_ring_get, atol=1e0)
-
-    set_data()
-    OPTIONS.model.modulation = 1
