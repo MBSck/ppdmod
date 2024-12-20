@@ -29,7 +29,7 @@ from .utils import (
     compute_effective_baselines,
     distance_to_angular,
     get_band,
-    restrict_phase,
+    compare_angles
 )
 
 matplotlib.use("Agg")
@@ -572,8 +572,9 @@ def get_axis_information(key: str) -> Dict[str, Any]:
 def plot_data_vs_model(
     axarr,
     wavelengths: np.ndarray,
-    data: np.ndarray,
+    value: np.ndarray,
     err: np.ndarray,
+    key: str,
     baselines: np.ndarray | None = None,
     model_data: np.ndarray | None = None,
     colormap: str = OPTIONS.plot.color.colormap,
@@ -596,7 +597,7 @@ def plot_data_vs_model(
         )
 
     wavelengths = wavelengths[band_indices]
-    data, err = data[band_indices], err[band_indices]
+    value, err = value[band_indices], err[band_indices]
     model_data = model_data[band_indices] if model_data is not None else model_data
 
     if isinstance(axarr, list):
@@ -608,25 +609,24 @@ def plot_data_vs_model(
     set_axes_color(upper_ax, OPTIONS.plot.color.background)
     color = colormap(norm(wavelengths.value))
     if baselines is None:
-        grid = [wl.repeat(data.shape[-1]) for wl in wavelengths.value]
+        grid = [wl.repeat(value.shape[-1]) for wl in wavelengths.value]
     else:
         grid = (baselines / wavelengths.value[:, np.newaxis])[:, 1:]
 
     if not plot_nan:
-        nan_indices = [~np.isnan(data)[index] for index, _ in enumerate(wavelengths)]
-        data = [data[i][index] for i, index in enumerate(nan_indices)]
-        err = [err[i][index] for i, index in enumerate(nan_indices)]
+        masks = [~v.mask for v in value]
+        value, err = [v.data[~v.mask] for v in value], [e.data[~e.mask] for e in err]
         if model_data is not None:
-            model_data = [model_data[i][index] for i, index in enumerate(nan_indices)]
-        grid = [grid[i][index] for i, index in enumerate(nan_indices)]
+            model_data = [model[mask] for model, mask in zip(model_data, masks)]
+
+        grid = [g[mask] for g, mask in zip(grid, masks)]
 
     get_axis_information("flux")
-
     for index, _ in enumerate(wavelengths.value):
         errorbar_params.color = scatter_params.color = color[index]
         upper_ax.errorbar(
             grid[index],
-            data[index],
+            value[index],
             err[index],
             alpha=alpha,
             fmt="o",
@@ -640,8 +640,11 @@ def plot_data_vs_model(
                 **vars(scatter_params),
             )
 
-            # TODO: Think of how to include phase restriction here
-            diff = data[index] - model_data[index]
+            if key == "t3":
+                diff = compare_angles(value[index], model_data[index])
+            else:
+                diff = value[index] - model_data[index]
+
             lower_ax.errorbar(
                 grid[index],
                 diff,
@@ -733,6 +736,7 @@ def plot_fit(
             wavelengths,
             flux.value,
             flux.err,
+            "flux",
             bands=bands,
             model_data=model_flux,
             **plot_kwargs,
@@ -747,6 +751,7 @@ def plot_fit(
             wavelengths,
             vis.value,
             vis.err,
+            "vis" if "vis" in data_to_plot else "vis2",
             bands=bands,
             baselines=effective_baselines,
             model_data=model_vis,
@@ -763,6 +768,7 @@ def plot_fit(
             wavelengths,
             t3.value,
             t3.err,
+            "t3",
             bands=bands,
             baselines=longest_baselines,
             model_data=model_t3,
@@ -855,7 +861,7 @@ def plot_overview(
     plot_kwargs = {"norm": norm, "colormap": colormap}
     if "flux" in data_to_plot:
         plot_data_vs_model(
-            axarr["flux"], wavelengths, flux.value, flux.err, bands=bands, **plot_kwargs
+            axarr["flux"], wavelengths, flux.value, flux.err, "flux", bands=bands, **plot_kwargs
         )
 
     if "vis" in data_to_plot or "vis2" in data_to_plot:
@@ -867,6 +873,7 @@ def plot_overview(
             wavelengths,
             vis.value,
             vis.err,
+            "vis" if "vis" in data_to_plot else "vis2",
             bands=bands,
             baselines=effective_baselines,
             **plot_kwargs,
@@ -882,6 +889,7 @@ def plot_overview(
             wavelengths,
             t3.value,
             t3.err,
+            "t3",
             bands=bands,
             baselines=longest_baselines,
             **plot_kwargs,
