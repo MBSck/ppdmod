@@ -23,12 +23,14 @@ min = 0
 max = 10
 smooth = true
 
-[STANDARD_PARAMETERS.log_f]
-name = "log_f"
+[STANDARD_PARAMETERS.lnf]
+name = "lnf"
 description = "The error correction term"
 unit = "one"
-value = 0
-min = -12
+min = -10
+max = 1
+free = false
+shared = true
 
 [STANDARD_PARAMETERS.fr]
 name = "fr"

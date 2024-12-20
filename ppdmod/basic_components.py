@@ -19,6 +19,7 @@ class NBandFit(Component):
 
     def __init__(self, **kwargs):
         """The class's constructor."""
+        super().__init__(**kwargs)
         self.tempc = Parameter(base="tempc")
         self.pah = Parameter(base="pah")
         self.scale_pah = Parameter(base="scale_pah")

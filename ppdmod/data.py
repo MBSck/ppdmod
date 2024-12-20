@@ -361,7 +361,6 @@ def set_data(
     set_std_err: List[str] | None = None,
     min_err: float = 0.05,
     average: bool = False,
-    log_f: Dict[str, Parameter] | None = None,
     **kwargs,
 ) -> SimpleNamespace:
     """Sets the data as a global variable from the input files.
@@ -387,8 +386,6 @@ def set_data(
         The minimum error of the data to be kept. Will set the error to be that at least.
     average : bool, optional
         If toggled will average the flux over all files and set an offset for the correlated fluxes/visibilities.
-    log_f : dict of Parameter, optional
-        One parameter per observable fitted to correct for error underestimation.
     """
     data_to_read = clear_data()
     if fits_files is None:
@@ -416,11 +413,6 @@ def set_data(
         correct_data_errors(data_to_read, wavelengths, set_std_err, min_err)
 
     if weights is not None:
-        for key, weight in weights.items():
-            setattr(OPTIONS.fit.weights, key, weight)
-
-    if log_f is not None:
-        for key, f in log_f.items():
-            setattr(OPTIONS.fit.log_f, key, f)
+        OPTIONS.fit.weights = SimpleNamespace(**weights)
 
     return OPTIONS.data

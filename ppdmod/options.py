@@ -141,12 +141,10 @@ plot = SimpleNamespace(
 
 # NOTE: Weights
 weights = SimpleNamespace(flux=1, t3=1, vis=1)
-log_f = SimpleNamespace(flux=None, t3=None, vis=None)
 
 # NOTE: Fitting
 fit = SimpleNamespace(
     weights=weights,
-    log_f=log_f,
     data=["flux", "vis", "t3"],
     wavelengths=None,
     quantiles=[2.5, 50, 97.5],

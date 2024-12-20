@@ -17,7 +17,6 @@ from ppdmod.basic_components import AsymGreyBody, GreyBody, Star
 from ppdmod.data import set_data
 from ppdmod.fitting import (
     compute_interferometric_chi_sq,
-    compute_observables,
     get_best_fit,
     get_labels,
     ptform_sequential_radii,
@@ -48,12 +47,10 @@ bands = ["hband", "kband", "lband", "mband", "nband"]
 wavelengths = np.concatenate([wavelengths[band] for band in bands])
 
 observables = ["flux", "vis", "t3"]
-observable_weights = [10, 1, 1]
 data = set_data(
     fits_files,
     wavelengths=wavelengths,
     fit_data=["flux", "vis", "t3"],
-    weights=dict(zip(observables, observable_weights)),
     average=True,
 )
 
@@ -95,6 +92,10 @@ rout2 = Parameter(value=4, unit=u.au, free=True, base="rout")
 p2 = Parameter(value=0.5, min=-30, max=20, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 
+flux_lnf = Parameter(name="flux_lnf", free=True, base="lnf")
+t3_lnf = Parameter(name="t3_lnf", free=True, base="lnf")
+vis_lnf = Parameter(name="vis_lnf", free=True, base="lnf")
+
 shared_params = {
     "dim": 32,
     "dist": 158.51,
@@ -104,6 +105,9 @@ shared_params = {
     "kappa_cont": kappa_cont,
     "pa": pa,
     "cinc": cinc,
+    "flux_lnf": flux_lnf,
+    "t3_lnf": t3_lnf,
+    "vis_lnf": vis_lnf,
     # "weights": temps.weights,
     # "radii": temps.radii,
     # "matrix": temps.values,
@@ -148,7 +152,7 @@ ndim = len(LABELS)
 if __name__ == "__main__":
     ncores = 70
     fit_params = {"dlogz_init": 0.5, "nlive_init": 2000, "nlive_batch": 200, "ptform": ptform}
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=True)
 
     theta, uncertainties = get_best_fit(sampler)
     OPTIONS.model.components = components = set_components_from_theta(theta)
@@ -158,7 +162,7 @@ if __name__ == "__main__":
         pickle.dump(components, file)
 
     rchi_sqs = compute_interferometric_chi_sq(
-        *compute_observables(components),
+        components,
         ndim=ndim,
         method="linear",
         reduced=True,

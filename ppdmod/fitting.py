@@ -1,5 +1,6 @@
 from multiprocessing import Pool
 from pathlib import Path
+from sys import breakpointhook
 from typing import List, Tuple
 
 import astropy.units as u
@@ -10,7 +11,7 @@ from dynesty import DynamicNestedSampler, NestedSampler
 from .component import Component
 from .data import get_counts_data
 from .options import OPTIONS
-from .utils import compute_vis, compute_t3, compare_angles, get_band
+from .utils import compute_vis, compute_t3, compare_angles
 
 
 def get_labels(components: List[Component], shared: bool = True) -> np.ndarray:
@@ -193,19 +194,19 @@ def compute_chi_sq(
     -------
     chi_sq : float
     """
-    sigma_squared = error**2
+    sn = error**2
     if lnf is not None:
-        sigma_squared = error**2 + model_data**2 * np.exp(2 * lnf)
+        sn += model_data ** 2 * np.exp(2 * lnf)
 
     diff = data - model_data
     if diff_method != "linear":
         diff = np.rad2deg(compare_angles(np.deg2rad(data), np.deg2rad(model_data)))
 
-    chi_sq = diff**2 / sigma_squared
+    chi_sq = diff**2 / sn
     if method == "linear":
         return chi_sq.sum()
 
-    return -0.5 * (chi_sq + np.log(2 * np.pi * sigma_squared)).sum()
+    return -0.5 * np.sum(chi_sq + np.log(sn))
 
 
 def compute_observables(
@@ -298,9 +299,7 @@ def compute_nband_fit_chi_sq(
 
 
 def compute_interferometric_chi_sq(
-    flux_model: np.ndarray,
-    vis_model: np.ndarray,
-    t3_model: np.ndarray,
+    components: List[Component],
     ndim: int,
     method: str,
     reduced: bool = False,
@@ -309,13 +308,8 @@ def compute_interferometric_chi_sq(
 
     Parameters
     ----------
-    flux_model : numpy.ndarray
-        The model's total flux.
-    vis_model : numpy.ndarray
-        Either the model's correlated fluxes or the model's
-        visibilities (depends on the OPTIONS.fit.data).
-    t3_model : numpy.ndarray
-        The model's closure phase.
+    components : list of Component
+        The components to be used in the model.
     ndim : int
         The number of (parameter) dimensions.
     method : bool
@@ -329,8 +323,8 @@ def compute_interferometric_chi_sq(
     chi_sq : Tuple of floats
         The total and the individual chi squares.
     """
-    params = {"flux": flux_model, "vis": vis_model, "t3": t3_model}
-
+    observables = ["flux", "vis", "t3"]
+    model_data = dict(zip(observables, compute_observables(components)))
     chi_sqs, weights = [], []
     for key in OPTIONS.fit.data:
         data = getattr(OPTIONS.data, key)
@@ -341,9 +335,10 @@ def compute_interferometric_chi_sq(
             compute_chi_sq(
                 data.value.data[~mask],
                 data.err.data[~mask],
-                params[key][~mask],
+                model_data[key][~mask],
                 diff_method="linear" if key != "t3" else "exponential",
                 method=method,
+                lnf=getattr(components[-1], f"{key}_lnf")(),
             )
         )
 
@@ -472,10 +467,9 @@ def lnprob(theta: np.ndarray) -> float:
         The log of the probability.
     """
     components = set_components_from_theta(theta)
-    observables = compute_observables(components)
     return sum(
         compute_interferometric_chi_sq(
-            *observables, ndim=theta.size, method="logarithmic"
+            components, ndim=theta.size, method="logarithmic"
         )[1:]
     )
 

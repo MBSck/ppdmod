@@ -17,6 +17,12 @@ class Component:
     label = None
     description = "This is base component are derived."
 
+    def __init__(self, **kwargs):
+        """The class's constructor."""
+        self.flux_lnf = Parameter(name="flux_lnf", base="lnf")
+        self.t3_lnf = Parameter(name="t3_lnf", base="lnf")
+        self.vis_lnf = Parameter(name="vis_lnf", base="lnf")
+
     def eval(self, **kwargs) -> None:
         """Sets the parameters (values) from the keyword arguments."""
         for key, value in kwargs.items():
@@ -91,6 +97,7 @@ class FourierComponent(Component):
 
     def __init__(self, **kwargs):
         """The class's constructor."""
+        super().__init__(**kwargs)
         self.fr = Parameter(base="fr")
         self.x = Parameter(base="x")
         self.y = Parameter(base="y")
