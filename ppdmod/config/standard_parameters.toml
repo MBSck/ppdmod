@@ -23,6 +23,13 @@ min = 0
 max = 10
 smooth = true
 
+[STANDARD_PARAMETERS.log_f]
+name = "log_f"
+description = "The error correction term"
+unit = "one"
+value = 0
+min = -12
+
 [STANDARD_PARAMETERS.fr]
 name = "fr"
 description = "The flux ratio"

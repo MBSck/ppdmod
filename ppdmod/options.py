@@ -97,7 +97,7 @@ data = SimpleNamespace(
     bands=[],
     resolutions=[],
     nbaselines=[],
-    no_binning=False,
+    do_bin=True,
     flux=flux_data,
     vis=vis_data,
     vis2=vis2_data,
@@ -141,10 +141,12 @@ plot = SimpleNamespace(
 
 # NOTE: Weights
 weights = SimpleNamespace(flux=1, t3=1, vis=1)
+log_f = SimpleNamespace(flux=None, t3=None, vis=None)
 
 # NOTE: Fitting
 fit = SimpleNamespace(
     weights=weights,
+    log_f=log_f,
     data=["flux", "vis", "t3"],
     wavelengths=None,
     quantiles=[2.5, 50, 97.5],
