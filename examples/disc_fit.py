@@ -51,6 +51,7 @@ data = set_data(
     fits_files,
     wavelengths=wavelengths,
     fit_data=["flux", "vis", "t3"],
+    set_std_err=["mband", "lband"],
     average=True,
 )
 
