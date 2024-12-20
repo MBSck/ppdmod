@@ -418,6 +418,6 @@ def set_data(
 
     if weights is not None:
         for key, weight in weights.items():
-            getattr(OPTIONS.fit.weights, key).overall = weight
+            setattr(OPTIONS.fit.weights, key, weight)
 
     return OPTIONS.data

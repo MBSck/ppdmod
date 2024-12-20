@@ -140,10 +140,7 @@ plot = SimpleNamespace(
 )
 
 # NOTE: Weights
-flux_weights = SimpleNamespace(overall=1, hband=1, kband=1, lband=1, mband=1, nband=1)
-t3_weights = SimpleNamespace(overall=1, hband=1, kband=1, lband=1, mband=1, nband=1)
-vis_weights = SimpleNamespace(overall=1, hband=1, kband=1, lband=1, mband=1, nband=1)
-weights = SimpleNamespace(flux=flux_weights, t3=t3_weights, vis=vis_weights)
+weights = SimpleNamespace(flux=1, t3=1, vis=1)
 
 # NOTE: Fitting
 fit = SimpleNamespace(

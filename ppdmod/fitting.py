@@ -335,30 +335,19 @@ def compute_interferometric_chi_sq(
     for key in OPTIONS.fit.data:
         data = getattr(OPTIONS.data, key)
         key = key if key != "vis2" else "vis"
-        weights.append(getattr(OPTIONS.fit.weights, key).overall)
-        bands = np.array(list(map(get_band, OPTIONS.fit.wavelengths)))
-        sorted_bands = sorted(map(str, set(bands)))
-        band_indices = [np.where(bands == band)[0] for band in sorted_bands]
+        weights.append(getattr(OPTIONS.fit.weights, key))
         mask = data.value.mask
-
-        band_chi_sqs = []
-        for indices in band_indices:
-            band_mask = mask[indices]
-            band_chi_sqs.append(
-                compute_chi_sq(
-                    data.value[indices].data[~band_mask],
-                    data.err[indices].data[~band_mask],
-                    params[key][indices][~band_mask],
-                    diff_method="linear" if key != "t3" else "exponential",
-                    method=method,
-                ) / data.value[indices].data[~band_mask].size
+        chi_sqs.append(
+            compute_chi_sq(
+                data.value.data[~mask],
+                data.err.data[~mask],
+                params[key][~mask],
+                diff_method="linear" if key != "t3" else "exponential",
+                method=method,
             )
-
-        chi_sqs.append(np.sum(band_chi_sqs))
+        )
 
     chi_sqs = np.array(chi_sqs).astype(float)
-    # print(list(map(float, (chi_sqs / max(chi_sqs)) ** -1)))
-    # print(chi_sqs * weights)
 
     if reduced:
         ndata = get_counts_data()
