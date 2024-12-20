@@ -309,8 +309,6 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
         data = getattr(OPTIONS.data, key)
         data.value = np.ma.masked_invalid(data.value)
         data.err = np.ma.masked_invalid(data.err)
-        if key == "t3":
-            data.err %= 360
 
 
 # TODO: Make sure that this is correct in setting it
