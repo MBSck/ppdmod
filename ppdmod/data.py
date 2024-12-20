@@ -6,6 +6,8 @@ from typing import Dict, List
 import astropy.units as u
 import numpy as np
 from astropy.io import fits
+from ppdmod.parameter import Parameter
+from scipy.stats import circmean, circstd
 
 from .options import OPTIONS
 from .utils import get_band, get_indices
@@ -122,8 +124,7 @@ class ReadoutFits:
         self,
         wavelength: u.Quantity,
         key: str,
-        subkey: str,
-        no_binning: bool = False,
+        do_bin: bool = True,
     ) -> np.ndarray:
         """Gets the data for the given wavelengths.
 
@@ -137,9 +138,7 @@ class ReadoutFits:
             The wavelengths to be returned.
         key : str
             The key (header) of the data to be returned.
-        subkey : str
-            The subkey of the data to be returned.
-        no_binning : bool, optional
+        do_bin : bool, optional
             If the data should be binned or not.
 
         Returns
@@ -147,43 +146,44 @@ class ReadoutFits:
         numpy.ndarray
             The data for the given wavelengths.
         """
-        if not no_binning:
-            window = getattr(OPTIONS.data.binning, self.band)
-        else:
-            window = None
-
+        window = getattr(OPTIONS.data.binning, self.band) if do_bin else None
         indices = get_indices(wavelength, array=self.wavelength, window=window)
-
-        data = getattr(getattr(self, key), subkey)
+        value, err = getattr(self, key).value, getattr(self, key).err
+        nan_value = np.full((wavelength.size, value.shape[0]), np.nan)
+        nan_err = np.full((wavelength.size, err.shape[0]), np.nan)
         if all(index.size == 0 for index in indices):
-            if key == "flux":
-                return np.full((wavelength.size, 1), np.nan)
-            return np.full((wavelength.size, data.shape[0]), np.nan)
+            return (nan_value, nan_err) if key != "flux" else (nan_value[:, :1], nan_err[:, :1])
 
-        if key == "flux":
-            if no_binning:
-                wl_data = [
-                    [
-                        data.flatten()[index[0]]
-                        if index.size != 0
-                        else np.full((data.shape[0],), np.nan).tolist()[0]
-                    ]
-                    for index in indices
-                ]
-            else:
-                wl_data = [[data.flatten()[index].mean()] for index in indices]
+        if key == "t3":
+            mean_func = partial(circmean, high=180, low=-180)
+            std_func = partial(circstd, high=180, low=-180)
         else:
-            if no_binning:
-                wl_data = [
-                    data[:, index].flatten()
-                    if index.size != 0
-                    else np.full((data.shape[0],), np.nan)
-                    for index in indices
-                ]
-            else:
-                wl_data = [data[:, index].mean(-1) for index in indices]
+            mean_func, std_func = np.mean, np.std
 
-        return np.array(wl_data).astype(OPTIONS.data.dtype.real)
+        wl_value = [
+            value[:, index].flatten()
+            if index.size != 0
+            else np.full((value.shape[0],), np.nan)
+            for index in indices
+        ]
+        wl_err = [
+            err[:, index].flatten()
+            if index.size != 0
+            else np.full((err.shape[0],), np.nan)
+            for index in indices
+        ]
+
+        if do_bin:
+            if key == "flux":
+                wl_value = [[value.flatten()[index].mean()] for index in indices]
+                wl_err = [[np.sqrt((err.flatten()[index] ** 2).sum() + err.flatten()[index].std() ** 2)] for index in indices]
+            else:
+                wl_value = [mean_func(value[:, index], axis=-1) for index in indices]
+                wl_err = [np.sqrt((err[:, index] ** 2).sum(-1) + std_func(err[:, index], axis=-1) ** 2) for index in indices]
+
+        wl_value = np.array(wl_value).astype(OPTIONS.data.dtype.real)
+        wl_err = np.array(wl_err).astype(OPTIONS.data.dtype.real)
+        return wl_value, wl_err
 
 
 def get_all_wavelengths(readouts: List[ReadoutFits] | None = None) -> np.ndarray:
@@ -250,22 +250,15 @@ def clear_data() -> List[str]:
     return ["flux", "vis", "vis2", "t3"]
 
 
-# TODO: Convert all arrays to masked arrays here
 def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> None:
     """Reads in the data from the keys."""
     OPTIONS.data.nbaselines = []
-    # TODO: Make sure to avoid error if vis doesn't exists in OIFITS file
-    for index, readout in enumerate(OPTIONS.data.readouts):
-        # TODO: Make sure that the uv coords are determined by file and uniqueness
-
+    for readout in OPTIONS.data.readouts:
         for key in data_to_read:
             data = getattr(OPTIONS.data, key)
             data_readout = getattr(readout, key)
-            value = readout.get_data_for_wavelength(
-                wavelengths, key, "value", OPTIONS.data.no_binning
-            )
-            err = readout.get_data_for_wavelength(
-                wavelengths, key, "err", OPTIONS.data.no_binning
+            value, err = readout.get_data_for_wavelength(
+                wavelengths, key, OPTIONS.data.do_bin
             )
 
             if key in ["vis", "vis2", "t3"]:
@@ -290,6 +283,7 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
                         (data.vcoord, data_readout.vcoord), axis=-1
                     )
 
+                # TODO: Make sure to avoid error if vis doesn't exists in OIFITS file
                 if key == "vis2":
                     OPTIONS.data.nbaselines.append(data_readout.ucoord.size)
 
@@ -299,8 +293,8 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
                 ucoord, vcoord = unique_uvcoords[:, 0], unique_uvcoords[:, 1]
                 index123 = np.vectorize(lambda x: np.where(ucoord == x)[0][0])(data_readout.u123coord)
                 if data.u123coord.size == 0:
-                    data.u123coord = data_readout.u123coord
-                    data.v123coord = data_readout.v123coord
+                    data.u123coord = np.insert(data_readout.u123coord, 0, 0, axis=1)
+                    data.v123coord = np.insert(data_readout.v123coord, 0, 0, axis=1)
                     data.ucoord = np.insert(ucoord, 0, 0).reshape(1, -1)
                     data.vcoord = np.insert(vcoord, 0, 0).reshape(1, -1)
                     data.index123 = index123 + 1
@@ -315,6 +309,8 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
         data = getattr(OPTIONS.data, key)
         data.value = np.ma.masked_invalid(data.value)
         data.err = np.ma.masked_invalid(data.err)
+        if key == "t3":
+            data.err %= 360
 
 
 # TODO: Make sure that this is correct in setting it
@@ -365,6 +361,7 @@ def set_data(
     set_std_err: List[str] | None = None,
     min_err: float = 0.05,
     average: bool = False,
+    log_f: Dict[str, Parameter] | None = None,
     **kwargs,
 ) -> SimpleNamespace:
     """Sets the data as a global variable from the input files.
@@ -390,6 +387,8 @@ def set_data(
         The minimum error of the data to be kept. Will set the error to be that at least.
     average : bool, optional
         If toggled will average the flux over all files and set an offset for the correlated fluxes/visibilities.
+    log_f : dict of Parameter, optional
+        One parameter per observable fitted to correct for error underestimation.
     """
     data_to_read = clear_data()
     if fits_files is None:
@@ -403,7 +402,7 @@ def set_data(
 
     if wavelengths == "all":
         wavelengths = get_all_wavelengths(OPTIONS.data.readouts)
-        OPTIONS.data.no_binning = True
+        OPTIONS.data.do_bin = True
 
     if wavelengths is None:
         raise ValueError("No wavelengths given and/or not 'all' specified!")
@@ -419,5 +418,9 @@ def set_data(
     if weights is not None:
         for key, weight in weights.items():
             setattr(OPTIONS.fit.weights, key, weight)
+
+    if log_f is not None:
+        for key, f in log_f.items():
+            setattr(OPTIONS.fit.log_f, key, f)
 
     return OPTIONS.data
