@@ -162,15 +162,15 @@ def test_get_indices(wavelengths: u.um, wavelength_solutions: u.um) -> None:
     index = utils.get_indices(
         wavelengths[0],
         array=wavelength_solutions[0],
-        window=OPTIONS.data.binning.unknown,
+        windows=OPTIONS.data.binning.unknown,
     )
     assert index[0].size >= 1
 
     indices_lband = utils.get_indices(
-        wavelengths, array=wavelength_solutions[0], window=0.1
+        wavelengths, array=wavelength_solutions[0], windows=0.1
     )
     indices_nband = utils.get_indices(
-        wavelengths, array=wavelength_solutions[2], window=0.1
+        wavelengths, array=wavelength_solutions[2], windows=0.1
     )
     assert len(indices_lband) == 3
     assert len(indices_nband) == 3

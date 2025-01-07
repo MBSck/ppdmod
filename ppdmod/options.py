@@ -83,13 +83,13 @@ flux_data = SimpleNamespace(value=np.array([]), err=np.array([]))
 gravity = SimpleNamespace(index=20)
 dtype = SimpleNamespace(complex=np.complex64, real=np.float32)
 binning = SimpleNamespace(
-    unknown=0.1 * u.um,
-    kband=0.1 * u.um,
-    hband=0.1 * u.um,
-    lband=0.05 * u.um,
-    mband=0.05 * u.um,
-    lmband=0.05 * u.um,
-    nband=0.05 * u.um,
+    unknown=0.2 * u.um,
+    kband=0.2 * u.um,
+    hband=0.2 * u.um,
+    lband=0.1 * u.um,
+    mband=0.1 * u.um,
+    lmband=0.1 * u.um,
+    nband=0.1 * u.um,
 )
 interpolation = SimpleNamespace(dim=10, kind="linear", fill_value=None)
 data = SimpleNamespace(

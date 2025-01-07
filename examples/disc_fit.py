@@ -14,7 +14,7 @@ import astropy.units as u
 import numpy as np
 
 from ppdmod.basic_components import AsymGreyBody, GreyBody, Star
-from ppdmod.data import set_data
+from ppdmod.data import set_data, get_all_binning_windows
 from ppdmod.fitting import (
     compute_interferometric_chi_sq,
     get_best_fit,
@@ -25,26 +25,27 @@ from ppdmod.fitting import (
 )
 from ppdmod.options import OPTIONS
 from ppdmod.parameter import Parameter
-from ppdmod.utils import load_data, qval_to_opacity, windowed_linspace
+from ppdmod.utils import load_data, qval_to_opacity, windowed_linspace, create_adaptive_bins
 
 
 def ptform(theta: List[float]) -> np.ndarray:
     return ptform_sequential_radii(theta, LABELS)
 
 
-binning = OPTIONS.data.binning
 DATA_DIR = Path(__file__).parent.parent / "data"
+nband_wavelengths, nband_binning_windows = create_adaptive_bins([8, 13], [9.2, 11.9], 0.2, 0.6)
 wavelengths = {
     "hband": [1.7] * u.um,
     "kband": [2.15] * u.um,
-    "lband": windowed_linspace(3.1, 3.4, binning.lband.value) * u.um,
-    "mband": windowed_linspace(4.7, 4.9, binning.mband.value) * u.um,
-    "nband": windowed_linspace(8, 13, binning.nband.value) * u.um,
+    "lband": windowed_linspace(3.1, 3.4, OPTIONS.data.binning.lband.value) * u.um,
+    "mband": windowed_linspace(4.7, 4.9, OPTIONS.data.binning.mband.value) * u.um,
+    "nband": nband_wavelengths * u.um,
 }
-
+OPTIONS.data.binning.nband = nband_binning_windows * u.um
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
 bands = ["hband", "kband", "lband", "mband", "nband"]
 wavelengths = np.concatenate([wavelengths[band] for band in bands])
+get_all_binning_windows(wavelengths)
 
 observables = ["flux", "vis", "t3"]
 data = set_data(

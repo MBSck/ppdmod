@@ -13,6 +13,39 @@ from scipy.special import j1
 from .options import OPTIONS
 
 
+def create_adaptive_bins(wavelength_range_full: List[float], wavelength_range: List[float],
+                         bin_window_in: float, bin_window_out: float) -> np.ndarray:
+    """Create an adaptive binning wavelength grid.
+
+    Parameters
+    ----------
+    wavelength_range_full : list of float
+    wavelength_range : list of float
+    bin_window_in : float
+    bin_window_out : float
+
+    Returns
+    -------
+    bin_centres : numpy.ndarray
+    """
+    range_full_min, range_full_max = wavelength_range_full
+    range_min, range_max = wavelength_range
+
+    if range_full_min >= range_full_max or range_min >= range_max:
+        raise ValueError("Invalid wavelength ranges.")
+    if not (range_full_min <= range_min and range_max <= range_full_max):
+        raise ValueError("Wavelength range must be within the full wavelength range.")
+
+    below_range = np.arange(range_full_min, range_min - bin_window_out / 2, bin_window_out)
+    within_range = np.arange(range_min, range_max, bin_window_in)
+    above_range = np.arange(range_max + bin_window_out / 2, range_full_max)
+    all_edges = np.unique(np.concatenate((below_range, within_range, above_range)))
+    windows = np.concatenate((np.full(below_range.shape, bin_window_out),
+                              np.full(within_range.shape, bin_window_in),
+                              np.full(above_range.shape, bin_window_out)))
+    return all_edges, windows
+
+
 def compare_angles(angle1: u.Quantity, angle2: u.Quantity) -> complex:
     """Subtracts two angles and makes sure the are between -np.pi and +np.pi."""
     if isinstance(angle1, u.Quantity):
@@ -117,7 +150,7 @@ def take_time_average(
 
 
 def get_indices(
-    values, array: np.ndarray, window: float | None = None
+    values: np.ndarray, array: np.ndarray, windows: np.ndarray | float | None = None
 ) -> List[np.ndarray]:
     """Gets the indices of values occurring in a numpy array
     and returns it in a list corresponding to the input values.
@@ -133,15 +166,18 @@ def get_indices(
     """
     array = array.value if isinstance(array, u.Quantity) else array
     values = values.value if isinstance(values, u.Quantity) else values
-    window = window.value if isinstance(window, u.Quantity) else window
+    windows = windows.value if isinstance(windows, u.Quantity) else windows
     if not isinstance(values, (list, tuple, np.ndarray)):
         values = [values]
 
-    indices = []
-    for value in values:
-        if window is not None:
-            index = np.where(((value - window) < array) & ((value + window) > array))[0]
+    if windows is not None:
+        if isinstance(windows, (list, tuple, np.ndarray)):
+            indices = [np.where(((v - w / 2) < array) & ((v + w / 2) > array))[0] for v, w in zip(values, windows)]
         else:
+            indices = [np.where(((v - windows / 2) < array) & ((v + windows / 2) > array))[0] for v in values]
+    else:
+        indices = []
+        for value in values:
             index = np.where(array == value)[0]
             if index.size == 0:
                 if value < array[0] or value > array[-1]:
@@ -150,8 +186,7 @@ def get_indices(
 
                 index = np.where(array == min(array, key=lambda x: abs(x - value)))[0]
 
-        indices.append(index.astype(int).flatten())
-
+            indices.append(index.astype(int).flatten())
     return indices
 
 
