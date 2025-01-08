@@ -30,37 +30,42 @@ def get_binning_windows(wavelength: np.ndarray) -> np.ndarray:
     return all_binning_windows * u.um
 
 
-def create_adaptive_bins(wavelength_range_full: List[float], wavelength_range: List[float],
-                         bin_window_in: float, bin_window_out: float) -> np.ndarray:
+def create_adaptive_bins(wavelength_range: List[float], wavelength_range_fine: List[float],
+                         bin_window_fine: float, bin_window_coarse: float) -> Tuple[np.ndarray, np.ndarray]:
     """Create an adaptive binning wavelength grid.
 
     Parameters
     ----------
-    wavelength_range_full : list of float
     wavelength_range : list of float
-    bin_window_in : float
-    bin_window_out : float
+        The wavlenength range where bins with corresponding windows are to be created.
+    wavelength_range_fine : list of float
+        The wavelength range where the bins are to be fine.
+    bin_window_fine : float
+        The fine binning window (left and right of the bin).
+    bin_window_coarse : float
+        The coarse binning window (left and right of the bin).
 
     Returns
     -------
-    bin_centres : numpy.ndarray
+    bins : numpy.ndarray
+    windows : numpy.ndarray
     """
-    range_full_min, range_full_max = wavelength_range_full
     range_min, range_max = wavelength_range
+    range_min_fine, range_max_fine = wavelength_range_fine
 
-    if range_full_min >= range_full_max or range_min >= range_max:
+    if range_min >= range_max or range_min_fine >= range_max_fine:
         raise ValueError("Invalid wavelength ranges.")
-    if not (range_full_min <= range_min and range_max <= range_full_max):
+    if not (range_min <= range_min_fine and range_max_fine <= range_max):
         raise ValueError("Wavelength range must be within the full wavelength range.")
 
-    below_range = np.arange(range_full_min, range_min - bin_window_out / 2, bin_window_out)
-    within_range = np.arange(range_min, range_max, bin_window_in)
-    above_range = np.arange(range_max + bin_window_out / 2, range_full_max)
-    all_edges = np.unique(np.concatenate((below_range, within_range, above_range)))
-    windows = np.concatenate((np.full(below_range.shape, bin_window_out),
-                              np.full(within_range.shape, bin_window_in),
-                              np.full(above_range.shape, bin_window_out)))
-    return all_edges, windows
+    fine_bins = np.arange(range_min_fine, range_max_fine, bin_window_fine)
+    lower_coarse_bins = np.arange(range_min, fine_bins[0] - bin_window_fine / 2, bin_window_coarse)
+    upper_coarse_bins = np.arange(fine_bins[-1] + (bin_window_fine + bin_window_coarse) / 2, range_max, bin_window_coarse)
+    bins = np.unique(np.concatenate((lower_coarse_bins, fine_bins, upper_coarse_bins)))
+    windows = np.concatenate((np.full(lower_coarse_bins.shape, bin_window_coarse),
+                              np.full(fine_bins.shape, bin_window_fine),
+                              np.full(upper_coarse_bins.shape, bin_window_coarse)))
+    return bins, windows
 
 
 def compare_angles(angle1: u.Quantity, angle2: u.Quantity) -> complex:
