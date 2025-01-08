@@ -14,7 +14,7 @@ import astropy.units as u
 import numpy as np
 
 from ppdmod.basic_components import AsymGreyBody, GreyBody, Star
-from ppdmod.data import set_data, get_all_binning_windows
+from ppdmod.data import set_data
 from ppdmod.fitting import (
     compute_interferometric_chi_sq,
     get_best_fit,
@@ -25,7 +25,12 @@ from ppdmod.fitting import (
 )
 from ppdmod.options import OPTIONS
 from ppdmod.parameter import Parameter
-from ppdmod.utils import load_data, qval_to_opacity, windowed_linspace, create_adaptive_bins
+from ppdmod.utils import (
+    load_data,
+    qval_to_opacity,
+    windowed_linspace,
+    create_adaptive_bins,
+)
 
 
 def ptform(theta: List[float]) -> np.ndarray:
@@ -33,7 +38,7 @@ def ptform(theta: List[float]) -> np.ndarray:
 
 
 DATA_DIR = Path(__file__).parent.parent / "data"
-nband_wavelengths, nband_binning_windows = create_adaptive_bins([8, 13], [9.2, 11.9], 0.2, 0.6)
+nband_wavelengths, nband_binning_windows = create_adaptive_bins([8, 13], [9.2, 11.9], 0.2, 0.65)
 wavelengths = {
     "hband": [1.7] * u.um,
     "kband": [2.15] * u.um,
@@ -45,7 +50,6 @@ OPTIONS.data.binning.nband = nband_binning_windows * u.um
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
 bands = ["hband", "kband", "lband", "mband", "nband"]
 wavelengths = np.concatenate([wavelengths[band] for band in bands])
-get_all_binning_windows(wavelengths)
 
 observables = ["flux", "vis", "t3"]
 data = set_data(
@@ -154,7 +158,7 @@ ndim = len(LABELS)
 if __name__ == "__main__":
     ncores = 70
     fit_params = {"dlogz_init": 0.5, "nlive_init": 2000, "nlive_batch": 200, "ptform": ptform}
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=True)
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
 
     theta, uncertainties = get_best_fit(sampler)
     OPTIONS.model.components = components = set_components_from_theta(theta)
