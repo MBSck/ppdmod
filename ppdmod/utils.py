@@ -13,6 +13,23 @@ from scipy.special import j1
 from .options import OPTIONS
 
 
+def get_binning_windows(wavelength: np.ndarray) -> np.ndarray:
+    """Gets all the binning windows."""
+    skip_set = set()
+    all_binning_windows = []
+    for band in list(map(get_band, wavelength)):
+        windows = getattr(OPTIONS.data.binning, band).value
+        if band in skip_set:
+            continue
+
+        if isinstance(windows, (list, tuple, np.ndarray)):
+            all_binning_windows.extend(windows)
+            skip_set.add(band)
+        else:
+            all_binning_windows.append(windows)
+    return all_binning_windows * u.um
+
+
 def create_adaptive_bins(wavelength_range_full: List[float], wavelength_range: List[float],
                          bin_window_in: float, bin_window_out: float) -> np.ndarray:
     """Create an adaptive binning wavelength grid.
@@ -124,11 +141,9 @@ def smooth_interpolation(
         OPTIONS.data.interpolation.fill_value if fill_value is None else fill_value
     )
     points = interpolation_points.flatten()
-    windows = np.array(
-        [getattr(OPTIONS.data.binning, get_band(point)).value for point in points]
-    )
+    windows = get_binning_windows(points).value
     interpolation_grid = (
-        np.linspace(-1, 1, OPTIONS.data.interpolation.dim) * windows[:, np.newaxis]
+        np.linspace(-1, 1, OPTIONS.data.interpolation.dim) * windows[:, np.newaxis] / 2
     ).T + points
     return (
         np.interp(interpolation_grid, grid, values)

@@ -9,7 +9,7 @@ from astropy.io import fits
 from scipy.stats import circmean, circstd
 
 from .options import OPTIONS
-from .utils import get_band, get_indices
+from .utils import get_band, get_indices, get_binning_windows
 
 
 class ReadoutFits:
@@ -145,7 +145,7 @@ class ReadoutFits:
         numpy.ndarray
             The data for the given wavelengths.
         """
-        windows = get_all_binning_windows(wavelength)
+        windows = get_binning_windows(wavelength)
         indices = get_indices(wavelength, array=self.wavelength, windows=windows)
         value, err = getattr(self, key).value, getattr(self, key).err
         nan_value = np.full((wavelength.size, value.shape[0]), np.nan)
@@ -190,23 +190,6 @@ def get_all_wavelengths(readouts: List[ReadoutFits] | None = None) -> np.ndarray
     readouts = OPTIONS.data.readouts if readouts is None else readouts
     wavelengths = list(map(lambda x: x.wavelength, readouts))
     return np.sort(np.unique(np.concatenate(wavelengths)))
-
-
-def get_all_binning_windows(wavelength: np.ndarray) -> np.ndarray:
-    """Gets all the binning windows."""
-    skip_set = set()
-    all_binning_windows = []
-    for band in list(map(get_band, wavelength)):
-        windows = getattr(OPTIONS.data.binning, band).value
-        if band in skip_set:
-            continue
-
-        if isinstance(windows, (list, tuple, np.ndarray)):
-            all_binning_windows.extend(windows)
-            skip_set.add(band)
-        else:
-            all_binning_windows.append(windows)
-    return all_binning_windows * u.um
 
 
 def set_fit_wavelengths(
