@@ -310,6 +310,8 @@ def format_labels(
                     formatted_label = rf"\log_{{10}}\left({formatted_label}\right)"
             elif "scale" in name:
                 formatted_label = rf"w_{{\mathrm{{{name.replace('scale_', '')}}}}}"
+            elif "lnf" in name:
+                formatted_label = rf"\ln\left(f\right)_{{\mathrm{{{name.split('_')[0]}}}}}"
             else:
                 formatted_label = label
 
