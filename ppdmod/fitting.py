@@ -1,6 +1,5 @@
 from multiprocessing import Pool
 from pathlib import Path
-from sys import breakpointhook
 from typing import List, Tuple
 
 import astropy.units as u

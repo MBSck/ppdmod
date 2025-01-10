@@ -185,6 +185,18 @@ class ReadoutFits:
         return wl_value, wl_err
 
 
+def filter_data(targets):
+    ...
+
+
+def print_readout_info() -> None:
+    """Prints the readouts with the indices."""
+    print(f"The files with their indices:\n{'':-^50}")
+    for index, readout in enumerate(OPTIONS.data.readouts):
+        print(f"{index}: {readout.name}")
+        print(f"\tBand: {readout.band}")
+
+
 def get_all_wavelengths(readouts: List[ReadoutFits] | None = None) -> np.ndarray:
     """Gets all wavelengths from the readouts."""
     readouts = OPTIONS.data.readouts if readouts is None else readouts
