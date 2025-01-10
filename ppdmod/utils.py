@@ -84,7 +84,7 @@ def compare_angles(angle1: u.Quantity, angle2: u.Quantity) -> complex:
 
 def windowed_linspace(start: float, end: float, window: float) -> np.ndarray:
     """Creates a numpy.linspace with a number of points so that the windowing doesn't overlap"""
-    return np.linspace(start, end, int((end - start) // (2 * window)) + 1)
+    return np.linspace(start, end, int((end - start) // (2 * window / 2)) + 1)
 
 
 def get_band_limits(band: str) -> Tuple[float, float]:

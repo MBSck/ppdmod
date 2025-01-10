@@ -14,7 +14,7 @@ import astropy.units as u
 import numpy as np
 
 from ppdmod.basic_components import AsymGreyBody, GreyBody, Star
-from ppdmod.data import set_data
+from ppdmod.data import print_readout_info, set_data
 from ppdmod.fitting import (
     compute_interferometric_chi_sq,
     get_best_fit,
@@ -38,12 +38,12 @@ def ptform(theta: List[float]) -> np.ndarray:
 
 
 DATA_DIR = Path(__file__).parent.parent / "data"
-nband_wavelengths, nband_binning_windows = create_adaptive_bins([8, 13], [9.2, 11.9], 0.2, 0.65)
+nband_wavelengths, nband_binning_windows = create_adaptive_bins([8.6, 12.3], [9.2, 11.9], 0.2, 0.65)
 wavelengths = {
     "hband": [1.7] * u.um,
     "kband": [2.15] * u.um,
-    "lband": windowed_linspace(3.1, 3.4, OPTIONS.data.binning.lband.value) * u.um,
-    "mband": windowed_linspace(4.7, 4.9, OPTIONS.data.binning.mband.value) * u.um,
+    "lband": windowed_linspace(3.1, 3.8, OPTIONS.data.binning.lband.value) * u.um,
+    "mband": windowed_linspace(4.65, 4.9, OPTIONS.data.binning.mband.value) * u.um,
     "nband": nband_wavelengths * u.um,
 }
 OPTIONS.data.binning.nband = nband_binning_windows * u.um
