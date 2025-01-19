@@ -21,13 +21,10 @@ class ReadoutFits:
         The path to the (.fits) or flux file.
     """
 
-    def __init__(
-        self, fits_file: Path, wavelength_range: u.Quantity[u.um] | None = None
-    ) -> None:
+    def __init__(self, fits_file: Path) -> None:
         """The class's constructor."""
         self.fits_file = Path(fits_file)
         self.name = self.fits_file.name
-        self.wavelength_range = wavelength_range
         self.band = "unknown"
         self.read_file()
 
@@ -38,37 +35,20 @@ class ReadoutFits:
             if "instrume" in hdul[0].header:
                 instrument = hdul[0].header["instrume"].lower()
             sci_index = OPTIONS.data.gravity.index if instrument == "gravity" else None
-            wl_index = 1 if instrument == "gravity" else None
             self.wavelength = (
                 hdul["oi_wavelength", sci_index].data["eff_wave"] * u.m
-            ).to(u.um)[wl_index:]
+            ).to(u.um)
             self.band = get_band(self.wavelength)
-
-            indices = slice(None)
-            if self.wavelength_range is not None:
-                indices = (self.wavelength_range[0] < self.wavelength) & (
-                    self.wavelength_range[1] > self.wavelength
-                )
-                self.wavelength = self.wavelength[indices]
-
-            self.flux = self.read_into_namespace(
-                hdul, "flux", sci_index, wl_index, indices
-            )
-            self.t3 = self.read_into_namespace(hdul, "t3", sci_index, wl_index, indices)
-            self.vis = self.read_into_namespace(
-                hdul, "vis", sci_index, wl_index, indices
-            )
-            self.vis2 = self.read_into_namespace(
-                hdul, "vis2", sci_index, wl_index, indices
-            )
+            self.flux = self.read_into_namespace(hdul, "flux", sci_index)
+            self.t3 = self.read_into_namespace(hdul, "t3", sci_index)
+            self.vis = self.read_into_namespace(hdul, "vis", sci_index)
+            self.vis2 = self.read_into_namespace(hdul, "vis2", sci_index)
 
     def read_into_namespace(
         self,
         hdul: fits.HDUList,
         key: str,
         sci_index: int | None = None,
-        wl_index: int | None = None,
-        indices: int | None = None,
     ) -> SimpleNamespace:
         """Reads a (.fits) card into a namespace."""
         try:
@@ -84,13 +64,13 @@ class ReadoutFits:
         if key == "flux":
             try:
                 return SimpleNamespace(
-                    value=data["fluxdata"][:, indices][:, wl_index:],
-                    err=data["fluxerr"][:, indices][:, wl_index:],
+                    value=np.ma.masked_array(data["fluxdata"], mask=data["flag"]),
+                    err=np.ma.masked_array(data["fluxerr"], mask=data["flag"]),
                 )
             except KeyError:
-                return SimpleNamespace(value=np.array([]), err=np.array([]))
+                return SimpleNamespace(value=np.array([]), err=np.array([]), flag=np.array([]))
 
-        # TODO: There might be keyerrors here -> Fix it if there is no vis in the file
+        # TODO: Might err if vis is not included in datasets
         if key in ["vis", "vis2"]:
             if key == "vis":
                 value_key, err_key = "visamp", "visamperr"
@@ -100,8 +80,8 @@ class ReadoutFits:
             ucoord = data["ucoord"].reshape(1, -1).astype(OPTIONS.data.dtype.real)
             vcoord = data["vcoord"].reshape(1, -1).astype(OPTIONS.data.dtype.real)
             return SimpleNamespace(
-                value=data[value_key][:, wl_index:][:, indices],
-                err=data[err_key][:, wl_index:][:, indices],
+                value=np.ma.masked_array(data[value_key], mask=data["flag"]),
+                err=np.ma.masked_array(data[err_key], mask=data["flag"]),
                 ucoord=np.round(ucoord, 2),
                 vcoord=np.round(vcoord, 2),
             )
@@ -111,10 +91,9 @@ class ReadoutFits:
         u3coord, v3coord = u1coord + u2coord, v1coord + v2coord
         u123coord = np.array([u1coord, u2coord, u3coord]).astype(OPTIONS.data.dtype.real)
         v123coord = np.array([v1coord, v2coord, v3coord]).astype(OPTIONS.data.dtype.real)
-
         return SimpleNamespace(
-            value=data["t3phi"][:, wl_index:][:, indices],
-            err=data["t3phierr"][:, wl_index:][:, indices],
+            value=np.ma.masked_array(data["t3phi"], mask=data["flag"]),
+            err=np.ma.masked_array(data["t3phierr"], mask=data["flag"]),
             u123coord=np.round(u123coord, 2),
             v123coord=np.round(v123coord, 2),
         )
@@ -154,21 +133,21 @@ class ReadoutFits:
             return (nan_value, nan_err) if key != "flux" else (nan_value[:, :1], nan_err[:, :1])
 
         if key == "t3":
-            mean_func = partial(circmean, high=180, low=-180)
-            std_func = partial(circstd, high=180, low=-180)
+            mean_func = partial(circmean, low=-180, high=180)
+            std_func = partial(circstd, low=-180, high=180)
         else:
             mean_func, std_func = np.mean, np.std
 
         wl_value = [
             value[:, index].flatten()
             if index.size != 0
-            else np.full((value.shape[0],), np.nan)
+            else np.ma.masked_invalid(np.full((value.shape[0],), np.nan))
             for index in indices
         ]
         wl_err = [
             err[:, index].flatten()
             if index.size != 0
-            else np.full((err.shape[0],), np.nan)
+            else np.ma.masked_invalid(np.full((err.shape[0],), np.nan))
             for index in indices
         ]
 
@@ -366,7 +345,6 @@ def set_data(
     wavelengths: str | u.Quantity[u.um] | None = None,
     fit_data: List[str] = ["flux", "vis", "t3"],
     weights: Dict[str, float] | None = None,
-    wavelength_range: u.Quantity[u.um] | None = None,
     set_std_err: List[str] | None = None,
     min_err: float = 0.05,
     average: bool = False,
@@ -387,8 +365,6 @@ def set_data(
         The data to be fitted.
     weights : list of float, optional
         The weights of the interferometric datasets used for fitting.
-    wavelength_range : astropy.units.um, optional
-        A range of wavelengths to be kept. Other wavelengths will be omitted.
     set_std_err : list of str, optional
         The data to be set the standard error from the variance of the datasets from.
     min_err : float, optional
@@ -401,9 +377,7 @@ def set_data(
         return OPTIONS.data
 
     OPTIONS.fit.data = fit_data
-    OPTIONS.data.readouts = list(
-        map(partial(ReadoutFits, wavelength_range=wavelength_range), fits_files)
-    )
+    OPTIONS.data.readouts = list(map(ReadoutFits, fits_files))
     OPTIONS.data.bands = list(map(lambda x: x.band, OPTIONS.data.readouts))
 
     if wavelengths == "all":

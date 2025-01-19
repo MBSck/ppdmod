@@ -14,7 +14,7 @@ import astropy.units as u
 import numpy as np
 
 from ppdmod.basic_components import AsymGreyBody, GreyBody, Star
-from ppdmod.data import print_readout_info, set_data
+from ppdmod.data import set_data
 from ppdmod.fitting import (
     compute_interferometric_chi_sq,
     get_best_fit,
