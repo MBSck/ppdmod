@@ -133,47 +133,37 @@ class ReadoutFits:
             return (nan_value, nan_err) if key != "flux" else (nan_value[:, :1], nan_err[:, :1])
 
         if key == "t3":
+            # TODO: Make sure this works properly with the masked arrays
             mean_func = partial(circmean, low=-180, high=180)
             std_func = partial(circstd, low=-180, high=180)
         else:
-            mean_func, std_func = np.mean, np.std
+            mean_func, std_func = np.ma.mean, np.ma.std
 
-        wl_value = [
-            value[:, index].flatten()
-            if index.size != 0
-            else np.ma.masked_invalid(np.full((value.shape[0],), np.nan))
-            for index in indices
-        ]
-        wl_err = [
-            err[:, index].flatten()
-            if index.size != 0
-            else np.ma.masked_invalid(np.full((err.shape[0],), np.nan))
-            for index in indices
-        ]
-
+        # TODO: This could be rewritten and shortened
         if do_bin:
             if key == "flux":
-                wl_value = [[value.flatten()[index].mean()] for index in indices]
-                wl_err = [[np.sqrt((err.flatten()[index] ** 2).sum() + err.flatten()[index].std() ** 2)] for index in indices]
+                wl_value = [np.ma.masked_array([mean_func(value.flatten()[index])]) for index in indices]
+                wl_err = [np.ma.masked_array([np.ma.sqrt(np.ma.sum(err.flatten()[index] ** 2) + std_func(err.flatten()[index]) ** 2)]) for index in indices]
             else:
                 wl_value = [mean_func(value[:, index], axis=-1) for index in indices]
-                wl_err = [np.sqrt((err[:, index] ** 2).sum(-1) + std_func(err[:, index], axis=-1) ** 2) for index in indices]
+                wl_err = [np.ma.sqrt(np.ma.sum(err[:, index] ** 2, axis=-1) + std_func(err[:, index], axis=-1) ** 2) for index in indices]
+        else:
+            wl_value = [
+                value[:, index].flatten()
+                if index.size != 0
+                else np.ma.masked_invalid(np.full((value.shape[0],), np.nan))
+                for index in indices
+            ]
+            wl_err = [
+                err[:, index].flatten()
+                if index.size != 0
+                else np.ma.masked_invalid(np.full((err.shape[0],), np.nan))
+                for index in indices
+            ]
 
-        wl_value = np.array(wl_value).astype(OPTIONS.data.dtype.real)
-        wl_err = np.array(wl_err).astype(OPTIONS.data.dtype.real)
+        wl_value = np.ma.masked_array(wl_value).astype(OPTIONS.data.dtype.real)
+        wl_err = np.ma.masked_array(wl_err).astype(OPTIONS.data.dtype.real)
         return wl_value, wl_err
-
-
-def filter_data(targets):
-    ...
-
-
-def print_readout_info() -> None:
-    """Prints the readouts with the indices."""
-    print(f"The files with their indices:\n{'':-^50}")
-    for index, readout in enumerate(OPTIONS.data.readouts):
-        print(f"{index}: {readout.name}")
-        print(f"\tBand: {readout.band}")
 
 
 def get_all_wavelengths(readouts: List[ReadoutFits] | None = None) -> np.ndarray:
@@ -250,16 +240,15 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
             value, err = readout.get_data_for_wavelength(
                 wavelengths, key, OPTIONS.data.do_bin
             )
-
             if key in ["vis", "vis2", "t3"]:
-                ind = np.where(np.abs(err / value) < min_err)
-                err[ind] = np.abs(value[ind]) * min_err
+                ind = np.where(np.ma.abs(err / value) < min_err)
+                err[ind] = np.ma.abs(value[ind]) * min_err
 
             if data.value.size == 0:
                 data.value, data.err = value, err
             else:
-                data.value = np.hstack((data.value, value))
-                data.err = np.hstack((data.err, err))
+                data.value = np.ma.hstack((data.value, value))
+                data.err = np.ma.hstack((data.err, err))
 
             if key in ["vis", "vis2"]:
                 if data.ucoord.size == 0:
