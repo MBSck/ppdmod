@@ -56,7 +56,7 @@ data = set_data(
     fits_files,
     wavelengths=wavelengths,
     fit_data=["flux", "vis", "t3"],
-    average=True,
+    # average=True,
 )
 
 grid, value = np.loadtxt(
@@ -97,9 +97,9 @@ rout2 = Parameter(value=4, unit=u.au, free=True, base="rout")
 p2 = Parameter(value=0.5, min=-30, max=20, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 
-# flux_lnf = Parameter(name="flux_lnf", free=True, base="lnf")
-# t3_lnf = Parameter(name="t3_lnf", free=True, base="lnf")
-# vis_lnf = Parameter(name="vis_lnf", free=True, base="lnf")
+flux_lnf = Parameter(name="flux_lnf", free=False, base="lnf")
+t3_lnf = Parameter(name="t3_lnf", free=False, base="lnf")
+vis_lnf = Parameter(name="vis_lnf", free=False, base="lnf")
 
 shared_params = {
     "dim": 32,
@@ -110,9 +110,9 @@ shared_params = {
     "kappa_cont": kappa_cont,
     "pa": pa,
     "cinc": cinc,
-    # "flux_lnf": flux_lnf,
-    # "t3_lnf": t3_lnf,
-    # "vis_lnf": vis_lnf,
+    "flux_lnf": flux_lnf,
+    "t3_lnf": t3_lnf,
+    "vis_lnf": vis_lnf,
     # "weights": temps.weights,
     # "radii": temps.radii,
     # "matrix": temps.values,
