@@ -51,12 +51,10 @@ fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
 bands = ["hband", "kband", "lband", "mband", "nband"]
 wavelengths = np.concatenate([wavelengths[band] for band in bands])
 
-observables = ["flux", "vis", "t3"]
 data = set_data(
     fits_files,
     wavelengths=wavelengths,
     fit_data=["flux", "vis", "t3"],
-    set_std_err=["mband", "lband"],
     average=True,
 )
 
