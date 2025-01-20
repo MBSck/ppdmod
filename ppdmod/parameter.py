@@ -81,6 +81,9 @@ class Parameter:
     def __call__(self, points: u.Quantity | None = None) -> np.ndarray:
         """Gets the value for the parameter or the corresponding
         values for some points."""
+        if self.value is None:
+            return None
+
         if points is None or self.grid is None:
             value = self.value
         else:

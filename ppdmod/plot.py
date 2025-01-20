@@ -419,7 +419,7 @@ def plot_corner(
                 title = ax.get_title()
                 if title and np.abs(params[index]) <= 1e-3:
                     exponent = get_exponent(params[index])
-                    factor = 10**exponent
+                    factor = 10. ** exponent
                     formatted_title = (
                         rf"${params[index] * factor:.2f}_{{-{uncertainties[index][0] * factor:.2f}}}"
                         rf"^{{+{uncertainties[index][1] * factor:.2f}}}\,1\mathrm{{e}}-{exponent}$"
@@ -626,6 +626,7 @@ def plot_data_vs_model(
     get_axis_information("flux")
     for index, _ in enumerate(wavelengths.value):
         errorbar_params.color = scatter_params.color = color[index]
+
         upper_ax.errorbar(
             grid[index],
             value[index],
@@ -634,6 +635,7 @@ def plot_data_vs_model(
             fmt="o",
             **vars(errorbar_params),
         )
+
         if model_data is not None and lower_ax is not None:
             upper_ax.scatter(
                 grid[index],
