@@ -582,7 +582,6 @@ def plot_data_vs_model(
     colormap: str = OPTIONS.plot.color.colormap,
     bands: List[str] | str = "all",
     norm=None,
-    plot_nan: bool = False,
 ):
     colormap, alpha = get_colormap(colormap), 0.7
     hline_color = "gray" if OPTIONS.plot.color.background == "white" else "white"
@@ -598,8 +597,8 @@ def plot_data_vs_model(
             np.any([wavelength_to_bands == band for band in bands], axis=0)
         )
 
-    wavelengths = wavelengths[band_indices]
-    value, err = value[band_indices], err[band_indices]
+    band_wl = wavelengths[band_indices]
+    band_value, band_err = value[band_indices], err[band_indices]
     model_data = model_data[band_indices] if model_data is not None else model_data
 
     if isinstance(axarr, list):
@@ -609,28 +608,19 @@ def plot_data_vs_model(
         upper_ax, lower_ax, alpha = axarr, None, None
 
     set_axes_color(upper_ax, OPTIONS.plot.color.background)
-    color = colormap(norm(wavelengths.value))
+    color = colormap(norm(band_wl.value))
     if baselines is None:
-        grid = [wl.repeat(value.shape[-1]) for wl in wavelengths.value]
+        grid = [wl.repeat(band_value.shape[-1]) for wl in band_wl.value]
     else:
-        grid = (baselines / wavelengths.value[:, np.newaxis])[:, 1:]
-
-    if not plot_nan:
-        masks = [~v.mask for v in value]
-        value, err = [v.data[~v.mask] for v in value], [e.data[~e.mask] for e in err]
-        if model_data is not None:
-            model_data = [model[mask] for model, mask in zip(model_data, masks)]
-
-        grid = [g[mask] for g, mask in zip(grid, masks)]
+        grid = (baselines / band_wl.value[:, np.newaxis])[:, 1:]
 
     get_axis_information("flux")
-    for index, _ in enumerate(wavelengths.value):
+    for index, _ in enumerate(band_wl.value):
         errorbar_params.color = scatter_params.color = color[index]
-
         upper_ax.errorbar(
             grid[index],
-            value[index],
-            err[index],
+            band_value[index],
+            band_err[index],
             alpha=alpha,
             fmt="o",
             **vars(errorbar_params),
@@ -645,14 +635,14 @@ def plot_data_vs_model(
             )
 
             if key == "t3":
-                diff = compare_angles(value[index], model_data[index])
+                diff = compare_angles(band_value[index], model_data[index])
             else:
-                diff = value[index] - model_data[index]
+                diff = band_value[index] - model_data[index]
 
             lower_ax.errorbar(
                 grid[index],
                 diff,
-                err[index],
+                band_err[index],
                 fmt="o",
                 **vars(errorbar_params),
             )
@@ -667,7 +657,6 @@ def plot_fit(
     cmap: str = OPTIONS.plot.color.colormap,
     ylims: Dict[str, List[float]] = {},
     bands: List[str] | str = "all",
-    plot_nan: bool = False,
     title: str | None = None,
     savefig: Path | None = None,
 ):
@@ -688,9 +677,6 @@ def plot_fit(
         The bands to be plotted. The default is "all".
     cmap : str, optional
         The colormap.
-    plot_nan : bool, optional
-        If True plots the model values at points where the real data
-        is nan (not found in the file for the wavelength specified).
     title : str, optional
         The title. The default is None.
     savefig : pathlib.Path, optional
@@ -733,7 +719,7 @@ def plot_fit(
         )
     }
 
-    plot_kwargs = {"plot_nan": plot_nan, "norm": norm, "colormap": cmap}
+    plot_kwargs = {"norm": norm, "colormap": cmap}
     if "flux" in data_to_plot:
         plot_data_vs_model(
             axarr["flux"],
