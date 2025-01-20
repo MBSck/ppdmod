@@ -48,7 +48,8 @@ wavelengths = {
 }
 OPTIONS.data.binning.nband = nband_binning_windows * u.um
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
-bands = ["hband", "kband", "lband", "mband", "nband"]
+# bands = ["hband", "kband", "lband", "mband", "nband"]
+bands = ["kband", "lband", "mband", "nband"]
 wavelengths = np.concatenate([wavelengths[band] for band in bands])
 
 data = set_data(
@@ -96,9 +97,9 @@ rout2 = Parameter(value=4, unit=u.au, free=True, base="rout")
 p2 = Parameter(value=0.5, min=-30, max=20, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 
-flux_lnf = Parameter(name="flux_lnf", free=True, base="lnf")
-t3_lnf = Parameter(name="t3_lnf", free=True, base="lnf")
-vis_lnf = Parameter(name="vis_lnf", free=True, base="lnf")
+# flux_lnf = Parameter(name="flux_lnf", free=True, base="lnf")
+# t3_lnf = Parameter(name="t3_lnf", free=True, base="lnf")
+# vis_lnf = Parameter(name="vis_lnf", free=True, base="lnf")
 
 shared_params = {
     "dim": 32,
@@ -109,9 +110,9 @@ shared_params = {
     "kappa_cont": kappa_cont,
     "pa": pa,
     "cinc": cinc,
-    "flux_lnf": flux_lnf,
-    "t3_lnf": t3_lnf,
-    "vis_lnf": vis_lnf,
+    # "flux_lnf": flux_lnf,
+    # "t3_lnf": t3_lnf,
+    # "vis_lnf": vis_lnf,
     # "weights": temps.weights,
     # "radii": temps.radii,
     # "matrix": temps.values,
