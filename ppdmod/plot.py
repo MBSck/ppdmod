@@ -2,7 +2,7 @@ import re
 from itertools import chain, zip_longest
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
 
 import astropy.constants as const
 import astropy.units as u
@@ -148,7 +148,7 @@ def plot_components(
         ax.set_ylabel(r"$\delta$ (au)")
 
         if savefig is not None:
-            plt.savefig(savefig, format=Path(savefig).suffix[1:], dpi=300)
+            plt.savefig(savefig, format=Path(savefig).suffix[1:], dpi=OPTIONS.plot.dpi)
 
         return ax, top_ax, right_ax, image
 
@@ -219,7 +219,7 @@ def plot_component_mosaic(
     plt.tight_layout()
 
     if savefig is not None:
-        plt.savefig(savefig, format=Path(savefig).suffix[1:])
+        plt.savefig(savefig, format=Path(savefig).suffix[1:], dpi=OPTIONS.plot.dpi)
     else:
         plt.show()
     plt.close()
@@ -429,7 +429,7 @@ def plot_corner(
                     )
 
     if savefig is not None:
-        plt.savefig(savefig, format="pdf")
+        plt.savefig(savefig, format=Path(savefig).suffix[1:], dpi=OPTIONS.plot.dpi)
     plt.close()
 
 
@@ -469,7 +469,7 @@ def plot_chains(
     )
 
     if savefig:
-        plt.savefig(savefig, format="pdf")
+        plt.savefig(savefig, format=Path(savefig).suffix[1:], dpi=OPTIONS.plot.dpi)
     else:
         plt.show()
     plt.close()
@@ -489,7 +489,7 @@ class LogNorm(mcolors.Normalize):
         return np.expm1(value * np.log1p(self.vmax - self.vmin)) + self.vmin
 
 
-def get_axis_information(key: str) -> Dict[str, Any]:
+def get_axis_information(key: str) -> Tuple[SimpleNamespace]:
     upper_ax, lower_ax = SimpleNamespace(), SimpleNamespace()
     upper_ax.tick_params = {
         "axis": "x",
@@ -614,7 +614,8 @@ def plot_data_vs_model(
     else:
         grid = (baselines / band_wl.value[:, np.newaxis])[:, 1:]
 
-    get_axis_information("flux")
+    # TODO: Finish this implementation
+    # get_axis_information("flux")
     for index, _ in enumerate(band_wl.value):
         errorbar_params.color = scatter_params.color = color[index]
         upper_ax.errorbar(
@@ -977,7 +978,7 @@ def plot_sed(
     scaling: str = "nu",
     no_model: bool = False,
     ax: plt.Axes | None = None,
-    save_dir: Path | None = None,
+    savefig: Path | None = None,
 ):
     """Plots the observables of the model.
 
@@ -1097,7 +1098,8 @@ def plot_sed(
         max_value = np.concatenate(values).max()
         ax.set_ylim([0, max_value + 0.1 * max_value])
 
-        plt.savefig(save_dir / f"sed_scaling_{scaling}.pdf", format="pdf")
+        if savefig is not None:
+            plt.savefig(savefig, format=Path(savefig).suffix[1:], dpi=OPTIONS.plot.dpi)
         plt.close()
 
 
@@ -1178,7 +1180,7 @@ def plot_interferometric_observables(
     fig.subplots_adjust(left=0.2, bottom=0.2)
     fig.text(0.5, 0.04, r"$\lambda$ ($\mathrm{\mu}$m)", ha="center", fontsize=16)
     fig.text(0.04, 0.5, y_label, va="center", rotation="vertical", fontsize=16)
-    plt.savefig(save_dir / "vis_vs_baseline.pdf", format="pdf")
+    plt.savefig(save_dir / "vis_vs_baseline.png", format="png")
     plt.close()
 
     if "t3" in OPTIONS.fit.data:
@@ -1215,7 +1217,7 @@ def plot_interferometric_observables(
         fig.subplots_adjust(left=0.2, bottom=0.2)
         fig.text(0.5, 0.04, r"$\lambda$ ($\mathrm{\mu}$m)", ha="center", fontsize=16)
         fig.text(0.04, 0.5, y_label, va="center", rotation="vertical", fontsize=16)
-        plt.savefig(save_dir / "t3_vs_baseline.pdf", format="pdf")
+        plt.savefig(save_dir / "t3_vs_baseline.png", format="png")
         plt.close()
 
 
@@ -1341,7 +1343,7 @@ def plot_intermediate_products(
     ax.set_yscale("log")
     ax.set_ylim([1e-1, None])
     ax.legend()
-    plt.savefig(save_dir / "fluxes.pdf", format="pdf")
+    plt.savefig(save_dir / "fluxes.png", format="png")
     plt.close()
 
     _, ax = plt.subplots(figsize=(5, 5))
@@ -1357,7 +1359,7 @@ def plot_intermediate_products(
 
     ax.legend()
     ax.set_ylim([0, 100])
-    plt.savefig(save_dir / "flux_ratios.pdf", format="pdf")
+    plt.savefig(save_dir / "flux_ratios.png", format="png")
     plt.close()
 
     radii_bounds = [
@@ -1465,7 +1467,7 @@ def plot_intermediate_products(
         "$R$ (AU)",
         r"$F_{\nu}\left(r\right)/F_{\nu,\,\mathrm{{tot}}}$ (a.u.)",
         label=wls,
-        save_path=save_dir / "cumulative_flux_ratio.pdf",
+        save_path=save_dir / "cumulative_flux_ratio.png",
     )
 
     plot_product(
@@ -1473,14 +1475,14 @@ def plot_intermediate_products(
         temperature.value,
         "$R$ (AU)",
         "$T$ (K)",
-        save_path=save_dir / "temperature.pdf",
+        save_path=save_dir / "temperature.png",
     )
     plot_product(
         merged_radii.value,
         surface_density.value,
         "$R$ (au)",
         r"$\Sigma$ (g cm$^{-2}$)",
-        save_path=save_dir / "surface_density.pdf",
+        save_path=save_dir / "surface_density.png",
         scale="sci",
     )
     plot_product(
@@ -1488,16 +1490,16 @@ def plot_intermediate_products(
         optical_depth.value,
         "$R$ (AU)",
         r"$\tau_{\nu}$",
-        save_path=save_dir / "optical_depths.pdf",
+        save_path=save_dir / "optical_depths.png",
         scale="log",
         colorbar=True,
         label=wavelength,
     )
     # plot_product(merged_radii.value, emissivities.value,
     #              "$R$ (AU)", r"$\epsilon_{\nu}$",
-    #              save_path=save_dir / "emissivities.pdf",
+    #              save_path=save_dir / "emissivities.png",
     #              label=wavelength)
     # plot_product(merged_radii.value, brightnesses.value,
     #              "$R$ (AU)", r"$I_{\nu}$ (W m$^{-2}$ Hz$^{-1}$ sr$^{-1}$)",
-    #              save_path=save_dir / "brightnesses.pdf",
+    #              save_path=save_dir / "brightnesses.png",
     #              scale="log", label=wavelength)

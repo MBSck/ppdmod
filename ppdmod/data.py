@@ -298,10 +298,8 @@ def average_data() -> None:
     flux_err_averaged = np.ma.sqrt(1 / np.ma.sum(flux_err, axis=-1) ** 2)
     ind = np.where(flux_err_averaged < flux_averaged * 0.05)
     flux_err_averaged[ind] = flux_averaged[ind] * 0.05
-    OPTIONS.data.flux.value = flux_averaged[:, np.newaxis]
-    OPTIONS.data.flux.err = flux_err_averaged[:, np.newaxis]
 
-    flux_ratio = flux / OPTIONS.data.flux.value
+    flux_ratio = flux / flux_averaged[:, np.newaxis]
     for key in ["vis", "vis2"]:
         value = getattr(OPTIONS.data, key).value
         split_indices = np.cumsum(OPTIONS.data.nbaselines[:-1])
@@ -311,6 +309,9 @@ def average_data() -> None:
             value[:, prev_slice:current_slice] = (
                 value[:, prev_slice:current_slice] * flux_ratio[:, index][:, np.newaxis]
             )
+
+    OPTIONS.data.flux.value = flux_averaged[:, np.newaxis]
+    OPTIONS.data.flux.err = flux_err_averaged[:, np.newaxis]
 
 
 def correct_data_errors(
