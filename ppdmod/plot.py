@@ -599,7 +599,8 @@ def plot_data_vs_model(
 
     band_wl = wavelengths[band_indices]
     band_value, band_err = value[band_indices], err[band_indices]
-    model_data = model_data[band_indices] if model_data is not None else model_data
+    if model_data is not None:
+        band_model_data = np.ma.masked_array(model_data[band_indices], mask=band_value.mask)
 
     if isinstance(axarr, list):
         upper_ax, lower_ax = axarr
@@ -630,15 +631,15 @@ def plot_data_vs_model(
         if model_data is not None and lower_ax is not None:
             upper_ax.scatter(
                 grid[index],
-                model_data[index],
+                band_model_data[index],
                 marker="X",
                 **vars(scatter_params),
             )
 
             if key == "t3":
-                diff = compare_angles(band_value[index], model_data[index])
+                diff = compare_angles(band_value[index], band_model_data[index])
             else:
-                diff = band_value[index] - model_data[index]
+                diff = band_value[index] - band_model_data[index]
 
             lower_ax.errorbar(
                 grid[index],
