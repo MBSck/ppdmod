@@ -105,7 +105,6 @@ class FourierComponent(Component):
         self.cinc = Parameter(base="cinc")
         self.dim = Parameter(base="dim")
 
-        # TODO: Switch this to a more intiutive modulation (in polar coordinates)
         for i in range(1, OPTIONS.model.modulation + 1):
             rho_str, theta_str = f"rho{i}", f"theta{i}"
             rho = Parameter(name=rho_str, free=self.asymmetric, base="rho")

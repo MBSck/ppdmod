@@ -410,7 +410,8 @@ class Ring(FourierComponent):
                 rho, theta = getattr(self, f"rho{i}")(), getattr(self, f"theta{i}")()
                 modulations.append(rho * np.cos(compare_angles(theta, i * polar_angle)))
 
-            image *= 1 + np.sum(modulations, axis=0)
+            modulations = u.Quantity(modulations)
+            image = image * (1 + np.sum(modulations, axis=0))
 
         return image.astype(OPTIONS.data.dtype.real)
 
