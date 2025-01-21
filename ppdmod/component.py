@@ -9,7 +9,6 @@ from .parameter import Parameter
 from .utils import broadcast_baselines, compute_effective_baselines
 
 
-# TODO: Implement automated assertion to make sure the parameters are the same and all
 class Component:
     """The base class for the component."""
 
@@ -59,10 +58,10 @@ class Component:
         for attribute in dir(self):
             value = getattr(self, attribute)
             if isinstance(value, Parameter):
-                if (free and not value.free) or (free and value.shared):
+                if free != value.free or (free and value.shared):
                     continue
 
-                if shared and not value.shared:
+                if (shared != value.shared) or (value.shared and not value.free):
                     continue
 
                 params[attribute] = value
