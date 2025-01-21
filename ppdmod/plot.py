@@ -75,14 +75,10 @@ def plot_components(
 ) -> Tuple[Axes]:
     """Plots a component."""
     components = [components] if not isinstance(components, list) else components
-    image = sum(
-        [comp.compute_image(dim, pixel_size, wavelength) for comp in components]
-    )
+    image = sum([comp.compute_image(dim, pixel_size, wavelength) for comp in components])[0]
 
     if any(hasattr(component, "dist") for component in components):
-        dist = [component for component in components if hasattr(component, "dist")][
-            0
-        ].dist()
+        dist = [component for component in components if hasattr(component, "dist")][0].dist()
         pixel_size = angular_to_distance(pixel_size * u.mas, dist).to(u.au).value
 
     extent = u.Quantity([sign * dim * pixel_size / 2 for sign in [-1, 1, 1, -1]])
@@ -92,18 +88,15 @@ def plot_components(
         wcs.wcs.cdelt = (pixel_size * u.mas.to(u.rad), pixel_size * u.mas.to(u.rad))
         wcs.wcs.crval = (0.0, 0.0)
         wcs.wcs.cunit = (u.rad, u.rad)
-        hdu = fits.HDUList([fits.PrimaryHDU(image[0], header=wcs.to_header())])
+        hdu = fits.HDUList([fits.PrimaryHDU(image, header=wcs.to_header())])
         hdu.writeto(savefig, overwrite=True)
     else:
         if ax is None:
             _, ax = plt.subplots(1, 1)
 
-        ax.imshow(
-            image[0],
-            extent=extent,
-            norm=mcolors.PowerNorm(gamma=norm),
-            cmap=cmap,
-        )
+        sorted_image = np.sort(np.unique(image[image != 0]))[::-1]
+        norm = mcolors.PowerNorm(gamma=norm, vmin=sorted_image[-1], vmax=sorted_image[1])
+        ax.imshow(image, extent=extent, norm=norm, cmap=cmap)
 
         top_ax, right_ax = None, None
         if any(hasattr(component, "dist") for component in components):
@@ -137,12 +130,19 @@ def plot_components(
                 ha="center",
             )
 
+        bx = ax.twinx()
+        sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm.set_array([])
+        cbar = plt.colorbar(sm, ax=bx)
+
         if zoom is not None:
             ax.set_xlim([zoom, -zoom])
             ax.set_ylim([-zoom, zoom])
 
         ax.set_xlabel(r"$\alpha$ (au)")
         ax.set_ylabel(r"$\delta$ (au)")
+
+        plt.subplots_adjust(right=0.85)
 
         if savefig is not None:
             plt.savefig(savefig, format=Path(savefig).suffix[1:], dpi=OPTIONS.plot.dpi)
