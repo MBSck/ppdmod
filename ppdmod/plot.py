@@ -6,7 +6,6 @@ from typing import Dict, List, Tuple
 
 import astropy.constants as const
 import astropy.units as u
-import matplotlib
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import matplotlib.lines as mlines
@@ -31,8 +30,6 @@ from .utils import (
     get_band,
     compare_angles
 )
-
-matplotlib.use("Agg")
 
 
 def set_axes_color(
@@ -149,6 +146,8 @@ def plot_components(
 
         if savefig is not None:
             plt.savefig(savefig, format=Path(savefig).suffix[1:], dpi=OPTIONS.plot.dpi)
+        else:
+            plt.show()
 
         return ax, top_ax, right_ax, image
 
