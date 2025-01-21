@@ -95,7 +95,7 @@ def get_band_limits(band: str) -> Tuple[float, float]:
         case "kband":
             return 1.9, 2.5
         case "lband":
-            return 2.8, 3.99
+            return 2.6, 3.99
         case "mband":
             return 4.0, 6.0
         case "nband":
@@ -111,11 +111,11 @@ def get_band(wavelength: u.um) -> str:
         return "hband"
     if wl_min > 1.9 and wl_max < 2.5:
         return "kband"
-    if wl_min > 2.8 and wl_max < 4.0:
+    if wl_min > 2.6 and wl_max < 4.0:
         return "lband"
     if wl_min >= 4.0 and wl_max < 6.0:
         return "mband"
-    if wl_min > 2.8 and wl_max < 6:
+    if wl_min > 2.6 and wl_max < 6:
         return "lmband"
     if wl_min > 7.5 and wl_max < 16.0:
         return "nband"
