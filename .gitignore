@@ -10,6 +10,7 @@ build/
 *cpython*
 *.html
 *.exe
+*typed
 cython_src/*.c
 
 # Sensitive Data
