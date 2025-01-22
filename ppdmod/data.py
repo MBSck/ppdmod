@@ -103,7 +103,7 @@ class ReadoutFits:
         wavelength: u.Quantity,
         key: str,
         do_bin: bool = True,
-    ) -> np.ndarray:
+    ) -> np.ma.masked_array:
         """Gets the data for the given wavelengths.
 
         If there is no data for the given wavelengths,
@@ -121,7 +121,7 @@ class ReadoutFits:
 
         Returns
         -------
-        numpy.ndarray
+        numpy.ma.masked_array
             The data for the given wavelengths.
         """
         windows = get_binning_windows(wavelength)
