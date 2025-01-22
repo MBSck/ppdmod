@@ -180,7 +180,7 @@ def compute_chi_sq(
         The model data.
     diff_method : str, optional
         The method to determine the difference of the dataset,
-        to the data. Either "linear" or "exponential".
+        to the data. Either "linear" or "periodic".
         Default is "linear".
     method : str, optional
         The method used to calculate the chi square.
@@ -198,7 +198,7 @@ def compute_chi_sq(
         sn += model_data ** 2 * np.exp(2 * lnf)
 
     diff = data - model_data
-    if diff_method != "linear":
+    if diff_method == "periodic":
         diff = np.rad2deg(compare_angles(np.deg2rad(data), np.deg2rad(model_data)))
 
     chi_sq = diff**2 / sn
@@ -335,7 +335,7 @@ def compute_interferometric_chi_sq(
                 data.value.data[~mask],
                 data.err.data[~mask],
                 model_data[key][~mask],
-                diff_method="linear" if key != "t3" else "exponential",
+                diff_method="linear" if key != "t3" else "periodic",
                 method=method,
                 lnf=getattr(components[-1], f"{key}_lnf")(),
             )
@@ -346,7 +346,7 @@ def compute_interferometric_chi_sq(
     if reduced:
         ndata = get_counts_data()
         total_chi_sq = chi_sqs.sum() / np.abs(ndata.sum() - ndim)
-        chi_sqs = chi_sqs / np.abs(ndata - ndim)
+        chi_sqs /= np.abs(ndata - ndim)
     else:
         chi_sqs *= weights
         total_chi_sq = chi_sqs.sum()
@@ -466,11 +466,8 @@ def lnprob(theta: np.ndarray) -> float:
         The log of the probability.
     """
     components = set_components_from_theta(theta)
-    return sum(
-        compute_interferometric_chi_sq(
-            components, ndim=theta.size, method="logarithmic"
-        )[1:]
-    )
+    return compute_interferometric_chi_sq(
+            components, ndim=theta.size, method="logarithmic", reduced=True)[0]
 
 
 def lnprob_nband_fit(theta: np.ndarray) -> float:

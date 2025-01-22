@@ -204,13 +204,13 @@ def set_fit_wavelengths(
     return OPTIONS.fit.wavelengths
 
 
-def get_counts_data() -> np.ndarray[int]:
+def get_counts_data() -> np.ndarray:
     """Gets the number of data points for the flux,
     visibilities and closure phases."""
     counts = []
     for key in OPTIONS.fit.data:
         data = getattr(OPTIONS.data, key)
-        counts.append(data.value[~np.isnan(data.value)].size)
+        counts.append(data.value.compressed().size)
 
     return np.array(counts)
 
