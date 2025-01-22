@@ -295,14 +295,11 @@ def average_data() -> None:
     """Averages the flux data and applys a correction factor to the correlated flux."""
     wavelengths = OPTIONS.fit.wavelengths
     flux, flux_err = OPTIONS.data.flux.value, OPTIONS.data.flux.err
-
     flux_averaged = np.ma.average(flux, weights=1 / flux_err**2, axis=-1)
     flux_err_averaged = np.ma.sqrt(1 / np.ma.sum(flux_err, axis=-1) ** 2)
-
     # TODO: Is this really needed?
     ind = np.where(flux_err_averaged < flux_averaged * 0.05)
     flux_err_averaged[ind] = flux_averaged[ind] * 0.05
-
     flux_ratio = flux / flux_averaged[:, np.newaxis]
 
     # NOTE: This sets the flux_ratio to 1 for files without any flux in a certain band
@@ -320,7 +317,9 @@ def average_data() -> None:
 
         band_ratio = flux_ratio[:, index][ind]
         if np.all(band_ratio.mask):
-            flux_ratio[:, index][ind] = 1
+            flux_ratio[:, index][ind] = 1.
+        elif np.all(~band_ratio.mask):
+            continue
         else:
             interp_ratios = interp1d(wavelengths[ind][~band_ratio.mask],
                                     band_ratio.compressed(), fill_value="extrapolate")
