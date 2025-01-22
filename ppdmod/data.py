@@ -6,10 +6,11 @@ from typing import Dict, List
 import astropy.units as u
 import numpy as np
 from astropy.io import fits
+from scipy.interpolate import interp1d
 from scipy.stats import circmean, circstd
 
 from .options import OPTIONS
-from .utils import get_band, get_indices, get_binning_windows
+from .utils import get_band, get_band_limits, get_indices, get_binning_windows
 
 
 class ReadoutFits:
@@ -290,16 +291,41 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
         data.err = np.ma.masked_invalid(data.err)
 
 
-# TODO: Make sure that this is correct in setting it
 def average_data() -> None:
     """Averages the flux data and applys a correction factor to the correlated flux."""
+    wavelengths = OPTIONS.fit.wavelengths
     flux, flux_err = OPTIONS.data.flux.value, OPTIONS.data.flux.err
+
     flux_averaged = np.ma.average(flux, weights=1 / flux_err**2, axis=-1)
     flux_err_averaged = np.ma.sqrt(1 / np.ma.sum(flux_err, axis=-1) ** 2)
+
+    # TODO: Is this really needed?
     ind = np.where(flux_err_averaged < flux_averaged * 0.05)
     flux_err_averaged[ind] = flux_averaged[ind] * 0.05
 
     flux_ratio = flux / flux_averaged[:, np.newaxis]
+
+    # NOTE: This sets the flux_ratio to 1 for files without any flux in a certain band
+    # and otherwise interpolates any missing flux ratios.
+    for index, band in enumerate(OPTIONS.data.bands):
+        if band == "lmband":
+            limits_lband = get_band_limits("lband") * u.um
+            limits_mband = get_band_limits("mband") * u.um
+            cond_lband = (limits_lband[0] < wavelengths) & (limits_lband[1] > wavelengths)
+            cond_mband = (limits_mband[0] < wavelengths) & (limits_mband[1] > wavelengths)
+            ind = np.where(cond_lband | cond_mband)[0]
+        else:
+            limits = get_band_limits(band) * u.um
+            ind = np.where((limits[0] < wavelengths) & (limits[1] > wavelengths))[0]
+
+        band_ratio = flux_ratio[:, index][ind]
+        if np.all(band_ratio.mask):
+            flux_ratio[:, index][ind] = 1
+        else:
+            interp_ratios = interp1d(wavelengths[ind][~band_ratio.mask],
+                                    band_ratio.compressed(), fill_value="extrapolate")
+            flux_ratio[:, index][ind] = interp_ratios(wavelengths[ind])
+
     for key in ["vis", "vis2"]:
         value = getattr(OPTIONS.data, key).value
         split_indices = np.cumsum(OPTIONS.data.nbaselines[:-1])
