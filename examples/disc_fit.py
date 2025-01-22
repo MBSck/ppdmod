@@ -165,10 +165,10 @@ if __name__ == "__main__":
     with open(result_dir / "components.pkl", "wb") as file:
         pickle.dump(components, file)
 
-    rchi_sqs = compute_interferometric_chi_sq(
+    rchi_sq = -compute_interferometric_chi_sq(
         components,
         ndim=ndim,
         method="linear",
         reduced=True,
-    )
-    print(f"Total reduced chi_sq: {rchi_sqs[0]:.2f}")
+    )[0]
+    print(f"Total reduced chi_sq: {rchi_sq:.2f}")
