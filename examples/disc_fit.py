@@ -155,7 +155,7 @@ ndim = len(LABELS)
 
 if __name__ == "__main__":
     ncores = 70
-    fit_params = {"dlogz_init": 0.5, "nlive_init": 2000, "nlive_batch": 200, "ptform": ptform}
+    fit_params = {"dlogz_init": 0.01, "nlive_init": 2000, "nlive_batch": 200, "ptform": ptform}
     sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
 
     theta, uncertainties = get_best_fit(sampler)
