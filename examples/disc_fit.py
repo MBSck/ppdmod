@@ -65,7 +65,7 @@ grid, value = np.loadtxt(
 )
 flux_star = Parameter(grid=grid, value=value, base="f")
 
-SOURCE_DIR = DATA_DIR / "model_results" / "hd142527"
+SOURCE_DIR = DATA_DIR / "results" / "hd142527"
 
 method = "grf"
 grid, value = np.load(SOURCE_DIR / f"silicate_{method}_opacities.npy")
@@ -145,11 +145,10 @@ DIR_NAME = "test_average"
 if DIR_NAME is None:
     DIR_NAME = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 
-result_dir = Path("../model_results/") / "disc_fit"
+result_dir = DATA_DIR.parent / "results" / "disc_fit"
 day_dir = Path(str(datetime.now().date()))
 result_dir /= day_dir / DIR_NAME
 result_dir.mkdir(parents=True, exist_ok=True)
-
 ndim = len(LABELS)
 
 
