@@ -533,7 +533,7 @@ def run_fit(
         checkpoint_file = None
 
     pool = Pool(processes=ncores) if not debug else None
-    queue_size = ncores if not debug else None
+    queue_size = 2 * ncores if not debug else None
 
     general_kwargs = {
         "bound": bound,
