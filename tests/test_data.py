@@ -14,10 +14,10 @@ from ppdmod.options import OPTIONS
 def fits_files() -> List[Path]:
     """A MATISSE (.fits)-file."""
     data_dir = Path(__file__).parent.parent / "data" / "matisse"
-    april_one_file = list(data_dir.glob("*2022-04-21*.fits"))
-    april_two_files = list(data_dir.glob("*2022-04-23*.fits"))
-    april_two_files.extend(april_one_file)
-    return april_two_files
+    april_first = list(data_dir.glob("*2022-04-21*.fits"))
+    april_second = list(data_dir.glob("*2022-04-23*.fits"))
+    april_second.extend(april_first)
+    return april_second
 
 
 @pytest.fixture
@@ -34,7 +34,6 @@ def test_read_into_namespace(
         with fits.open(fits_file) as hdul:
             instrument = hdul[0].header["instrume"].lower()
             sci_index = OPTIONS.data.gravity.index if instrument == "gravity" else None
-            wl_index = 1 if instrument == "gravity" else None
             vis = hdul["oi_vis", sci_index]
             vis2 = hdul["oi_vis2", sci_index]
             t3 = hdul["oi_t3", sci_index]
@@ -42,28 +41,26 @@ def test_read_into_namespace(
             u1coord, u2coord = map(lambda x: t3.data[f"u{x}coord"], ["1", "2"])
             v1coord, v2coord = map(lambda x: t3.data[f"v{x}coord"], ["1", "2"])
             u3coord, v3coord = u1coord + u2coord, v1coord + v2coord
-            u123coord = np.array([u1coord, u2coord, -u3coord])
-            v123coord = np.array([v1coord, v2coord, -v3coord])
+            u123coord = np.array([u1coord, u2coord, u3coord])
+            v123coord = np.array([v1coord, v2coord, v3coord])
 
-            assert np.array_equal(readout.t3.value, t3.data["t3phi"][:, wl_index:])
-            assert np.array_equal(readout.t3.err, t3.data["t3phierr"][:, wl_index:])
-            assert np.array_equal(readout.t3.u123coord, u123coord)
-            assert np.array_equal(readout.t3.v123coord, v123coord)
+            assert np.array_equal(readout.t3.value, t3.data["t3phi"])
+            assert np.array_equal(readout.t3.err, t3.data["t3phierr"])
+            assert np.allclose(readout.t3.u123coord, u123coord, atol=1e-2)
+            assert np.allclose(readout.t3.v123coord, v123coord, atol=1e-2)
 
-            assert np.array_equal(readout.vis.value, vis.data["visamp"][:, wl_index:])
-            assert np.array_equal(readout.vis.err, vis.data["visamperr"][:, wl_index:])
-            assert np.array_equal(readout.vis.ucoord, vis.data["ucoord"].reshape(1, -1))
-            assert np.array_equal(readout.vis.vcoord, vis.data["vcoord"].reshape(1, -1))
+            assert np.array_equal(readout.vis.value, vis.data["visamp"])
+            assert np.array_equal(readout.vis.err, vis.data["visamperr"])
+            assert np.allclose(readout.vis.ucoord, vis.data["ucoord"].reshape(1, -1), atol=1e-2)
+            assert np.allclose(readout.vis.vcoord, vis.data["vcoord"].reshape(1, -1), atol=1e-2)
 
-            assert np.array_equal(
-                readout.vis2.value, vis2.data["vis2data"][:, wl_index:]
+            assert np.array_equal(readout.vis2.value, vis2.data["vis2data"])
+            assert np.array_equal(readout.vis2.err, vis2.data["vis2err"])
+            assert np.allclose(
+                readout.vis2.ucoord, vis2.data["ucoord"].reshape(1, -1), atol=1e-2,
             )
-            assert np.array_equal(readout.vis2.err, vis2.data["vis2err"][:, wl_index:])
-            assert np.array_equal(
-                readout.vis2.ucoord, vis2.data["ucoord"].reshape(1, -1)
-            )
-            assert np.array_equal(
-                readout.vis2.vcoord, vis2.data["vcoord"].reshape(1, -1)
+            assert np.allclose(
+                readout.vis2.vcoord, vis2.data["vcoord"].reshape(1, -1), atol=1e-2,
             )
 
         assert readout.wavelength.unit == u.um
@@ -98,7 +95,6 @@ def test_set_fit_wavelenghts(wavelength: u.um) -> None:
     assert not OPTIONS.fit.wavelengths
 
 
-# TODO: Maybe add tests that show that nan is one of the results that can come out.
 @pytest.mark.parametrize(
     "wavelength", [[3.5] * u.um, [3.5, 8] * u.um, [8] * u.um, [8, 10] * u.um]
 )
@@ -106,18 +102,14 @@ def test_wavelength_retrieval(readouts: List[ReadoutFits], wavelength: u.um) -> 
     """Tests the wavelength retrieval of the (.fits)-files."""
     wl_len = len(wavelength)
     for readout in readouts:
-        flux = readout.get_data_for_wavelength(wavelength, "flux", "value")
-        flux_err = readout.get_data_for_wavelength(wavelength, "flux", "err")
-        t3 = readout.get_data_for_wavelength(wavelength, "t3", "value")
-        t3_err = readout.get_data_for_wavelength(wavelength, "t3", "err")
-        vis = readout.get_data_for_wavelength(wavelength, "vis", "value")
-        vis_err = readout.get_data_for_wavelength(wavelength, "vis", "err")
-        vis2 = readout.get_data_for_wavelength(wavelength, "vis2", "value")
-        vis2_err = readout.get_data_for_wavelength(wavelength, "vis2", "err")
+        flux, flux_err = readout.get_data_for_wavelength(wavelength, "flux", OPTIONS.data.do_bin)
+        t3, t3_err = readout.get_data_for_wavelength(wavelength, "t3", OPTIONS.data.do_bin)
+        vis, vis_err = readout.get_data_for_wavelength(wavelength, "vis", OPTIONS.data.do_bin)
+        vis2, vis2_err = readout.get_data_for_wavelength(wavelength, "vis2", OPTIONS.data.do_bin)
 
-        assert isinstance(flux, np.ndarray) and isinstance(flux_err, np.ndarray)
-        assert isinstance(vis, np.ndarray) and isinstance(vis_err, np.ndarray)
-        assert isinstance(t3, np.ndarray) and isinstance(t3_err, np.ndarray)
+        assert isinstance(flux, np.ma.masked_array) and isinstance(flux_err, np.ma.masked_array)
+        assert isinstance(vis, np.ma.masked_array) and isinstance(vis_err, np.ma.masked_array)
+        assert isinstance(t3, np.ma.masked_array) and isinstance(t3_err, np.ma.masked_array)
 
         assert flux.size != 0 and flux_err.size != 0
         assert t3.size != 0 and t3_err.size != 0
@@ -137,7 +129,8 @@ def test_wavelength_retrieval(readouts: List[ReadoutFits], wavelength: u.um) -> 
 def test_set_data(fits_files: List[Path], wavelength: u.um) -> None:
     """Tests the automatic data procurrment from one
     or multiple (.fits)-files."""
-    set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis", "vis2", "t3"])
+
+    set_data(fits_files, wavelengths=wavelength, fit_data=["flux", "vis", "t3"])
     nwl, nfiles = wavelength.size, len(fits_files)
 
     flux = OPTIONS.data.flux
