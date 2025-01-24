@@ -501,10 +501,10 @@ def run_fit(
     bound: str = "multi",
     ncores: int = 6,
     debug: bool = False,
-    method: str = "dynamic",
+    fitter: str = "dynesty",
     save_dir: Path | None = None,
     **kwargs,
-) -> NestedSampler | DynamicNestedSampler:
+) -> DynamicNestedSampler:
     """Runs the dynesty nested sampler.
 
     Parameters
@@ -518,21 +518,20 @@ def run_fit(
     debug : bool, optional
         Whether to run the sampler in debug mode.
         This will not use multiprocessing.
-    method : str, optional
-        The method to use. Either "dynamic" or "static".
+    fitter : str, optional
+        The fitter to use. Either "dynesty" or "emcee".
     save_dir : Path, optional
         The directory to save the sampler.
 
     Returns
     -------
-    sampler : dynesty.NestedSampler or dynesty.DynamicNestedSampler
+    sampler : dynesty.DynamicNestedSampler
     """
     if save_dir is not None:
         checkpoint_file = save_dir / "sampler.save"
     else:
         checkpoint_file = None
 
-    samplers = {"dynamic": DynamicNestedSampler, "static": NestedSampler}
     pool = Pool(processes=ncores) if not debug else None
     queue_size = ncores if not debug else None
 
@@ -545,29 +544,23 @@ def run_fit(
         "pool": pool,
     }
 
-    static_kwargs = {"nlive": kwargs.pop("nlive", 1000)}
-    sampler_kwargs = {"dynamic": {}, "static": static_kwargs}
-
-    static = {"dlogz": kwargs.pop("dlogz", 0.01)}
-    dynamic = {
+    run_kwargs = {
         "nlive_batch": kwargs.pop("nlive_batch", 500),
         "dlogz_init": kwargs.pop("dlogz_init", 0.01),
         "nlive_init": kwargs.pop("nlive_init", 1000),
     }
-    run_kwargs = {"dynamic": dynamic, "static": static}
 
-    print(f"Executing Dynesty.\n{'':-^50}")
+    print(f"Executing {fitter.title()}.\n{'':-^50}")
     ndim = len(get_priors(OPTIONS.model.components))
     ptform = kwargs.pop("ptform", transform_uniform_prior)
-    sampler = samplers[method](
+    sampler = DynamicNestedSampler(
         kwargs.pop("lnprob", lnprob),
         ptform,
         ndim,
         **general_kwargs,
-        **sampler_kwargs[method],
     )
     sampler.run_nested(
-        **run_kwargs[method], print_progress=True, checkpoint_file=str(checkpoint_file)
+        **run_kwargs, print_progress=True, checkpoint_file=str(checkpoint_file)
     )
 
     if not debug:
@@ -577,7 +570,7 @@ def run_fit(
 
 
 def get_best_fit(
-    sampler: NestedSampler | DynamicNestedSampler,
+    sampler: DynamicNestedSampler,
     method: str = "max",
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Gets the best fit from the emcee sampler."""
