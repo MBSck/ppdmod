@@ -324,11 +324,12 @@ def compute_interferometric_chi_sq(
     """
     observables = ["flux", "vis", "t3"]
     model_data = dict(zip(observables, compute_observables(components)))
-    chi_sqs, weights = [], []
+    weights = [getattr(OPTIONS.fit.weights, key) for key in OPTIONS.fit.data]
+
+    chi_sqs = []
     for key in OPTIONS.fit.data:
         data = getattr(OPTIONS.data, key)
         key = key if key != "vis2" else "vis"
-        weights.append(getattr(OPTIONS.fit.weights, key))
         mask = data.value.mask
         chi_sqs.append(
             compute_chi_sq(
@@ -347,9 +348,11 @@ def compute_interferometric_chi_sq(
         ndata = get_counts_data()
         total_chi_sq = chi_sqs.sum() / np.abs(ndata.sum() - ndim)
         chi_sqs /= np.abs(ndata - ndim)
+        chi_sqs *= weights
     else:
         chi_sqs *= weights
         total_chi_sq = chi_sqs.sum()
+
 
     return (total_chi_sq, *chi_sqs)
 
