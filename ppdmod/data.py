@@ -128,10 +128,17 @@ class ReadoutFits:
         windows = get_binning_windows(wavelength)
         indices = get_indices(wavelength, array=self.wavelength, windows=windows)
         value, err = getattr(self, key).value, getattr(self, key).err
-        nan_value = np.full((wavelength.size, value.shape[0]), np.nan)
-        nan_err = np.full((wavelength.size, err.shape[0]), np.nan)
         if all(index.size == 0 for index in indices):
-            return (nan_value, nan_err) if key != "flux" else (nan_value[:, :1], nan_err[:, :1])
+            nan_value = np.full((wavelength.size, value.shape[0]), np.nan)
+            nan_err = np.full((wavelength.size, err.shape[0]), np.nan)
+            if "flux":
+                wl_value, wl_err = nan_value, nan_err
+            else:
+                wl_value, wl_err = nan_value[:, :1], nan_err[:, :1]
+
+            wl_value = np.ma.masked_invalid(wl_value)
+            wl_err = np.ma.masked_invalid(wl_err)
+            return wl_value, wl_err
 
         if key == "t3":
             # TODO: Make sure this works properly with the masked arrays
