@@ -636,13 +636,13 @@ def plot_data_vs_model(
             )
 
             if key == "t3":
-                diff = compare_angles(band_value[index], band_model_data[index])
+                residuals = compare_angles(band_value[index], band_model_data[index])
             else:
-                diff = band_value[index] - band_model_data[index]
+                residuals = band_value[index] - band_model_data[index]
 
             lower_ax.errorbar(
                 grid[index],
-                diff,
+                residuals,
                 band_err[index],
                 fmt="o",
                 **vars(errorbar_params),

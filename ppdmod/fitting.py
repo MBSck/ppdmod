@@ -197,15 +197,15 @@ def compute_chi_sq(
     if lnf is not None:
         sn += model_data ** 2 * np.exp(2 * lnf)
 
-    diff = data - model_data
+    residuals = data - model_data
     if diff_method == "periodic":
-        diff = np.rad2deg(compare_angles(np.deg2rad(data), np.deg2rad(model_data)))
+        residuals = np.rad2deg(compare_angles(np.deg2rad(data), np.deg2rad(model_data)))
 
-    chi_sq = diff**2 / sn
     if method == "linear":
-        return chi_sq.sum()
+        return (residuals**2 / sn).sum()
 
-    return -0.5 * np.sum(chi_sq + np.log(sn))
+    lnorm = np.log(sn) + data.size * np.log(2 * np.pi)
+    return -0.5 * np.sum(residuals**2 / sn + lnorm)
 
 
 def compute_observables(
@@ -348,11 +348,9 @@ def compute_interferometric_chi_sq(
         ndata = get_counts_data()
         total_chi_sq = chi_sqs.sum() / np.abs(ndata.sum() - ndim)
         chi_sqs /= np.abs(ndata - ndim)
-        chi_sqs *= weights
     else:
         chi_sqs *= weights
         total_chi_sq = chi_sqs.sum()
-
 
     return (total_chi_sq, *chi_sqs)
 
@@ -470,7 +468,7 @@ def lnprob(theta: np.ndarray) -> float:
     """
     components = set_components_from_theta(theta)
     return compute_interferometric_chi_sq(
-            components, ndim=theta.size, method="logarithmic", reduced=True)[0]
+            components, ndim=theta.size, method="logarithmic")[0]
 
 
 def lnprob_nband_fit(theta: np.ndarray) -> float:
