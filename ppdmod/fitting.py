@@ -468,7 +468,7 @@ def lnprob(theta: np.ndarray) -> float:
     """
     components = set_components_from_theta(theta)
     return compute_interferometric_chi_sq(
-            components, ndim=theta.size, method="logarithmic")[0]
+            components, ndim=theta.size, method="logarithmic", reduced=True)[0]
 
 
 def lnprob_nband_fit(theta: np.ndarray) -> float:

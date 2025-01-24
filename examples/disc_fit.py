@@ -87,17 +87,17 @@ with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
 x = Parameter(free=True, base="x")
 y = Parameter(free=True, base="y")
 
-rin1 = Parameter(value=0.1, min=0, max=30, unit=u.au, free=True, base="rin")
-rout1 = Parameter(value=1.5, min=0, max=30, unit=u.au, free=True, base="rout")
-p1 = Parameter(value=0.5, min=-20, max=20, base="p")
+rin1 = Parameter(value=0.1, min=0, max=6, unit=u.au, free=True, base="rin")
+rout1 = Parameter(value=1.5, min=0, max=6, unit=u.au, free=True, base="rout")
+p1 = Parameter(value=0.5, min=-10, max=10, base="p")
 sigma01 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
-rho1 = Parameter(value=0.6, free=True, base="rho")
-theta1 = Parameter(value=33, free=True, base="theta")
 
 rin2 = Parameter(value=2, min=0, max=30, unit=u.au, base="rin")
 rout2 = Parameter(value=4, unit=u.au, free=True, base="rout")
 p2 = Parameter(value=0.5, min=-30, max=20, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
+rho21 = Parameter(value=0.6, free=True, base="rho")
+theta21 = Parameter(value=33, free=True, base="theta")
 
 # flux_lnf = Parameter(name="flux_lnf", free=True, base="lnf")
 # t3_lnf = Parameter(name="t3_lnf", free=True, base="lnf")
@@ -120,7 +120,6 @@ shared_params = {
     # "matrix": temps.values,
 }
 
-# star = Star(label="Star", x=x, y=y, f=flux_star, **shared_params)
 star = Star(label="Star", f=flux_star, **shared_params)
 inner_ring = GreyBody(
     label="Inner Ring",
@@ -136,8 +135,8 @@ outer_ring = AsymGreyBody(
     rout=rout2,
     p=p2,
     sigma0=sigma02,
-    rho1=rho1,
-    theta1=theta1,
+    rho1=rho21,
+    theta1=theta21,
     **shared_params,
 )
 
@@ -157,7 +156,7 @@ ndim = len(LABELS)
 
 if __name__ == "__main__":
     ncores = 70
-    fit_params = {"dlogz_init": 0.01, "nlive_init": 2000, "nlive_batch": 200, "ptform": ptform}
+    fit_params = {"dlogz_init": 0.01, "nlive_init": 4000, "nlive_batch": 200, "ptform": ptform}
     sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
 
     theta, uncertainties = get_best_fit(sampler)
