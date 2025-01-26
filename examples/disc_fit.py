@@ -51,7 +51,8 @@ fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
 bands = ["hband", "kband", "lband", "mband", "nband"]
 wavelengths = np.concatenate([wavelengths[band] for band in bands])
 
-fit_data = ["flux", "vis", "t3"]
+# fit_data = ["flux", "vis", "t3"]
+fit_data = ["flux", "vis"]
 # weights = [1, 9.63411792, 3.53109934]
 data = set_data(
     fits_files,
