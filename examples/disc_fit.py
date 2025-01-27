@@ -53,12 +53,10 @@ wavelengths = np.concatenate([wavelengths[band] for band in bands])
 
 # fit_data = ["flux", "vis", "t3"]
 fit_data = ["flux", "vis"]
-# weights = [1, 9.63411792, 3.53109934]
 data = set_data(
     fits_files,
     wavelengths=wavelengths,
     fit_data=fit_data,
-    # weights=dict(zip(fit_data, weights)),
     average=True,
 )
 
@@ -88,21 +86,21 @@ with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
 x = Parameter(free=True, base="x")
 y = Parameter(free=True, base="y")
 
-rin1 = Parameter(value=0.1, min=0, max=6, unit=u.au, free=True, base="rin")
-rout1 = Parameter(value=1.5, min=0, max=6, unit=u.au, free=True, base="rout")
+rin1 = Parameter(value=0.1, min=0, max=2, unit=u.au, base="rin")
+rout1 = Parameter(value=1.5, min=0, max=2, unit=u.au, free=True, base="rout")
 p1 = Parameter(value=0.5, min=-10, max=10, base="p")
 sigma01 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 
 rin2 = Parameter(value=2, min=0, max=30, unit=u.au, base="rin")
-rout2 = Parameter(value=4, unit=u.au, free=True, base="rout")
+rout2 = Parameter(value=4, min=0, max=45, unit=u.au, free=True, base="rout")
 p2 = Parameter(value=0.5, min=-30, max=20, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 rho21 = Parameter(value=0.6, free=True, base="rho")
 theta21 = Parameter(value=33, free=True, base="theta")
 
 # flux_lnf = Parameter(name="flux_lnf", free=True, base="lnf")
-# t3_lnf = Parameter(name="t3_lnf", free=True, base="lnf")
 # vis_lnf = Parameter(name="vis_lnf", free=True, base="lnf")
+# t3_lnf = Parameter(name="t3_lnf", free=True, base="lnf")
 
 shared_params = {
     "dim": 32,
@@ -114,8 +112,8 @@ shared_params = {
     "pa": pa,
     "cinc": cinc,
     # "flux_lnf": flux_lnf,
-    # "t3_lnf": t3_lnf,
     # "vis_lnf": vis_lnf,
+    # "t3_lnf": t3_lnf,
     # "weights": temps.weights,
     # "radii": temps.radii,
     # "matrix": temps.values,

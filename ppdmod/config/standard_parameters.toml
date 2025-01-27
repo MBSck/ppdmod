@@ -27,8 +27,8 @@ smooth = true
 name = "lnf"
 description = "The error correction term"
 unit = "one"
-min = -10
-max = 1
+min = -0.5
+max = 0.5
 free = false
 shared = true
 
