@@ -16,6 +16,7 @@ import numpy as np
 from ppdmod.basic_components import AsymGreyBody, GreyBody, Star
 from ppdmod.data import set_data
 from ppdmod.fitting import (
+    init_uniformly,
     compute_interferometric_chi_sq,
     get_best_fit,
     get_labels,
@@ -91,7 +92,7 @@ rout1 = Parameter(value=1.5, min=0, max=2, unit=u.au, free=True, base="rout")
 p1 = Parameter(value=0.5, min=-10, max=10, base="p")
 sigma01 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 
-rin2 = Parameter(value=2, min=0, max=30, unit=u.au, base="rin")
+rin2 = Parameter(value=2, min=0, max=9, unit=u.au, base="rin")
 rout2 = Parameter(value=4, min=0, max=45, unit=u.au, free=True, base="rout")
 p2 = Parameter(value=0.5, min=-30, max=20, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
@@ -155,17 +156,27 @@ ndim = len(LABELS)
 
 if __name__ == "__main__":
     ncores = 70
-    fit_params = {"dlogz_init": 0.01, "nlive_init": 4000, "nlive_batch": 1000, "ptform": ptform}
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
+    OPTIONS.fit.fitter = "emcee"
 
+    # NOTE: Params emcee
+    nwalkers = 25
+    fit_params = {"nwalkers": nwalkers, "nburnin": 500, "nsteps": 2500, "init_guess": init_uniformly(nwalkers, LABELS)}
+
+    # NOTE: Params dynesty
+    # fit_params = {"dlogz_init": 0.01, "nlive_init": 4000, "nlive_batch": 1000, "ptform": ptform}
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
     theta, uncertainties = get_best_fit(sampler)
     OPTIONS.model.components = components = set_components_from_theta(theta)
     np.save(result_dir / "uncertainties.npy", uncertainties)
 
+    if OPTIONS.fit.fitter == "emcee":
+        with open(result_dir / "sampler.pkl", "wb") as file:
+            pickle.dump(sampler, file)
+
     with open(result_dir / "components.pkl", "wb") as file:
         pickle.dump(components, file)
 
-    rchi_sq = -compute_interferometric_chi_sq(
+    rchi_sq = compute_interferometric_chi_sq(
         components,
         ndim=ndim,
         method="linear",

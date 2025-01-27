@@ -4,13 +4,15 @@ from typing import List, Tuple
 
 import astropy.units as u
 import dynesty.utils as dyutils
+import emcee
 import numpy as np
 from dynesty import DynamicNestedSampler
+from numpy.random import sample
 
 from .component import Component
 from .data import get_counts_data
 from .options import OPTIONS
-from .utils import compute_vis, compute_t3, compare_angles
+from .utils import compare_angles, compute_t3, compute_vis
 
 
 def get_labels(components: List[Component], shared: bool = True) -> np.ndarray:
@@ -201,11 +203,13 @@ def compute_chi_sq(
     if diff_method == "periodic":
         residuals = np.rad2deg(compare_angles(np.deg2rad(data), np.deg2rad(model_data)))
 
+    chi_sq = residuals**2 / sn
     if method == "linear":
-        return (residuals**2 / sn).sum()
+        return chi_sq.sum()
 
-    lnorm = np.log(sn) + data.size * np.log(2 * np.pi)
-    return -0.5 * np.sum(residuals**2 / sn + lnorm)
+    if OPTIONS.fit.fitter == "dynesty":
+        chi_sq += np.log(sn) + data.size * np.log(2 * np.pi)
+    return -0.5 * np.sum(chi_sq)
 
 
 def compute_observables(
@@ -417,30 +421,27 @@ def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray
     priors = get_priors(OPTIONS.model.components)
     params = transform_uniform_prior(theta)
 
-    radii_labels = list(filter(lambda x: "rin" in x or "rout" in x, labels))
     indices = list(
         map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
     )
 
-    radii_values = params[indices].copy().tolist()
-    radii_uniforms = theta[indices].copy().tolist()
-    radii_priors = priors[indices].copy().tolist()
-
-    if "rout" not in radii_labels[-1]:
-        radii_labels.append(f"rout-{radii_labels[-1].split('-')[1]}")
-        radii_values.append(OPTIONS.model.components[-1].rout.value)
-        radii_uniforms.append(1)
-        radii_priors.append([0, 0])
-
-    new_radii = [radii_values[0]]
+    new_radii = [params[indices].copy().tolist()[0]]
     for index, (uniform, prior) in enumerate(
-        zip(radii_uniforms[1:], radii_priors[1:]), start=1
+        zip(theta[indices][1:], priors[indices][1:]), start=1
     ):
         prior[0] = new_radii[index - 1]
         new_radii.append(prior[0] + (prior[1] - prior[0]) * uniform)
 
     params[indices] = new_radii
     return params
+
+
+def lnprior(components: List[Component]) -> float:
+    """Checks if the parameters are within the priors (for emcee)."""
+    for param, prior in zip(get_theta((components)), get_priors(components)):
+        if not prior[0] <= param <= prior[1]:
+            return -np.inf
+    return 0.0
 
 
 def lnprob(theta: np.ndarray) -> float:
@@ -461,9 +462,14 @@ def lnprob(theta: np.ndarray) -> float:
         The log of the probability.
     """
     components = set_components_from_theta(theta)
+    if OPTIONS.fit.fitter == "emcee":
+        if np.isinf(lnprior(components)):
+            return -np.inf
+
     return compute_interferometric_chi_sq(
         components, ndim=theta.size, method="logarithmic", reduced=True
     )[0]
+
 
 
 def lnprob_nband_fit(theta: np.ndarray) -> float:
@@ -491,12 +497,103 @@ def lnprob_nband_fit(theta: np.ndarray) -> float:
     )
 
 
-def run_fit(
+# TODO: Init this correctly
+def init_uniformly(nwalkers: int, labels: List[str]) -> np.ndarray:
+    """initialises a random numpy.ndarray from the parameter's limits.
+
+    Parameters
+    -----------
+    nwalkers : list of list of dict
+
+    Returns
+    -------
+    theta : numpy.ndarray
+    """
+    priors = get_priors(OPTIONS.model.components)
+    # TODO: This could be made more general
+    indices = list(
+        map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
+    )
+    uniform_grid = np.array(
+        [
+            [np.random.uniform(0, 1) for _ in range(len(priors))]
+            for _ in range(nwalkers)
+        ]
+    )
+    sample_grid = np.array([
+        prior[0] + (prior[1] - prior[0]) * uniform_grid[:, i]
+        for i, prior in enumerate(priors)
+    ]).T
+    for row_index, (value_row, uniform_row) in enumerate(zip(sample_grid, uniform_grid)):
+        new_radii = [value_row[indices][0]]
+        for index, (uniform, prior) in enumerate(
+            zip(uniform_row[indices][1:], priors[indices][1:]), start=1
+        ):
+            prior[0] = new_radii[index - 1]
+            new_radii.append(prior[0] + (prior[1] - prior[0]) * uniform)
+
+        sample_grid[row_index, indices] = new_radii
+    return sample_grid
+
+
+def run_emcee(
+    init_guess: np.ndarray,
+    nwalkers: int,
+    nburnin: int = 0,
+    nsteps: int = 100,
+    ncores: int = 6,
+    debug: bool = False,
+    save_dir: Path | None = None,
+    **kwargs,
+) -> emcee.EnsembleSampler:
+    """Runs the emcee Hastings Metropolitan sampler.
+
+    The EnsambleSampler recieves the parameters and the args are passed to
+    the 'log_prob()' method (an addtional parameter 'a' can be used to
+    determine the stepsize, defaults to None).
+
+    Parameters
+    ----------
+    nwalkers : int, optional
+    theta : numpy.ndarray
+    nsteps : int, optional
+    discard : int, optional
+    ncores : int, optional
+    debug : bool, optional
+
+    Returns
+    -------
+    sampler : numpy.ndarray
+    """
+    pool = Pool(processes=ncores) if not debug else None
+
+    print(f"Executing MCMC.\n{'':-^50}")
+    sampler = emcee.EnsembleSampler(
+        nwalkers, init_guess.shape[1], kwargs.pop("lnprob", lnprob), pool=pool
+    )
+
+    if nburnin is not None:
+        print("Running burn-in...")
+        sampler.run_mcmc(init_guess, nburnin, progress=True)
+
+    sampler.reset()
+    print("Running production...")
+    sampler.run_mcmc(init_guess, nsteps, progress=True)
+
+    if save_dir is not None:
+        np.save(save_dir / "sampler.npy", sampler)
+
+    if not debug:
+        pool.close()
+        pool.join()
+    return sampler
+
+
+def run_dynesty(
     sample: str = "rwalk",
     bound: str = "multi",
     ncores: int = 6,
     debug: bool = False,
-    fitter: str = "dynesty",
     save_dir: Path | None = None,
     **kwargs,
 ) -> DynamicNestedSampler:
@@ -513,8 +610,6 @@ def run_fit(
     debug : bool, optional
         Whether to run the sampler in debug mode.
         This will not use multiprocessing.
-    fitter : str, optional
-        The fitter to use. Either "dynesty" or "emcee".
     save_dir : Path, optional
         The directory to save the sampler.
 
@@ -545,7 +640,7 @@ def run_fit(
         "nlive_init": kwargs.pop("nlive_init", 1000),
     }
 
-    print(f"Executing {fitter.title()}.\n{'':-^50}")
+    print(f"Executing Dynesty.\n{'':-^50}")
     ndim = len(get_priors(OPTIONS.model.components))
     ptform = kwargs.pop("ptform", transform_uniform_prior)
     sampler = DynamicNestedSampler(
@@ -564,27 +659,36 @@ def run_fit(
     return sampler
 
 
+def run_fit(**kwargs):
+    """Runs the fit."""
+    if OPTIONS.fit.fitter == "emcee":
+        return run_emcee(**kwargs)
+    return run_dynesty(**kwargs)
+
+
 def get_best_fit(
     sampler: DynamicNestedSampler,
     method: str = "max",
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Gets the best fit from the emcee sampler."""
-    results = sampler.results
-    weights = results.importance_weights()
-    quantiles = np.array(
-        [
-            dyutils.quantile(
-                samps, np.array(OPTIONS.fit.quantiles) / 100, weights=weights
-            )
-            for samps in results.samples.T
-        ]
-    )
+    if OPTIONS.fit.fitter == "emcee":
+        samples = sampler.get_chain(flat=True)
+        quantiles = np.percentile(samples, OPTIONS.fit.quantiles, axis=0)
+        if method == "max":
+            quantiles[1] = samples[np.argmax(sampler.get_log_prob(flat=True))]
+    else:
+        results = sampler.results
+        weights = results.importance_weights()
+        quantiles = np.array(
+            [
+                dyutils.quantile(
+                    samps, np.array(OPTIONS.fit.quantiles) / 100, weights=weights
+                )
+                for samps in results.samples.T
+            ]
+        )
 
-    params = None
-    if method == "max":
-        params = results.samples[results.logl.argmax()]
-    elif method == "quantile":
-        params = quantiles[:, 1]
+        if method == "max":
+            quantiles[:, 1] = results.samples[results.logl.argmax()]
 
-    uncertainties = np.array([(quantile[0], quantile[1]) for quantile in quantiles])
-    return params, uncertainties
+    return quantiles[1], np.diff(quantiles, axis=0)
