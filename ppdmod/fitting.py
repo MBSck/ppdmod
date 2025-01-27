@@ -5,7 +5,7 @@ from typing import List, Tuple
 import astropy.units as u
 import dynesty.utils as dyutils
 import numpy as np
-from dynesty import DynamicNestedSampler, NestedSampler
+from dynesty import DynamicNestedSampler
 
 from .component import Component
 from .data import get_counts_data
@@ -195,7 +195,7 @@ def compute_chi_sq(
     """
     sn = error**2
     if lnf is not None:
-        sn += model_data ** 2 * np.exp(2 * lnf)
+        sn += model_data**2 * np.exp(2 * lnf)
 
     residuals = data - model_data
     if diff_method == "periodic":
@@ -432,20 +432,14 @@ def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray
         radii_uniforms.append(1)
         radii_priors.append([0, 0])
 
-    radii_values = radii_values[::-1]
-    radii_uniforms, radii_priors = radii_uniforms[::-1], radii_priors[::-1]
-
     new_radii = [radii_values[0]]
-    for index, (radius, uniform, prior) in enumerate(
-        zip(radii_values[1:], radii_uniforms[1:], radii_priors[1:]), start=1
+    for index, (uniform, prior) in enumerate(
+        zip(radii_uniforms[1:], radii_priors[1:]), start=1
     ):
-        prior[-1] = new_radii[index - 1]
+        prior[0] = new_radii[index - 1]
         new_radii.append(prior[0] + (prior[1] - prior[0]) * uniform)
 
-    new_radii = new_radii[::-1]
-    for index, radius in zip(indices, new_radii):
-        params[index] = radius
-
+    params[indices] = new_radii
     return params
 
 
@@ -468,7 +462,8 @@ def lnprob(theta: np.ndarray) -> float:
     """
     components = set_components_from_theta(theta)
     return compute_interferometric_chi_sq(
-            components, ndim=theta.size, method="logarithmic", reduced=True)[0]
+        components, ndim=theta.size, method="logarithmic", reduced=True
+    )[0]
 
 
 def lnprob_nband_fit(theta: np.ndarray) -> float:
