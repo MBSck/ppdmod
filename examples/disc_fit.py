@@ -156,7 +156,7 @@ ndim = len(LABELS)
 
 if __name__ == "__main__":
     ncores = 70
-    OPTIONS.fit.fitter = "emcee"
+    OPTIONS.fit.fitter = "dynesty"
 
     # NOTE: Params emcee
     nwalkers = 25
