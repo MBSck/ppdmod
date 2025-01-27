@@ -98,9 +98,9 @@ sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 rho21 = Parameter(value=0.6, free=True, base="rho")
 theta21 = Parameter(value=33, free=True, base="theta")
 
-# flux_lnf = Parameter(name="flux_lnf", free=True, base="lnf")
-# vis_lnf = Parameter(name="vis_lnf", free=True, base="lnf")
-# t3_lnf = Parameter(name="t3_lnf", free=True, base="lnf")
+flux_lnf = Parameter(name="flux_lnf", free=True, base="lnf")
+vis_lnf = Parameter(name="vis_lnf", free=True, base="lnf")
+t3_lnf = Parameter(name="t3_lnf", free=True, base="lnf")
 
 shared_params = {
     "dim": 32,
@@ -111,8 +111,8 @@ shared_params = {
     "kappa_cont": kappa_cont,
     "pa": pa,
     "cinc": cinc,
-    # "flux_lnf": flux_lnf,
-    # "vis_lnf": vis_lnf,
+    "flux_lnf": flux_lnf,
+    "vis_lnf": vis_lnf,
     # "t3_lnf": t3_lnf,
     # "weights": temps.weights,
     # "radii": temps.radii,
