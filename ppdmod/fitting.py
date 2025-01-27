@@ -466,8 +466,7 @@ def lnprob(theta: np.ndarray) -> float:
             return -np.inf
 
     return compute_interferometric_chi_sq(
-        components, ndim=theta.size, method="logarithmic", reduced=True
-    )[0]
+        components, ndim=theta.size, method="logarithmic")[0]
 
 
 
