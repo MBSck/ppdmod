@@ -7,7 +7,6 @@ import dynesty.utils as dyutils
 import emcee
 import numpy as np
 from dynesty import DynamicNestedSampler
-from numpy.random import sample
 
 from .component import Component
 from .data import get_counts_data
@@ -425,7 +424,7 @@ def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray
         map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
     )
 
-    new_radii = [params[indices].copy().tolist()[0]]
+    new_radii = [params[indices][0]]
     for index, (uniform, prior) in enumerate(
         zip(theta[indices][1:], priors[indices][1:]), start=1
     ):
