@@ -24,7 +24,6 @@ dependencies = [
     "astropy>=6.1.4",
     "corner>=2.2.2",
     "dynesty>=2.1.4",
-    "emcee>=3.1.6",
     "matplotlib>=3.9.2",
     "numpy>=2.0.2",
     "openpyxl>=3.1.5",

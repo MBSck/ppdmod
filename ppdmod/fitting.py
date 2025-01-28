@@ -1,10 +1,10 @@
+from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
 from typing import List, Tuple
 
 import astropy.units as u
 import dynesty.utils as dyutils
-import emcee
 import numpy as np
 from dynesty import DynamicNestedSampler
 
@@ -432,15 +432,8 @@ def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray
         new_radii.append(prior[0] + (prior[1] - prior[0]) * uniform)
 
     params[indices] = new_radii
+    breakpoint()
     return params
-
-
-def lnprior(components: List[Component]) -> float:
-    """Checks if the parameters are within the priors (for emcee)."""
-    for param, prior in zip(get_theta((components)), get_priors(components)):
-        if not prior[0] <= param <= prior[1]:
-            return -np.inf
-    return 0.0
 
 
 def lnprob(theta: np.ndarray) -> float:
@@ -461,9 +454,10 @@ def lnprob(theta: np.ndarray) -> float:
         The log of the probability.
     """
     components = set_components_from_theta(theta)
-    if OPTIONS.fit.fitter == "emcee":
-        if np.isinf(lnprior(components)):
-            return -np.inf
+    if OPTIONS.fit.condition == "one_disc":
+        ...
+    elif OPTIONS.fit.condition == "sequential_radii":
+        ...
 
     return compute_interferometric_chi_sq(
         components, ndim=theta.size, method="logarithmic")[0]
@@ -534,60 +528,7 @@ def init_uniformly(nwalkers: int, labels: List[str]) -> np.ndarray:
     return sample_grid
 
 
-def run_emcee(
-    init_guess: np.ndarray,
-    nwalkers: int,
-    nburnin: int = 0,
-    nsteps: int = 100,
-    ncores: int = 6,
-    debug: bool = False,
-    save_dir: Path | None = None,
-    **kwargs,
-) -> emcee.EnsembleSampler:
-    """Runs the emcee Hastings Metropolitan sampler.
-
-    The EnsambleSampler recieves the parameters and the args are passed to
-    the 'log_prob()' method (an addtional parameter 'a' can be used to
-    determine the stepsize, defaults to None).
-
-    Parameters
-    ----------
-    nwalkers : int, optional
-    theta : numpy.ndarray
-    nsteps : int, optional
-    discard : int, optional
-    ncores : int, optional
-    debug : bool, optional
-
-    Returns
-    -------
-    sampler : numpy.ndarray
-    """
-    pool = Pool(processes=ncores) if not debug else None
-
-    print(f"Executing MCMC.\n{'':-^50}")
-    sampler = emcee.EnsembleSampler(
-        nwalkers, init_guess.shape[1], kwargs.pop("lnprob", lnprob), pool=pool
-    )
-
-    if nburnin is not None:
-        print("Running burn-in...")
-        sampler.run_mcmc(init_guess, nburnin, progress=True)
-
-    sampler.reset()
-    print("Running production...")
-    sampler.run_mcmc(init_guess, nsteps, progress=True)
-
-    if save_dir is not None:
-        np.save(save_dir / "sampler.npy", sampler)
-
-    if not debug:
-        pool.close()
-        pool.join()
-    return sampler
-
-
-def run_dynesty(
+def run_fit(
     sample: str = "rwalk",
     bound: str = "multi",
     ncores: int = 6,
@@ -639,12 +580,21 @@ def run_dynesty(
     }
 
     print(f"Executing Dynesty.\n{'':-^50}")
-    ndim = len(get_priors(OPTIONS.model.components))
-    ptform = kwargs.pop("ptform", transform_uniform_prior)
+    labels = get_labels(OPTIONS.model.components)
+    ptform = kwargs.pop("ptform", None)
+    if ptform is None:
+        if OPTIONS.fit.condition == "one_disc":
+            ptform = partial(ptform_one_disc, labels=labels)
+        elif OPTIONS.fit.condition == "sequential_radii":
+            ptform = partial(ptform_sequential_radii, labels=labels)
+            breakpoint()
+        else:
+            ptform = transform_uniform_prior
+
     sampler = DynamicNestedSampler(
         kwargs.pop("lnprob", lnprob),
         ptform,
-        ndim,
+        len(labels),
         **general_kwargs,
     )
     sampler.run_nested(
@@ -654,43 +604,27 @@ def run_dynesty(
     if not debug:
         pool.close()
         pool.join()
+
     return sampler
-
-
-def run_fit(**kwargs):
-    """Runs the fit."""
-    if OPTIONS.fit.fitter == "emcee":
-        return run_emcee(**kwargs)
-    return run_dynesty(**kwargs)
 
 
 def get_best_fit(
     sampler: DynamicNestedSampler,
     method: str = "max",
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Gets the best fit from the emcee sampler."""
-    if OPTIONS.fit.fitter == "emcee":
-        samples = sampler.get_chain(flat=True)
-        quantiles = np.percentile(samples, OPTIONS.fit.quantiles, axis=0)
-        if method == "max":
-            quantiles[1] = samples[np.argmax(sampler.get_log_prob(flat=True))]
+    """Gets the best fit from the sampler."""
+    results = sampler.results
+    weights = results.importance_weights()
+    quantiles = np.array(
+        [
+            dyutils.quantile(
+                samps, np.array(OPTIONS.fit.quantiles) / 100, weights=weights
+            )
+            for samps in results.samples.T
+        ]
+    )
 
-        param, uncertainties = quantiles[1], np.diff(quantiles, axis=0)
-    else:
-        results = sampler.results
-        weights = results.importance_weights()
-        quantiles = np.array(
-            [
-                dyutils.quantile(
-                    samps, np.array(OPTIONS.fit.quantiles) / 100, weights=weights
-                )
-                for samps in results.samples.T
-            ]
-        )
+    if method == "max":
+        quantiles[:, 1] = results.samples[results.logl.argmax()]
 
-        if method == "max":
-            quantiles[:, 1] = results.samples[results.logl.argmax()]
-
-            param, uncertainties = quantiles[:, 1], np.diff(quantiles.T, axis=0).T
-
-    return param, uncertainties
+    return quantiles[:, 1], np.diff(quantiles.T, axis=0).T

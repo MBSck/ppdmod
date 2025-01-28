@@ -57,7 +57,6 @@ plot.plot_fit(components[0].inc(), components[0].pa(), components=components,
 
 if __name__ == "__main__":
     ncores = None
-    fit_params_emcee = {"nburnin": 2000, "nsteps": 8000, "nwalkers": 100}
     fit_params_dynesty = {"nlive": 2000, "sample": "rwalk", "bound": "multi"}
 
     if OPTIONS.fit.method == "emcee":
