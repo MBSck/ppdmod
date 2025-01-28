@@ -16,10 +16,8 @@ import numpy as np
 from ppdmod.basic_components import AsymGreyBody, GreyBody, Star
 from ppdmod.data import set_data
 from ppdmod.fitting import (
-    init_uniformly,
     compute_interferometric_chi_sq,
     get_best_fit,
-    get_labels,
     ptform_sequential_radii,
     run_fit,
     set_components_from_theta,
@@ -32,10 +30,6 @@ from ppdmod.utils import (
     windowed_linspace,
     create_adaptive_bins,
 )
-
-
-def ptform(theta: List[float]) -> np.ndarray:
-    return ptform_sequential_radii(theta, LABELS)
 
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -92,8 +86,8 @@ rout1 = Parameter(value=1.5, min=0, max=2, unit=u.au, free=True, base="rout")
 p1 = Parameter(value=0.5, min=-10, max=10, base="p")
 sigma01 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 
-rin2 = Parameter(value=2, min=0, max=9, unit=u.au, base="rin")
-rout2 = Parameter(value=4, min=0, max=45, unit=u.au, free=True, base="rout")
+rin2 = Parameter(value=2, min=1, max=9, unit=u.au, base="rin")
+rout2 = Parameter(value=4, min=3, max=45, unit=u.au, free=True, base="rout")
 p2 = Parameter(value=0.5, min=-30, max=20, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 rho21 = Parameter(value=0.6, free=True, base="rho")
@@ -141,9 +135,7 @@ outer_ring = AsymGreyBody(
 )
 
 OPTIONS.model.components = components = [star, inner_ring, outer_ring]
-LABELS = get_labels(components)
-
-DIR_NAME = "test_average"
+DIR_NAME = "better_constraints"
 if DIR_NAME is None:
     DIR_NAME = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 
@@ -151,34 +143,23 @@ result_dir = DATA_DIR.parent / "results" / "disc_fit"
 day_dir = Path(str(datetime.now().date()))
 result_dir /= day_dir / DIR_NAME
 result_dir.mkdir(parents=True, exist_ok=True)
-ndim = len(LABELS)
 
 
 if __name__ == "__main__":
     ncores = 70
-    OPTIONS.fit.fitter = "dynesty"
-
-    # NOTE: Params emcee
-    nwalkers = 25
-    fit_params = {"nwalkers": nwalkers, "nburnin": 500, "nsteps": 2500, "init_guess": init_uniformly(nwalkers, LABELS)}
-
-    # NOTE: Params dynesty
-    # fit_params = {"dlogz_init": 0.01, "nlive_init": 4000, "nlive_batch": 1000, "ptform": ptform}
+    OPTIONS.fit.condition = "sequential_radii"
+    fit_params = {"dlogz_init": 0.01, "nlive_init": 4000, "nlive_batch": 1000}
     sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
     theta, uncertainties = get_best_fit(sampler)
-    OPTIONS.model.components = components = set_components_from_theta(theta)
+    components = OPTIONS.model.components = set_components_from_theta(theta)
     np.save(result_dir / "uncertainties.npy", uncertainties)
-
-    if OPTIONS.fit.fitter == "emcee":
-        with open(result_dir / "sampler.pkl", "wb") as file:
-            pickle.dump(sampler, file)
 
     with open(result_dir / "components.pkl", "wb") as file:
         pickle.dump(components, file)
 
     rchi_sq = compute_interferometric_chi_sq(
         components,
-        ndim=ndim,
+        theta.size,
         method="linear",
         reduced=True,
     )[0]

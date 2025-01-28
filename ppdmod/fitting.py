@@ -1,4 +1,3 @@
-from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
 from typing import List, Tuple
@@ -206,8 +205,7 @@ def compute_chi_sq(
     if method == "linear":
         return chi_sq.sum()
 
-    if OPTIONS.fit.fitter == "dynesty":
-        chi_sq += np.log(sn) + data.size * np.log(2 * np.pi)
+    chi_sq += np.log(sn) + data.size * np.log(2 * np.pi)
     return -0.5 * np.sum(chi_sq)
 
 
@@ -364,7 +362,8 @@ def transform_uniform_prior(theta: List[float]) -> float:
     return priors[:, 0] + (priors[:, 1] - priors[:, 0]) * theta
 
 
-def ptform_nband_fit(theta: List[float], labels: List[str]) -> np.ndarray:
+# TODO: Improve this and make it work again
+def ptform_nband_fit(theta: List[float]) -> np.ndarray:
     """Transform that soft constrains successive radii to be smaller than the one before."""
     indices = list(map(labels.index, filter(lambda x: "weight" in x, labels)))
     params = transform_uniform_prior(theta)
@@ -379,7 +378,7 @@ def ptform_nband_fit(theta: List[float], labels: List[str]) -> np.ndarray:
 
 
 # TODO: Improve this and make it work again
-def ptform_one_disc(theta: List[float], labels: List[str]) -> np.ndarray:
+def ptform_one_disc(theta: List[float]) -> np.ndarray:
     """Transform that hard constrains the model to one continous disc by
     setting the outer radius of the first component to the inner of the second.
 
@@ -391,16 +390,14 @@ def ptform_one_disc(theta: List[float], labels: List[str]) -> np.ndarray:
     """
     params = (transform_uniform_prior(theta),)
     priors = get_priors(OPTIONS.model.components)
-    indices_radii = list(
-        map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
+    indices = OPTIONS.fit.condition_indices
+    params[indices[2]] = params[indices[1]]
+    params[indices[-1]] = (
+        params[indices[2]]
+        + np.diff(priors[indices[-1]])[0] * theta[indices[-1]]
     )
-    params[indices_radii[2]] = params[indices_radii[1]]
-    params[indices_radii[-1]] = (
-        params[indices_radii[2]]
-        + np.diff(priors[indices_radii[-1]])[0] * theta[indices_radii[-1]]
-    )
-    if params[indices_radii[-2]] > priors[indices_radii[-2]][1]:
-        params[indices_radii[-2]] = priors[indices_radii[-2]][1]
+    if params[indices[-2]] > priors[indices[-2]][1]:
+        params[indices[-2]] = priors[indices[-2]][1]
 
     indices_sigma0 = list(map(labels.index, filter(lambda x: "sigma0" in x, labels)))
     indices_p = list(map(labels.index, filter(lambda x: "p" in x, labels)))
@@ -410,19 +407,16 @@ def ptform_one_disc(theta: List[float], labels: List[str]) -> np.ndarray:
         params[indices_p[0]],
         params[indices_p[1]],
     )
-    params[indices_sigma0[1]] = sigma01 * (params[indices_radii[1]] / r0) ** (p1 - p2)
+    params[indices_sigma0[1]] = sigma01 * (params[indices[1]] / r0) ** (p1 - p2)
 
     return params
 
 
-def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray:
+def ptform_sequential_radii(theta: List[float]) -> np.ndarray:
     """Transform that soft constrains successive radii to be smaller than the one before."""
     priors = get_priors(OPTIONS.model.components)
     params = transform_uniform_prior(theta)
-
-    indices = list(
-        map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
-    )
+    indices = OPTIONS.fit.condition_indices
 
     new_radii = [params[indices][0]]
     for index, (uniform, prior) in enumerate(
@@ -432,7 +426,6 @@ def ptform_sequential_radii(theta: List[float], labels: List[str]) -> np.ndarray
         new_radii.append(prior[0] + (prior[1] - prior[0]) * uniform)
 
     params[indices] = new_radii
-    breakpoint()
     return params
 
 
@@ -454,10 +447,15 @@ def lnprob(theta: np.ndarray) -> float:
         The log of the probability.
     """
     components = set_components_from_theta(theta)
+    indices = OPTIONS.fit.condition_indices
+
+    # TODO: Implement the 'one disc'
     if OPTIONS.fit.condition == "one_disc":
         ...
     elif OPTIONS.fit.condition == "sequential_radii":
-        ...
+        radii = theta[indices]
+        if not all(radii[i] <= radii[i + 1] for i in range(len(radii) - 1)):
+            return -np.inf
 
     return compute_interferometric_chi_sq(
         components, ndim=theta.size, method="logarithmic")[0]
@@ -582,12 +580,15 @@ def run_fit(
     print(f"Executing Dynesty.\n{'':-^50}")
     labels = get_labels(OPTIONS.model.components)
     ptform = kwargs.pop("ptform", None)
+    OPTIONS.fit.condition_indices = list(
+        map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
+    )
+
     if ptform is None:
         if OPTIONS.fit.condition == "one_disc":
-            ptform = partial(ptform_one_disc, labels=labels)
+            ptform = ptform_one_disc
         elif OPTIONS.fit.condition == "sequential_radii":
-            ptform = partial(ptform_sequential_radii, labels=labels)
-            breakpoint()
+            ptform = ptform_sequential_radii
         else:
             ptform = transform_uniform_prior
 

@@ -149,6 +149,7 @@ fit = SimpleNamespace(
     wavelengths=None,
     quantiles=[2.5, 50, 97.5],
     condition=None,
+    condition_indices=None,
 )
 
 # NOTE: All options

@@ -82,7 +82,6 @@ model_name = "pt_ring_inc_rot_xy"
 
 
 if __name__ == "__main__":
-    fit_params_emcee = {"nburnin": 1000, "nsteps": 2500, "nwalkers": 100}
     fit_params_dynesty = {"nlive": 1500, "sample": "rwalk", "bound": "multi"}
 
     if OPTIONS.fit.method == "emcee":
