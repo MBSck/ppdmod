@@ -674,6 +674,8 @@ def get_best_fit(
         quantiles = np.percentile(samples, OPTIONS.fit.quantiles, axis=0)
         if method == "max":
             quantiles[1] = samples[np.argmax(sampler.get_log_prob(flat=True))]
+
+        param, uncertainties = quantiles[1], np.diff(quantiles, axis=0)
     else:
         results = sampler.results
         weights = results.importance_weights()
@@ -689,4 +691,6 @@ def get_best_fit(
         if method == "max":
             quantiles[:, 1] = results.samples[results.logl.argmax()]
 
-    return quantiles[1], np.diff(quantiles, axis=0)
+            param, uncertainties = quantiles[:, 1], np.diff(quantiles.T, axis=0).T
+
+    return param, uncertainties
