@@ -39,6 +39,7 @@ class ReadoutFits:
             self.wavelength = (
                 hdul["oi_wavelength", sci_index].data["eff_wave"] * u.m
             ).to(u.um)
+            self.array = "ats" if "AT" in hdul["oi_array"].data["tel_name"][0] else "uts"
             self.band = get_band(self.wavelength)
             self.flux = self.read_into_namespace(hdul, "flux", sci_index)
             self.t3 = self.read_into_namespace(hdul, "t3", sci_index)
@@ -372,6 +373,7 @@ def set_data(
     weights: Dict[str, float] | None = None,
     set_std_err: List[str] | None = None,
     min_err: float = 0.05,
+    filter_by_array: str | None = None,
     average: bool = False,
     **kwargs,
 ) -> SimpleNamespace:
@@ -402,7 +404,10 @@ def set_data(
         return OPTIONS.data
 
     OPTIONS.fit.data = fit_data
-    OPTIONS.data.readouts = list(map(ReadoutFits, fits_files))
+    readouts = OPTIONS.data.readouts = list(map(ReadoutFits, fits_files))
+    if filter_by_array is not None:
+        OPTIONS.data.readouts = list(filter(lambda x: x.array == filter_by_array, readouts))
+
     OPTIONS.data.bands = list(map(lambda x: x.band, OPTIONS.data.readouts))
 
     if wavelengths == "all":
