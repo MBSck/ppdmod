@@ -144,7 +144,7 @@ def get_theta(
 def set_components_from_theta(theta: np.ndarray) -> List[Component]:
     """Sets the components from theta."""
     components = [component.copy() for component in OPTIONS.model.components]
-    nshared = len(components[-1].get_params(shared=True))
+    nshared = len(components[-1].get_params(free=True, shared=True))
     if nshared != 0:
         theta_list, shared_params = theta[:-nshared], theta[-nshared:]
     else:
@@ -160,12 +160,11 @@ def set_components_from_theta(theta: np.ndarray) -> List[Component]:
             param.value = theta_list.pop(0)
             param.free = True
 
-        # TODO: Does this need to be free here?
         for param_name, value in zip(shared_params_labels, shared_params):
             if hasattr(component, param_name):
                 param = getattr(component, param_name)
                 param.value = value
-                param.shared = True
+                param.free = param.shared = True
 
     return components
 
