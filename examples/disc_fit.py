@@ -80,12 +80,12 @@ y = Parameter(free=True, base="y")
 
 rin1 = Parameter(value=0.1, min=0, max=2, unit=u.au, base="rin")
 rout1 = Parameter(value=1.5, min=0, max=2, unit=u.au, free=True, base="rout")
-p1 = Parameter(value=0.5, min=-10, max=10, base="p")
+p1 = Parameter(value=0, min=-1, max=1, base="p")
 sigma01 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 
 rin2 = Parameter(value=2, min=1, max=9, unit=u.au, base="rin")
 rout2 = Parameter(value=4, min=3, max=45, unit=u.au, free=True, base="rout")
-p2 = Parameter(value=0.5, min=-30, max=20, base="p")
+p2 = Parameter(value=0, min=-1, max=1, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 rho21 = Parameter(value=0.6, free=True, base="rho")
 theta21 = Parameter(value=33, free=True, base="theta")
@@ -103,9 +103,9 @@ shared_params = {
     "kappa_cont": kappa_cont,
     "pa": pa,
     "cinc": cinc,
-    "flux_lnf": flux_lnf,
-    "vis_lnf": vis_lnf,
-    "t3_lnf": t3_lnf,
+    # "flux_lnf": flux_lnf,
+    # "vis_lnf": vis_lnf,
+    # "t3_lnf": t3_lnf,
     # "weights": temps.weights,
     # "radii": temps.radii,
     # "matrix": temps.values,
@@ -132,7 +132,7 @@ outer_ring = AsymGreyBody(
 )
 
 OPTIONS.model.components = components = [star, inner_ring, outer_ring]
-DIR_NAME = "no_average_lnf"
+DIR_NAME = "no_average"
 if DIR_NAME is None:
     DIR_NAME = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     ncores = 50
     OPTIONS.fit.condition = "sequential_radii"
     fit_params = {"dlogz_init": 0.01, "nlive_init": 2000, "nlive_batch": 500}
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=True)
     theta, uncertainties = get_best_fit(sampler)
     components = OPTIONS.model.components = set_components_from_theta(theta)
     np.save(result_dir / "theta.npy", theta)
