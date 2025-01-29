@@ -133,7 +133,7 @@ outer_ring = AsymGreyBody(
 )
 
 OPTIONS.model.components = components = [star, inner_ring, outer_ring]
-DIR_NAME = "better_constraints"
+DIR_NAME = "no_average"
 if DIR_NAME is None:
     DIR_NAME = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 
