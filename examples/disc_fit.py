@@ -18,7 +18,6 @@ from ppdmod.data import set_data
 from ppdmod.fitting import (
     compute_interferometric_chi_sq,
     get_best_fit,
-    ptform_sequential_radii,
     run_fit,
     set_components_from_theta,
 )
@@ -46,13 +45,11 @@ fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
 bands = ["hband", "kband", "lband", "mband", "nband"]
 wavelengths = np.concatenate([wavelengths[band] for band in bands])
 
-# fit_data = ["flux", "vis", "t3"]
-fit_data = ["flux", "vis"]
+fit_data = ["flux", "vis", "t3"]
 data = set_data(
     fits_files,
     wavelengths=wavelengths,
     fit_data=fit_data,
-    average=True,
 )
 
 grid, value = np.loadtxt(
@@ -93,9 +90,10 @@ sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 rho21 = Parameter(value=0.6, free=True, base="rho")
 theta21 = Parameter(value=33, free=True, base="theta")
 
-flux_lnf = Parameter(name="flux_lnf", free=True, base="lnf")
-vis_lnf = Parameter(name="vis_lnf", free=True, base="lnf")
-t3_lnf = Parameter(name="t3_lnf", free=True, base="lnf")
+# TODO: Make this work again.
+flux_lnf = Parameter(name="flux_lnf", free=True, shared=True, base="lnf")
+vis_lnf = Parameter(name="vis_lnf", free=True, shared=True, base="lnf")
+t3_lnf = Parameter(name="t3_lnf", free=True, shared=True, base="lnf")
 
 shared_params = {
     "dim": 32,
@@ -152,6 +150,7 @@ if __name__ == "__main__":
     sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
     theta, uncertainties = get_best_fit(sampler)
     components = OPTIONS.model.components = set_components_from_theta(theta)
+    np.save(result_dir / "theta.npy", theta)
     np.save(result_dir / "uncertainties.npy", uncertainties)
 
     with open(result_dir / "components.pkl", "wb") as file:
