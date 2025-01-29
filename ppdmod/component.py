@@ -58,14 +58,11 @@ class Component:
         for attribute in dir(self):
             value = getattr(self, attribute)
             if isinstance(value, Parameter):
-                if free != value.free or (free and value.shared):
+                if shared and not value.shared:
                     continue
-
-                if (shared != value.shared) or (value.shared and not value.free):
+                if free and not value.free:
                     continue
-
                 params[attribute] = value
-
         return params
 
     def flux_func(self, wavelength: u.um) -> np.ndarray:
@@ -157,8 +154,9 @@ class FourierComponent(Component):
         self, baselines: 1 / u.rad, baseline_angles: u.rad
     ) -> np.ndarray:
         """Translates a coordinate shift in image space to Fourier space."""
-        uv_coords = np.exp((1j * self.x().to(u.rad) * np.cos(baseline_angles)).value) \
-            * np.exp((1j * self.y().to(u.rad) * np.sin(baseline_angles)).value)
+        uv_coords = np.exp(
+            (1j * self.x().to(u.rad) * np.cos(baseline_angles)).value
+        ) * np.exp((1j * self.y().to(u.rad) * np.sin(baseline_angles)).value)
         translation = np.exp(2j * np.pi * baselines * np.angle(uv_coords) * u.rad)
         return translation.value.astype(OPTIONS.data.dtype.complex)
 

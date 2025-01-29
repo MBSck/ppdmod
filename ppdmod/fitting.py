@@ -42,7 +42,10 @@ def get_labels(components: List[Component], shared: bool = True) -> np.ndarray:
 
         if shared:
             labels_shared.append(
-                [rf"{key}-\mathrm{{sh}}" for key in component.get_params(shared=True)]
+                [
+                    rf"{key}-\mathrm{{sh}}"
+                    for key in component.get_params(free=True, shared=True)
+                ]
             )
 
     labels.extend(labels_shared[-1])
@@ -61,7 +64,7 @@ def get_priors(components: List[Component], shared: bool = True) -> np.ndarray:
             priors_shared.append(
                 [
                     param.get_limits()
-                    for param in component.get_params(shared=True).values()
+                    for param in component.get_params(free=True, shared=True).values()
                 ]
             )
     priors.extend(priors_shared[-1])
@@ -93,7 +96,10 @@ def get_units(
 
         if shared:
             units_shared.append(
-                [param.unit for param in component.get_params(shared=True).values()]
+                [
+                    param.unit
+                    for param in component.get_params(free=True, shared=True).values()
+                ]
             )
 
     units.extend(units_shared[-1])
@@ -125,7 +131,10 @@ def get_theta(
 
         if shared:
             theta_shared.append(
-                [param.value for param in component.get_params(shared=True).values()]
+                [
+                    param.value
+                    for param in component.get_params(free=True, shared=True).values()
+                ]
             )
 
     theta.extend(theta_shared[-1])
@@ -151,6 +160,7 @@ def set_components_from_theta(theta: np.ndarray) -> List[Component]:
             param.value = theta_list.pop(0)
             param.free = True
 
+        # TODO: Does this need to be free here?
         for param_name, value in zip(shared_params_labels, shared_params):
             if hasattr(component, param_name):
                 param = getattr(component, param_name)
@@ -393,8 +403,7 @@ def ptform_one_disc(theta: List[float]) -> np.ndarray:
     indices = OPTIONS.fit.condition_indices
     params[indices[2]] = params[indices[1]]
     params[indices[-1]] = (
-        params[indices[2]]
-        + np.diff(priors[indices[-1]])[0] * theta[indices[-1]]
+        params[indices[2]] + np.diff(priors[indices[-1]])[0] * theta[indices[-1]]
     )
     if params[indices[-2]] > priors[indices[-2]][1]:
         params[indices[-2]] = priors[indices[-2]][1]
@@ -458,8 +467,8 @@ def lnprob(theta: np.ndarray) -> float:
             return -np.inf
 
     return compute_interferometric_chi_sq(
-        components, ndim=theta.size, method="logarithmic")[0]
-
+        components, ndim=theta.size, method="logarithmic"
+    )[0]
 
 
 def lnprob_nband_fit(theta: np.ndarray) -> float:
@@ -485,45 +494,6 @@ def lnprob_nband_fit(theta: np.ndarray) -> float:
         ndim=theta.size,
         method="logarithmic",
     )
-
-
-# TODO: Init this correctly
-def init_uniformly(nwalkers: int, labels: List[str]) -> np.ndarray:
-    """initialises a random numpy.ndarray from the parameter's limits.
-
-    Parameters
-    -----------
-    nwalkers : list of list of dict
-
-    Returns
-    -------
-    theta : numpy.ndarray
-    """
-    priors = get_priors(OPTIONS.model.components)
-    # TODO: This could be made more general
-    indices = list(
-        map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
-    )
-    uniform_grid = np.array(
-        [
-            [np.random.uniform(0, 1) for _ in range(len(priors))]
-            for _ in range(nwalkers)
-        ]
-    )
-    sample_grid = np.array([
-        prior[0] + (prior[1] - prior[0]) * uniform_grid[:, i]
-        for i, prior in enumerate(priors)
-    ]).T
-    for row_index, (value_row, uniform_row) in enumerate(zip(sample_grid, uniform_grid)):
-        new_radii = [value_row[indices][0]]
-        for index, (uniform, prior) in enumerate(
-            zip(uniform_row[indices][1:], priors[indices][1:]), start=1
-        ):
-            prior[0] = new_radii[index - 1]
-            new_radii.append(prior[0] + (prior[1] - prior[0]) * uniform)
-
-        sample_grid[row_index, indices] = new_radii
-    return sample_grid
 
 
 def run_fit(
