@@ -94,9 +94,7 @@ def plot_components(
         if ax is None:
             _, ax = plt.subplots(1, 1)
 
-        sorted_image = np.sort(np.unique(image[image != 0]))[::-1]
-        norm = mcolors.PowerNorm(gamma=norm, vmin=sorted_image[-1], vmax=sorted_image[1])
-        ax.imshow(image, extent=extent, norm=norm, cmap=cmap)
+        ax.imshow(image, extent=extent, norm=mcolors.PowerNorm(gamma=norm), cmap=cmap)
 
         top_ax, right_ax = None, None
         if any(hasattr(component, "dist") for component in components):
@@ -131,7 +129,7 @@ def plot_components(
             )
 
         bx = ax.twinx()
-        sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm = cm.ScalarMappable(cmap=cmap)
         sm.set_array([])
         cbar = plt.colorbar(sm, ax=bx)
 

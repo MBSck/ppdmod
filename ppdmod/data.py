@@ -419,6 +419,8 @@ def set_data(
 
     wavelengths = set_fit_wavelengths(wavelengths)
     read_data(data_to_read, wavelengths, min_err)
+
+    # TODO: Averaging does not work -> Do not use as of right now
     if average:
         average_data()
 
