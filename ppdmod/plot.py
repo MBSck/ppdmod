@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from typing import Dict, List, Tuple
 
 import astropy.constants as const
+import corner
 import astropy.units as u
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
@@ -28,7 +29,7 @@ from .utils import (
     compute_effective_baselines,
     distance_to_angular,
     get_band,
-    compare_angles
+    compare_angles,
 )
 
 
@@ -75,10 +76,14 @@ def plot_components(
 ) -> Tuple[Axes]:
     """Plots a component."""
     components = [components] if not isinstance(components, list) else components
-    image = sum([comp.compute_image(dim, pixel_size, wavelength) for comp in components])[0]
+    image = sum(
+        [comp.compute_image(dim, pixel_size, wavelength) for comp in components]
+    )[0]
 
     if any(hasattr(component, "dist") for component in components):
-        dist = [component for component in components if hasattr(component, "dist")][0].dist()
+        dist = [component for component in components if hasattr(component, "dist")][
+            0
+        ].dist()
         pixel_size = angular_to_distance(pixel_size * u.mas, dist).to(u.au).value
 
     extent = u.Quantity([sign * dim * pixel_size / 2 for sign in [-1, 1, 1, -1]])
@@ -308,7 +313,9 @@ def format_labels(
             elif "scale" in name:
                 formatted_label = rf"w_{{\mathrm{{{name.replace('scale_', '')}}}}}"
             elif "lnf" in name:
-                formatted_label = rf"\ln\left(f\right)_{{\mathrm{{{name.split('_')[0]}}}}}"
+                formatted_label = (
+                    rf"\ln\left(f\right)_{{\mathrm{{{name.split('_')[0]}}}}}"
+                )
             else:
                 formatted_label = label
 
@@ -362,7 +369,7 @@ def get_exponent(num: float) -> int:
 
 
 def plot_corner(
-    sampler: NestedSampler | DynamicNestedSampler,
+    sampler,
     labels: List[str],
     units: List[str] | None = None,
     fontsize: int = 12,
@@ -373,8 +380,7 @@ def plot_corner(
 
     Parameters
     ----------
-    sampler : dynesty.NestedSampler or dynesty.DynamicNestedSampler
-        The sampler.
+    sampler :
     labels : list of str
         The parameter labels.
     units : list of str, optional
@@ -386,44 +392,70 @@ def plot_corner(
     """
     labels = format_labels(labels, units)
     quantiles = [x / 100 for x in OPTIONS.fit.quantiles]
-    results = sampler.results
-    _, axarr = dyplot.cornerplot(
-        results,
-        color="blue",
-        truths=np.zeros(len(labels)),
-        labels=labels,
-        truth_color="black",
-        show_titles=True,
-        max_n_ticks=3,
-        title_quantiles=quantiles,
-        quantiles=quantiles,
-    )
+    if OPTIONS.fit.fitter == "dynesty":
+        results = sampler.results
+        samples, logl = results.samples, results.logl
+        weights = results.importance_weights()
+        if OPTIONS.fit.condition == "sequential_radii":
+            indices = OPTIONS.fit.condition_indices
+            mask = np.all(np.diff(samples[:, indices], axis=1) > 0, axis=1)
+            samples, logl = samples[mask], logl[mask]
+            weights = weights[mask]
 
-    params, uncertainties = get_best_fit(sampler)
-    for index, row in enumerate(axarr):
-        for ax in row:
-            if ax is not None:
-                if needs_sci_notation(ax):
-                    if "Sigma" in ax.get_xlabel():
-                        ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
-                        ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0))
+        _, axarr = corner.corner(
+            samples,
+            labels=labels,
+            truths=truths,
+            show_titles=True,
+            title_kwargs={"fontsize": 12},
+            label_kwargs={"fontsize": 10},
+        )
 
-                    if "Sigma" in ax.get_ylabel():
-                        ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
-                        ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
-                        ax.yaxis.get_offset_text().set_position((-0.2, 0))
+        _, axarr = dyplot.cornerplot(
+            samples,
+            color="blue",
+            truths=np.zeros(len(labels)),
+            labels=labels,
+            truth_color="black",
+            show_titles=True,
+            max_n_ticks=3,
+            title_quantiles=quantiles,
+            quantiles=quantiles,
+        )
 
-                title = ax.get_title()
-                if title and np.abs(params[index]) <= 1e-3:
-                    exponent = get_exponent(params[index])
-                    factor = 10. ** exponent
-                    formatted_title = (
-                        rf"${params[index] * factor:.2f}_{{-{uncertainties[index][0] * factor:.2f}}}"
-                        rf"^{{+{uncertainties[index][1] * factor:.2f}}}\,1\mathrm{{e}}-{exponent}$"
-                    )
-                    ax.set_title(
-                        f"{labels[index]} = {formatted_title}", fontsize=fontsize - 2
-                    )
+        theta, uncertainties = get_best_fit(sampler)
+        for index, row in enumerate(axarr):
+            for ax in row:
+                if ax is not None:
+                    if needs_sci_notation(ax):
+                        if "Sigma" in ax.get_xlabel():
+                            ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+                            ax.ticklabel_format(axis="x", style="sci", scilimits=(0, 0))
+
+                        if "Sigma" in ax.get_ylabel():
+                            ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
+                            ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+                            ax.yaxis.get_offset_text().set_position((-0.2, 0))
+
+                    title = ax.get_title()
+                    if title and np.abs(theta[index]) <= 1e-3:
+                        exponent = get_exponent(theta[index])
+                        factor = 10.0**exponent
+                        formatted_title = (
+                            rf"${theta[index] * factor:.2f}_{{-{uncertainties[index][0] * factor:.2f}}}"
+                            rf"^{{+{uncertainties[index][1] * factor:.2f}}}\,1\mathrm{{e}}-{exponent}$"
+                        )
+                        ax.set_title(
+                            f"{labels[index]} = {formatted_title}", fontsize=fontsize - 2
+                        )
+    else:
+        samples = sampler.get_chain(flat=True)
+        log_prob_samples = sampler.get_log_prob(flat=True)
+        log_prior_samples = sampler.get_blobs(flat=True)
+        all_samples = np.concatenate(
+            (samples, log_prob_samples[:, None], log_prior_samples[:, None]), axis=1
+        )
+        corner.corner(all_samples, labels=labels)
 
     if savefig is not None:
         plt.savefig(savefig, format=Path(savefig).suffix[1:], dpi=OPTIONS.plot.dpi)
@@ -597,7 +629,9 @@ def plot_data_vs_model(
     band_wl = wavelengths[band_indices]
     band_value, band_err = value[band_indices], err[band_indices]
     if model_data is not None:
-        band_model_data = np.ma.masked_array(model_data[band_indices], mask=band_value.mask)
+        band_model_data = np.ma.masked_array(
+            model_data[band_indices], mask=band_value.mask
+        )
 
     if isinstance(axarr, list):
         upper_ax, lower_ax = axarr
@@ -850,7 +884,13 @@ def plot_overview(
     plot_kwargs = {"norm": norm, "colormap": colormap}
     if "flux" in data_to_plot:
         plot_data_vs_model(
-            axarr["flux"], wavelengths, flux.value, flux.err, "flux", bands=bands, **plot_kwargs
+            axarr["flux"],
+            wavelengths,
+            flux.value,
+            flux.err,
+            "flux",
+            bands=bands,
+            **plot_kwargs,
         )
 
     if "vis" in data_to_plot or "vis2" in data_to_plot:
