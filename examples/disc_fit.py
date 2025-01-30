@@ -152,9 +152,9 @@ if __name__ == "__main__":
     )
     fit_params = {"discard": 1000, "nsteps": 10000, "nwalkers": 60}
     # fit_params = {"dlogz_init": 0.05, "nlive_init": 1000, "nlive_batch": 500}
-    ncores = fit_params.pop("nwalkers", 100) // 2
+    ncores = fit_params.get("nwalkers", 100) // 2
     sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
-    theta, uncertainties = get_best_fit(sampler, discard=fit_params.pop("discard", 0))
+    theta, uncertainties = get_best_fit(sampler, discard=fit_params.get("discard", 0))
     components = OPTIONS.model.components = set_components_from_theta(theta)
     np.save(result_dir / "theta.npy", theta)
     np.save(result_dir / "uncertainties.npy", uncertainties)
