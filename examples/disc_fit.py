@@ -2,7 +2,6 @@ import os
 import pickle
 from datetime import datetime
 from pathlib import Path
-from typing import List
 
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
@@ -18,6 +17,7 @@ from ppdmod.data import set_data
 from ppdmod.fitting import (
     compute_interferometric_chi_sq,
     get_best_fit,
+    get_labels,
     run_fit,
     set_components_from_theta,
 )
@@ -69,8 +69,8 @@ grid, value = load_data(
     DATA_DIR / "opacities" / "qval" / "Q_amorph_c_rv0.1.dat", load_func=qval_to_opacity
 )
 kappa_cont = Parameter(grid=grid, value=value, base="kappa_cont")
-pa = Parameter(value=352, free=False, base="pa")
-cinc = Parameter(value=0.84, free=False, base="cinc")
+pa = Parameter(value=352, free=False, shared=True, base="pa")
+cinc = Parameter(value=0.84, free=True, shared=True, base="cinc")
 
 with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
     temps = pickle.load(save_file)
@@ -87,8 +87,9 @@ rin2 = Parameter(value=2, min=1, max=9, unit=u.au, base="rin")
 rout2 = Parameter(value=4, min=3, max=45, unit=u.au, free=True, base="rout")
 p2 = Parameter(value=0, min=-1, max=1, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
-rho21 = Parameter(value=0.6, free=True, base="rho")
-theta21 = Parameter(value=33, free=True, base="theta")
+
+rho21 = Parameter(value=0.6, free=True, shared=True, base="rho")
+theta21 = Parameter(value=33, free=True, shared=True, base="theta")
 
 flux_lnf = Parameter(name="flux_lnf", free=True, shared=True, base="lnf")
 vis_lnf = Parameter(name="vis_lnf", free=True, shared=True, base="lnf")
@@ -103,6 +104,8 @@ shared_params = {
     "kappa_cont": kappa_cont,
     "pa": pa,
     "cinc": cinc,
+    "rho1": rho21,
+    "theta1": theta21,
     # "flux_lnf": flux_lnf,
     # "vis_lnf": vis_lnf,
     # "t3_lnf": t3_lnf,
@@ -112,7 +115,7 @@ shared_params = {
 }
 
 star = Star(label="Star", f=flux_star, **shared_params)
-inner_ring = GreyBody(
+inner_ring = AsymGreyBody(
     label="Inner Ring",
     rin=rin1,
     rout=rout1,
@@ -126,13 +129,11 @@ outer_ring = AsymGreyBody(
     rout=rout2,
     p=p2,
     sigma0=sigma02,
-    rho1=rho21,
-    theta1=theta21,
     **shared_params,
 )
 
 OPTIONS.model.components = components = [star, inner_ring, outer_ring]
-DIR_NAME = "no_average"
+DIR_NAME = "both_asym_inc_free"
 if DIR_NAME is None:
     DIR_NAME = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 
@@ -143,11 +144,17 @@ result_dir.mkdir(parents=True, exist_ok=True)
 
 
 if __name__ == "__main__":
-    ncores = 50
+    labels = get_labels(components)
+    OPTIONS.fit.fitter = "emcee"
     OPTIONS.fit.condition = "sequential_radii"
-    fit_params = {"dlogz_init": 0.01, "nlive_init": 2000, "nlive_batch": 500}
+    OPTIONS.fit.condition_indices = list(
+        map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
+    )
+    fit_params = {"discard": 1000, "nsteps": 10000, "nwalkers": 60}
+    # fit_params = {"dlogz_init": 0.05, "nlive_init": 1000, "nlive_batch": 500}
+    ncores = fit_params.pop("nwalkers", 100) // 2
     sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
-    theta, uncertainties = get_best_fit(sampler)
+    theta, uncertainties = get_best_fit(sampler, discard=fit_params.pop("discard", 0))
     components = OPTIONS.model.components = set_components_from_theta(theta)
     np.save(result_dir / "theta.npy", theta)
     np.save(result_dir / "uncertainties.npy", uncertainties)

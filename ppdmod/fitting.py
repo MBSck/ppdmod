@@ -4,6 +4,7 @@ from typing import List, Tuple
 
 import astropy.units as u
 import dynesty.utils as dyutils
+import emcee
 import numpy as np
 from dynesty import DynamicNestedSampler
 
@@ -420,6 +421,7 @@ def ptform_one_disc(theta: List[float]) -> np.ndarray:
     return params
 
 
+# TODO: Check this condition again
 def ptform_sequential_radii(theta: List[float]) -> np.ndarray:
     """Transform that soft constrains successive radii to be smaller than the one before."""
     priors = get_priors(OPTIONS.model.components)
@@ -435,39 +437,6 @@ def ptform_sequential_radii(theta: List[float]) -> np.ndarray:
 
     params[indices] = new_radii
     return params
-
-
-def lnprob(theta: np.ndarray) -> float:
-    """Takes theta vector and the x, y and the yerr of the theta.
-    Returns a number corresponding to how good of a fit the model is to your
-    data for a given set of parameters, weighted by the data points.
-
-    This is the analytical 1D implementation.
-
-    Parameters
-    ----------
-    theta: np.ndarray
-        The parameters that ought to be fitted.
-
-    Returns
-    -------
-    float
-        The log of the probability.
-    """
-    components = set_components_from_theta(theta)
-    indices = OPTIONS.fit.condition_indices
-
-    # TODO: Implement the 'one disc'
-    if OPTIONS.fit.condition == "one_disc":
-        ...
-    elif OPTIONS.fit.condition == "sequential_radii":
-        radii = theta[indices]
-        if not all(radii[i] <= radii[i + 1] for i in range(len(radii) - 1)):
-            return -np.inf
-
-    return compute_interferometric_chi_sq(
-        components, ndim=theta.size, method="logarithmic"
-    )[0]
 
 
 def lnprob_nband_fit(theta: np.ndarray) -> float:
@@ -495,7 +464,140 @@ def lnprob_nband_fit(theta: np.ndarray) -> float:
     )
 
 
-def run_fit(
+def lnprior(components: List[Component]) -> float:
+    """Checks if the parameters are within the priors (for emcee)."""
+    theta, priors = get_theta(components), get_priors(components)
+    for param, prior in zip(theta, priors):
+        if not prior[0] <= param <= prior[1]:
+            return -np.inf
+
+    if OPTIONS.fit.condition == "sequential_radii":
+        indices = OPTIONS.fit.condition_indices
+        if not np.all(np.diff(theta[indices]) > 0):
+            return -np.inf
+
+    return 0.0
+
+
+def lnprob(theta: np.ndarray) -> float:
+    """Takes theta vector and the x, y and the yerr of the theta.
+    Returns a number corresponding to how good of a fit the model is to your
+    data for a given set of parameters, weighted by the data points.
+
+    This is the analytical 1D implementation.
+
+    Parameters
+    ----------
+    theta: np.ndarray
+        The parameters that ought to be fitted.
+
+    Returns
+    -------
+    float
+        The log of the probability.
+    """
+    components = set_components_from_theta(theta)
+    if OPTIONS.fit.fitter == "emcee":
+        if np.isinf(lnprior(components)):
+            return -np.inf
+
+    return compute_interferometric_chi_sq(
+        components, ndim=theta.size, method="logarithmic"
+    )[0]
+
+
+def init_uniformly(nwalkers: int) -> np.ndarray:
+    """Initialises a random numpy.ndarray from the parameter's limits.
+
+    Parameters
+    -----------
+    nwalkers : list of list of dict
+    Returns
+    -------
+    theta : numpy.ndarray
+    """
+    priors = get_priors(OPTIONS.model.components)
+    uniform_grid = np.array(
+        [[np.random.uniform(0, 1) for _ in range(len(priors))] for _ in range(nwalkers)]
+    )
+    sample_grid = np.array(
+        [
+            prior[0] + (prior[1] - prior[0]) * uniform_grid[:, i]
+            for i, prior in enumerate(priors)
+        ]
+    ).T
+
+    if OPTIONS.fit.condition == "sequential_radii":
+        indices = OPTIONS.fit.condition_indices
+        for row_index, (value_row, uniform_row) in enumerate(
+            zip(sample_grid, uniform_grid)
+        ):
+            new_radii = [value_row[indices][0]]
+            for index, (uniform, prior) in enumerate(
+                zip(uniform_row[indices][1:], priors[indices][1:]), start=1
+            ):
+                prior[0] = new_radii[index - 1]
+                new_radii.append(prior[0] + (prior[1] - prior[0]) * uniform)
+            sample_grid[row_index, indices] = new_radii
+
+    return sample_grid
+
+
+def run_emcee(
+    nwalkers: int,
+    nburnin: int = 0,
+    nsteps: int = 100,
+    ncores: int = 6,
+    debug: bool = False,
+    save_dir: Path | None = None,
+    **kwargs,
+) -> emcee.EnsembleSampler:
+    """Runs the emcee Hastings Metropolitan sampler.
+    The EnsambleSampler recieves the parameters and the args are passed to
+    the 'log_prob()' method (an addtional parameter 'a' can be used to
+    determine the stepsize, defaults to None).
+    Parameters
+    ----------
+    nwalkers : int, optional
+    theta : numpy.ndarray
+    nsteps : int, optional
+    discard : int, optional
+    ncores : int, optional
+    debug : bool, optional
+    Returns
+    -------
+    sampler : numpy.ndarray
+    """
+    init_guess = init_uniformly(nwalkers)
+
+    pool = Pool(processes=ncores) if not debug else None
+    print(f"Executing MCMC.\n{'':-^50}")
+    if save_dir is not None:
+        save_file = save_dir / "sampler.h5"
+        store = True
+        backend = emcee.backends.HDFBackend(str(save_file))
+        backend.reset(nwalkers, init_guess.shape[1])
+    else:
+        store = False
+        backend = None
+
+    sampler = emcee.EnsembleSampler(
+        nwalkers,
+        init_guess.shape[1],
+        kwargs.pop("lnprob", lnprob),
+        pool=pool,
+        backend=backend,
+    )
+    sampler.run_mcmc(init_guess, nsteps, progress=True, store=store)
+
+    if not debug:
+        pool.close()
+        pool.join()
+
+    return sampler
+
+
+def run_dynesty(
     sample: str = "rwalk",
     bound: str = "multi",
     ncores: int = 6,
@@ -549,10 +651,6 @@ def run_fit(
     print(f"Executing Dynesty.\n{'':-^50}")
     labels = get_labels(OPTIONS.model.components)
     ptform = kwargs.pop("ptform", None)
-    OPTIONS.fit.condition_indices = list(
-        map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
-    )
-
     if ptform is None:
         if OPTIONS.fit.condition == "one_disc":
             ptform = ptform_one_disc
@@ -578,23 +676,47 @@ def run_fit(
     return sampler
 
 
+def run_fit(**kwargs):
+    """Runs the fit."""
+    if OPTIONS.fit.fitter == "emcee":
+        return run_emcee(**kwargs)
+    return run_dynesty(**kwargs)
+
+
 def get_best_fit(
     sampler: DynamicNestedSampler,
     method: str = "max",
+    discard: int = 0,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Gets the best fit from the sampler."""
-    results = sampler.results
-    weights = results.importance_weights()
-    quantiles = np.array(
-        [
-            dyutils.quantile(
-                samps, np.array(OPTIONS.fit.quantiles) / 100, weights=weights
-            )
-            for samps in results.samples.T
-        ]
-    )
+    if OPTIONS.fit.fitter == "dynesty":
+        results = sampler.results
+        samples, logl = results.samples, results.logl
+        weights = results.importance_weights()
+        if OPTIONS.fit.condition == "sequential_radii":
+            indices = OPTIONS.fit.condition_indices
+            mask = np.all(np.diff(samples[:, indices], axis=1) > 0, axis=1)
+            samples, logl = samples[mask], logl[mask]
+            weights = weights[mask]
 
-    if method == "max":
-        quantiles[:, 1] = results.samples[results.logl.argmax()]
+        quantiles = np.array(
+            [
+                dyutils.quantile(
+                    samps, np.array(OPTIONS.fit.quantiles) / 100, weights=weights
+                )
+                for samps in samples.T
+            ]
+        )
 
-    return quantiles[:, 1], np.diff(quantiles.T, axis=0).T
+        if method == "max":
+            quantiles[:, 1] = samples[logl.argmax()]
+
+        params, uncertainties = quantiles[:, 1], np.diff(quantiles.T, axis=0).T
+    else:
+        samples = sampler.get_chain(discard=discard, flat=True)
+        quantiles = np.percentile(samples, OPTIONS.fit.quantiles, axis=0)
+        if method == "max":
+            quantiles[1] = samples[np.argmax(sampler.get_log_prob(discard=discard, flat=True))]
+        params, uncertainties = quantiles[1], np.diff(quantiles, axis=0)
+
+    return params, uncertainties
