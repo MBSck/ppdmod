@@ -78,15 +78,15 @@ with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
 x = Parameter(free=True, base="x")
 y = Parameter(free=True, base="y")
 
-rin1 = Parameter(value=0.1, min=0, max=2, unit=u.au, base="rin")
-rout1 = Parameter(value=1.5, min=0, max=2, unit=u.au, free=True, base="rout")
+rin1 = Parameter(value=0.1, min=0, max=3, unit=u.au, base="rin")
+rout1 = Parameter(value=1.5, min=0, max=3, unit=u.au, free=True, base="rout")
 p1 = Parameter(value=0, min=-1, max=1, base="p")
 sigma01 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 rho11 = Parameter(value=0.6, free=True, base="rho")
 theta11 = Parameter(value=33, free=True, base="theta")
 
-rin2 = Parameter(value=2, min=1, max=9, unit=u.au, base="rin")
-rout2 = Parameter(value=4, min=3, max=45, unit=u.au, free=True, base="rout")
+rin2 = Parameter(value=2, min=0.2, max=5, unit=u.au, base="rin")
+rout2 = Parameter(value=4, min=1.5, max=30, unit=u.au, free=False, base="rout")
 p2 = Parameter(value=0, min=-1, max=1, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 rho21 = Parameter(value=0.6, free=True, base="rho")
@@ -148,13 +148,13 @@ result_dir.mkdir(parents=True, exist_ok=True)
 
 if __name__ == "__main__":
     labels = get_labels(components)
-    OPTIONS.fit.fitter = "emcee"
+    OPTIONS.fit.fitter = "dynesty"
     OPTIONS.fit.condition = "sequential_radii"
     OPTIONS.fit.condition_indices = list(
         map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
     )
-    fit_params = {"discard": 1000, "nsteps": 10000, "nwalkers": 60}
-    # fit_params = {"dlogz_init": 0.05, "nlive_init": 1000, "nlive_batch": 500}
+    # fit_params = {"discard": 1000, "nsteps": 10000, "nwalkers": 60}
+    fit_params = {"dlogz_init": 0.05, "nlive_init": 1000, "nlive_batch": 100}
     ncores = fit_params.get("nwalkers", 100) // 2
     sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
     theta, uncertainties = get_best_fit(sampler, discard=fit_params.get("discard", 0))
