@@ -82,14 +82,15 @@ rin1 = Parameter(value=0.1, min=0, max=2, unit=u.au, base="rin")
 rout1 = Parameter(value=1.5, min=0, max=2, unit=u.au, free=True, base="rout")
 p1 = Parameter(value=0, min=-1, max=1, base="p")
 sigma01 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
+rho11 = Parameter(value=0.6, free=True, base="rho")
+theta11 = Parameter(value=33, free=True, base="theta")
 
 rin2 = Parameter(value=2, min=1, max=9, unit=u.au, base="rin")
 rout2 = Parameter(value=4, min=3, max=45, unit=u.au, free=True, base="rout")
 p2 = Parameter(value=0, min=-1, max=1, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
-
-rho21 = Parameter(value=0.6, free=True, shared=True, base="rho")
-theta21 = Parameter(value=33, free=True, shared=True, base="theta")
+rho21 = Parameter(value=0.6, free=True, base="rho")
+theta21 = Parameter(value=33, free=True, base="theta")
 
 flux_lnf = Parameter(name="flux_lnf", free=True, shared=True, base="lnf")
 vis_lnf = Parameter(name="vis_lnf", free=True, shared=True, base="lnf")
@@ -104,8 +105,6 @@ shared_params = {
     "kappa_cont": kappa_cont,
     "pa": pa,
     "cinc": cinc,
-    "rho1": rho21,
-    "theta1": theta21,
     # "flux_lnf": flux_lnf,
     # "vis_lnf": vis_lnf,
     # "t3_lnf": t3_lnf,
@@ -121,6 +120,8 @@ inner_ring = AsymGreyBody(
     rout=rout1,
     p=p1,
     sigma0=sigma01,
+    rho1=rho11,
+    theta1=theta11,
     **shared_params,
 )
 outer_ring = AsymGreyBody(
@@ -129,6 +130,8 @@ outer_ring = AsymGreyBody(
     rout=rout2,
     p=p2,
     sigma0=sigma02,
+    rho1=rho21,
+    theta1=theta21,
     **shared_params,
 )
 
