@@ -55,6 +55,7 @@ value = 0
 unit = "deg"
 min = -180
 max = 180
+periodic = true
 
 [STANDARD_PARAMETERS.pixel_size]
 name = "pixel_size"
@@ -109,6 +110,7 @@ value = 0
 unit = "deg"
 min = -180
 max = 180
+periodic = true
 
 [STANDARD_PARAMETERS.width]
 name = "width"

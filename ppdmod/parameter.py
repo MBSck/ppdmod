@@ -22,6 +22,8 @@ class Parameter:
     max: float | None = None
     dtype: type | None = None
     smooth: bool | None = None
+    reflective: bool | None = None
+    periodic: bool | None = None
     free: bool | None = None
     shared: bool | None = None
     base: str | None = None
@@ -36,7 +38,7 @@ class Parameter:
             if getattr(self, key) is None:
                 setattr(self, key, value)
 
-        for key in ["free", "shared", "smooth"]:
+        for key in ["free", "shared", "smooth", "reflective", "periodic"]:
             if key not in base_param:
                 if getattr(self, key) is not None:
                     continue
@@ -106,6 +108,7 @@ class Parameter:
             max=self.max,
             dtype=self.dtype,
             smooth=self.smooth,
+            periodic=self.periodic,
             free=self.free,
             shared=self.shared,
             base=self.base,

@@ -46,9 +46,9 @@ class Component:
         component : Component
             The component for which the parameters should be fetched.
         free : bool, optional
-            If only the free parameters should be returned, by default False.
+            If the free parameters should be returned, by default False.
         shared : bool, optional
-            If only the shared parameters should be returned, by default False.
+            If the shared parameters should be returned, by default False.
 
         Returns
         -------

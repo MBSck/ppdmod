@@ -14,15 +14,43 @@ from .options import OPTIONS
 from .utils import compare_angles, compute_t3, compute_vis
 
 
-def get_labels(components: List[Component], shared: bool = True) -> np.ndarray:
+def get_fit_params(components: List[Component], key: str | None = None) -> np.ndarray:
+    """Gets the fit params from the components.
+
+    Parameters
+    ----------
+    components : list of Component
+        The components to be used in the model.
+    key : str, optional
+        If a key is provided, a field of the parameter will be returned.
+
+    Returns
+    -------
+    params : numpy.ndarray
+    """
+    params = []
+    [
+        params.extend(component.get_params(free=True, shared=False).values())
+        for component in components
+    ]
+    params.extend(
+        [
+            component.get_params(free=True, shared=True).values()
+            for component in components
+        ][-1]
+    )
+    if key is not None:
+        return np.array([getattr(param, key) for param in params if key in params])
+    return np.array(params)
+
+
+def get_labels(components: List[Component]) -> np.ndarray:
     """Sets theta from the components.
 
     Parameters
     ----------
     components : list of Component
         The components to be used in the model.
-    shared : bool, optional
-        If true, gets the shared params from the components
 
     Returns
     -------
@@ -41,105 +69,30 @@ def get_labels(components: List[Component], shared: bool = True) -> np.ndarray:
 
         labels.extend(component_labels)
 
-        if shared:
-            labels_shared.append(
-                [
-                    rf"{key}-\mathrm{{sh}}"
-                    for key in component.get_params(free=True, shared=True)
-                ]
-            )
+        labels_shared.append(
+            [
+                rf"{key}-\mathrm{{sh}}"
+                for key in component.get_params(free=True, shared=True)
+            ]
+        )
 
     labels.extend(labels_shared[-1])
     return labels
 
 
-def get_priors(components: List[Component], shared: bool = True) -> np.ndarray:
+def get_priors(components: List[Component]) -> np.ndarray:
     """Gets the priors from the model parameters."""
-    priors, priors_shared = [], []
-    for component in components:
-        priors.extend(
-            [param.get_limits() for param in component.get_params(free=True).values()]
-        )
-
-        if shared:
-            priors_shared.append(
-                [
-                    param.get_limits()
-                    for param in component.get_params(free=True, shared=True).values()
-                ]
-            )
-    priors.extend(priors_shared[-1])
-    return np.array(priors)
+    return np.array([param.get_limits() for param in get_fit_params(components)])
 
 
-def get_units(
-    components: List[Component],
-    shared: bool = True,
-) -> np.ndarray:
-    """Sets the units from the components.
-
-    Parameters
-    ----------
-    components : list of Component
-        The components to be used in the model.
-    shared_params : dict
-        The shared parameters.
-    shared : bool, optional
-        If true, gets the shared params from the components
-
-    Returns
-    -------
-    units : numpy.ndarray
-    """
-    units, units_shared = [], []
-    for component in components:
-        units.extend([param.unit for param in component.get_params(free=True).values()])
-
-        if shared:
-            units_shared.append(
-                [
-                    param.unit
-                    for param in component.get_params(free=True, shared=True).values()
-                ]
-            )
-
-    units.extend(units_shared[-1])
-    return np.array(units)
+def get_units(components: List[Component]) -> np.ndarray:
+    """Sets the units from the components."""
+    return get_fit_params(components, "unit")
 
 
-def get_theta(
-    components: List[Component],
-    shared: bool = True,
-) -> np.ndarray:
-    """Sets the theta vector from the components.
-
-    Parameters
-    ----------
-    components : list of Component
-        The components to be used in the model.
-    shared_params : dict
-        The shared parameters.
-
-    Returns
-    -------
-    theta : numpy.ndarray
-    """
-    theta, theta_shared = [], []
-    for component in components:
-        theta.extend(
-            [param.value for param in component.get_params(free=True).values()]
-        )
-
-        if shared:
-            theta_shared.append(
-                [
-                    param.value
-                    for param in component.get_params(free=True, shared=True).values()
-                ]
-            )
-
-    theta.extend(theta_shared[-1])
-    return np.array(theta)
+def get_theta(components: List[Component]) -> np.ndarray:
+    """Sets the theta vector from the components."""
+    return get_fit_params(components, "value")
 
 
 def set_components_from_theta(theta: np.ndarray) -> List[Component]:
@@ -630,6 +583,10 @@ def run_dynesty(
     else:
         checkpoint_file = None
 
+    components = OPTIONS.model.components
+    periodic = [index for index, param in enumerate(get_fit_params(components)) if param.periodic]
+    reflective = [index for index, param in enumerate(get_fit_params(components)) if param.reflective]
+
     pool = Pool(processes=ncores) if not debug else None
     queue_size = 2 * ncores if not debug else None
 
@@ -637,8 +594,8 @@ def run_dynesty(
         "bound": bound,
         "queue_size": queue_size,
         "sample": sample,
-        "periodic": kwargs.pop("periodic", None),
-        "reflective": kwargs.pop("reflective", None),
+        "periodic": periodic,
+        "reflective": reflective,
         "pool": pool,
     }
 
@@ -716,7 +673,9 @@ def get_best_fit(
         samples = sampler.get_chain(discard=discard, flat=True)
         quantiles = np.percentile(samples, OPTIONS.fit.quantiles, axis=0)
         if method == "max":
-            quantiles[1] = samples[np.argmax(sampler.get_log_prob(discard=discard, flat=True))]
+            quantiles[1] = samples[
+                np.argmax(sampler.get_log_prob(discard=discard, flat=True))
+            ]
         params, uncertainties = quantiles[1], np.diff(quantiles, axis=0)
 
     return params, uncertainties
