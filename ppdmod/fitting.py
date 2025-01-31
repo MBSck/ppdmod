@@ -585,7 +585,9 @@ def run_dynesty(
 
     components = OPTIONS.model.components
     periodic = [index for index, param in enumerate(get_fit_params(components)) if param.periodic]
+    periodic = None if not periodic else periodic
     reflective = [index for index, param in enumerate(get_fit_params(components)) if param.reflective]
+    reflective = None if not reflective else reflective
 
     pool = Pool(processes=ncores) if not debug else None
     queue_size = 2 * ncores if not debug else None

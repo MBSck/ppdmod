@@ -86,7 +86,7 @@ rho11 = Parameter(value=0.6, free=True, base="rho")
 theta11 = Parameter(value=33, free=True, base="theta")
 
 rin2 = Parameter(value=2, min=0.2, max=5, unit=u.au, base="rin")
-rout2 = Parameter(value=4, min=1.5, max=30, unit=u.au, free=False, base="rout")
+rout2 = Parameter(value=4, min=1.5, max=30, unit=u.au, free=True, base="rout")
 p2 = Parameter(value=0, min=-1, max=1, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 rho21 = Parameter(value=0.6, free=True, base="rho")
