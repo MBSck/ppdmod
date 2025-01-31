@@ -430,7 +430,8 @@ def plot_corner(
                             rf"^{{+{uncertainties[index][1] * factor:.2f}}}\,1\mathrm{{e}}-{exponent}$"
                         )
                         ax.set_title(
-                            f"{labels[index]} = {formatted_title}", fontsize=fontsize - 2
+                            f"{labels[index]} = {formatted_title}",
+                            fontsize=fontsize - 2,
                         )
     else:
         samples = sampler.get_chain(discard=discard, flat=True)
@@ -497,86 +498,60 @@ class LogNorm(mcolors.Normalize):
         return np.expm1(value * np.log1p(self.vmax - self.vmin)) + self.vmin
 
 
-def get_axis_information(key: str) -> Tuple[SimpleNamespace]:
-    upper_ax, lower_ax = SimpleNamespace(), SimpleNamespace()
-    upper_ax.tick_params = {
+def set_axis_information(
+    axarr: Dict[str, List[Axes]],
+    key: str,
+    ylims: Dict[str, List[float]],
+    inclination=None,
+) -> Tuple[Axes, Axes]:
+    """Sets the axis labels and limits for the different keys."""
+    if isinstance(axarr[key], list):
+        upper_ax, lower_ax = axarr[key]
+        # set_axes_color(lower_ax, OPTIONS.plot.color.background)
+    else:
+        upper_ax, lower_ax = axarr[key], None
+
+    tick_params = {
         "axis": "x",
         "which": "both",
         "bottom": True,
         "top": False,
         "labelbottom": False,
     }
-    if key == "flux":
-        upper_ax.ylabel = "Fluxes (Jy)"
-        lower_ax.xlabel = r"$\lambda$ ($\mathrm{\mu}$m)"
-        lower_ax.y_label = "Residuals (Jy)"
-        # lower_ax.set_xlabel()
-        # lower_ax.set_ylabel()
-        # upper_ax.tick_params(**tick_settings)
-        # upper_ax.set_ylabel()
-        # if "flux" in ylims:
-        #     upper_ax.set_ylim(ylims["flux"])
-        # else:
-        #     upper_ax.set_ylim([0, None])
-        # if not len(axarr) > 1:
-        #     legend = upper_ax.legend(handles=[dot_label, x_label])
-        #     set_legend_color(legend, OPTIONS.plot.color.background)
 
-    if key in ["vis", "vis2"]:
-        lower_ax.set_xlabel(r"$\mathrm{B}_{\mathrm{eff}}$ (M$\lambda$)")
+    if key == "flux":
+        xlabel = r"$\lambda$ ($\mathrm{\mu}$m)"
+        residual_label = "Residuals (Jy)"
+        ylabel = r"$F_\nu$ (Jy)"
+
+    elif key in ["vis", "vis2"]:
+        xlabel = r"$\mathrm{B}$ (M$\lambda$)"
+        ylim = ylims.get("vis", None)
+        if inclination is not None:
+            xlabel = r"$\mathrm{B}_\mathrm{eff}$ (M$\lambda$)"
 
         if key == "vis":
-            if OPTIONS.model.output != "normed":
-                y_label = "Correlated fluxes (Jy)"
-                upper_ax.set_ylim([0, None])
-                unit = "Jy"
-            else:
-                y_label = "Visibilities (Normalized)"
-                unit = "Normalized"
-                upper_ax.set_ylim([0, 1])
-
-            residual_label = f"Residuals ({unit})"
-            if "vis" in ylims:
-                upper_ax.set_ylim(ylims["vis"])
+            ylabel = r"$F_{\nu,\,\mathrm{corr}}$ (Jy)"
+            residual_label = "Residuals (Jy)"
         else:
-            residual_label = "Residuals (Normalized)"
-            y_label = "Visibilities Squared (Normalized)"
-            if "vis2" in ylims:
-                upper_ax.set_ylim(ylims["vis2"])
-            else:
-                upper_ax.set_ylim([0, 1])
+            ylabel = "$V^2$ (a.u.)"
+            residual_label = "Residuals (a.u.)"
+            upper_ax.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.2f"))
 
-        upper_ax.set_xlim([0, None])
-        lower_ax.set_xlim([0, None])
+    elif key == "t3":
+        xlabel = r"$\mathrm{B}_{\mathrm{max}}$ (M$\lambda$)"
+        ylabel = r"$\phi_{\mathrm{cp}}$ ($^\circ$)"
+        residual_label = r"Residuals ($^\circ$)"
+
+    upper_ax.tick_params(**tick_params)
+    upper_ax.set_ylabel(ylabel)
+    if lower_ax is not None:
+        lower_ax.set_xlabel(xlabel)
         lower_ax.set_ylabel(residual_label)
-        upper_ax.set_ylabel(y_label)
-        upper_ax.tick_params(**tick_settings)
-        upper_ax.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.2f"))
+    else:
+        upper_ax.set_xlabel(xlabel)
 
-        if not len(axarr) > 1:
-            legend = upper_ax.legend(handles=[dot_label, x_label])
-            set_legend_color(legend, OPTIONS.plot.color.background)
-
-    if key == "t3":
-        upper_ax.set_ylabel(r"Closure Phases ($^\circ$)")
-        lower_ax.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}$ (M$\lambda$)")
-        lower_ax.set_ylabel(r"Residuals ($^\circ$)")
-        t3 = OPTIONS.data.t3
-        nan_t3 = np.isnan(t3.value)
-        lower_bound = t3.value[~nan_t3].min()
-        lower_bound += lower_bound * 0.25
-        upper_bound = t3.value[~nan_t3].max()
-        upper_bound += upper_bound * 0.25
-        upper_ax.tick_params(**tick_settings)
-        if "t3" in ylims:
-            upper_ax.set_ylim(ylims["t3"])
-        else:
-            upper_ax.set_ylim([lower_bound, upper_bound])
-
-        upper_ax.set_xlim([0, None])
-        lower_ax.set_xlim([0, None])
-        legend = upper_ax.legend(handles=[dot_label, x_label])
-        set_legend_color(legend, OPTIONS.plot.color.background)
+    return upper_ax, lower_ax
 
 
 def plot_data_vs_model(
@@ -589,9 +564,13 @@ def plot_data_vs_model(
     model_data: np.ndarray | None = None,
     colormap: str = OPTIONS.plot.color.colormap,
     bands: List[str] | str = "all",
+    inclination=None,
+    ylims=None,
     norm=None,
 ):
-    colormap, alpha = get_colormap(colormap), 0.7
+    """Plots the data versus the model or just the data if not model data given."""
+    upper_ax, lower_ax = set_axis_information(axarr, key, ylims, inclination)
+    colormap, alpha = get_colormap(colormap), 1 if lower_ax is None else 0.7
     hline_color = "gray" if OPTIONS.plot.color.background == "white" else "white"
     errorbar_params, scatter_params = OPTIONS.plot.errorbar, OPTIONS.plot.scatter
     if OPTIONS.plot.color.background == "black":
@@ -612,12 +591,6 @@ def plot_data_vs_model(
             model_data[band_indices], mask=band_value.mask
         )
 
-    if isinstance(axarr, list):
-        upper_ax, lower_ax = axarr
-        set_axes_color(lower_ax, OPTIONS.plot.color.background)
-    else:
-        upper_ax, lower_ax, alpha = axarr, None, None
-
     set_axes_color(upper_ax, OPTIONS.plot.color.background)
     color = colormap(norm(band_wl.value))
     if baselines is None:
@@ -625,8 +598,6 @@ def plot_data_vs_model(
     else:
         grid = (baselines / band_wl.value[:, np.newaxis])[:, 1:]
 
-    # TODO: Finish this implementation
-    # get_axis_information("flux")
     for index, _ in enumerate(band_wl.value):
         errorbar_params.color = scatter_params.color = color[index]
         upper_ax.errorbar(
@@ -659,6 +630,35 @@ def plot_data_vs_model(
                 **vars(errorbar_params),
             )
             lower_ax.axhline(y=0, color=hline_color, linestyle="--")
+
+    if key in ["flux", "vis"]:
+        ylim = ylims.get(key, [0, None])
+    elif key == "vis2":
+        ylim = ylims.get(key, [0, 1])
+    else:
+        value = OPTIONS.data.t3.value
+        lower_bound = np.ma.min(value) + np.ma.min(value) * 0.25
+        upper_bound = np.ma.max(value) + np.ma.max(value) * 0.25
+        ylim = ylims.get("t3", [lower_bound, upper_bound])
+
+    upper_ax.set_ylim(ylim)
+
+    if not len(axarr) > 1:
+        label_color = "lightgray" if OPTIONS.plot.color.background == "black" else "k"
+        dot_label = mlines.Line2D(
+            [],
+            [],
+            color=label_color,
+            marker="o",
+            linestyle="None",
+            label="Data",
+            alpha=0.6,
+        )
+        x_label = mlines.Line2D(
+            [], [], color=label_color, marker="X", linestyle="None", label="Model"
+        )
+        legend = upper_ax.legend(handles=[dot_label, x_label])
+        set_legend_color(legend, OPTIONS.plot.color.background)
 
     errorbar_params.color = scatter_params.color = None
 
@@ -734,13 +734,15 @@ def plot_fit(
     plot_kwargs = {"norm": norm, "colormap": cmap}
     if "flux" in data_to_plot:
         plot_data_vs_model(
-            axarr["flux"],
+            axarr,
             wavelengths,
             flux.value,
             flux.err,
             "flux",
+            ylims=ylims,
             bands=bands,
             model_data=model_flux,
+            inclination=inclination,
             **plot_kwargs,
         )
 
@@ -749,14 +751,16 @@ def plot_fit(
             vis.ucoord, vis.vcoord, inclination, pos_angle
         )
         plot_data_vs_model(
-            axarr["vis" if "vis" in data_to_plot else "vis2"],
+            axarr,
             wavelengths,
             vis.value,
             vis.err,
             "vis" if "vis" in data_to_plot else "vis2",
+            ylims=ylims,
             bands=bands,
             baselines=effective_baselines,
             model_data=model_vis,
+            inclination=inclination,
             **plot_kwargs,
         )
 
@@ -766,14 +770,16 @@ def plot_fit(
         )
 
         plot_data_vs_model(
-            axarr["t3"],
+            axarr,
             wavelengths,
             t3.value,
             t3.err,
             "t3",
+            ylims=ylims,
             bands=bands,
             baselines=longest_baselines,
             model_data=model_t3,
+            inclination=inclination,
             **plot_kwargs,
         )
 
@@ -790,14 +796,6 @@ def plot_fit(
             spine.set_edgecolor("white")
     opposite_color = "white" if OPTIONS.plot.color.background == "black" else "black"
     cbar.set_label(label=r"$\lambda$ ($\mathrm{\mu}$m)", color=opposite_color)
-
-    label_color = "lightgray" if OPTIONS.plot.color.background == "black" else "k"
-    dot_label = mlines.Line2D(
-        [], [], color=label_color, marker="o", linestyle="None", label="Data", alpha=0.6
-    )
-    x_label = mlines.Line2D(
-        [], [], color=label_color, marker="X", linestyle="None", label="Model"
-    )
 
     if title is not None:
         plt.title(title)
@@ -855,7 +853,6 @@ def plot_overview(
     flux, t3 = OPTIONS.data.flux, OPTIONS.data.t3
     vis = OPTIONS.data.vis if "vis" in OPTIONS.fit.data else OPTIONS.data.vis2
 
-    # TODO: Set the color somewhere centrally so all plots are the same color.
     errorbar_params = OPTIONS.plot.errorbar
     if OPTIONS.plot.color.background == "black":
         errorbar_params.markeredgecolor = "white"
@@ -863,12 +860,14 @@ def plot_overview(
     plot_kwargs = {"norm": norm, "colormap": colormap}
     if "flux" in data_to_plot:
         plot_data_vs_model(
-            axarr["flux"],
+            axarr,
             wavelengths,
             flux.value,
             flux.err,
             "flux",
+            ylims=ylims,
             bands=bands,
+            inclination=inclination,
             **plot_kwargs,
         )
 
@@ -877,13 +876,15 @@ def plot_overview(
             vis.ucoord, vis.vcoord, inclination, pos_angle
         )
         plot_data_vs_model(
-            axarr["vis" if "vis" in data_to_plot else "vis2"],
+            axarr,
             wavelengths,
             vis.value,
             vis.err,
             "vis" if "vis" in data_to_plot else "vis2",
+            ylims=ylims,
             bands=bands,
             baselines=effective_baselines,
+            inclination=inclination,
             **plot_kwargs,
         )
 
@@ -893,13 +894,15 @@ def plot_overview(
         )
 
         plot_data_vs_model(
-            axarr["t3"],
+            axarr,
             wavelengths,
             t3.value,
             t3.err,
             "t3",
+            ylims=ylims,
             bands=bands,
             baselines=longest_baselines,
+            inclination=inclination,
             **plot_kwargs,
         )
 
@@ -918,62 +921,6 @@ def plot_overview(
             spine.set_edgecolor("white")
     opposite_color = "white" if OPTIONS.plot.color.background == "black" else "black"
     cbar.set_label(label=r"$\lambda$ ($\mathrm{\mu}$m)", color=opposite_color)
-
-    for key in data_to_plot:
-        ax_key = "vis" if key in ["vis", "vis2"] else key
-        ax = axarr[ax_key]
-        set_axes_color(ax, OPTIONS.plot.color.background)
-
-        if key == "flux":
-            ax.set_xlabel(r"$\lambda$ ($\mathrm{\mu}$m)")
-            ax.set_ylabel(r"$F_\nu$ (Jy)")
-            if "flux" in ylims:
-                ax.set_ylim(ylims["flux"])
-            else:
-                ax.set_ylim([0, None])
-
-        if inclination is not None:
-            label = r"$\mathrm{B}_\mathrm{eff}$ (M$\lambda$)"
-        else:
-            label = r"$\mathrm{B}$ (M$\lambda$)"
-
-        if key == "vis":
-            ax.set_xlabel(label)
-            if OPTIONS.model.output != "normed":
-                label = r"$F_{\nu,\,\mathrm{corr}}$ (Jy)"
-            else:
-                label = "$V$ (Normalized)"
-
-            ax.set_ylabel(label)
-            if "vis" in ylims:
-                ax.set_ylim(ylims["vis"])
-            ax.set_ylim([0, None])
-            ax.set_xlim([0, None])
-            ax.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.2f"))
-
-        if key == "vis2":
-            ax.set_xlabel(label)
-            ax.set_ylabel("Squared Visibilities (Normalized)")
-            if "vis2" in ylims:
-                ax.set_ylim(ylims["vis2"])
-            else:
-                ax.set_ylim([0, 1])
-            ax.set_xlim([0, None])
-            ax.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.2f"))
-
-        if key == "t3":
-            ax.set_xlabel(r"$\mathrm{B}_{\mathrm{max}}$ (M$\lambda$)")
-            ax.set_ylabel(r"$\phi_{\mathrm{cp}}$ ($^\circ$)")
-            nan_t3 = np.isnan(t3.value)
-            lower_bound = t3.value[~nan_t3].min()
-            lower_bound += lower_bound * 0.25
-            upper_bound = t3.value[~nan_t3].max()
-            upper_bound += upper_bound * 0.25
-            if "t3" in ylims:
-                ax.set_ylim(ylims["t3"])
-            else:
-                ax.set_ylim([lower_bound, upper_bound])
-            ax.set_xlim([0, None])
 
     if title is not None:
         plt.title(title)
