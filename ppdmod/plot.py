@@ -373,6 +373,7 @@ def plot_corner(
     labels: List[str],
     units: List[str] | None = None,
     fontsize: int = 12,
+    discard: int = 0,
     savefig: Path | None = None,
     **kwargs,
 ) -> None:
@@ -394,25 +395,8 @@ def plot_corner(
     quantiles = [x / 100 for x in OPTIONS.fit.quantiles]
     if OPTIONS.fit.fitter == "dynesty":
         results = sampler.results
-        samples, logl = results.samples, results.logl
-        weights = results.importance_weights()
-        if OPTIONS.fit.condition == "sequential_radii":
-            indices = OPTIONS.fit.condition_indices
-            mask = np.all(np.diff(samples[:, indices], axis=1) > 0, axis=1)
-            samples, logl = samples[mask], logl[mask]
-            weights = weights[mask]
-
-        _, axarr = corner.corner(
-            samples,
-            labels=labels,
-            truths=truths,
-            show_titles=True,
-            title_kwargs={"fontsize": 12},
-            label_kwargs={"fontsize": 10},
-        )
-
         _, axarr = dyplot.cornerplot(
-            samples,
+            results,
             color="blue",
             truths=np.zeros(len(labels)),
             labels=labels,
@@ -449,13 +433,8 @@ def plot_corner(
                             f"{labels[index]} = {formatted_title}", fontsize=fontsize - 2
                         )
     else:
-        samples = sampler.get_chain(flat=True)
-        log_prob_samples = sampler.get_log_prob(flat=True)
-        log_prior_samples = sampler.get_blobs(flat=True)
-        all_samples = np.concatenate(
-            (samples, log_prob_samples[:, None], log_prior_samples[:, None]), axis=1
-        )
-        corner.corner(all_samples, labels=labels)
+        samples = sampler.get_chain(discard=discard, flat=True)
+        corner.corner(samples, labels=labels)
 
     if savefig is not None:
         plt.savefig(savefig, format=Path(savefig).suffix[1:], dpi=OPTIONS.plot.dpi)
