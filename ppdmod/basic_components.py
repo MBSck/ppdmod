@@ -425,14 +425,13 @@ class TempGradient(Ring):
 
     def compute_surface_density(self, radius: u.au) -> u.one:
         """Computes a 1D-surface density profile."""
-        surface_density = self.sigma0() * (radius / self.r0()) ** self.p()
-        return surface_density.astype(OPTIONS.data.dtype.real)
+        sigma = self.sigma0() * (radius / self.r0()) ** self.p()
+        return sigma.astype(OPTIONS.data.dtype.real)
 
     def compute_optical_depth(self, radius: u.au, wavelength: u.um) -> u.one:
         """Computes a 1D-optical depth profile."""
-        surface_density = self.compute_surface_density(radius)
-        optical_depth = surface_density * self.get_opacity(wavelength)
-        return optical_depth.astype(OPTIONS.data.dtype.real)
+        tau = self.compute_surface_density(radius) * self.get_opacity(wavelength)
+        return tau.astype(OPTIONS.data.dtype.real)
 
     def compute_emissivity(self, radius: u.au, wavelength: u.um) -> u.one:
         """Computes a 1D-emissivity profile."""
@@ -442,9 +441,9 @@ class TempGradient(Ring):
         if self.optically_thick:
             return np.array([1])[:, np.newaxis]
 
-        optical_depth = self.compute_optical_depth(radius, wavelength)
-        emissivity = 1 - np.exp(-optical_depth / self.cinc())
-        return emissivity.astype(OPTIONS.data.dtype.real)
+        tau = self.compute_optical_depth(radius, wavelength)
+        epsilon = 1 - np.exp(-tau / self.cinc())
+        return epsilon.astype(OPTIONS.data.dtype.real)
 
     def compute_intensity(self, radius: u.au, wavelength: u.um) -> u.Jy:
         """Computes a 1D-brightness profile from a dust-surface density- and
