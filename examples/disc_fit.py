@@ -27,20 +27,22 @@ from ppdmod.utils import (
     load_data,
     qval_to_opacity,
     windowed_linspace,
-    create_adaptive_bins,
+    # create_adaptive_bins,
 )
 
 
 DATA_DIR = Path(__file__).parent.parent / "data"
-nband_wavelengths, nband_binning_windows = create_adaptive_bins([8.6, 12.3], [9.2, 11.9], 0.2, 0.65)
+# nband_wavelengths, nband_binning_windows = create_adaptive_bins(
+#     [8.6, 12.3], [9.2, 11.9], 0.2, 0.65
+# )
 wavelengths = {
     "hband": [1.7] * u.um,
     "kband": [2.15] * u.um,
     "lband": windowed_linspace(3.1, 3.8, OPTIONS.data.binning.lband.value) * u.um,
     "mband": windowed_linspace(4.65, 4.9, OPTIONS.data.binning.mband.value) * u.um,
-    "nband": nband_wavelengths * u.um,
+    "nband": windowed_linspace(8.25, 12.75, OPTIONS.data.binning.nband.value) * u.um,
 }
-OPTIONS.data.binning.nband = nband_binning_windows * u.um
+# OPTIONS.data.binning.nband = nband_binning_windows * u.um
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
 bands = ["hband", "kband", "lband", "mband", "nband"]
 wavelengths = np.concatenate([wavelengths[band] for band in bands])
