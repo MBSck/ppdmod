@@ -39,8 +39,10 @@ def get_fit_params(components: List[Component], key: str | None = None) -> np.nd
             for component in components
         ][-1]
     )
+
     if key is not None:
-        return np.array([getattr(param, key) for param in params if key in params])
+        return np.array([getattr(param, key, None) for param in params])
+
     return np.array(params)
 
 

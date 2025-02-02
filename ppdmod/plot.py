@@ -398,9 +398,7 @@ def plot_corner(
         _, axarr = dyplot.cornerplot(
             results,
             color="blue",
-            truths=np.zeros(len(labels)),
             labels=labels,
-            truth_color="black",
             show_titles=True,
             max_n_ticks=3,
             title_quantiles=quantiles,
