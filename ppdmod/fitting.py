@@ -249,11 +249,10 @@ def compute_nband_fit_chi_sq(
     # NOTE: The -1 here indicates that one of the parameters is actually fixed
     ndim -= 1
     flux = OPTIONS.data.flux
-    mask = flux.value.mask
     chi_sq = compute_chi_sq(
-        flux.value.data[~mask].astype(OPTIONS.data.dtype.real),
-        flux.err.data[~mask].astype(OPTIONS.data.dtype.real),
-        flux_model[~mask],
+        flux.value.compressed().astype(OPTIONS.data.dtype.real),
+        flux.err.compressed().astype(OPTIONS.data.dtype.real),
+        flux_model.repeat(flux.value.shape[-1], axis=-1)[~flux.value.mask],
         method=method,
     )
 
@@ -299,8 +298,8 @@ def compute_interferometric_chi_sq(
         mask = data.value.mask
         chi_sqs.append(
             compute_chi_sq(
-                data.value.data[~mask],
-                data.err.data[~mask],
+                data.value.compressed(),
+                data.err.compressed(),
                 model_data[key][~mask],
                 diff_method="linear" if key != "t3" else "periodic",
                 method=method,

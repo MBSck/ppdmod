@@ -34,11 +34,11 @@ def ptform(theta):
 
 
 DATA_DIR = Path(__file__).parent.parent / "data"
-fits_dir = DATA_DIR / "fits" / "hd142527" / "nband_fit" / "averaged"
+fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*_N_*.fits"))
 
 wavelength_range = [8.0, 15] * u.um
 data = set_data(
-    list(fits_dir.glob("*fits")),
+    fits_files,
     wavelengths="all",
     wavelength_range=wavelength_range,
     fit_data=["flux"],
