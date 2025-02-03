@@ -24,25 +24,26 @@ from ppdmod.fitting import (
 from ppdmod.options import OPTIONS
 from ppdmod.parameter import Parameter
 from ppdmod.utils import (
+    get_band,
     load_data,
     qval_to_opacity,
     windowed_linspace,
-    # create_adaptive_bins,
+    create_adaptive_bins,
 )
 
 
 DATA_DIR = Path(__file__).parent.parent / "data"
-# nband_wavelengths, nband_binning_windows = create_adaptive_bins(
-#     [8.6, 12.3], [9.2, 11.9], 0.2, 0.65
-# )
+nband_wavelengths, nband_binning_windows = create_adaptive_bins(
+    [8.6, 12.3], [9.2, 11.9], 0.2, 0.65
+)
 wavelengths = {
     "hband": [1.7] * u.um,
     "kband": [2.15] * u.um,
-    "lband": windowed_linspace(3.1, 3.8, OPTIONS.data.binning.lband.value) * u.um,
-    "mband": windowed_linspace(4.65, 4.9, OPTIONS.data.binning.mband.value) * u.um,
-    "nband": windowed_linspace(8.25, 12.75, OPTIONS.data.binning.nband.value) * u.um,
+    "lband": windowed_linspace(3.1, 3.8, 0.2) * u.um,
+    "mband": windowed_linspace(4.65, 4.9, 0.2) * u.um,
+    "nband": nband_wavelengths * u.um,
 }
-# OPTIONS.data.binning.nband = nband_binning_windows * u.um
+OPTIONS.data.binning.nband = nband_binning_windows * u.um
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
 bands = ["hband", "kband", "lband", "mband", "nband"]
 wavelengths = np.concatenate([wavelengths[band] for band in bands])
@@ -53,6 +54,12 @@ data = set_data(
     wavelengths=wavelengths,
     fit_data=fit_data,
 )
+
+# NOTE: This is a test
+ind = np.where(np.array([*map(get_band, wavelengths)]) == "nband")[0]
+data.flux.err = np.abs(data.flux.value * 0.05)
+data.viserr = np.abs(data.vis.value * 0.05)
+data.t3.err = np.abs(data.t3.value * 0.05)
 
 grid, value = np.loadtxt(
     DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt",
@@ -93,13 +100,6 @@ p2 = Parameter(value=0, min=-1, max=1, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 rho21 = Parameter(value=0.6, free=True, base="rho")
 theta21 = Parameter(value=33, free=True, base="theta")
-
-rin3 = Parameter(value=0, min=0.2, max=10, unit=u.au, base="rin")
-rout3 = Parameter(value=0, min=1.5, max=30, unit=u.au, free=True, base="rout")
-p3 = Parameter(value=0, min=-1, max=1, base="p")
-sigma03 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
-rho31 = Parameter(value=0.6, free=True, base="rho")
-theta31 = Parameter(value=33, free=True, base="theta")
 
 flux_lnf = Parameter(name="flux_lnf", free=True, shared=True, base="lnf")
 vis_lnf = Parameter(name="vis_lnf", free=True, shared=True, base="lnf")
@@ -143,19 +143,9 @@ outer_ring = AsymGreyBody(
     theta1=theta21,
     **shared_params,
 )
-last_ring = AsymGreyBody(
-    label="Last Ring",
-    rin=rin3,
-    rout=rout3,
-    p=p3,
-    sigma0=sigma03,
-    rho1=rho31,
-    theta1=theta31,
-    **shared_params,
-)
 
 OPTIONS.model.components = components = [star, inner_ring, outer_ring]
-DIR_NAME = "both_asym_inc_free"
+DIR_NAME = "err_all_5"
 if DIR_NAME is None:
     DIR_NAME = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 
@@ -173,7 +163,7 @@ if __name__ == "__main__":
         map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
     )
     # fit_params = {"discard": 1000, "nsteps": 10000, "nwalkers": 60}
-    fit_params = {"dlogz_init": 0.01, "nlive_init": 1000, "nlive_batch": 100}
+    fit_params = {"dlogz_init": 0.5, "nlive_init": 1000, "nlive_batch": 100}
     ncores = fit_params.get("nwalkers", 100) // 2
     sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
     theta, uncertainties = get_best_fit(sampler, discard=fit_params.get("discard", 0))
