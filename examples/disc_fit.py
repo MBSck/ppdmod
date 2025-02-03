@@ -57,9 +57,9 @@ data = set_data(
 
 # NOTE: This is a test
 ind = np.where(np.array([*map(get_band, wavelengths)]) == "nband")[0]
-data.flux.err = np.abs(data.flux.value * 0.05)
-data.viserr = np.abs(data.vis.value * 0.05)
-data.t3.err = np.abs(data.t3.value * 0.05)
+data.flux.err[ind] = np.abs(data.flux.value[ind] * 0.05)
+data.vis.err[ind] = np.abs(data.vis.value[ind] * 0.05)
+data.t3.err[ind] = np.abs(data.t3.value[ind] * 0.05)
 
 grid, value = np.loadtxt(
     DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt",
