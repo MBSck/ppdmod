@@ -131,7 +131,7 @@ errorbar = SimpleNamespace(
 )
 scatter = SimpleNamespace(color="", edgecolor="black", linewidths=0.2, zorder=3)
 plot = SimpleNamespace(
-    dim=4096,
+    dim=256,
     dpi=300,
     ticks=[1.7, 2.15, 3.2, 4.7, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0],
     color=color,

@@ -13,6 +13,32 @@ from scipy.special import j1
 from .options import OPTIONS
 
 
+def percentile_indices(arr: np.ndarray, percentiles: np.ndarray):
+    """Returns the indices of elements in `arr` that correspond to the given percentiles.
+
+    Parameters
+    ----------
+    arr : list or np.array
+        The input array.
+    percentiles : list
+        A list of percentiles (e.g., [25, 50, 75]).
+
+    Returns
+    -------
+    list
+        A list of indices corresponding to the percentiles.
+    """
+    arr = np.array(arr)
+    sorted_indices = np.argsort(arr)
+    n = len(arr)
+
+    indices = []
+    for p in percentiles:
+        index = int(np.ceil((p / 100) * (n - 1)))
+        indices.append(sorted_indices[index])
+    return indices
+
+
 def get_binning_windows(wavelength: np.ndarray) -> np.ndarray:
     """Gets all the binning windows."""
     skip_set = set()
@@ -305,7 +331,6 @@ def compute_effective_baselines(
     inclination: u.Quantity[u.one] | None = None,
     pos_angle: u.Quantity[u.deg] | None = None,
     longest: bool | None = False,
-    return_zero: bool | None = True,
 ) -> Tuple[u.Quantity[u.m], u.Quantity[u.one]]:
     """Calculates the effective baselines from the projected baselines
     in mega lambda.
@@ -322,8 +347,6 @@ def compute_effective_baselines(
         The positional angle of the object
     longest : bool, optional
         If True, the longest baselines are returned.
-    return_zero : bool, optional
-        If True, the zero-frequency is returned as well.
 
     Returns
     -------
@@ -353,14 +376,6 @@ def compute_effective_baselines(
         iteration = np.arange(baselines_eff.shape[1])
         baselines_eff = baselines_eff[indices, iteration]
         baseline_angles_eff = baseline_angles_eff[indices, iteration]
-
-    if not return_zero:
-        if len(baselines_eff.shape) > 1:
-            baselines_eff = baselines_eff[:, 1:]
-            baseline_angles_eff = baseline_angles_eff[:, 1:]
-        else:
-            baselines_eff = baselines_eff[1:]
-            baseline_angles_eff = baseline_angles_eff[1:]
 
     return baselines_eff.squeeze(), baseline_angles_eff.squeeze()
 
