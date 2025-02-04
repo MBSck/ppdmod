@@ -33,17 +33,17 @@ from ppdmod.utils import (
 
 
 DATA_DIR = Path(__file__).parent.parent / "data"
-nband_wavelengths, nband_binning_windows = create_adaptive_bins(
-    [8.6, 12.3], [9.2, 11.9], 0.2, 0.65
-)
+# nband_wavelengths, nband_binning_windows = create_adaptive_bins(
+#     [8.6, 12.3], [9.2, 11.9], 0.2, 0.65
+# )
 wavelengths = {
     "hband": [1.7] * u.um,
     "kband": [2.15] * u.um,
     "lband": windowed_linspace(3.1, 3.8, 0.2) * u.um,
     "mband": windowed_linspace(4.65, 4.9, 0.2) * u.um,
-    "nband": nband_wavelengths * u.um,
+    "nband": windowed_linspace(8.25, 12.75, 0.2) * u.um,
 }
-OPTIONS.data.binning.nband = nband_binning_windows * u.um
+# OPTIONS.data.binning.nband = nband_binning_windows * u.um
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
 bands = ["hband", "kband", "lband", "mband", "nband"]
 wavelengths = np.concatenate([wavelengths[band] for band in bands])
@@ -139,7 +139,7 @@ outer_ring = AsymGreyBody(
 )
 
 OPTIONS.model.components = components = [star, inner_ring, outer_ring]
-DIR_NAME = "err_all_5"
+DIR_NAME = "baseline_fix"
 if DIR_NAME is None:
     DIR_NAME = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 
@@ -158,7 +158,7 @@ if __name__ == "__main__":
     )
     # fit_params = {"discard": 1000, "nsteps": 10000, "nwalkers": 60}
     fit_params = {"dlogz_init": 0.5, "nlive_init": 1000, "nlive_batch": 100}
-    ncores = fit_params.get("nwalkers", 100) // 2
+    ncores = fit_params.get("nwalkers", 150) // 2
     sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
     theta, uncertainties = get_best_fit(sampler, discard=fit_params.get("discard", 0))
     components = OPTIONS.model.components = set_components_from_theta(theta)
