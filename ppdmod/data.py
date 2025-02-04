@@ -288,7 +288,7 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
                 data.raw_value.extend(data_readout.value)
                 data.raw_err.extend(data_readout.err)
                 data.raw_wavelengths.extend(
-                    np.tile(readout.wavelength.value, (len(data.raw_value), 1))
+                    [readout.wavelength.value for _, _ in enumerate(data_readout.value)]
                 )
 
             if data.value.size == 0:
