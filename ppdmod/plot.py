@@ -1090,6 +1090,8 @@ def plot_baselines(
     save_dir: Path | None = None,
     nplots: int = 12,
     cell_width: int = 4,
+    data_type: str = "vis",
+    number: bool = False,
 ) -> None:
     """Plots the observables of the model.
 
@@ -1097,6 +1099,7 @@ def plot_baselines(
     ----------
     wavelength_range : astropy.units.m
     """
+    overplot_model = data_type != "visphi"
     save_dir = Path.cwd() if save_dir is None else save_dir
     bands = np.array(list(map(get_band, wavelength_range)))
     if band in ["lband", "mband"]:
@@ -1104,29 +1107,37 @@ def plot_baselines(
     else:
         band_ind = np.where(bands == band)[0]
 
-    vis_data = OPTIONS.data.vis if "vis" in OPTIONS.fit.data else OPTIONS.data.vis2
-    baseline_ind = np.where(~np.any(vis_data.value[band_ind].mask, axis=0))[0]
+    data = getattr(OPTIONS.data, "vis" if data_type in ["vis", "visphi"] else data_type)
+    baseline_ind = np.where(~np.any(data.value[band_ind].mask, axis=0))[0]
     percentiles = np.linspace(0, 100, nplots)
-    effective_baselines, baseline_angles = compute_effective_baselines(
-        vis_data.ucoord,
-        vis_data.vcoord,
-    )
-    effective_baselines = effective_baselines[1:][baseline_ind]
-    baseline_angles = baseline_angles.to(u.deg)[1:][baseline_ind]
-    wl_data = [vis_data.raw_wavelengths[i] for i in baseline_ind]
-    data = [vis_data.raw_value[i] for i in baseline_ind]
-    err = [vis_data.raw_err[i] for i in baseline_ind]
+    if data_type in ["vis", "visphi"]:
+        baselines, psi = compute_effective_baselines(data.ucoord, data.vcoord)
+    else:
+        baselines, psi = compute_effective_baselines(
+            data.u123coord, data.v123coord, longest=True
+        )
+
+    baselines = baselines[1:][baseline_ind]
+    psi = psi.to(u.deg)[1:][baseline_ind]
+    percentile_ind = percentile_indices(baselines, percentiles)
+
+    wl_data = [data.raw_wavelengths[i] for i in baseline_ind]
+    raw_value = [data.raw_value[i] for i in baseline_ind]
+    raw_err = [data.raw_err[i] for i in baseline_ind]
 
     wavelength_range = wavelength_range[band_ind]
     wavelength = np.linspace(wl_data[0][0], wl_data[0][-1], OPTIONS.plot.dim)
-    _, vis, t3 = compute_observables(components, wavelength=wavelength * u.um)
 
-    percentile_ind = percentile_indices(effective_baselines, percentiles)
-    effective_baselines = effective_baselines[percentile_ind]
-    baseline_angles = baseline_angles[percentile_ind]
+    if overplot_model:
+        _, vis_model, t3_model = compute_observables(
+            components, wavelength=wavelength * u.um
+        )
+        model_data = vis_model if data_type == "vis" else t3_model
+
+    baselines, psi = baselines[percentile_ind], psi[percentile_ind]
     wl_data = [wl_data[i] for i in percentile_ind]
-    data = [data[i] for i in percentile_ind]
-    err = [err[i] for i in percentile_ind]
+    raw_value = [raw_value[i] for i in percentile_ind]
+    raw_err = [raw_err[i] for i in percentile_ind]
 
     rows, cols = get_best_plot_arrangement(nplots)
     figsize = (cols * cell_width, rows * cell_width)
@@ -1139,96 +1150,62 @@ def plot_baselines(
         constrained_layout=True,
     )
     axes = axes.flatten()
-    if "vis" in OPTIONS.fit.data:
-        if OPTIONS.model.output != "normed":
-            y_label = r"$F_{\nu,\,\mathrm{corr.}}$ (Jy)"
-            ylims = [0, None]
-        else:
-            y_label = "$V$ (a.u.)"
-            ylims = [0, 1]
+    if data_type == "vis":
+        y_label = r"$F_{\nu,\,\mathrm{corr.}}$ (Jy)"
+        ylims = [0, None]
+    elif data_type == "visphi":
+        y_label = r"$\phi_{\mathrm{diff.}}$ ($^\circ$)"
+        ylims = None
+    elif data_type == "t3":
+        y_label = r"$\phi_{\mathrm{cl.}}$ ($^\circ$)"
+        ylims = None
     else:
         y_label = "$V^2$ (a.u.)"
         ylims = [0, 1]
 
-    for index, (baseline, baseline_angle) in enumerate(
-        zip(effective_baselines, baseline_angles)
-    ):
+    for index, (baseline, baseline_angle) in enumerate(zip(baselines, psi)):
         ax = axes[index]
         set_axes_color(ax, OPTIONS.plot.color.background)
-        ax.plot(
-            wavelength,
-            vis[:, baseline_ind][:, percentile_ind[index]],
-            label="Model",
-        )
+        if overplot_model:
+            ax.plot(
+                wavelength,
+                model_data[:, baseline_ind][:, percentile_ind[index]],
+                label="Model",
+            )
+
         line = ax.plot(
             wl_data[index],
-            data[index],
+            raw_value[index],
             label=rf"B={baseline.value:.2f} m, $\phi$={baseline_angle.value:.2f}$^\circ$",
         )
         ax.fill_between(
             wl_data[index],
-            data[index] + err[index],
-            data[index] - err[index],
+            raw_value[index] + raw_err[index],
+            raw_value[index] - raw_err[index],
             color=line[0].get_color(),
             alpha=0.5,
         )
         ax.set_ylim(ylims)
-        ax.text(
-            0.05,
-            0.95,
-            str(index + 1),
-            transform=ax.transAxes,
-            fontsize=14,
-            fontweight="bold",
-            va="top",
-            ha="left",
-        )
+        if number:
+            ax.text(
+                0.05,
+                0.95,
+                str(index + 1),
+                transform=ax.transAxes,
+                fontsize=14,
+                fontweight="bold",
+                va="top",
+                ha="left",
+            )
         ax.legend()
 
     [ax.remove() for index, ax in enumerate(axes.flatten()) if index >= nplots]
     fig.subplots_adjust(left=0.2, bottom=0.2)
-    fig.text(0.5, 0.04, r"$\lambda$ ($\mathrm{\mu}$m)", ha="center", fontsize=16)
-    fig.text(0.04, 0.5, y_label, va="center", rotation="vertical", fontsize=16)
-    plt.savefig(save_dir / f"vis_{band}.pdf", format="pdf")
+    # TODO: Reimplement this
+    # fig.text(0.5, 0.04, r"$\lambda$ ($\mathrm{\mu}$m)", ha="center", fontsize=16)
+    # fig.text(0.04, 0.5, y_label, va="center", rotation="vertical", fontsize=16)
+    plt.savefig(save_dir / f"{data_type}_{band}.pdf", format="pdf")
     plt.close()
-
-    # if "t3" in OPTIONS.fit.data:
-    #     longest_baselines, baseline_angles = compute_effective_baselines(
-    #         OPTIONS.data.t3.u123coord,
-    #         OPTIONS.data.t3.v123coord,
-    #         longest=True,
-    #     )
-    #     longest_baselines = longest_baselines[1:]
-    #     baseline_angles = baseline_angles.to(u.deg)[1:]
-    #     percentile_ind = percentile_indices(longest_baselines, percentiles)
-    #     longest_baselines = longest_baselines[percentile_ind]
-    #     baseline_angles = baseline_angles[percentile_ind]
-    #
-    #     rows, cols =get_best_plot_arrangement(nplots)
-    #     figsize = (cols * cell_width, rows * cell_width)
-    #     fig, axes = plt.subplots(
-    #         rows,
-    #         cols,
-    #         figsize=figsize,
-    #         facecolor=OPTIONS.plot.color.background,
-    #         sharex=True,
-    #         constrained_layout=True,
-    #     )
-    #     axes = axes.flatten()
-    #     for index, (baseline, baseline_angle) in enumerate(
-    #         zip(longest_baselines, baseline_angles)
-    #     ):
-    #         ax = axes[index]
-    #         set_axes_color(ax, OPTIONS.plot.color.background)
-    #         ax.plot(wavelength, t3[:, index], label=f"B={baseline.value:.2f} m")
-    #         ax.legend()
-    #
-    #     [ax.remove() for index, ax in enumerate(axes.flatten()) if index >= nplots]
-    #     fig.subplots_adjust(left=0.2, bottom=0.2)
-    #     fig.text(0.5, 0.04, r"$\lambda$ ($\mathrm{\mu}$m)", ha="center", fontsize=16)
-    #     fig.text(0.04, 0.5, y_label, va="center", rotation="vertical", fontsize=16)
-    #     plt.savefig(save_dir / "t3_vs_baseline.pdf", format="pdf")
-    #     plt.close()
 
 
 def plot_product(
