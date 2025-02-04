@@ -36,7 +36,7 @@ def percentile_indices(arr: np.ndarray, percentiles: np.ndarray):
     for p in percentiles:
         index = int(np.ceil((p / 100) * (n - 1)))
         indices.append(sorted_indices[index])
-    return indices
+    return np.array(indices).tolist()
 
 
 def get_binning_windows(wavelength: np.ndarray) -> np.ndarray:
@@ -56,8 +56,12 @@ def get_binning_windows(wavelength: np.ndarray) -> np.ndarray:
     return all_binning_windows * u.um
 
 
-def create_adaptive_bins(wavelength_range: List[float], wavelength_range_fine: List[float],
-                         bin_window_fine: float, bin_window_coarse: float) -> Tuple[np.ndarray, np.ndarray]:
+def create_adaptive_bins(
+    wavelength_range: List[float],
+    wavelength_range_fine: List[float],
+    bin_window_fine: float,
+    bin_window_coarse: float,
+) -> Tuple[np.ndarray, np.ndarray]:
     """Create an adaptive binning wavelength grid.
 
     Parameters
@@ -85,12 +89,22 @@ def create_adaptive_bins(wavelength_range: List[float], wavelength_range_fine: L
         raise ValueError("Wavelength range must be within the full wavelength range.")
 
     fine_bins = np.arange(range_min_fine, range_max_fine, bin_window_fine)
-    lower_coarse_bins = np.arange(range_min, fine_bins[0] - bin_window_fine / 2, bin_window_coarse)
-    upper_coarse_bins = np.arange(fine_bins[-1] + (bin_window_fine + bin_window_coarse) / 2, range_max, bin_window_coarse)
+    lower_coarse_bins = np.arange(
+        range_min, fine_bins[0] - bin_window_fine / 2, bin_window_coarse
+    )
+    upper_coarse_bins = np.arange(
+        fine_bins[-1] + (bin_window_fine + bin_window_coarse) / 2,
+        range_max,
+        bin_window_coarse,
+    )
     bins = np.unique(np.concatenate((lower_coarse_bins, fine_bins, upper_coarse_bins)))
-    windows = np.concatenate((np.full(lower_coarse_bins.shape, bin_window_coarse),
-                              np.full(fine_bins.shape, bin_window_fine),
-                              np.full(upper_coarse_bins.shape, bin_window_coarse)))
+    windows = np.concatenate(
+        (
+            np.full(lower_coarse_bins.shape, bin_window_coarse),
+            np.full(fine_bins.shape, bin_window_fine),
+            np.full(upper_coarse_bins.shape, bin_window_coarse),
+        )
+    )
     return bins, windows
 
 
@@ -218,9 +232,15 @@ def get_indices(
 
     if windows is not None:
         if isinstance(windows, (list, tuple, np.ndarray)):
-            indices = [np.where(((v - w / 2) < array) & ((v + w / 2) > array))[0] for v, w in zip(values, windows)]
+            indices = [
+                np.where(((v - w / 2) < array) & ((v + w / 2) > array))[0]
+                for v, w in zip(values, windows)
+            ]
         else:
-            indices = [np.where(((v - windows / 2) < array) & ((v + windows / 2) > array))[0] for v in values]
+            indices = [
+                np.where(((v - windows / 2) < array) & ((v + windows / 2) > array))[0]
+                for v in values
+            ]
     else:
         indices = []
         for value in values:

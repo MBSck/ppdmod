@@ -39,7 +39,9 @@ class ReadoutFits:
             self.wavelength = (
                 hdul["oi_wavelength", sci_index].data["eff_wave"] * u.m
             ).to(u.um)
-            self.array = "ats" if "AT" in hdul["oi_array"].data["tel_name"][0] else "uts"
+            self.array = (
+                "ats" if "AT" in hdul["oi_array"].data["tel_name"][0] else "uts"
+            )
             self.band = get_band(self.wavelength)
             self.flux = self.read_into_namespace(hdul, "flux", sci_index)
             self.t3 = self.read_into_namespace(hdul, "t3", sci_index)
@@ -70,7 +72,9 @@ class ReadoutFits:
                     err=np.ma.masked_array(data["fluxerr"], mask=data["flag"]),
                 )
             except KeyError:
-                return SimpleNamespace(value=np.array([]), err=np.array([]), flag=np.array([]))
+                return SimpleNamespace(
+                    value=np.array([]), err=np.array([]), flag=np.array([])
+                )
 
         # TODO: Might err if vis is not included in datasets
         if key in ["vis", "vis2"]:
@@ -91,8 +95,12 @@ class ReadoutFits:
         u1coord, u2coord = map(lambda x: data[f"u{x}coord"], ["1", "2"])
         v1coord, v2coord = map(lambda x: data[f"v{x}coord"], ["1", "2"])
         u3coord, v3coord = u1coord + u2coord, v1coord + v2coord
-        u123coord = np.array([u1coord, u2coord, u3coord]).astype(OPTIONS.data.dtype.real)
-        v123coord = np.array([v1coord, v2coord, v3coord]).astype(OPTIONS.data.dtype.real)
+        u123coord = np.array([u1coord, u2coord, u3coord]).astype(
+            OPTIONS.data.dtype.real
+        )
+        v123coord = np.array([v1coord, v2coord, v3coord]).astype(
+            OPTIONS.data.dtype.real
+        )
         return SimpleNamespace(
             value=np.ma.masked_array(data["t3phi"], mask=data["flag"]),
             err=np.ma.masked_array(data["t3phierr"], mask=data["flag"]),
@@ -151,22 +159,45 @@ class ReadoutFits:
         # TODO: This could be rewritten and shortened
         if do_bin:
             if key == "flux":
-                wl_value = [np.ma.masked_array([mean_func(value.flatten()[index])]) for index in indices]
-                wl_err = [np.ma.masked_array([np.ma.sqrt(np.ma.sum(err.flatten()[index] ** 2) + std_func(err.flatten()[index]) ** 2)]) for index in indices]
+                wl_value = [
+                    np.ma.masked_array([mean_func(value.flatten()[index])])
+                    for index in indices
+                ]
+                wl_err = [
+                    np.ma.masked_array(
+                        [
+                            np.ma.sqrt(
+                                np.ma.sum(err.flatten()[index] ** 2)
+                                + std_func(err.flatten()[index]) ** 2
+                            )
+                        ]
+                    )
+                    for index in indices
+                ]
             else:
                 wl_value = [mean_func(value[:, index], axis=-1) for index in indices]
-                wl_err = [np.ma.sqrt(np.ma.sum(err[:, index] ** 2, axis=-1) + std_func(err[:, index], axis=-1) ** 2) for index in indices]
+                wl_err = [
+                    np.ma.sqrt(
+                        np.ma.sum(err[:, index] ** 2, axis=-1)
+                        + std_func(err[:, index], axis=-1) ** 2
+                    )
+                    for index in indices
+                ]
         else:
             wl_value = [
-                value[:, index].flatten()
-                if index.size != 0
-                else np.ma.masked_invalid(np.full((value.shape[0],), np.nan))
+                (
+                    value[:, index].flatten()
+                    if index.size != 0
+                    else np.ma.masked_invalid(np.full((value.shape[0],), np.nan))
+                )
                 for index in indices
             ]
             wl_err = [
-                err[:, index].flatten()
-                if index.size != 0
-                else np.ma.masked_invalid(np.full((err.shape[0],), np.nan))
+                (
+                    err[:, index].flatten()
+                    if index.size != 0
+                    else np.ma.masked_invalid(np.full((err.shape[0],), np.nan))
+                )
                 for index in indices
             ]
 
@@ -231,6 +262,7 @@ def clear_data() -> List[str]:
     for key in ["flux", "vis", "vis2", "t3"]:
         data = getattr(OPTIONS.data, key)
         data.value, data.err = [np.array([]) for _ in range(2)]
+        data.raw_value, data.raw_err, data.raw_wavelengths = [], [], []
         if key in ["vis", "vis2"]:
             data.ucoord, data.vcoord = [np.array([]).reshape(1, -1) for _ in range(2)]
         elif key in "t3":
@@ -252,6 +284,12 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
             if key in ["vis", "vis2", "t3"]:
                 ind = np.where(np.ma.abs(err / value) < min_err)
                 err[ind] = np.ma.abs(value[ind]) * min_err
+
+                data.raw_value.extend(data_readout.value)
+                data.raw_err.extend(data_readout.err)
+                data.raw_wavelengths.extend(
+                    np.tile(readout.wavelength.value, (len(data.raw_value), 1))
+                )
 
             if data.value.size == 0:
                 data.value, data.err = value, err
@@ -276,10 +314,14 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
                     OPTIONS.data.nbaselines.append(data_readout.ucoord.size)
 
             elif key == "t3":
-                uvcoords = np.stack((data_readout.u123coord, data_readout.v123coord), axis=-1)
+                uvcoords = np.stack(
+                    (data_readout.u123coord, data_readout.v123coord), axis=-1
+                )
                 unique_uvcoords = np.unique(uvcoords.reshape(-1, 2), axis=0)
                 ucoord, vcoord = unique_uvcoords[:, 0], unique_uvcoords[:, 1]
-                index123 = np.vectorize(lambda x: np.where(ucoord == x)[0][0])(data_readout.u123coord)
+                index123 = np.vectorize(lambda x: np.where(ucoord == x)[0][0])(
+                    data_readout.u123coord
+                )
                 if data.u123coord.size == 0:
                     data.u123coord = np.insert(data_readout.u123coord, 0, 0, axis=1)
                     data.v123coord = np.insert(data_readout.v123coord, 0, 0, axis=1)
@@ -289,9 +331,15 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
                 else:
                     data.u123coord = np.hstack((data.u123coord, data_readout.u123coord))
                     data.v123coord = np.hstack((data.v123coord, data_readout.v123coord))
-                    data.ucoord = np.concatenate((data.ucoord, ucoord.reshape(1, -1)), axis=-1)
-                    data.vcoord = np.concatenate((data.vcoord, vcoord.reshape(1, -1)), axis=-1)
-                    data.index123 = np.hstack((data.index123, index123 + data.index123.max() + 1))
+                    data.ucoord = np.concatenate(
+                        (data.ucoord, ucoord.reshape(1, -1)), axis=-1
+                    )
+                    data.vcoord = np.concatenate(
+                        (data.vcoord, vcoord.reshape(1, -1)), axis=-1
+                    )
+                    data.index123 = np.hstack(
+                        (data.index123, index123 + data.index123.max() + 1)
+                    )
 
     for key in data_to_read:
         data = getattr(OPTIONS.data, key)
@@ -317,8 +365,12 @@ def average_data(average: bool) -> None:
             if band == "lmband":
                 limits_lband = get_band_limits("lband") * u.um
                 limits_mband = get_band_limits("mband") * u.um
-                cond_lband = (limits_lband[0] < wavelengths) & (limits_lband[1] > wavelengths)
-                cond_mband = (limits_mband[0] < wavelengths) & (limits_mband[1] > wavelengths)
+                cond_lband = (limits_lband[0] < wavelengths) & (
+                    limits_lband[1] > wavelengths
+                )
+                cond_mband = (limits_mband[0] < wavelengths) & (
+                    limits_mband[1] > wavelengths
+                )
                 ind = np.where(cond_lband | cond_mband)[0]
             else:
                 limits = get_band_limits(band) * u.um
@@ -329,28 +381,32 @@ def average_data(average: bool) -> None:
                 continue
 
             if band_ratio.compressed().size == 0:
-                flux_ratio[:, index][ind] = 1.
+                flux_ratio[:, index][ind] = 1.0
             elif band_ratio.compressed().size == 1:
                 flux_ratio[:, index][ind] = band_ratio.compressed()
             else:
-                interp_ratios = interp1d(wavelengths[ind][~band_ratio.mask],
-                                        band_ratio.compressed(), fill_value="extrapolate")
+                interp_ratios = interp1d(
+                    wavelengths[ind][~band_ratio.mask],
+                    band_ratio.compressed(),
+                    fill_value="extrapolate",
+                )
                 flux_ratio[:, index][ind] = interp_ratios(wavelengths[ind])
-
 
         for key in ["vis", "vis2"]:
             value = getattr(OPTIONS.data, key).value
             split_indices = np.cumsum(OPTIONS.data.nbaselines[:-1])
             for index, current_slice in enumerate(split_indices):
                 prev_slice = None if index == 0 else split_indices[index - 1]
-                current_slice = current_slice if index != len(split_indices) - 1 else None
+                current_slice = (
+                    current_slice if index != len(split_indices) - 1 else None
+                )
                 value[:, prev_slice:current_slice] = (
-                    value[:, prev_slice:current_slice] * flux_ratio[:, index][:, np.newaxis]
+                    value[:, prev_slice:current_slice]
+                    * flux_ratio[:, index][:, np.newaxis]
                 )
 
         OPTIONS.data.flux.value = flux_averaged[:, np.newaxis]
         OPTIONS.data.flux.err = flux_err_averaged[:, np.newaxis]
-
 
 
 def correct_data_errors(
@@ -409,7 +465,9 @@ def set_data(
     OPTIONS.fit.data = fit_data
     readouts = OPTIONS.data.readouts = list(map(ReadoutFits, fits_files))
     if filter_by_array is not None:
-        OPTIONS.data.readouts = list(filter(lambda x: x.array == filter_by_array, readouts))
+        OPTIONS.data.readouts = list(
+            filter(lambda x: x.array == filter_by_array, readouts)
+        )
 
     OPTIONS.data.bands = list(map(lambda x: x.band, OPTIONS.data.readouts))
 

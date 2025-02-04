@@ -1,12 +1,11 @@
 import re
 from itertools import chain, zip_longest
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Dict, List, Tuple
 
 import astropy.constants as const
-import corner
 import astropy.units as u
+import corner
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import matplotlib.lines as mlines
@@ -26,11 +25,30 @@ from .fitting import compute_observables, get_best_fit
 from .options import OPTIONS, get_colormap
 from .utils import (
     angular_to_distance,
+    compare_angles,
     compute_effective_baselines,
     distance_to_angular,
     get_band,
-    compare_angles,
+    percentile_indices,
 )
+
+
+def get_best_plot_arrangement(nplots):
+    """Gets the best plot arrangement for a given number of plots."""
+    sqrt_nplots = np.sqrt(nplots)
+    cols = int(np.ceil(sqrt_nplots))
+    rows = int(np.floor(sqrt_nplots))
+
+    while rows * cols < nplots:
+        if cols < rows:
+            cols += 1
+        else:
+            rows += 1
+
+    while (rows - 1) * cols >= nplots:
+        rows -= 1
+
+    return rows, cols
 
 
 def set_axes_color(
@@ -1069,6 +1087,7 @@ def plot_interferometric_observables(
     wavelength_range: u.um,
     components: List[FourierComponent],
     save_dir: Path | None = None,
+    nplots: int = 12,
     cell_width: int = 4,
 ) -> None:
     """Plots the observables of the model.
@@ -1076,16 +1095,11 @@ def plot_interferometric_observables(
     Parameters
     ----------
     wavelength_range : astropy.units.m
-    sed_scaling : str, optional
-        The scaling of the SED. "nu" for the flux to be
-        in Jy times Hz. If "lambda" the flux is in Jy times m.
-        If "none" the flux is in Jy.
-        The default is "nu".
     """
     save_dir = Path.cwd() if save_dir is None else save_dir
-    wavelength = np.linspace(wavelength_range[0], wavelength_range[1], OPTIONS.plot.dim)
+    wavelength = np.linspace(wavelength_range[0], wavelength_range[-1], OPTIONS.plot.dim)
     _, vis, t3 = compute_observables(components, wavelength=wavelength)
-    percentiles = np.linspace(0, 100, 10)
+    percentiles = np.linspace(0, 100, nplots)
 
     vis_data = OPTIONS.data.vis if "vis" in OPTIONS.fit.data else OPTIONS.data.vis2
     effective_baselines, baseline_angles = compute_effective_baselines(
@@ -1097,10 +1111,11 @@ def plot_interferometric_observables(
     effective_baselines = effective_baselines[1:]
     baseline_angles = baseline_angles.to(u.deg)[1:]
 
-    breakpoint()
-    num_plots = len(effective_baselines)
-    cols = int(str(num_plots)[: int(np.floor(np.log10(num_plots)))])
-    rows = int(np.ceil(num_plots / cols))
+    ind = percentile_indices(effective_baselines, percentiles)
+    effective_baselines = effective_baselines[ind]
+    baseline_angles = baseline_angles[ind]
+
+    rows, cols =get_best_plot_arrangement(nplots)
     figsize = (cols * cell_width, rows * cell_width)
     fig, axes = plt.subplots(
         rows,
@@ -1136,7 +1151,7 @@ def plot_interferometric_observables(
         ax.set_ylim(ylims)
         ax.legend()
 
-    [ax.remove() for index, ax in enumerate(axes.flatten()) if index >= num_plots]
+    [ax.remove() for index, ax in enumerate(axes.flatten()) if index >= nplots]
     fig.subplots_adjust(left=0.2, bottom=0.2)
     fig.text(0.5, 0.04, r"$\lambda$ ($\mathrm{\mu}$m)", ha="center", fontsize=16)
     fig.text(0.04, 0.5, y_label, va="center", rotation="vertical", fontsize=16)
@@ -1153,10 +1168,11 @@ def plot_interferometric_observables(
         )
         longest_baselines = longest_baselines[1:]
         baseline_angles = baseline_angles.to(u.deg)[1:]
+        ind = percentile_indices(longest_baselines, percentiles)
+        longest_baselines = longest_baselines[ind]
+        baseline_angles = baseline_angles[ind]
 
-        num_plots = len(longest_baselines)
-        cols = int(str(num_plots)[: int(np.floor(np.log10(num_plots)))])
-        rows = int(np.ceil(num_plots / cols))
+        rows, cols =get_best_plot_arrangement(nplots)
         figsize = (cols * cell_width, rows * cell_width)
         fig, axes = plt.subplots(
             rows,
@@ -1175,7 +1191,7 @@ def plot_interferometric_observables(
             ax.plot(wavelength, t3[:, index], label=f"B={baseline.value:.2f} m")
             ax.legend()
 
-        [ax.remove() for index, ax in enumerate(axes.flatten()) if index >= num_plots]
+        [ax.remove() for index, ax in enumerate(axes.flatten()) if index >= nplots]
         fig.subplots_adjust(left=0.2, bottom=0.2)
         fig.text(0.5, 0.04, r"$\lambda$ ($\mathrm{\mu}$m)", ha="center", fontsize=16)
         fig.text(0.04, 0.5, y_label, va="center", rotation="vertical", fontsize=16)
