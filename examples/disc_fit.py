@@ -24,7 +24,6 @@ from ppdmod.fitting import (
 from ppdmod.options import OPTIONS
 from ppdmod.parameter import Parameter
 from ppdmod.utils import (
-    get_band,
     load_data,
     qval_to_opacity,
     windowed_linspace,
