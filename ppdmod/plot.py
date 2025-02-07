@@ -1083,6 +1083,10 @@ def plot_sed(
         plt.close()
 
 
+# TODO: Rewrite this function to make it easier to read and change -> Also for the readin of the data
+# maybe move it to the plot section
+# TODO: Make it so that there is always the max amount if the max is reached
+# TODO: Rewrite this with just hduls and not the rest
 def plot_baselines(
     wavelength_range: u.um,
     components: List[FourierComponent],
@@ -1109,21 +1113,27 @@ def plot_baselines(
 
     data = getattr(OPTIONS.data, "vis" if data_type in ["vis", "visphi"] else data_type)
     baseline_ind = np.where(~np.any(data.value[band_ind].mask, axis=0))[0]
-    percentiles = np.linspace(0, 100, nplots)
     if data_type in ["vis", "visphi"]:
         baselines, psi = compute_effective_baselines(data.ucoord, data.vcoord)
+        names = data.baselines
     else:
         baselines, psi = compute_effective_baselines(
             data.u123coord, data.v123coord, longest=True
         )
+        names = data.triangles
 
     baselines = baselines[1:][baseline_ind]
     psi = psi.to(u.deg)[1:][baseline_ind]
-    percentile_ind = percentile_indices(baselines, percentiles)
 
+    names = [names[i] for i in baseline_ind]
     wl_data = [data.raw_wavelengths[i] for i in baseline_ind]
-    raw_value = [data.raw_value[i] for i in baseline_ind]
-    raw_err = [data.raw_err[i] for i in baseline_ind]
+
+    if data_type == "visphi":
+        raw_value = [data.raw_visphi[i] for i in baseline_ind]
+        raw_err = [data.raw_visphierr[i] for i in baseline_ind]
+    else:
+        raw_value = [data.raw_value[i] for i in baseline_ind]
+        raw_err = [data.raw_err[i] for i in baseline_ind]
 
     wavelength_range = wavelength_range[band_ind]
     wavelength = np.linspace(wl_data[0][0], wl_data[0][-1], OPTIONS.plot.dim)
@@ -1133,11 +1143,15 @@ def plot_baselines(
             components, wavelength=wavelength * u.um
         )
         model_data = vis_model if data_type == "vis" else t3_model
+        model_data = model_data[:, baseline_ind]
 
+    percentiles = np.linspace(0, 100, nplots)
+    percentile_ind = percentile_indices(baselines, percentiles)
     baselines, psi = baselines[percentile_ind], psi[percentile_ind]
     wl_data = [wl_data[i] for i in percentile_ind]
     raw_value = [raw_value[i] for i in percentile_ind]
     raw_err = [raw_err[i] for i in percentile_ind]
+    names = [names[i] for i in percentile_ind]
 
     rows, cols = get_best_plot_arrangement(nplots)
     figsize = (cols * cell_width, rows * cell_width)
@@ -1169,14 +1183,14 @@ def plot_baselines(
         if overplot_model:
             ax.plot(
                 wavelength,
-                model_data[:, baseline_ind][:, percentile_ind[index]],
+                model_data[:, percentile_ind[index]],
                 label="Model",
             )
-
+        label = rf"{names[index]}, B={baseline.value:.2f} m, $\phi$={baseline_angle.value:.2f}$^\circ$"
         line = ax.plot(
             wl_data[index],
             raw_value[index],
-            label=rf"B={baseline.value:.2f} m, $\phi$={baseline_angle.value:.2f}$^\circ$",
+            label=label,
         )
         ax.fill_between(
             wl_data[index],
