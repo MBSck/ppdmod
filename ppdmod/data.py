@@ -43,8 +43,6 @@ class ReadoutFits:
             self.array = (
                 "ats" if "AT" in hdul["oi_array"].data["tel_name"][0] else "uts"
             )
-            array = hdul["oi_array"].data
-            self.sta_to_tel = dict(zip(array["sta_index"].tolist(), array["sta_name"]))
             self.flux = self.read_into_namespace(hdul, "flux", sci_index)
             self.band = get_band(self.wavelength)
             self.flux = self.read_into_namespace(hdul, "flux", sci_index)
@@ -85,26 +83,16 @@ class ReadoutFits:
         if key in ["vis", "vis2"]:
             if key == "vis":
                 value_key, err_key = "visamp", "visamperr"
-                if "VISPHI" in hdu.columns.names:
-                    visphi, visphierr = data["visphi"], data["visphierr"]
-                else:
-                    visphi = np.full(data[value_key].shape, np.nan)
-                    visphierr = np.full(data[value_key].shape, np.nan)
             else:
                 value_key, err_key = "vis2data", "vis2err"
-                visphi, visphierr = np.array([]), np.array([])
 
             ucoord = data["ucoord"].reshape(1, -1).astype(OPTIONS.data.dtype.real)
             vcoord = data["vcoord"].reshape(1, -1).astype(OPTIONS.data.dtype.real)
-            baselines = np.vectorize(lambda x: self.sta_to_tel.get(x))(data["sta_index"])
             return SimpleNamespace(
                 value=np.ma.masked_array(data[value_key], mask=data["flag"]),
                 err=np.ma.masked_array(data[err_key], mask=data["flag"]),
                 ucoord=np.round(ucoord, 2),
                 vcoord=np.round(vcoord, 2),
-                visphi=visphi,
-                visphierr=visphierr,
-                baselines=["-".join(baseline) for baseline in baselines],
             )
 
         u1coord, u2coord = map(lambda x: data[f"u{x}coord"], ["1", "2"])
@@ -116,13 +104,11 @@ class ReadoutFits:
         v123coord = np.array([v1coord, v2coord, v3coord]).astype(
             OPTIONS.data.dtype.real
         )
-        triangles = np.vectorize(lambda x: self.sta_to_tel.get(x))(data["sta_index"])
         return SimpleNamespace(
             value=np.ma.masked_array(data["t3phi"], mask=data["flag"]),
             err=np.ma.masked_array(data["t3phierr"], mask=data["flag"]),
             u123coord=np.round(u123coord, 2),
             v123coord=np.round(v123coord, 2),
-            triangles=["-".join(triangle) for triangle in triangles],
         )
 
     def get_data_for_wavelength(
@@ -279,15 +265,10 @@ def clear_data() -> List[str]:
     for key in ["flux", "vis", "vis2", "t3"]:
         data = getattr(OPTIONS.data, key)
         data.value, data.err = [np.array([]) for _ in range(2)]
-        data.raw_value, data.raw_err, data.raw_wavelengths = [], [], []
         if key in ["vis", "vis2"]:
             data.ucoord, data.vcoord = [np.array([]).reshape(1, -1) for _ in range(2)]
-            data.baselines = []
-            if key == "vis":
-                data.raw_visphi, data.raw_visphierr = [], []
         elif key in "t3":
             data.u123coord, data.v123coord = [np.array([]) for _ in range(2)]
-            data.triangles = []
 
     return ["flux", "vis", "vis2", "t3"]
 
@@ -295,7 +276,7 @@ def clear_data() -> List[str]:
 def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> None:
     """Reads in the data from the keys."""
     OPTIONS.data.nbaselines = []
-    for index, readout in enumerate(OPTIONS.data.readouts, start=1):
+    for readout in OPTIONS.data.readouts:
         for key in data_to_read:
             data = getattr(OPTIONS.data, key)
             data_readout = getattr(readout, key)
@@ -305,12 +286,6 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
             if key in ["vis", "vis2", "t3"]:
                 ind = np.where(np.ma.abs(err / value) < min_err)
                 err[ind] = np.ma.abs(value[ind]) * min_err
-
-                data.raw_value.extend(data_readout.value)
-                data.raw_err.extend(data_readout.err)
-                data.raw_wavelengths.extend(
-                    [readout.wavelength.value for _, _ in enumerate(data_readout.value)]
-                )
 
             if data.value.size == 0:
                 data.value, data.err = value, err
@@ -329,16 +304,11 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
                     data.vcoord = np.concatenate(
                         (data.vcoord, data_readout.vcoord), axis=-1
                     )
-                data.baselines.extend([f"{b}-{index}" for b in data_readout.baselines])
 
                 if key == "vis2":
                     OPTIONS.data.nbaselines.append(data_readout.ucoord.size)
-                else:
-                    data.raw_visphi.extend(data_readout.visphi)
-                    data.raw_visphierr.extend(data_readout.visphierr)
 
             elif key == "t3":
-                data.triangles.extend([f"{t},{index}" for t in data_readout.triangles])
                 uvcoords = np.stack(
                     (data_readout.u123coord, data_readout.v123coord), axis=-1
                 )

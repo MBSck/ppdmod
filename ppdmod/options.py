@@ -63,22 +63,12 @@ vis_data = SimpleNamespace(
     err=np.array([]),
     ucoord=np.array([]).reshape(1, -1),
     vcoord=np.array([]).reshape(1, -1),
-    raw_visphi=[],
-    raw_visphierr=[],
-    raw_wavelengths=[],
-    raw_value=[],
-    raw_err=[],
-    baselines=[],
 )
 vis2_data = SimpleNamespace(
     value=np.array([]),
     err=np.array([]),
     ucoord=np.array([]).reshape(1, -1),
     vcoord=np.array([]).reshape(1, -1),
-    raw_wavelengths=[],
-    raw_value=[],
-    raw_err=[],
-    baselines=[],
 )
 t3_data = SimpleNamespace(
     value=np.array([]),
@@ -88,10 +78,6 @@ t3_data = SimpleNamespace(
     ucoord=np.array([]).reshape(1, -1),
     vcoord=np.array([]).reshape(1, -1),
     index123=np.array([]),
-    raw_wavelengths=[],
-    raw_value=[],
-    raw_err=[],
-    triangles=[],
 )
 flux_data = SimpleNamespace(value=np.array([]), err=np.array([]))
 gravity = SimpleNamespace(index=20)
