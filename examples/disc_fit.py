@@ -32,9 +32,6 @@ from ppdmod.utils import (
 
 
 DATA_DIR = Path(__file__).parent.parent / "data"
-# nband_wavelengths, nband_binning_windows = create_adaptive_bins(
-#     [8.6, 12.3], [9.2, 11.9], 0.2, 0.65
-# )
 wavelengths = {
     "hband": [1.7] * u.um,
     "kband": [2.15] * u.um,
@@ -42,7 +39,6 @@ wavelengths = {
     "mband": windowed_linspace(4.65, 4.9, 0.2) * u.um,
     "nband": windowed_linspace(8.25, 12.75, 0.2) * u.um,
 }
-# OPTIONS.data.binning.nband = nband_binning_windows * u.um
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
 bands = ["hband", "kband", "lband", "mband", "nband"]
 wavelengths = np.concatenate([wavelengths[band] for band in bands])
@@ -138,7 +134,7 @@ outer_ring = AsymGreyBody(
 )
 
 OPTIONS.model.components = components = [star, inner_ring, outer_ring]
-DIR_NAME = "baseline_fix"
+DIR_NAME = "all_data"
 if DIR_NAME is None:
     DIR_NAME = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 
