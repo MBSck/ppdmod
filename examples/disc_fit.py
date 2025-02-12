@@ -27,7 +27,6 @@ from ppdmod.utils import (
     load_data,
     qval_to_opacity,
     windowed_linspace,
-    create_adaptive_bins,
 )
 
 
