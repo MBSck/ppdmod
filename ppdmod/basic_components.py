@@ -342,7 +342,7 @@ class Ring(FourierComponent):
         return image.astype(OPTIONS.data.dtype.real)
 
 
-class TempGradient(Ring):
+class TempGrad(Ring):
     """The base class for the component.
 
     Parameters
@@ -499,7 +499,7 @@ class TempGradient(Ring):
         return super().image_func(*args, intensity_func=self.compute_intensity)
 
 
-class AsymTempGradient(TempGradient):
+class AsymTempGrad(TempGrad):
     """An analytical implementation of an asymmetric temperature
     gradient."""
 
@@ -507,7 +507,7 @@ class AsymTempGradient(TempGradient):
     asymmetric = True
 
 
-class GreyBody(TempGradient):
+class GreyBody(TempGrad):
     """An analytical implementation of an asymmetric temperature
     gradient."""
 

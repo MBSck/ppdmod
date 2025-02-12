@@ -8,7 +8,7 @@ import pytest
 from scipy.special import j1
 
 from ppdmod import utils
-from ppdmod.basic_components import Gaussian, PointSource, Star, TempGradient
+from ppdmod.basic_components import Gaussian, PointSource, Star, TempGrad
 from ppdmod.component import FourierComponent
 from ppdmod.data import ReadoutFits, get_all_wavelengths, set_data
 from ppdmod.options import OPTIONS, STANDARD_PARAMS
@@ -551,7 +551,7 @@ def test_broadcast_baselines(fits_files: List[Path], wavelength: u.um) -> None:
     [
         (comp, wl)
         for wl in [[10] * u.um, [10, 12.5] * u.um]
-        for comp in [PointSource, Star, Gaussian, TempGradient]
+        for comp in [PointSource, Star, Gaussian, TempGrad]
     ],
 )
 def test_compute_t3(
@@ -597,7 +597,7 @@ def test_compute_t3(
     [
         (comp, wl)
         for wl in [[10] * u.um, [10, 12.5] * u.um]
-        for comp in [PointSource, Star, Gaussian, TempGradient]
+        for comp in [PointSource, Star, Gaussian, TempGrad]
     ],
 )
 def test_compute_vis(

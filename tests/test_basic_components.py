@@ -14,7 +14,7 @@ from ppdmod.basic_components import (
     PointSource,
     Ring,
     Star,
-    TempGradient,
+    TempGrad,
 )
 from ppdmod.data import ReadoutFits, set_data
 from ppdmod.options import OPTIONS
@@ -76,9 +76,9 @@ def dist() -> float:
 
 
 @pytest.fixture
-def temp_gradient() -> TempGradient:
+def temp_gradient() -> TempGrad:
     """Initializes a numerical component."""
-    temp_grad = TempGradient(
+    temp_grad = TempGrad(
         rin=0.5,
         q=0.5,
         temp0=1500,
@@ -344,7 +344,7 @@ def test_ring_compute_vis(
 
 @pytest.mark.parametrize("grid_type", ["linear", "logarithmic"])
 def test_temp_gradient_compute_grid(
-    temp_gradient: TempGradient, grid_type: str
+    temp_gradient: TempGrad, grid_type: str
 ) -> None:
     """Tests the hankel component's grid calculation."""
     OPTIONS.model.gridtype = grid_type
@@ -359,7 +359,7 @@ def test_temp_gradient_compute_grid(
     OPTIONS.model.gridtype = "logarithmic"
 
 
-def test_temp_gradient_flux(temp_gradient: TempGradient, wavelength: u.um) -> None:
+def test_temp_gradient_flux(temp_gradient: TempGrad, wavelength: u.um) -> None:
     """Tests the calculation of the total flux."""
     flux = temp_gradient.compute_flux(wavelength)
     assert flux.shape == (wavelength.size, 1)
@@ -367,7 +367,7 @@ def test_temp_gradient_flux(temp_gradient: TempGradient, wavelength: u.um) -> No
 
 @pytest.mark.parametrize("dim", [4096, 2096, 1024, 512, 256, 128, 64, 32])
 def test_temp_gradient_resolution(
-    temp_gradient: TempGradient, dim: int, wavelength: u.um
+    temp_gradient: TempGrad, dim: int, wavelength: u.um
 ) -> None:
     """Tests the hankel component's resolution."""
     temp_gradient.dim.value = dim
