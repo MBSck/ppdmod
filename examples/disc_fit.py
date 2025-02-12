@@ -151,7 +151,7 @@ if __name__ == "__main__":
         map(labels.index, (filter(lambda x: "rin" in x or "rout" in x, labels)))
     )
     # fit_params = {"discard": 1000, "nsteps": 10000, "nwalkers": 60}
-    fit_params = {"dlogz_init": 0.5, "nlive_init": 1000, "nlive_batch": 100}
+    fit_params = {"dlogz_init": 0.01, "nlive_init": 1500, "nlive_batch": 150}
     ncores = fit_params.get("nwalkers", 150) // 2
     sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
     theta, uncertainties = get_best_fit(sampler, discard=fit_params.get("discard", 0))
