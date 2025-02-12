@@ -72,18 +72,18 @@ cinc = Parameter(value=0.84, free=True, shared=True, base="cinc")
 with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
     temps = pickle.load(save_file)
 
-x = Parameter(free=True, base="x")
-y = Parameter(free=True, base="y")
+x = Parameter(free=False, base="x")
+y = Parameter(free=False, base="y")
 
-rin1 = Parameter(value=0.1, min=0, max=3, unit=u.au, base="rin")
-rout1 = Parameter(value=1.5, min=0, max=3, unit=u.au, free=True, base="rout")
+rin1 = Parameter(value=0.1, min=0, max=4, unit=u.au, base="rin")
+rout1 = Parameter(value=1.5, min=0, max=4, unit=u.au, free=True, base="rout")
 p1 = Parameter(value=0, min=-1, max=1, base="p")
 sigma01 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 rho11 = Parameter(value=0.6, free=True, base="rho")
 theta11 = Parameter(value=33, free=True, base="theta")
 
-rin2 = Parameter(value=0, min=0.2, max=10, unit=u.au, base="rin")
-rout2 = Parameter(value=0, min=1.5, max=30, unit=u.au, free=True, base="rout")
+rin2 = Parameter(value=0, min=0.2, max=7, unit=u.au, base="rin")
+rout2 = Parameter(value=0, min=1.5, max=10, unit=u.au, free=True, base="rout")
 p2 = Parameter(value=0, min=-1, max=1, base="p")
 sigma02 = Parameter(value=1e-3, min=0, max=1e-1, base="sigma0")
 rho21 = Parameter(value=0.6, free=True, base="rho")
@@ -110,7 +110,7 @@ shared_params = {
     # "matrix": temps.values,
 }
 
-star = Star(label="Star", f=flux_star, **shared_params)
+star = Star(label="Star", f=flux_star, x=x, y=y, **shared_params)
 inner_ring = AsymGreyBody(
     label="Inner Ring",
     rin=rin1,
