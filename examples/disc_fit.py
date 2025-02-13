@@ -12,7 +12,7 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 import astropy.units as u
 import numpy as np
 
-from ppdmod.basic_components import AsymGreyBody, Star
+from ppdmod.basic_components import Star, AsymTempGrad
 from ppdmod.data import set_data
 from ppdmod.fitting import (
     compute_interferometric_chi_sq,
@@ -47,7 +47,8 @@ wavelengths = {
     "mband": windowed_linspace(4.65, 4.9, 0.2) * u.um,
     "nband": windowed_linspace(8.25, 12.75, 0.2) * u.um,
 }
-bands = ["hband", "kband", "lband", "mband", "nband"]
+# bands = ["hband", "kband", "lband", "mband", "nband"]
+bands = ["nband"]
 wavelengths = np.concatenate([wavelengths[band] for band in bands])
 
 fit_data = ["flux", "vis", "t3"]
@@ -79,11 +80,6 @@ grid, value = load_data(
     DATA_DIR / "opacities" / "qval" / "Q_amorph_c_rv0.1.dat", load_func=qval_to_opacity
 )
 kappa_cont = Parameter(grid=grid, value=value, base="kappa_cont")
-pa = Parameter(value=352, free=False, shared=True, base="pa")
-cinc = Parameter(value=0.84, free=True, shared=True, base="cinc")
-
-with open(SOURCE_DIR / "opacity_temps.pkl", "rb") as save_file:
-    temps = pickle.load(save_file)
 
 x = Parameter(free=False, base="x")
 y = Parameter(free=False, base="y")
@@ -102,6 +98,10 @@ sigma02 = Parameter(value=1e-3, base="sigma0")
 rho21 = Parameter(value=0.6, free=True, base="rho")
 theta21 = Parameter(value=33, free=True, base="theta")
 
+pa = Parameter(value=352, free=False, shared=True, base="pa")
+cinc = Parameter(value=0.84, free=True, shared=True, base="cinc")
+q = Parameter(value=0.5, free=True, shared=True, base="q")
+temp0 = Parameter(value=1500, free=True, shared=True, base="temp0")
 flux_lnf = Parameter(name="flux_lnf", free=True, shared=True, base="lnf")
 vis_lnf = Parameter(name="vis_lnf", free=True, shared=True, base="lnf")
 t3_lnf = Parameter(name="t3_lnf", free=True, shared=True, base="lnf")
@@ -115,16 +115,15 @@ shared_params = {
     "kappa_cont": kappa_cont,
     "pa": pa,
     "cinc": cinc,
+    "q": q,
+    "temp0": temp0,
     # "flux_lnf": flux_lnf,
     # "vis_lnf": vis_lnf,
     # "t3_lnf": t3_lnf,
-    # "weights": temps.weights,
-    # "radii": temps.radii,
-    # "matrix": temps.values,
 }
 
 star = Star(label="Star", f=flux_star, x=x, y=y, **shared_params)
-inner_ring = AsymGreyBody(
+inner_ring = AsymTempGrad(
     label="Inner Ring",
     rin=rin1,
     rout=rout1,
@@ -134,7 +133,7 @@ inner_ring = AsymGreyBody(
     theta1=theta11,
     **shared_params,
 )
-outer_ring = AsymGreyBody(
+outer_ring = AsymTempGrad(
     label="Outer Ring",
     rin=rin2,
     rout=rout2,
@@ -157,7 +156,7 @@ if __name__ == "__main__":
     # fit_params = {"discard": 1000, "nsteps": 10000, "nwalkers": 60}
     fit_params = {"dlogz_init": 0.01, "nlive_init": 1500, "nlive_batch": 150}
     ncores = fit_params.get("nwalkers", 150) // 2
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=RESULT_DIR, debug=False)
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=RESULT_DIR, debug=True)
     theta, uncertainties = get_best_fit(sampler, discard=fit_params.get("discard", 0))
     components = OPTIONS.model.components = set_components_from_theta(theta)
     np.save(RESULT_DIR / "theta.npy", theta)
