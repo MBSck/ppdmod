@@ -414,14 +414,14 @@ class TempGrad(Ring):
                 interp_op_temps = interp1d(self.weights, self.matrix, axis=0)(
                     self.weight_cont().value / 1e2
                 )
-                temperature = np.interp(radius.value, self.radii, interp_op_temps) * u.K
+                temp = np.interp(radius.value, self.radii, interp_op_temps) * u.K
             else:
-                temperature = (
+                temp = (
                     np.sqrt(self.eff_radius().to(u.au) / (2 * radius)) * self.eff_temp()
                 )
         else:
-            temperature = self.temp0() * (radius / self.r0()) ** self.q()
-        return temperature.astype(OPTIONS.data.dtype.real)
+            temp = self.temp0() * (radius / self.r0()) ** self.q()
+        return temp.astype(OPTIONS.data.dtype.real)
 
     def compute_surface_density(self, radius: u.au) -> u.one:
         """Computes a 1D-surface density profile."""
