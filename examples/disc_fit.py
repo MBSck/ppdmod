@@ -12,7 +12,7 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 import astropy.units as u
 import numpy as np
 
-from ppdmod.basic_components import AsymGreyBody, GreyBody, Star
+from ppdmod.basic_components import AsymGreyBody, Star
 from ppdmod.data import set_data
 from ppdmod.fitting import (
     compute_interferometric_chi_sq,
@@ -31,6 +31,15 @@ from ppdmod.utils import (
 
 
 DATA_DIR = Path(__file__).parent.parent / "data"
+RESULT_DIR_NAME = "all_data"
+if RESULT_DIR_NAME is None:
+    RESULT_DIR_NAME = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
+
+RESULT_DIR = DATA_DIR.parent / "results" / "disc_fit"
+DAY_DIR = Path(str(datetime.now().date()))
+RESULT_DIR /= DAY_DIR / RESULT_DIR_NAME
+RESULT_DIR.mkdir(parents=True, exist_ok=True)
+
 wavelengths = {
     "hband": [1.7] * u.um,
     "kband": [2.15] * u.um,
@@ -38,16 +47,20 @@ wavelengths = {
     "mband": windowed_linspace(4.65, 4.9, 0.2) * u.um,
     "nband": windowed_linspace(8.25, 12.75, 0.2) * u.um,
 }
-fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
 bands = ["hband", "kband", "lband", "mband", "nband"]
 wavelengths = np.concatenate([wavelengths[band] for band in bands])
 
 fit_data = ["flux", "vis", "t3"]
+fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*fits"))
 data = set_data(
     fits_files,
     wavelengths=wavelengths,
     fit_data=fit_data,
 )
+
+np.save(RESULT_DIR / "wl.npy", wavelengths.value)
+np.save(RESULT_DIR / "observables.npy", fit_data)
+np.save(RESULT_DIR / "files.npy", [fits_file.name for fits_file in fits_files])
 
 grid, value = np.loadtxt(
     DATA_DIR / "flux" / "hd142527" / "HD142527_stellar_model.txt",
@@ -133,15 +146,6 @@ outer_ring = AsymGreyBody(
 )
 
 OPTIONS.model.components = components = [star, inner_ring, outer_ring]
-DIR_NAME = "all_data"
-if DIR_NAME is None:
-    DIR_NAME = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
-
-result_dir = DATA_DIR.parent / "results" / "disc_fit"
-day_dir = Path(str(datetime.now().date()))
-result_dir /= day_dir / DIR_NAME
-result_dir.mkdir(parents=True, exist_ok=True)
-
 
 if __name__ == "__main__":
     labels = get_labels(components)
@@ -153,13 +157,13 @@ if __name__ == "__main__":
     # fit_params = {"discard": 1000, "nsteps": 10000, "nwalkers": 60}
     fit_params = {"dlogz_init": 0.01, "nlive_init": 1500, "nlive_batch": 150}
     ncores = fit_params.get("nwalkers", 150) // 2
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=RESULT_DIR, debug=False)
     theta, uncertainties = get_best_fit(sampler, discard=fit_params.get("discard", 0))
     components = OPTIONS.model.components = set_components_from_theta(theta)
-    np.save(result_dir / "theta.npy", theta)
-    np.save(result_dir / "uncertainties.npy", uncertainties)
+    np.save(RESULT_DIR / "theta.npy", theta)
+    np.save(RESULT_DIR / "uncertainties.npy", uncertainties)
 
-    with open(result_dir / "components.pkl", "wb") as file:
+    with open(RESULT_DIR / "components.pkl", "wb") as file:
         pickle.dump(components, file)
 
     rchi_sq = compute_interferometric_chi_sq(
@@ -169,3 +173,6 @@ if __name__ == "__main__":
         reduced=True,
     )[0]
     print(f"Total reduced chi_sq: {rchi_sq:.2f}")
+
+    with open(RESULT_DIR / "OPTIONS.pkl", "wb") as file:
+        pickle.dump(OPTIONS, file)
