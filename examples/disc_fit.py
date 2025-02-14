@@ -172,6 +172,3 @@ if __name__ == "__main__":
         reduced=True,
     )[0]
     print(f"Total reduced chi_sq: {rchi_sq:.2f}")
-
-    with open(RESULT_DIR / "OPTIONS.pkl", "wb") as file:
-        pickle.dump(OPTIONS, file)
