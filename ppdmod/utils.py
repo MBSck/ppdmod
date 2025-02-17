@@ -13,32 +13,6 @@ from scipy.special import j1
 from .options import OPTIONS
 
 
-def percentile_indices(arr: np.ndarray, percentiles: np.ndarray):
-    """Returns the indices of elements in `arr` that correspond to the given percentiles.
-
-    Parameters
-    ----------
-    arr : list or np.array
-        The input array.
-    percentiles : list
-        A list of percentiles (e.g., [25, 50, 75]).
-
-    Returns
-    -------
-    list
-        A list of indices corresponding to the percentiles.
-    """
-    arr = np.array(arr)
-    sorted_indices = np.argsort(arr)
-    n = len(arr)
-
-    indices = []
-    for p in percentiles:
-        index = int(np.ceil((p / 100) * (n - 1)))
-        indices.append(sorted_indices[index])
-    return np.array(indices).tolist()
-
-
 def get_binning_windows(wavelength: np.ndarray) -> np.ndarray:
     """Gets all the binning windows."""
     skip_set = set()
@@ -391,15 +365,6 @@ def transform_coordinates(
     return xt, yt
 
 
-def translate_image_func(
-    xx: np.ndarray, yy: np.ndarray, x: float, y: float
-) -> Tuple[np.ndarray, np.ndarray]:
-    """Shifts the coordinates in image space according to an offset."""
-    xxs = (xx - x).astype(OPTIONS.data.dtype.real)
-    yys = (yy - y).astype(OPTIONS.data.dtype.real)
-    return xxs, yys
-
-
 def translate_vis_func(
     ucoord: np.ndarray, vcoord: np.ndarray, x: float, y: float
 ) -> np.ndarray:
@@ -410,6 +375,15 @@ def translate_vis_func(
     """
     translation = np.exp(-2j * np.pi * (x * ucoord + y * vcoord))
     return translation.astype(OPTIONS.data.dtype.complex)
+
+
+def translate_image_func(
+    xx: np.ndarray, yy: np.ndarray, x: float, y: float
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Shifts the coordinates in image space according to an offset."""
+    xxs = (xx - x).astype(OPTIONS.data.dtype.real)
+    yys = (yy - y).astype(OPTIONS.data.dtype.real)
+    return xxs, yys
 
 
 def binary(

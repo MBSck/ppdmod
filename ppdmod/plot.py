@@ -26,10 +26,9 @@ from .options import OPTIONS, get_colormap
 from .utils import (
     angular_to_distance,
     compare_angles,
-    compute_effective_baselines,
     distance_to_angular,
     get_band,
-    percentile_indices,
+    transform_coordinates,
 )
 
 
@@ -518,7 +517,7 @@ def set_axis_information(
     axarr: Dict[str, List[Axes]],
     key: str,
     ylims: Dict[str, List[float]],
-    inclination=None,
+    cinc=None,
 ) -> Tuple[Axes, Axes]:
     """Sets the axis labels and limits for the different keys."""
     if isinstance(axarr[key], list):
@@ -543,7 +542,7 @@ def set_axis_information(
     elif key in ["vis", "vis2"]:
         xlabel = r"$\mathrm{B}$ (M$\lambda$)"
         ylim = ylims.get("vis", None)
-        if inclination is not None:
+        if cinc is not None:
             xlabel = r"$\mathrm{B}_\mathrm{eff}$ (M$\lambda$)"
 
         if key == "vis":
@@ -580,12 +579,12 @@ def plot_data_vs_model(
     model_data: np.ndarray | None = None,
     colormap: str = OPTIONS.plot.color.colormap,
     bands: List[str] | str = "all",
-    inclination=None,
+    cinc=None,
     ylims=None,
     norm=None,
 ):
     """Plots the data versus the model or just the data if not model data given."""
-    upper_ax, lower_ax = set_axis_information(axarr, key, ylims, inclination)
+    upper_ax, lower_ax = set_axis_information(axarr, key, ylims, cinc)
     colormap, alpha = get_colormap(colormap), 1 if lower_ax is None else 0.7
     hline_color = "gray" if OPTIONS.plot.color.background == "white" else "white"
     errorbar_params, scatter_params = OPTIONS.plot.errorbar, OPTIONS.plot.scatter
@@ -612,7 +611,7 @@ def plot_data_vs_model(
     if baselines is None:
         grid = [wl.repeat(band_value.shape[-1]) for wl in band_wl.value]
     else:
-        grid = (baselines / band_wl.value[:, np.newaxis])[:, 1:]
+        grid = (baselines / band_wl.value[:, np.newaxis])
 
     for index, _ in enumerate(band_wl.value):
         errorbar_params.color = scatter_params.color = color[index]
@@ -728,7 +727,7 @@ def plot_fit(
         nplots += 1
 
     model_flux, model_vis, model_t3 = compute_observables(components)
-    pos_angle, inclination = components[0].pa(), components[0].cinc()
+    cinc, pa = components[0].cinc(), components[0].pa()
 
     figsize = (16, 5) if nplots == 3 else ((12, 5) if nplots == 2 else None)
     fig = plt.figure(figsize=figsize, facecolor=OPTIONS.plot.color.background)
@@ -758,14 +757,12 @@ def plot_fit(
             ylims=ylims,
             bands=bands,
             model_data=model_flux,
-            inclination=inclination,
+            cinc=cinc,
             **plot_kwargs,
         )
 
     if "vis" in data_to_plot or "vis2" in data_to_plot:
-        effective_baselines, _ = compute_effective_baselines(
-            vis.ucoord, vis.vcoord, inclination, pos_angle
-        )
+        baselines = np.hypot(*transform_coordinates(vis.ucoord, vis.vcoord, cinc, pa))
         plot_data_vs_model(
             axarr,
             wavelengths,
@@ -774,17 +771,15 @@ def plot_fit(
             "vis" if "vis" in data_to_plot else "vis2",
             ylims=ylims,
             bands=bands,
-            baselines=effective_baselines,
+            baselines=baselines[:, 1:],
             model_data=model_vis,
-            inclination=inclination,
+            cinc=cinc,
             **plot_kwargs,
         )
 
     if "t3" in data_to_plot:
-        longest_baselines, _ = compute_effective_baselines(
-            t3.u123coord, t3.v123coord, inclination, pos_angle, longest=True
-        )
-
+        baselines = np.hypot(*transform_coordinates(t3.ucoord, t3.vcoord, cinc, pa))
+        baselines = baselines[:, t3.index123].T.squeeze(-1).max(1).reshape(1, -1)
         plot_data_vs_model(
             axarr,
             wavelengths,
@@ -793,9 +788,9 @@ def plot_fit(
             "t3",
             ylims=ylims,
             bands=bands,
-            baselines=longest_baselines,
+            baselines=baselines,
             model_data=model_t3,
-            inclination=inclination,
+            cinc=cinc,
             **plot_kwargs,
         )
 
@@ -829,8 +824,8 @@ def plot_overview(
     ylims: Dict[str, List[float]] = {},
     title: str | None = None,
     raxis: bool = False,
-    inclination: float | None = None,
-    pos_angle: float | None = None,
+    cinc: float | None = None,
+    pa: float | None = None,
     bands: List[str] | str = "all",
     savefig: Path | None = None,
 ) -> None:
@@ -883,14 +878,12 @@ def plot_overview(
             "flux",
             ylims=ylims,
             bands=bands,
-            inclination=inclination,
+            cinc=cinc,
             **plot_kwargs,
         )
 
     if "vis" in data_to_plot or "vis2" in data_to_plot:
-        effective_baselines, _ = compute_effective_baselines(
-            vis.ucoord, vis.vcoord, inclination, pos_angle
-        )
+        baselines = np.hypot(*transform_coordinates(vis.ucoord, vis.vcoord, cinc, pa))
         plot_data_vs_model(
             axarr,
             wavelengths,
@@ -899,16 +892,14 @@ def plot_overview(
             "vis" if "vis" in data_to_plot else "vis2",
             ylims=ylims,
             bands=bands,
-            baselines=effective_baselines,
-            inclination=inclination,
+            baselines=baselines[:, 1:],
+            cinc=cinc,
             **plot_kwargs,
         )
 
     if "t3" in data_to_plot:
-        longest_baselines, _ = compute_effective_baselines(
-            t3.u123coord, t3.v123coord, inclination, pos_angle, longest=True
-        )
-
+        baselines = np.hypot(*transform_coordinates(t3.ucoord, t3.vcoord, cinc, pa))
+        baselines = baselines[:, t3.index123].T.squeeze(-1).max(1).reshape(1, -1)
         plot_data_vs_model(
             axarr,
             wavelengths,
@@ -917,8 +908,8 @@ def plot_overview(
             "t3",
             ylims=ylims,
             bands=bands,
-            baselines=longest_baselines,
-            inclination=inclination,
+            baselines=baselines,
+            cinc=cinc,
             **plot_kwargs,
         )
 
