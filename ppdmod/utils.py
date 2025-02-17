@@ -345,59 +345,71 @@ def distance_to_angular(diameter: u.au, distance: u.pc) -> u.mas:
     return ((diameter.to(u.m) / distance.to(u.m)) * u.rad).to(u.mas)
 
 
-def compute_effective_baselines(
-    ucoord: u.m,
-    vcoord: u.m,
-    inclination: u.Quantity[u.one] | None = None,
-    pos_angle: u.Quantity[u.deg] | None = None,
-    longest: bool | None = False,
-) -> Tuple[u.Quantity[u.m], u.Quantity[u.one]]:
-    """Calculates the effective baselines from the projected baselines
-    in mega lambda.
+def transform_coordinates(
+    x: float | np.ndarray,
+    y: float | np.ndarray,
+    cinc: float | None = None,
+    pa: float | None = None,
+    axis: str = "y",
+) -> Tuple[float | np.ndarray, float | np.ndarray]:
+    """Stretches and rotates the coordinate space depending on the
+    cosine of inclination and the positional angle.
 
     Parameters
     ----------
-    ucoord: astropy.units.m
-        The u coordinate.
-    vcoord: astropy.units.m
-        The v coordinate.
-    inclination: astropy.units.one
-        The inclinatin induced compression of the x-axis.
-    pos_angle: astropy.units.deg
-        The positional angle of the object
-    longest : bool, optional
-        If True, the longest baselines are returned.
+    x: float or numpy.ndarray or astropy.units.Quantity
+        The x-coordinate.
+    y: float or numpy.ndarray or astropy.units.Quantity
+        The y-coordinate.
+    cinc: float, optional
+        The cosine of the inclination.
+    pa: float, optional
+        The positional angle of the object (in degree).
+    axis: str, optional
+        The axis to stretch the coordinates on.
 
     Returns
     -------
-    baselines : astropy.units.m
-        Returns the effective baselines.
-    baselines_angles : astropy.units.rad
-        Returns the effective baseline angles.
+    xt: float or numpy.ndarray
+        Transformed x coordinate.
+    yt: float or numpy.ndarray
+        Transformed y coordinate.
     """
-    ucoord, vcoord = map(lambda x: u.Quantity(x, u.m), [ucoord, vcoord])
-    if pos_angle is not None:
-        pos_angle = u.Quantity(pos_angle, u.rad)
-        inclination = u.Quantity(inclination, u.one)
-
-        ucoord_eff = ucoord * np.cos(pos_angle) - vcoord * np.sin(pos_angle)
-        vcoord_eff = ucoord * np.sin(pos_angle) + vcoord * np.cos(pos_angle)
+    if pa is not None:
+        pa = np.deg2rad(pa)
+        xt = x * np.cos(pa) - y * np.sin(pa)
+        yt = x * np.sin(pa) + y * np.cos(pa)
     else:
-        ucoord_eff, vcoord_eff = ucoord, vcoord
+        xt, yt = x, y
 
-    if inclination is not None:
-        ucoord_eff *= inclination
+    if cinc is not None:
+        if axis == "x":
+            xt /= cinc
+        elif axis == "y":
+            xt *= cinc
 
-    baselines_eff = np.hypot(ucoord_eff, vcoord_eff)
-    baseline_angles_eff = np.arctan2(ucoord_eff, vcoord_eff)
+    return xt, yt
 
-    if longest:
-        indices = baselines_eff.argmax(0)
-        iteration = np.arange(baselines_eff.shape[1])
-        baselines_eff = baselines_eff[indices, iteration]
-        baseline_angles_eff = baseline_angles_eff[indices, iteration]
 
-    return baselines_eff.squeeze(), baseline_angles_eff.squeeze()
+def translate_image_func(
+    xx: np.ndarray, yy: np.ndarray, x: float, y: float
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Shifts the coordinates in image space according to an offset."""
+    xxs = (xx - x).astype(OPTIONS.data.dtype.real)
+    yys = (yy - y).astype(OPTIONS.data.dtype.real)
+    return xxs, yys
+
+
+def translate_vis_func(
+    ucoord: np.ndarray, vcoord: np.ndarray, x: float, y: float
+) -> np.ndarray:
+    """Translates a coordinate shift in image space to Fourier space.
+
+    Parameters
+    ----------
+    """
+    translation = np.exp(-2j * np.pi * (x * ucoord + y * vcoord))
+    return translation.astype(OPTIONS.data.dtype.complex)
 
 
 def binary(
@@ -758,26 +770,6 @@ def linearly_combine_data(data: np.ndarray, weights: u.one) -> np.ndarray:
     numpy.ndarray
     """
     return np.sum(data * weights[:, np.newaxis], axis=0)
-
-
-# TODO: Remove the check for the ucoord here
-def broadcast_baselines(
-    wavelength: u.um, baselines: u.m, baseline_angles: u.rad, ucoord: u.m
-) -> Tuple[u.Quantity[u.um], u.Quantity[1 / u.rad], u.Quantity[u.rad]]:
-    """Broadcasts the baselines to the correct shape depending on
-    the input ucoord shape."""
-    wavelength = wavelength[:, np.newaxis]
-    if ucoord.shape[0] == 1:
-        baselines = (baselines / wavelength.to(u.m)).value
-        baselines = baselines[..., np.newaxis]
-        baseline_angles = baseline_angles[np.newaxis, :, np.newaxis]
-    else:
-        wavelength = wavelength[..., np.newaxis]
-        baselines = (baselines[np.newaxis, ...] / wavelength.to(u.m)).value
-        baselines = baselines[..., np.newaxis]
-        baseline_angles = baseline_angles[np.newaxis, ..., np.newaxis]
-    baseline_angles = u.Quantity(baseline_angles, unit=u.rad)
-    return wavelength, baselines / u.rad, baseline_angles
 
 
 def compute_vis(vis: np.ndarray) -> np.ndarray:

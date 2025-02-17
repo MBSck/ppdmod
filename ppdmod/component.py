@@ -6,7 +6,7 @@ import numpy as np
 
 from .options import OPTIONS
 from .parameter import Parameter
-from .utils import broadcast_baselines, compute_effective_baselines
+from .utils import transform_coordinates, translate_image_func, translate_vis_func
 
 
 class Component:
@@ -147,46 +147,26 @@ class FourierComponent(Component):
         """
         return np.array([]) * u.au, np.array([]) * u.au
 
-    def translate_image_func(
-        self, xx: u.mas, yy: u.mas
-    ) -> Tuple[u.Quantity[u.mas], u.Quantity[u.mas]]:
-        """Shifts the coordinates in image space according to an offset."""
-        xx, yy = map(lambda x: u.Quantity(value=x, unit=u.mas), [xx, yy])
-        xx, yy = xx - self.x(), yy - self.y()
-        return xx.astype(OPTIONS.data.dtype.real), yy.astype(OPTIONS.data.dtype.real)
-
-    # TODO: Check this again
-    def translate_vis_func(
-        self, baselines: 1 / u.rad, baseline_angles: u.rad
-    ) -> np.ndarray:
-        """Translates a coordinate shift in image space to Fourier space."""
-        uv_coords = np.exp(
-            (1j * self.x().to(u.rad) * np.cos(baseline_angles)).value
-        ) * np.exp((1j * self.y().to(u.rad) * np.sin(baseline_angles)).value)
-        translation = np.exp(2j * np.pi * baselines * np.angle(uv_coords) * u.rad)
-        return translation.value.astype(OPTIONS.data.dtype.complex)
-
-    def vis_func(
-        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
-    ) -> np.ndarray:
+    def vis_func(self, spf: 1 / u.rad, psi: u.rad, wl: u.um, **kwargs) -> np.ndarray:
         """Computes the correlated fluxes."""
         return np.array([]).astype(OPTIONS.data.dtype.complex)
 
     def compute_complex_vis(
-        self, ucoord: u.m, vcoord: u.m, wavelength: u.um, **kwargs
+        self, ucoord: u.m, vcoord: u.m, wl: u.um, **kwargs
     ) -> np.ndarray:
         """Computes the correlated fluxes."""
-        baselines, baseline_angles = compute_effective_baselines(
-            ucoord, vcoord, self.cinc(), self.pa()
-        )
-        wavelength, baselines, baseline_angles = broadcast_baselines(
-            wavelength, baselines, baseline_angles, ucoord
-        )
+        ut, vt = transform_coordinates(ucoord, vcoord, self.cinc(), self.pa())
+        wl = wl.reshape(-1, 1)
+        utb = (ut / wl.to(u.m)).value[..., np.newaxis] / u.rad
+        vtb = (vt / wl.to(u.m)).value[..., np.newaxis] / u.rad
+        spf, psi = np.hypot(utb, vtb), np.arctan2(utb, vtb)
 
-        vis = self.vis_func(baselines, baseline_angles, wavelength, **kwargs)
-        vis = vis.reshape(vis.shape[:-1]) if vis.shape[-1] == 1 else vis
-        shift = self.translate_vis_func(baselines, baseline_angles)
+        shift = translate_vis_func(
+            utb.value, vtb.value, self.x().to(u.rad).value, self.y().to(u.rad).value
+        )
         shift = shift.reshape(shift.shape[:-1]) if shift.shape[-1] == 1 else shift
+        vis = self.vis_func(spf, psi, wl, **kwargs)
+        vis = vis.reshape(vis.shape[:-1]) if vis.shape[-1] == 1 else vis
 
         if self.name != "Point":
             vis *= self.fr()
@@ -199,33 +179,15 @@ class FourierComponent(Component):
         """Calculates the image."""
         return np.array([]).astype(OPTIONS.data.dtype.real)
 
-    def compute_image(
-        self, dim: int, pixel_size: u.mas, wavelength: u.um
-    ) -> np.ndarray:
+    def compute_image(self, dim: int, pixel_size: u.mas, wl: u.um) -> np.ndarray:
         """Computes the image."""
-        wavelength = (
-            wavelength
-            if isinstance(wavelength, u.Quantity)
-            else u.Quantity(wavelength, u.um)
-        )
         try:
-            wavelength = wavelength[:, np.newaxis, np.newaxis]
+            wl = wl[:, np.newaxis, np.newaxis]
         except TypeError:
-            wavelength = wavelength[np.newaxis, np.newaxis]
-
-        pixel_size = (
-            pixel_size
-            if isinstance(pixel_size, u.Quantity)
-            else u.Quantity(pixel_size, u.mas)
-        )
+            wl = wl[np.newaxis, np.newaxis]
 
         xx = np.linspace(-0.5, 0.5, dim) * pixel_size * dim
-        xx, yy = self.translate_image_func(*np.meshgrid(xx, xx))
-
-        pa_rad = self.pa().to(u.rad)
-        xr = xx * np.cos(pa_rad) - yy * np.sin(pa_rad)
-        yr = xx * np.sin(pa_rad) + yy * np.cos(pa_rad)
-        xx, yy = xr * (1 / self.cinc()), yr
-
-        image = self.image_func(xx, yy, pixel_size, wavelength)
+        xxs, yys = translate_image_func(*np.meshgrid(xx, xx), self.x(), self.y())
+        xxt, yyt = transform_coordinates(xxs, yys, self.cinc(), self.pa(), axis="x")
+        image = self.image_func(xxt, yyt, pixel_size, wl)
         return (self.fr() * image).value.astype(OPTIONS.data.dtype.real)

@@ -523,7 +523,7 @@ def test_broadcast_baselines(fits_files: List[Path], wavelength: u.um) -> None:
     baselines, baseline_angles = utils.compute_effective_baselines(
         vis.ucoord, vis.vcoord, None, None
     )
-    wavelengths_vis, baselines_vis, baseline_angles_vis = utils.broadcast_baselines(
+    wavelengths_vis, baselines_vis, baseline_angles_vis = utils.broadcast_coordinates(
         wavelength, baselines, baseline_angles, vis.ucoord
     )
 
@@ -534,7 +534,7 @@ def test_broadcast_baselines(fits_files: List[Path], wavelength: u.um) -> None:
     baselines, baseline_angles = utils.compute_effective_baselines(
         t3.u123coord, t3.v123coord, None, None
     )
-    wavelengths_cp, baselines_cp, baseline_angles_cp = utils.broadcast_baselines(
+    wavelengths_cp, baselines_cp, baseline_angles_cp = utils.broadcast_coordinates(
         wavelength, baselines, baseline_angles, t3.u123coord
     )
 
