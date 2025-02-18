@@ -82,7 +82,7 @@ def plot_components(
     components: List[FourierComponent],
     dim: int,
     pixel_size: u.mas,
-    wavelength: u.um,
+    wl: u.um,
     norm: float = 0.5,
     save_as_fits: bool = False,
     zoom: float | None = None,
@@ -93,15 +93,16 @@ def plot_components(
 ) -> Tuple[Axes]:
     """Plots a component."""
     components = [components] if not isinstance(components, list) else components
+    wl, pixel_size = u.Quantity(wl, unit=u.um), u.Quantity(pixel_size, unit=u.mas)
     image = sum(
-        [comp.compute_image(dim, pixel_size, wavelength) for comp in components]
+        [comp.compute_image(dim, pixel_size, wl) for comp in components]
     )[0]
 
     if any(hasattr(component, "dist") for component in components):
         dist = [component for component in components if hasattr(component, "dist")][
             0
         ].dist()
-        pixel_size = angular_to_distance(pixel_size * u.mas, dist).to(u.au).value
+        pixel_size = angular_to_distance(pixel_size, dist).to(u.au).value
 
     extent = u.Quantity([sign * dim * pixel_size / 2 for sign in [-1, 1, 1, -1]])
     if save_as_fits:
@@ -143,7 +144,7 @@ def plot_components(
             ax.text(
                 0.18,
                 0.95,
-                rf"$\lambda$ = {wavelength} " + r"$\mathrm{\mu}$m",
+                rf"$\lambda$ = {wl} " + r"$\mathrm{\mu}$m",
                 transform=ax.transAxes,
                 fontsize=12,
                 color="white",

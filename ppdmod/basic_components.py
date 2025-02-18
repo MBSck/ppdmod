@@ -157,9 +157,10 @@ class Star(FourierComponent):
         image : astropy.units.Jy
         """
         image = np.zeros((wavelength.size, *xx.shape))
-        centre = xx.shape[0] // 2
+        rho = np.hypot(xx, yy)
+        y_ind, x_ind = np.unravel_index(np.argmin(rho), xx.shape)
         star_flux = (self.compute_flux(wavelength) / 4)[..., np.newaxis]
-        image[:, centre - 1 : centre + 1, centre - 1 : centre + 1] = star_flux
+        image[:, y_ind - 1 : y_ind + 1, x_ind - 1 : x_ind + 1] = star_flux
         return image
 
 
