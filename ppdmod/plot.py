@@ -94,9 +94,7 @@ def plot_components(
     """Plots a component."""
     components = [components] if not isinstance(components, list) else components
     wl, pixel_size = u.Quantity(wl, unit=u.um), u.Quantity(pixel_size, unit=u.mas)
-    image = sum(
-        [comp.compute_image(dim, pixel_size, wl) for comp in components]
-    )[0]
+    image = sum([comp.compute_image(dim, pixel_size, wl) for comp in components])[0]
 
     if any(hasattr(component, "dist") for component in components):
         dist = [component for component in components if hasattr(component, "dist")][
@@ -612,7 +610,7 @@ def plot_data_vs_model(
     if baselines is None:
         grid = [wl.repeat(band_value.shape[-1]) for wl in band_wl.value]
     else:
-        grid = (baselines / band_wl.value[:, np.newaxis])
+        grid = baselines / band_wl.value[:, np.newaxis]
 
     for index, _ in enumerate(band_wl.value):
         errorbar_params.color = scatter_params.color = color[index]

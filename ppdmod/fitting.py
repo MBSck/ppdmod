@@ -191,17 +191,11 @@ def compute_observables(
     vis = OPTIONS.data.vis2 if "vis2" in OPTIONS.fit.data else OPTIONS.data.vis
     t3 = OPTIONS.data.t3
     complex_vis = np.sum(
-        [
-            comp.compute_complex_vis(vis.u, vis.v, wavelength)
-            for comp in components
-        ],
+        [comp.compute_complex_vis(vis.u, vis.v, wavelength) for comp in components],
         axis=0,
     )
     complex_t3 = np.sum(
-        [
-            comp.compute_complex_vis(t3.u, t3.v, wavelength)
-            for comp in components
-        ],
+        [comp.compute_complex_vis(t3.u, t3.v, wavelength) for comp in components],
         axis=0,
     )
 
@@ -585,9 +579,17 @@ def run_dynesty(
         checkpoint_file = None
 
     components = OPTIONS.model.components
-    periodic = [index for index, param in enumerate(get_fit_params(components)) if param.periodic]
+    periodic = [
+        index
+        for index, param in enumerate(get_fit_params(components))
+        if param.periodic
+    ]
     periodic = None if not periodic else periodic
-    reflective = [index for index, param in enumerate(get_fit_params(components)) if param.reflective]
+    reflective = [
+        index
+        for index, param in enumerate(get_fit_params(components))
+        if param.reflective
+    ]
     reflective = None if not reflective else reflective
 
     pool = Pool(processes=ncores) if not debug else None

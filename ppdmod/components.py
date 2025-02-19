@@ -9,7 +9,7 @@ from scipy.special import j0, jv
 from .base import Component, FourierComponent
 from .options import OPTIONS
 from .parameter import Parameter
-from .utils import angular_to_distance, distance_to_angular, compare_angles
+from .utils import angular_to_distance, compare_angles, distance_to_angular
 
 
 class NBandFit(Component):
@@ -199,7 +199,6 @@ class Ring(FourierComponent):
 
         if self.has_outer_radius or self.thin:
             self.width.free = False
-
 
     def compute_internal_grid(self) -> u.Quantity:
         """Computes the model grid.
