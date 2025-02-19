@@ -81,7 +81,12 @@ class Point(FourierComponent):
 
     def flux_func(self, wl: u.um) -> np.ndarray:
         """Computes the flux of the star."""
-        return self.fr(wl).reshape((wl.size, 1))
+        fr = self.fr(wl)
+        if not isinstance(fr.value, (tuple, list, np.ndarray)):
+            fr = np.array([fr.value])[:, np.newaxis] * fr.unit
+        else:
+            fr = fr.reshape((wl.size, 1))
+        return fr
 
     def vis_func(self, spf: 1 / u.rad, psi: u.rad, wl: u.um, **kwargs) -> np.ndarray:
         """Computes the complex visibility."""
