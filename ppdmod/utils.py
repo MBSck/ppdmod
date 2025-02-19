@@ -1,14 +1,11 @@
 import time as time
 from pathlib import Path
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, List, Tuple
 
 import astropy.constants as const
 import astropy.units as u
 import numpy as np
-from astropy.modeling.models import BlackBody
-from openpyxl import Workbook, load_workbook
 from scipy.interpolate import interp1d
-from scipy.special import j1
 
 from .options import OPTIONS
 
@@ -171,18 +168,6 @@ def smooth_interpolation(
     )
 
 
-def take_time_average(
-    func: Callable, *args, nsteps: int = 10
-) -> Tuple[Callable, float]:
-    """Takes a time average of the code."""
-    execution_times = []
-    for _ in range(nsteps):
-        time_st = time.perf_counter()
-        return_val = func(*args)
-        execution_times.append(time.perf_counter() - time_st)
-    return return_val, np.array(execution_times).mean()
-
-
 def get_indices(
     values: np.ndarray, array: np.ndarray, windows: np.ndarray | float | None = None
 ) -> List[np.ndarray]:
@@ -228,28 +213,6 @@ def get_indices(
 
             indices.append(index.astype(int).flatten())
     return indices
-
-
-def compute_photometric_slope(wavelengths: u.um, temperature: u.K) -> np.ndarray:
-    """Computes the photometric slope of the data from
-    the effective temperature of the star.
-
-    Parameters
-    ----------
-    wavelengths : astropy.units.um
-        The wavelengths of the data.
-    temperature : astropy.units.K
-        The effective temperature of the star.
-
-    Returns
-    -------
-    photometric_slope : numpy.ndarray
-    """
-    temperature = u.Quantity(temperature, u.K)
-    wavelengths = u.Quantity(wavelengths, u.um)
-    nu = (const.c / wavelengths.to(u.m)).to(u.Hz)
-    blackbody = BlackBody(temperature)
-    return np.gradient(np.log(blackbody(nu).value), np.log(nu.value))
 
 
 def compute_stellar_radius(luminosity: u.Lsun, temperature: u.K) -> u.Rsun:
@@ -386,176 +349,6 @@ def translate_image_func(
     return xxs, yys
 
 
-def binary(
-    dim: int,
-    pixel_size: u.mas,
-    flux1: u.Jy,
-    flux2: u.Jy,
-    position1: u.mas,
-    position2: u.mas,
-) -> u.Jy:
-    """The image of a binary.
-
-    Parameters
-    ----------
-    dim : float
-        The image's dimension (px).
-    pixel_size : astropy.units.mas
-        The size of a pixel in the image.
-    flux1 : astropy.units.Jy
-        The main component's flux.
-    flux2 : astropy.units.Jy
-        The companion's flux.
-    position1 : astropy.units.m
-        The main component's (x, y)-coordinates.
-    position2 : astropy.units.m
-        The companion's (x, y)-coordinates.
-    wavelength : astropy.units.um
-
-    Returns
-    -------
-    image : astropy.units.Jy
-    """
-    v = np.linspace(-0.5, 0.5, dim, endpoint=False) * pixel_size.to(u.mas) * dim
-    image = np.zeros((dim, dim)) * u.Jy
-    position1 = (
-        np.array(list(map(lambda x: np.where(v == x), position1))).flatten().tolist()
-    )
-    position2 = (
-        np.array(list(map(lambda x: np.where(v == x), position2))).flatten().tolist()
-    )
-    image[position1[1]][position1[0]] = flux1
-    image[position2[1]][position2[0]] = flux2
-    return image
-
-
-def binary_vis(
-    flux1: u.Jy,
-    flux2: u.Jy,
-    ucoord: u.m,
-    vcoord: u.m,
-    position1: u.mas,
-    position2: u.mas,
-    wavelength: u.um,
-) -> np.ndarray:
-    """The complex visibility function of a binary star.
-
-    Parameters
-    ----------
-    flux1 : astropy.units.Jy
-        The main component's flux.
-    flux2 : astropy.units.Jy
-        The companion's flux.
-    position1 : astropy.units.m
-        The main component's (x, y)-coordinates.
-    position2 : astropy.units.m
-        The companion's (x, y)-coordinates.
-    wavelength : astropy.units.um
-
-    Returns
-    -------
-    complex_visibility_function : numpy.ndarray
-    """
-    ucoord, vcoord = map(lambda x: x / wavelength.to(u.m), [ucoord, vcoord])
-    xy_and_uv = list(
-        map(
-            lambda x: ucoord * x.to(u.rad)[0] + vcoord * x.to(u.rad)[1],
-            [position1, position2],
-        )
-    )
-    return flux1.value * np.exp(
-        2 * np.pi * 1j * xy_and_uv[0].value
-    ) + flux2.value * np.exp(2 * np.pi * 1j * xy_and_uv[1].value)
-
-
-def uniform_disk(
-    pixel_size: u.mas, dim: int, diameter: u.Quantity[u.mas] | None = None
-) -> u.one:
-    """The brightness profile of a uniform disk.
-
-    Parameters
-    ----------
-    pixel_size : astropy.units.mas
-        The size of a pixel in the image.
-    dim : float
-        The image's dimension [px].
-    diameter : astropy.units.mas, optional
-        The uniform disk's diameter.
-
-    Returns
-    -------
-    radial_profile : astropy.units.one
-    """
-    if diameter is not None:
-        v = np.linspace(-0.5, 0.5, dim, endpoint=False) * pixel_size.to(u.mas) * dim
-        x_arr, y_arr = np.meshgrid(v, v)
-        radius = np.hypot(x_arr, y_arr) < diameter / 2
-    else:
-        radius = np.ones((dim, dim)).astype(bool)
-        diameter = 1 * u.mas
-    return 4 * u.one * radius / (np.pi * diameter.value**2)
-
-
-def uniform_disk_vis(
-    diameter: u.mas, ucoord: u.m, vcoord: u.m, wavelength: u.um
-) -> np.ndarray:
-    """Defines the complex visibility function of a uniform disk.
-
-    Parameters
-    ----------
-    diameter : astropy.units.mas
-        The uniform disk's diameter.
-    ucoord : astropy.units.m
-        The u-coordinates.
-    vcoord : astropy.units.m
-        The v-coordinates.
-    wavelength : astropy.units.um
-        The wavelength for the spatial frequencies' unit conversion.
-
-    Returns
-    -------
-    complex_visibility_function : numpy.ndarray
-    """
-    rho = np.hypot(ucoord, vcoord) / wavelength.to(u.m)
-    return (
-        2
-        * j1(np.pi * rho * diameter.to(u.rad).value)
-        / (np.pi * diameter.to(u.rad).value * rho)
-    )
-
-
-def make_workbook(file: Path, sheets: Dict[str, List[str]]) -> None:
-    """Creates an (.xslx)-sheet with subsheets.
-
-    Parameters
-    ----------
-    file : Path
-    sheets : dict of list
-        A dictionary having the sheet name as they key
-        and a list of columns as the value.
-    """
-    file_existed = True
-    if file.exists():
-        workbook = load_workbook(file)
-    else:
-        workbook = Workbook()
-        file_existed = False
-    for index, (sheet, columns) in enumerate(sheets.items()):
-        if sheet not in workbook.sheetnames:
-            if index == 0 and not file_existed:
-                worksheet = workbook.active
-                worksheet.title = sheet
-            else:
-                worksheet = workbook.create_sheet(title=sheet)
-        else:
-            worksheet = workbook[sheet]
-        worksheet.delete_rows(1, worksheet.max_row)
-        for col_idx, column_name in enumerate(columns, start=1):
-            cell = worksheet.cell(row=1, column=col_idx)
-            cell.value = column_name
-    workbook.save(file)
-
-
 def qval_to_opacity(qval_file: Path) -> u.cm**2 / u.g:
     """Reads a qval file, then calculates and returns the
     opacity.
@@ -581,21 +374,6 @@ def qval_to_opacity(qval_file: Path) -> u.cm**2 / u.g:
     return wavelength_grid * u.um, 3 * qval / (
         4 * (grain_size * u.um).to(u.cm) * (density * u.g / u.cm**3)
     )
-
-
-def restrict_wavelength(
-    wavelength: np.ndarray, array: np.ndarray, wavelength_range: u.um
-) -> Tuple[np.ndarray, np.ndarray]:
-    """Restricts the wavelength for an input range."""
-    indices = (wavelength > wavelength_range[0]) & (wavelength < wavelength_range[1])
-    return wavelength[indices], array[indices]
-
-
-def restrict_phase(phase: np.ndarray) -> np.ndarray:
-    """Restricts the phase to [-180, 180] degrees."""
-    restricted_phase = phase % 360
-    restricted_phase[restricted_phase > 180] -= 360
-    return restricted_phase
 
 
 def get_opacity(
@@ -727,23 +505,6 @@ def load_data(
         )
 
     return wavelength_grid.squeeze(), np.array(data).squeeze()
-
-
-def linearly_combine_data(data: np.ndarray, weights: u.one) -> np.ndarray:
-    """Linearly combines multiple opacities by their weights.
-
-    Parameters
-    ----------
-    data : numpy.ndarray
-        The data to be linearly combined.
-    weights : u.one
-        The weights for the different data.
-
-    Returns
-    -------
-    numpy.ndarray
-    """
-    return np.sum(data * weights[:, np.newaxis], axis=0)
 
 
 def compute_vis(vis: np.ndarray) -> np.ndarray:
