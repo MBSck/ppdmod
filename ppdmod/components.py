@@ -195,29 +195,30 @@ class Ring(FourierComponent):
         self.rout = Parameter(base="rout")
         self.width = Parameter(base="width")
 
-        if self.has_outer_radius or self.thin:
-            self.width.free = False
-
         self.eval(**kwargs)
 
-    def compute_internal_grid(self) -> u.mas:
-        """Computes the model grid.
+        if self.has_outer_radius or self.thin:
+            if self.has_outer_radius:
+                self.rout.free = True
+            self.width.free = False
 
-        Parameters
-        ----------
-        dim : float
+
+    def compute_internal_grid(self) -> u.Quantity:
+        """Computes the model grid.
 
         Returns
         -------
-        radial_grid : astropy.units.mas
-            A one dimensional linear or logarithmic grid.
+        radial_grid
         """
-        dx = self.rout() - self.rin() if self.has_outer_radius else self.width()
-        rin, rout = self.rin().value, (self.rin() + dx).value
+        rin, dim = self.rin.value, self.dim.value
+        if not self.has_outer_radius:
+            rout = self.rin.value + self.width.value
+
         if OPTIONS.model.gridtype == "linear":
-            radius = np.linspace(rin, rout, self.dim())
+            radius = np.linspace(rin, rout, dim)
         else:
-            radius = np.logspace(np.log10(rin), np.log10(rout), self.dim())
+            radius = np.logspace(np.log10(rin), np.log10(rout), dim)
+
         return radius.astype(OPTIONS.data.dtype.real) * self.rin.unit
 
     def vis_func(
