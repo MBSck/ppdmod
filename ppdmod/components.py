@@ -69,97 +69,34 @@ class NBandFit(Component):
         return flux.value.reshape((wavelength.size, 1))
 
 
-class Star(FourierComponent):
-    """Star defined as component.
+class Point(FourierComponent):
+    """Point source."""
 
-    Parameters
-    ----------
-    f : astropy.units.Jy
-        The flux of the star.
-    dist : astropy.units.pc
-        Distance to the star.
-    eff_temp : astropy.units.K
-        The star's temperature.
-    eff_radius : astropy.units.R_sun
-        The star's radius.
-
-    Attributes
-    ----------
-    name : str
-        The component's name.
-    description : str
-        The component's description.
-     : dict of Parameter
-    """
-
-    name = "Star"
-    description = "The flux of a star."
+    name = "Point"
+    description = "Point source."
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.f = Parameter(base="f")
-        self.dist = Parameter(base="dist")
-        self.eff_temp = Parameter(base="eff_temp")
-        self.eff_radius = Parameter(base="eff_radius")
         self.eval(**kwargs)
 
-        self.stellar_radius_angular = distance_to_angular(
-            self.eff_radius(), self.dist()
-        )
-
-    def flux_func(self, wavelength: u.um) -> np.ndarray:
+    def flux_func(self, wl: u.um) -> np.ndarray:
         """Computes the flux of the star."""
-        if np.any(self.f.value != 0):
-            stellar_flux = self.f(wavelength)
-        else:
-            plancks_law = BlackBody(temperature=self.eff_temp())
-            spectral_radiance = plancks_law(wavelength).to(
-                u.erg / (u.cm**2 * u.Hz * u.s * u.rad**2)
-            )
-            stellar_flux = np.pi * (
-                spectral_radiance * self.stellar_radius_angular**2
-            ).to(u.Jy)
-        return stellar_flux.value.reshape((wavelength.size, 1))
+        return self.fr(wl).reshape((wl.size, 1))
 
-    def vis_func(
-        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
-    ) -> np.ndarray:
-        """Computes the complex visibility
-
-        Parameters
-        ----------
-        baseline : 1/astropy.units.rad
-            The deprojected baselines.
-        baseline_angles : astropy.units.rad
-            The deprojected baseline angles.
-        wavelength : astropy.units.um
-            The wavelengths.
-        """
-        new_shape = (-1,) + (1,) * (len(baselines.shape) - 1)
-        vis = np.tile(
-            self.flux_func(wavelength).reshape(new_shape), baselines.shape[1:]
-        )
+    def vis_func(self, spf: 1 / u.rad, psi: u.rad, wl: u.um, **kwargs) -> np.ndarray:
+        """Computes the complex visibility."""
+        new_shape = (-1,) + (1,) * (len(spf.shape) - 1)
+        vis = np.tile(self.flux_func(wl).reshape(new_shape), spf.shape[1:])
         return vis.astype(OPTIONS.data.dtype.complex)
 
     def image_func(
-        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.m = None
+        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wl: u.m = None
     ) -> np.ndarray:
-        """Computes the image from a 2D grid.
-
-        Parameters
-        ----------
-        xx : u.mas
-        yy : u.mas
-        wavelength : u.m
-
-        Returns
-        -------
-        image : astropy.units.Jy
-        """
-        image = np.zeros((wavelength.size, *xx.shape))
+        """Computes the image from a 2D grid."""
+        image = np.zeros((wl.size, *xx.shape))
         rho = np.hypot(xx, yy)
         y_ind, x_ind = np.unravel_index(np.argmin(rho), xx.shape)
-        star_flux = (self.compute_flux(wavelength) / 4)[..., np.newaxis]
+        star_flux = (self.compute_flux(wl) / 4)[..., np.newaxis]
         image[:, y_ind - 1 : y_ind + 1, x_ind - 1 : x_ind + 1] = star_flux
         return image
 
@@ -220,28 +157,14 @@ class Ring(FourierComponent):
 
         return radius.astype(OPTIONS.data.dtype.real) * self.rin.unit
 
-    def vis_func(
-        self, baselines: 1 / u.rad, baseline_angles: u.rad, wavelength: u.um, **kwargs
-    ) -> np.ndarray:
-        """Computes the complex visibility
-
-        Parameters
-        ----------
-        baseline : 1 / astropy.units.rad
-            The deprojected baselines.
-        baseline_angles : astropy.units.rad
-            The deprojected baseline angles.
-        wavelength : astropy.units.um
-            The wavelengths.
-        brightness : astropy.unit.mas
-            The radial brightness distribution
-        """
+    def vis_func(self, spf: 1 / u.rad, psi: u.rad, wl: u.um, **kwargs) -> np.ndarray:
+        """Computes the complex visibility."""
         mod_amps, cos_diff, bessel_funcs = [], [], []
         if self.asymmetric:
             for i in range(1, OPTIONS.model.modulation + 1):
                 rho, theta = getattr(self, f"rho{i}")(), getattr(self, f"theta{i}")()
                 mod_amps.append((-1j) ** i * rho)
-                cos_diff.append(np.cos(i * compare_angles(baseline_angles, theta)))
+                cos_diff.append(np.cos(i * compare_angles(psi, theta)))
                 bessel_funcs.append(partial(jv, i))
 
             mod_amps = np.array(mod_amps)
@@ -262,13 +185,13 @@ class Ring(FourierComponent):
             return vis
 
         if self.thin:
-            vis = _vis_func(2 * np.pi * self.rin().to(u.rad) * baselines)
+            vis = _vis_func(2 * np.pi * self.rin().to(u.rad) * spf)
         else:
             intensity_func = kwargs.pop("intensity_func", None)
             radius = self.compute_internal_grid()
 
             if intensity_func is not None:
-                intensity = intensity_func(radius, wavelength).to(
+                intensity = intensity_func(radius, wl).to(
                     u.erg / (u.rad**2 * u.cm**2 * u.s * u.Hz)
                 )
                 intensity = intensity[:, np.newaxis]
@@ -277,7 +200,7 @@ class Ring(FourierComponent):
                 radius = distance_to_angular(radius, self.dist())
 
             radius = radius.to(u.rad)
-            vis = _vis_func(2 * np.pi * radius * baselines)
+            vis = _vis_func(2 * np.pi * radius * spf)
             if intensity_func is None:
                 vis = np.trapezoid(vis, radius)
             else:
@@ -294,7 +217,7 @@ class Ring(FourierComponent):
         return vis.value.astype(OPTIONS.data.dtype.complex)
 
     def image_func(
-        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wavelength: u.um, **kwargs
+        self, xx: u.mas, yy: u.mas, pixel_size: u.mas, wl: u.um, **kwargs
     ) -> np.ndarray:
         """Computes the image from a 2D grid.
 
@@ -323,9 +246,7 @@ class Ring(FourierComponent):
             intensity = 1 / (2 * np.pi)
         else:
             intensity = (
-                intensity_func(radius, wavelength).to(
-                    u.erg / (u.cm**2 * u.rad**2 * u.s * u.Hz)
-                )
+                intensity_func(radius, wl).to(u.erg / (u.cm**2 * u.rad**2 * u.s * u.Hz))
                 * pixel_size.to(u.rad) ** 2
             )
             intensity = intensity.to(u.Jy)
@@ -390,13 +311,13 @@ class TempGrad(Ring):
 
         self.eval(**kwargs)
 
-    def get_opacity(self, wavelength: u.um) -> u.cm**2 / u.g:
+    def get_opacity(self, wl: u.um) -> u.cm**2 / u.g:
         """Set the opacity from wavelength."""
-        kappa_abs = self.kappa_abs(wavelength)
+        kappa_abs = self.kappa_abs(wl)
         if self.continuum_contribution:
             cont_weight, kappa_cont = (
                 self.weight_cont().value / 1e2,
-                self.kappa_cont(wavelength),
+                self.kappa_cont(wl),
             )
             opacity = (1 - cont_weight) * kappa_abs + cont_weight * kappa_cont
         else:
@@ -429,24 +350,24 @@ class TempGrad(Ring):
         sigma = self.sigma0() * (radius / self.r0()) ** self.p()
         return sigma.astype(OPTIONS.data.dtype.real)
 
-    def compute_optical_depth(self, radius: u.au, wavelength: u.um) -> u.one:
+    def compute_optical_depth(self, radius: u.au, wl: u.um) -> u.one:
         """Computes a 1D-optical depth profile."""
-        tau = self.compute_surface_density(radius) * self.get_opacity(wavelength)
+        tau = self.compute_surface_density(radius) * self.get_opacity(wl)
         return tau.astype(OPTIONS.data.dtype.real)
 
-    def compute_emissivity(self, radius: u.au, wavelength: u.um) -> u.one:
+    def compute_emissivity(self, radius: u.au, wl: u.um) -> u.one:
         """Computes a 1D-emissivity profile."""
-        if wavelength.shape == ():
-            wavelength.reshape((wavelength.size,))
+        if wl.shape == ():
+            wl.reshape((wl.size,))
 
         if self.optically_thick:
             return np.array([1])[:, np.newaxis]
 
-        tau = self.compute_optical_depth(radius, wavelength)
+        tau = self.compute_optical_depth(radius, wl)
         epsilon = 1 - np.exp(-tau / self.cinc())
         return epsilon.astype(OPTIONS.data.dtype.real)
 
-    def compute_intensity(self, radius: u.au, wavelength: u.um) -> u.Jy:
+    def compute_intensity(self, radius: u.au, wl: u.um) -> u.Jy:
         """Computes a 1D-brightness profile from a dust-surface density- and
         temperature profile.
 
@@ -460,14 +381,14 @@ class TempGrad(Ring):
         brightness_profile : astropy.units.Jy
         """
         temperature = self.compute_temperature(radius)
-        emissivity = self.compute_emissivity(radius, wavelength)
-        intensity = BlackBody(temperature)(wavelength) * emissivity
+        emissivity = self.compute_emissivity(radius, wl)
+        intensity = BlackBody(temperature)(wl) * emissivity
         return intensity.astype(OPTIONS.data.dtype.real)
 
-    def flux_func(self, wavelength: u.um) -> np.ndarray:
+    def flux_func(self, wl: u.um) -> np.ndarray:
         """Computes the total flux from the hankel transformation."""
         radius = self.compute_internal_grid()
-        intensity = self.compute_intensity(radius, wavelength[:, np.newaxis])
+        intensity = self.compute_intensity(radius, wl[:, np.newaxis])
         if self.rin.unit == u.au:
             radius = distance_to_angular(radius, self.dist())
 

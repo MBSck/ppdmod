@@ -12,7 +12,7 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 import astropy.units as u
 import numpy as np
 
-from ppdmod.components import AsymTempGrad, Star
+from ppdmod.components import AsymTempGrad, Point
 from ppdmod.data import set_data
 from ppdmod.fitting import (
     compute_interferometric_chi_sq,
@@ -121,7 +121,7 @@ shared_params = {
     # "t3_lnf": t3_lnf,
 }
 
-star = Star(label="Star", f=flux_star, x=x, y=y, **shared_params)
+star = Point(label="Star", fr=flux_star, x=x, y=y, **shared_params)
 inner_ring = AsymTempGrad(
     label="Inner Ring",
     rin=rin1,
