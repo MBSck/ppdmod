@@ -30,7 +30,7 @@ class Component:
                     setattr(self, key, val.copy())
                 else:
                     if isinstance(getattr(self, key), Parameter):
-                        getattr(self, key).val = val
+                        getattr(self, key).value = val
                     else:
                         setattr(self, key, val)
 
