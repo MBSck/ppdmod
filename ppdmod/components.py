@@ -6,7 +6,7 @@ from astropy.modeling.models import BlackBody
 from scipy.interpolate import interp1d
 from scipy.special import j0, jv
 
-from .component import Component, FourierComponent
+from .base import Component, FourierComponent
 from .options import OPTIONS
 from .parameter import Parameter
 from .utils import angular_to_distance, distance_to_angular, compare_angles

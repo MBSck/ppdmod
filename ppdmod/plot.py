@@ -20,7 +20,7 @@ from matplotlib.axes import Axes
 from matplotlib.gridspec import GridSpec
 from matplotlib.legend import Legend
 
-from .component import FourierComponent
+from .base import FourierComponent
 from .fitting import compute_observables, get_best_fit
 from .options import OPTIONS, get_colormap
 from .utils import (

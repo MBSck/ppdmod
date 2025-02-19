@@ -8,7 +8,7 @@ import emcee
 import numpy as np
 from dynesty import DynamicNestedSampler
 
-from .component import Component
+from .base import Component
 from .data import get_counts_data
 from .options import OPTIONS
 from .utils import compare_angles, compute_t3, compute_vis

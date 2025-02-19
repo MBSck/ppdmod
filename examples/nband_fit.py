@@ -3,7 +3,7 @@ import pickle
 from datetime import datetime
 from pathlib import Path
 
-from ppdmod.basic_components import NBandFit
+from ppdmod.components import NBandFit
 
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
@@ -18,11 +18,11 @@ from ppdmod.data import set_data
 from ppdmod.fitting import (
     compute_nband_fit_chi_sq,
     get_best_fit,
+    get_labels,
     lnprob_nband_fit,
     ptform_nband_fit,
     run_fit,
     set_components_from_theta,
-    get_labels,
 )
 from ppdmod.options import OPTIONS
 from ppdmod.parameter import Parameter
@@ -131,7 +131,12 @@ print(f"rchi_sq: {rchi_sq:.2f}")
 
 if __name__ == "__main__":
     ncores = 50
-    fit_params = {"nlive_init": 2000, "batch_size": 1000, "lnprob": lnprob_nband_fit, "ptform": ptform}
+    fit_params = {
+        "nlive_init": 2000,
+        "batch_size": 1000,
+        "lnprob": lnprob_nband_fit,
+        "ptform": ptform,
+    }
     sampler = run_fit(**fit_params, ncores=ncores, save_dir=result_dir, debug=False)
 
     theta, uncertainties = get_best_fit(sampler)

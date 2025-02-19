@@ -12,7 +12,7 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 import astropy.units as u
 import numpy as np
 
-from ppdmod.basic_components import Star, AsymTempGrad
+from ppdmod.components import AsymTempGrad, Star
 from ppdmod.data import set_data
 from ppdmod.fitting import (
     compute_interferometric_chi_sq,
@@ -28,7 +28,6 @@ from ppdmod.utils import (
     qval_to_opacity,
     windowed_linspace,
 )
-
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 RESULT_DIR_NAME = "all_data"
