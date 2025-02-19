@@ -70,7 +70,7 @@ def wavelengths() -> u.um:
 def wavelength_solutions(fits_files: Path) -> u.um:
     """The wavelength solutions for low resolution MATISSE
     (.fits)-files."""
-    return [ReadoutFits(fits_file).wavelength for fits_file in fits_files]
+    return [ReadoutFits(fits_file).wl for fits_file in fits_files]
 
 
 @pytest.fixture

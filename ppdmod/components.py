@@ -198,8 +198,6 @@ class Ring(FourierComponent):
         self.eval(**kwargs)
 
         if self.has_outer_radius or self.thin:
-            if self.has_outer_radius:
-                self.rout.free = True
             self.width.free = False
 
 
@@ -211,7 +209,9 @@ class Ring(FourierComponent):
         radial_grid
         """
         rin, dim = self.rin.value, self.dim.value
-        if not self.has_outer_radius:
+        if self.has_outer_radius:
+            rout = self.rout.value
+        else:
             rout = self.rin.value + self.width.value
 
         if OPTIONS.model.gridtype == "linear":

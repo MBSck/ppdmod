@@ -24,15 +24,15 @@ class Component:
 
     def eval(self, **kwargs) -> None:
         """Sets the parameters (values) from the keyword arguments."""
-        for key, value in kwargs.items():
+        for key, val in kwargs.items():
             if hasattr(self, key):
-                if isinstance(value, Parameter):
-                    setattr(self, key, value.copy())
+                if isinstance(val, Parameter):
+                    setattr(self, key, val.copy())
                 else:
                     if isinstance(getattr(self, key), Parameter):
-                        getattr(self, key).value = value
+                        getattr(self, key).val = val
                     else:
-                        setattr(self, key, value)
+                        setattr(self, key, val)
 
     def copy(self) -> "Component":
         """Copies the component."""

@@ -63,8 +63,8 @@ def test_read_into_namespace(
                 readout.vis2.vcoord, vis2.data["vcoord"].reshape(1, -1), atol=1e-2,
             )
 
-        assert readout.wavelength.unit == u.um
-        wl_len = readout.wavelength.shape[0]
+        assert readout.wl.unit == u.um
+        wl_len = readout.wl.shape[0]
 
         assert readout.t3.value.shape == (4, wl_len)
         assert readout.t3.err.shape == (4, wl_len)

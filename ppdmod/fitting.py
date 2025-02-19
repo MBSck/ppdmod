@@ -187,25 +187,25 @@ def compute_observables(
     wavelength : numpy.ndarray, optional
         The wavelength to be used in the model.
     """
-    wavelength = OPTIONS.fit.wavelengths if wavelength is None else wavelength
+    wavelength = OPTIONS.fit.wls if wavelength is None else wavelength
     vis = OPTIONS.data.vis2 if "vis2" in OPTIONS.fit.data else OPTIONS.data.vis
     t3 = OPTIONS.data.t3
     complex_vis = np.sum(
         [
-            comp.compute_complex_vis(vis.ucoord, vis.vcoord, wavelength)
+            comp.compute_complex_vis(vis.u, vis.v, wavelength)
             for comp in components
         ],
         axis=0,
     )
     complex_t3 = np.sum(
         [
-            comp.compute_complex_vis(t3.ucoord, t3.vcoord, wavelength)
+            comp.compute_complex_vis(t3.u, t3.v, wavelength)
             for comp in components
         ],
         axis=0,
     )
 
-    t3_model = compute_t3(complex_t3[:, t3.index123])
+    t3_model = compute_t3(complex_t3[:, t3.i123])
     flux_model = complex_vis[:, 0].reshape(-1, 1)
 
     if OPTIONS.model.output == "normed":
@@ -216,7 +216,7 @@ def compute_observables(
 
     complex_vis = compute_vis(complex_vis[:, 1:])
     if flux_model.size > 0:
-        flux_model = np.tile(flux_model, OPTIONS.data.flux.value.shape[-1]).real
+        flux_model = np.tile(flux_model, OPTIONS.data.flux.val.shape[-1]).real
 
     return flux_model, complex_vis, t3_model
 
@@ -250,14 +250,14 @@ def compute_nband_fit_chi_sq(
     ndim -= 1
     flux = OPTIONS.data.flux
     chi_sq = compute_chi_sq(
-        flux.value.compressed().astype(OPTIONS.data.dtype.real),
+        flux.val.compressed().astype(OPTIONS.data.dtype.real),
         flux.err.compressed().astype(OPTIONS.data.dtype.real),
-        flux_model.repeat(flux.value.shape[-1], axis=-1)[~flux.value.mask],
+        flux_model.repeat(flux.val.shape[-1], axis=-1)[~flux.val.mask],
         method=method,
     )
 
     if reduced:
-        return chi_sq / (flux.value.size - ndim)
+        return chi_sq / (flux.val.size - ndim)
 
     return chi_sq
 
@@ -295,10 +295,10 @@ def compute_interferometric_chi_sq(
     for key in OPTIONS.fit.data:
         data = getattr(OPTIONS.data, key)
         key = key if key != "vis2" else "vis"
-        mask = data.value.mask
+        mask = data.val.mask
         chi_sqs.append(
             compute_chi_sq(
-                data.value.compressed(),
+                data.val.compressed(),
                 data.err.compressed(),
                 model_data[key][~mask],
                 diff_method="linear" if key != "t3" else "periodic",

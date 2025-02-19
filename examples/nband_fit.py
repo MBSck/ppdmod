@@ -44,7 +44,7 @@ data = set_data(
     fit_data=["flux"],
 )
 
-WAVELENGTHS = OPTIONS.fit.wavelengths
+WAVELENGTHS = OPTIONS.fit.wls
 OPACITY_DIR = DATA_DIR / "opacities"
 GRF_DIR = OPACITY_DIR / "grf"
 

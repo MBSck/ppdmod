@@ -34,12 +34,12 @@ def get_colorlist(colormap: str, ncolors: int = 10) -> List[str]:
 def get_units(dictionary: Dict[str, Any]) -> Dict[str, Any]:
     """Converts the units in a dictionary to astropy units."""
     converted_dictionary = dictionary.copy()
-    for value in converted_dictionary.values():
-        if "unit" in value:
-            if value["unit"] == "one":
-                value["unit"] = u.one
+    for val in converted_dictionary.values():
+        if "unit" in val:
+            if val["unit"] == "one":
+                val["unit"] = u.one
             else:
-                value["unit"] = u.Unit(value["unit"])
+                val["unit"] = u.Unit(val["unit"])
 
     return converted_dictionary
 
@@ -59,27 +59,27 @@ STANDARD_PARAMS = load_toml_to_namespace(
 
 # NOTE: Data
 vis_data = SimpleNamespace(
-    value=np.array([]),
+    val=np.array([]),
     err=np.array([]),
-    ucoord=np.array([]).reshape(1, -1),
-    vcoord=np.array([]).reshape(1, -1),
+    u=np.array([]).reshape(1, -1),
+    v=np.array([]).reshape(1, -1),
 )
 vis2_data = SimpleNamespace(
-    value=np.array([]),
+    val=np.array([]),
     err=np.array([]),
-    ucoord=np.array([]).reshape(1, -1),
-    vcoord=np.array([]).reshape(1, -1),
+    u=np.array([]).reshape(1, -1),
+    v=np.array([]).reshape(1, -1),
 )
 t3_data = SimpleNamespace(
-    value=np.array([]),
+    val=np.array([]),
     err=np.array([]),
-    u123coord=np.array([]),
-    v123coord=np.array([]),
-    ucoord=np.array([]).reshape(1, -1),
-    vcoord=np.array([]).reshape(1, -1),
-    index123=np.array([]),
+    u123=np.array([]),
+    v123=np.array([]),
+    u=np.array([]).reshape(1, -1),
+    v=np.array([]).reshape(1, -1),
+    i123=np.array([]),
 )
-flux_data = SimpleNamespace(value=np.array([]), err=np.array([]))
+flux_data = SimpleNamespace(val=np.array([]), err=np.array([]))
 gravity = SimpleNamespace(index=20)
 dtype = SimpleNamespace(complex=np.complex64, real=np.float32)
 binning = SimpleNamespace(
@@ -97,7 +97,7 @@ data = SimpleNamespace(
     hduls=[],
     bands=[],
     resolutions=[],
-    nbaselines=[],
+    nB=[],
     do_bin=True,
     flux=flux_data,
     vis=vis_data,
@@ -147,7 +147,7 @@ weights = SimpleNamespace(flux=1, t3=1, vis=1)
 fit = SimpleNamespace(
     weights=weights,
     data=["flux", "vis", "t3"],
-    wavelengths=None,
+    wls=None,
     quantiles=[2.5, 50, 97.5],
     fitter="dynesty",
     condition=None,
