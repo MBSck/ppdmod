@@ -47,7 +47,8 @@ wavelengths = {
     "nband": windowed_linspace(8.25, 12.75, 0.2) * u.um,
 }
 # bands = ["hband", "kband", "lband", "mband", "nband"]
-bands = ["nband"]
+bands = ["lband", "mband", "nband"]
+# bands = ["nband"]
 wavelengths = np.concatenate([wavelengths[band] for band in bands])
 
 fit_data = ["flux", "vis", "t3"]
@@ -154,7 +155,7 @@ if __name__ == "__main__":
     )
     fit_params = {"dlogz_init": 0.01, "nlive_init": 1500, "nlive_batch": 150}
     ncores = fit_params.get("nwalkers", 150) // 2
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=RESULT_DIR, debug=True)
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=RESULT_DIR, debug=False)
     theta, uncertainties = get_best_fit(sampler, discard=fit_params.get("discard", 0))
     components = OPTIONS.model.components = set_components_from_theta(theta)
     np.save(RESULT_DIR / "theta.npy", theta)
