@@ -208,11 +208,11 @@ def compute_observables(
     if "vis2" in OPTIONS.fit.data:
         complex_vis *= complex_vis
 
-    complex_vis = compute_vis(complex_vis[:, 1:])
+    vis_model = compute_vis(complex_vis[:, 1:])
     if flux_model.size > 0:
         flux_model = np.tile(flux_model, OPTIONS.data.flux.val.shape[-1]).real
 
-    return flux_model, complex_vis, t3_model
+    return flux_model, vis_model, t3_model
 
 
 def compute_nband_fit_chi_sq(
