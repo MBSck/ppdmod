@@ -98,6 +98,13 @@ sigma02 = Parameter(value=1e-3, base="sigma0")
 rho21 = Parameter(value=0.6, free=True, base="rho")
 theta21 = Parameter(value=33, free=True, base="theta")
 
+rin3 = Parameter(value=0, min=1, max=10, unit=u.au, base="rin")
+rout3 = Parameter(value=0, min=2, max=15, unit=u.au, free=True, base="rout")
+p3 = Parameter(value=0, base="p")
+sigma03 = Parameter(value=1e-3, base="sigma0")
+rho31 = Parameter(value=0.6, free=True, base="rho")
+theta31 = Parameter(value=33, free=True, base="theta")
+
 pa = Parameter(value=352, free=False, shared=True, base="pa")
 cinc = Parameter(value=0.84, free=True, shared=True, base="cinc")
 q = Parameter(value=0.5, free=True, shared=True, base="q")
@@ -123,7 +130,7 @@ shared_params = {
 }
 
 star = Point(label="Star", fr=flux_star, x=x, y=y, **shared_params)
-inner_ring = AsymTempGrad(
+first = AsymTempGrad(
     label="Inner Ring",
     rin=rin1,
     rout=rout1,
@@ -133,7 +140,7 @@ inner_ring = AsymTempGrad(
     theta1=theta11,
     **shared_params,
 )
-outer_ring = AsymTempGrad(
+second = AsymTempGrad(
     label="Outer Ring",
     rin=rin2,
     rout=rout2,
@@ -143,8 +150,18 @@ outer_ring = AsymTempGrad(
     theta1=theta21,
     **shared_params,
 )
+third = AsymTempGrad(
+    label="Outer Ring",
+    rin=rin3,
+    rout=rout3,
+    p=p3,
+    sigma0=sigma03,
+    rho1=rho31,
+    theta1=theta31,
+    **shared_params,
+)
 
-OPTIONS.model.components = components = [star, inner_ring, outer_ring]
+OPTIONS.model.components = components = [star, first, second, third]
 
 if __name__ == "__main__":
     labels = get_labels(components)
@@ -171,3 +188,5 @@ if __name__ == "__main__":
         reduced=True,
     )[0]
     print(f"Total reduced chi_sq: {rchi_sq:.2f}")
+    with open(RESULT_DIR / "chi_sq.txt", "wb") as file:
+        file.write(f"Total reduced chi_sq: {rchi_sq:.2f}".encode())
