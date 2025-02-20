@@ -131,7 +131,7 @@ shared_params = {
 
 star = Point(label="Star", fr=flux_star, x=x, y=y, **shared_params)
 first = AsymTempGrad(
-    label="Inner Ring",
+    label="First Zone",
     rin=rin1,
     rout=rout1,
     p=p1,
@@ -141,7 +141,7 @@ first = AsymTempGrad(
     **shared_params,
 )
 second = AsymTempGrad(
-    label="Outer Ring",
+    label="Second Zone",
     rin=rin2,
     rout=rout2,
     p=p2,
@@ -151,7 +151,7 @@ second = AsymTempGrad(
     **shared_params,
 )
 third = AsymTempGrad(
-    label="Outer Ring",
+    label="Third Zone",
     rin=rin3,
     rout=rout3,
     p=p3,
