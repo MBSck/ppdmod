@@ -650,7 +650,7 @@ def plot_data_vs_model(
     elif key == "vis2":
         ylim = ylims.get(key, [0, 1])
     else:
-        value = OPTIONS.data.t3.value
+        value = OPTIONS.data.t3.val
         lower_bound = np.ma.min(value) + np.ma.min(value) * 0.25
         upper_bound = np.ma.max(value) + np.ma.max(value) * 0.25
         ylim = ylims.get("t3", [lower_bound, upper_bound])
@@ -711,7 +711,7 @@ def plot_fit(
     data_to_plot = OPTIONS.fit.data if data_to_plot is None else data_to_plot
     flux, t3 = OPTIONS.data.flux, OPTIONS.data.t3
     vis = OPTIONS.data.vis if "vis" in data_to_plot else OPTIONS.data.vis2
-    wavelengths = OPTIONS.fit.wavelengths
+    wavelengths = OPTIONS.fit.wls
 
     norm = LogNorm(vmin=wavelengths[0].value, vmax=wavelengths[-1].value)
 
@@ -750,7 +750,7 @@ def plot_fit(
         plot_data_vs_model(
             axarr,
             wavelengths,
-            flux.value,
+            flux.val,
             flux.err,
             "flux",
             ylims=ylims,
@@ -761,11 +761,11 @@ def plot_fit(
         )
 
     if "vis" in data_to_plot or "vis2" in data_to_plot:
-        baselines = np.hypot(*transform_coordinates(vis.ucoord, vis.vcoord, cinc, pa))
+        baselines = np.hypot(*transform_coordinates(vis.u, vis.v, cinc, pa))
         plot_data_vs_model(
             axarr,
             wavelengths,
-            vis.value,
+            vis.val,
             vis.err,
             "vis" if "vis" in data_to_plot else "vis2",
             ylims=ylims,
@@ -777,12 +777,12 @@ def plot_fit(
         )
 
     if "t3" in data_to_plot:
-        baselines = np.hypot(*transform_coordinates(t3.ucoord, t3.vcoord, cinc, pa))
-        baselines = baselines[:, t3.index123].T.squeeze(-1).max(1).reshape(1, -1)
+        baselines = np.hypot(*transform_coordinates(t3.u, t3.v, cinc, pa))
+        baselines = baselines[:, t3.i123].T.squeeze(-1).max(1).reshape(1, -1)
         plot_data_vs_model(
             axarr,
             wavelengths,
-            t3.value,
+            t3.val,
             t3.err,
             "t3",
             ylims=ylims,
@@ -838,7 +838,7 @@ def plot_overview(
         The save path. The default is None.
     """
     data_to_plot = OPTIONS.fit.data if data_to_plot is None else data_to_plot
-    wavelengths = OPTIONS.fit.wavelengths
+    wavelengths = OPTIONS.fit.wls
     norm = LogNorm(vmin=wavelengths[0].value, vmax=wavelengths[-1].value)
 
     data_types, nplots = [], 0
@@ -872,7 +872,7 @@ def plot_overview(
         plot_data_vs_model(
             axarr,
             wavelengths,
-            flux.value,
+            flux.val,
             flux.err,
             "flux",
             ylims=ylims,
@@ -882,11 +882,11 @@ def plot_overview(
         )
 
     if "vis" in data_to_plot or "vis2" in data_to_plot:
-        baselines = np.hypot(*transform_coordinates(vis.ucoord, vis.vcoord, cinc, pa))
+        baselines = np.hypot(*transform_coordinates(vis.u, vis.v, cinc, pa))
         plot_data_vs_model(
             axarr,
             wavelengths,
-            vis.value,
+            vis.val,
             vis.err,
             "vis" if "vis" in data_to_plot else "vis2",
             ylims=ylims,
@@ -897,12 +897,12 @@ def plot_overview(
         )
 
     if "t3" in data_to_plot:
-        baselines = np.hypot(*transform_coordinates(t3.ucoord, t3.vcoord, cinc, pa))
-        baselines = baselines[:, t3.index123].T.squeeze(-1).max(1).reshape(1, -1)
+        baselines = np.hypot(*transform_coordinates(t3.u, t3.v, cinc, pa))
+        baselines = baselines[:, t3.i123].T.squeeze(-1).max(1).reshape(1, -1)
         plot_data_vs_model(
             axarr,
             wavelengths,
-            t3.value,
+            t3.val,
             t3.err,
             "t3",
             ylims=ylims,
@@ -966,7 +966,7 @@ def plot_sed(
     wavelength = np.linspace(wavelength_range[0], wavelength_range[1], OPTIONS.plot.dim)
 
     if not no_model:
-        wavelength = OPTIONS.fit.wavelengths if wavelength is None else wavelength
+        wavelength = OPTIONS.fit.wls if wavelength is None else wavelength
         components = [comp for comp in components if comp.name != "Point Source"]
         flux = np.sum([comp.compute_flux(wavelength) for comp in components], axis=0)
         if flux.size > 0:
@@ -1144,7 +1144,7 @@ def plot_intermediate_products(
     wavelength = (
         u.Quantity(wavelength, u.um)
         if wavelength is not None
-        else OPTIONS.fit.wavelengths
+        else OPTIONS.fit.wls
     )
     wavelengths = np.linspace(wavelength[0], wavelength[-1], dim)
     component_labels = [
