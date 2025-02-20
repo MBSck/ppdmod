@@ -42,9 +42,9 @@ RESULT_DIR.mkdir(parents=True, exist_ok=True)
 wavelengths = {
     "hband": [1.7] * u.um,
     "kband": [2.15] * u.um,
-    "lband": windowed_linspace(3.1, 3.8, 0.2) * u.um,
-    "mband": windowed_linspace(4.65, 4.9, 0.2) * u.um,
-    "nband": windowed_linspace(8.25, 12.75, 0.2) * u.um,
+    "lband": windowed_linspace(3, 4, 0.2) * u.um,
+    "mband": windowed_linspace(4.6, 5, 0.2) * u.um,
+    "nband": windowed_linspace(8, 13, 0.2) * u.um,
 }
 # bands = ["hband", "kband", "lband", "mband", "nband"]
 bands = ["lband", "mband", "nband"]
