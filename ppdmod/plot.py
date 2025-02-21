@@ -1133,7 +1133,7 @@ def plot_product(
 
 
 # TODO: Clean and split this function into multiple ones
-def plot_intermediate_products(
+def plot_products(
     dim: int,
     wavelength: u.Quantity[u.um],
     components: List[FourierComponent],
