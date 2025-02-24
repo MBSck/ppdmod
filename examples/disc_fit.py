@@ -12,7 +12,7 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 import astropy.units as u
 import numpy as np
 
-from ppdmod.components import AsymTempGrad, Point
+from ppdmod.components import TempGrad, AsymTempGrad, Point
 from ppdmod.data import set_data
 from ppdmod.fitting import (
     compute_interferometric_chi_sq,
@@ -39,28 +39,25 @@ DAY_DIR = Path(str(datetime.now().date()))
 RESULT_DIR /= DAY_DIR / RESULT_DIR_NAME
 RESULT_DIR.mkdir(parents=True, exist_ok=True)
 
-wavelengths = {
+wls = {
     "hband": [1.7] * u.um,
     "kband": [2.15] * u.um,
     "lband": windowed_linspace(3, 4, 0.2) * u.um,
     "mband": windowed_linspace(4.6, 5, 0.2) * u.um,
     "nband": windowed_linspace(8, 13, 0.2) * u.um,
 }
-# bands = ["hband", "kband", "lband", "mband", "nband"]
-bands = ["lband", "mband", "nband"]
-# bands = ["nband"]
-wavelengths = np.concatenate([wavelengths[band] for band in bands])
+bands = ["hband", "kband", "lband", "mband", "nband"]
+wls = np.concatenate([wls[band] for band in bands])
 
 fit_data = ["flux", "vis", "t3"]
-fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*_N_*fits"))
-fits_files.extend(list((DATA_DIR / "fits" / "hd142527").glob("*_L_*fits")))
+fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*.fits"))
 data = set_data(
     fits_files,
-    wavelengths=wavelengths,
+    wavelengths=wls,
     fit_data=fit_data,
 )
 
-np.save(RESULT_DIR / "wl.npy", wavelengths.value)
+np.save(RESULT_DIR / "wl.npy", wls.value)
 np.save(RESULT_DIR / "observables.npy", fit_data)
 np.save(RESULT_DIR / "files.npy", [fits_file.name for fits_file in fits_files])
 
@@ -82,9 +79,11 @@ grid, value = load_data(
 )
 kappa_cont = Parameter(grid=grid, value=value, base="kappa_cont")
 
-x = Parameter(free=False, base="x")
-y = Parameter(free=False, base="y")
+x0 = Parameter(free=False, base="x")
+y0 = Parameter(free=False, base="y")
 
+x1 = Parameter(free=False, base="x")
+y1 = Parameter(free=False, base="y")
 rin1 = Parameter(value=0.1, min=0, max=4, unit=u.au, base="rin")
 rout1 = Parameter(value=1.5, min=0, max=4, unit=u.au, free=True, base="rout")
 p1 = Parameter(value=0, base="p")
@@ -92,19 +91,14 @@ sigma01 = Parameter(value=1e-3, base="sigma0")
 rho11 = Parameter(value=0.6, free=True, base="rho")
 theta11 = Parameter(value=33, free=True, base="theta")
 
+x2 = Parameter(free=True, base="x")
+y2 = Parameter(free=True, base="y")
 rin2 = Parameter(value=0, min=0.2, max=7, unit=u.au, base="rin")
 rout2 = Parameter(value=0, min=1.5, max=10, unit=u.au, free=True, base="rout")
 p2 = Parameter(value=0, base="p")
 sigma02 = Parameter(value=1e-3, base="sigma0")
 rho21 = Parameter(value=0.6, free=True, base="rho")
 theta21 = Parameter(value=33, free=True, base="theta")
-
-rin3 = Parameter(value=0, min=1, max=10, unit=u.au, base="rin")
-rout3 = Parameter(value=0, min=2, max=15, unit=u.au, free=True, base="rout")
-p3 = Parameter(value=0, base="p")
-sigma03 = Parameter(value=1e-3, base="sigma0")
-rho31 = Parameter(value=0.6, free=True, base="rho")
-theta31 = Parameter(value=33, free=True, base="theta")
 
 pa = Parameter(value=352, free=False, shared=True, base="pa")
 cinc = Parameter(value=0.84, free=True, shared=True, base="cinc")
@@ -130,19 +124,23 @@ shared_params = {
     # "t3_lnf": t3_lnf,
 }
 
-star = Point(label="Star", fr=flux_star, x=x, y=y, **shared_params)
-first = AsymTempGrad(
+star = Point(label="Star", fr=flux_star, x=x0, y=y0, **shared_params)
+first = TempGrad(
     label="First Zone",
+    x=x1,
+    y=y1,
     rin=rin1,
     rout=rout1,
     p=p1,
     sigma0=sigma01,
-    rho1=rho11,
-    theta1=theta11,
+    # rho1=rho11,
+    # theta1=theta11,
     **shared_params,
 )
-second = AsymTempGrad(
+second = TempGrad(
     label="Second Zone",
+    x=x2,
+    y=y2,
     rin=rin2,
     rout=rout2,
     p=p2,
@@ -151,18 +149,8 @@ second = AsymTempGrad(
     theta1=theta21,
     **shared_params,
 )
-third = AsymTempGrad(
-    label="Third Zone",
-    rin=rin3,
-    rout=rout3,
-    p=p3,
-    sigma0=sigma03,
-    rho1=rho31,
-    theta1=theta31,
-    **shared_params,
-)
 
-OPTIONS.model.components = components = [star, first, second, third]
+OPTIONS.model.components = components = [star, first, second]
 
 if __name__ == "__main__":
     labels = get_labels(components)
