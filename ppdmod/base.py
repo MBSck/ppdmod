@@ -169,7 +169,7 @@ class FourierComponent(Component):
         vis = vis.reshape(vis.shape[:-1]) if vis.shape[-1] == 1 else vis
 
         if self.name != "Point":
-            vis *= self.fr()
+            vis *= self.fr(wl)
 
         return (vis * shift).astype(OPTIONS.data.dtype.complex)
 
@@ -186,4 +186,4 @@ class FourierComponent(Component):
         xxs, yys = translate_image_func(*np.meshgrid(xx, xx), self.x(), self.y())
         xxt, yyt = transform_coordinates(xxs, yys, self.cinc(), self.pa(), axis="x")
         image = self.image_func(xxt, yyt, pixel_size, wl)
-        return (self.fr() * image).value.astype(OPTIONS.data.dtype.real)
+        return (self.fr(wl) * image).value.astype(OPTIONS.data.dtype.real)

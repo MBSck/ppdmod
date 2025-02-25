@@ -142,7 +142,8 @@ def plot_components(
             ax.text(
                 0.18,
                 0.95,
-                rf"$\lambda$ = {wl} " + r"$\mathrm{\mu}$m",
+                rf"$\lambda$ = {wl.value if isinstance(wl, u.Quantity) else wl} "
+                + r"$\mathrm{\mu}$m",
                 transform=ax.transAxes,
                 fontsize=12,
                 color="white",
@@ -1142,9 +1143,7 @@ def plot_products(
 ) -> None:
     """Plots the intermediate products of the model (temperature, density, etc.)."""
     wavelength = (
-        u.Quantity(wavelength, u.um)
-        if wavelength is not None
-        else OPTIONS.fit.wls
+        u.Quantity(wavelength, u.um) if wavelength is not None else OPTIONS.fit.wls
     )
     wavelengths = np.linspace(wavelength[0], wavelength[-1], dim)
     component_labels = [
