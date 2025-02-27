@@ -3,16 +3,32 @@ name = "x"
 description = "The x position"
 value = 0
 unit = "mas"
-min = -30
-max = 30
+min = -10
+max = 10
 
 [STANDARD_PARAMETERS.y]
 name = "y"
 description = "The y position"
 value = 0
 unit = "mas"
-min = -30
-max = 30
+min = -10
+max = 10
+
+[STANDARD_PARAMETERS.r]
+name = "r"
+description = "The radial magnitude"
+value = 0
+unit = "mas"
+min = 0
+max = 10
+
+[STANDARD_PARAMETERS.phi]
+name = "phi"
+description = "The radial angle"
+value = 0
+unit = "deg"
+min = -180
+max = 180
 
 [STANDARD_PARAMETERS.f]
 name = "f"

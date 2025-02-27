@@ -24,9 +24,7 @@ from .base import FourierComponent
 from .fitting import compute_observables, get_best_fit
 from .options import OPTIONS, get_colormap
 from .utils import (
-    angular_to_distance,
     compare_angles,
-    distance_to_angular,
     get_band,
     transform_coordinates,
 )
@@ -100,7 +98,7 @@ def plot_components(
         dist = [component for component in components if hasattr(component, "dist")][
             0
         ].dist()
-        pixel_size = angular_to_distance(pixel_size, dist).to(u.au).value
+        pixel_size = (pixel_size.to(u.arcsec) * self.dist.to(u.pc)).value * u.au
 
     extent = u.Quantity([sign * dim * pixel_size / 2 for sign in [-1, 1, 1, -1]])
     if save_as_fits:
@@ -124,10 +122,10 @@ def plot_components(
             ][0].dist()
 
             def convert_to_au(x):
-                return angular_to_distance(x * u.mas, dist).to(u.au).value
+                return x * 1e-3 * dist.to(u.pc).value
 
             def convert_to_mas(x):
-                return distance_to_angular(x * u.au, dist).value
+                return x / dist.to(u.pc).value * 1e3
 
             top_ax = ax.secondary_xaxis(
                 "top", functions=(convert_to_mas, convert_to_au)
@@ -1167,7 +1165,7 @@ def plot_products(
         )
         fluxes.append(flux)
 
-        if component.name in ["Star", "Point"]:
+        if component.name == "Point":
             continue
 
         radius = component.compute_internal_grid()
@@ -1254,7 +1252,9 @@ def plot_products(
     )
     intensity = np.hstack(intensity)
     intensity = intensity.to(u.W / u.m**2 / u.Hz / u.sr)
-    merged_radii_mas = distance_to_angular(merged_radii, components[-1].dist())
+    merged_radii_mas = (
+        (merged_radii.to(u.au) / components[-1].dist().to(u.pc)).value * 1e3 * u.mas
+    )
 
     # TODO: Code this in a better manner
     wls = [1.7, 2.15, 3.4, 8, 11.3, 13] * u.um

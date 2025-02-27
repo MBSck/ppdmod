@@ -79,11 +79,11 @@ grid, value = load_data(
 )
 kappa_cont = Parameter(grid=grid, value=value, base="kappa_cont")
 
-x0 = Parameter(free=False, base="x")
-y0 = Parameter(free=False, base="y")
+r0 = Parameter(free=True, value=2, min=0, max=1.5, unit=u.au, base="r")
+phi0 = Parameter(free=True, base="phi")
 
-x1 = Parameter(free=False, base="x")
-y1 = Parameter(free=False, base="y")
+r1 = Parameter(free=True, min=0, max=1.5, unit=u.au, base="r")
+phi1 = Parameter(free=True, base="phi")
 rin1 = Parameter(value=0.1, min=0, max=4, unit=u.au, base="rin")
 rout1 = Parameter(value=1.5, min=0, max=4, unit=u.au, free=True, base="rout")
 p1 = Parameter(value=0, base="p")
@@ -91,8 +91,8 @@ sigma01 = Parameter(value=1e-3, base="sigma0")
 rho11 = Parameter(value=0.6, free=True, base="rho")
 theta11 = Parameter(value=33, free=True, base="theta")
 
-x2 = Parameter(free=True, base="x")
-y2 = Parameter(free=True, base="y")
+r2 = Parameter(free=True, min=0, max=1.5, unit=u.au, base="r")
+phi2 = Parameter(free=True, base="phi")
 rin2 = Parameter(value=0, min=0.2, max=7, unit=u.au, base="rin")
 rout2 = Parameter(value=0, min=1.5, max=10, unit=u.au, free=True, base="rout")
 p2 = Parameter(value=0, base="p")
@@ -101,7 +101,7 @@ rho21 = Parameter(value=0.6, free=True, base="rho")
 theta21 = Parameter(value=33, free=True, base="theta")
 
 pa = Parameter(value=352, free=False, shared=True, base="pa")
-cinc = Parameter(value=0.84, free=True, shared=True, base="cinc")
+cinc = Parameter(value=np.cos(np.deg2rad(46)), free=False, shared=True, base="cinc")
 q = Parameter(value=0.5, free=True, shared=True, base="q")
 temp0 = Parameter(value=1500, free=True, shared=True, base="temp0")
 flux_lnf = Parameter(name="flux_lnf", free=True, shared=True, base="lnf")
@@ -124,11 +124,11 @@ shared_params = {
     # "t3_lnf": t3_lnf,
 }
 
-star = Point(label="Star", fr=flux_star, x=x0, y=y0, **shared_params)
+star = Point(label="Star", fr=flux_star, r=r0, phi=phi0, **shared_params)
 first = TempGrad(
     label="First Zone",
-    x=x1,
-    y=y1,
+    r=r1,
+    phi=phi1,
     rin=rin1,
     rout=rout1,
     p=p1,
@@ -139,8 +139,8 @@ first = TempGrad(
 )
 second = TempGrad(
     label="Second Zone",
-    x=x2,
-    y=y2,
+    r=r2,
+    phi=phi2,
     rin=rin2,
     rout=rout2,
     p=p2,
@@ -161,7 +161,7 @@ if __name__ == "__main__":
     )
     fit_params = {"dlogz_init": 0.01, "nlive_init": 1500, "nlive_batch": 150}
     ncores = fit_params.get("nwalkers", 150) // 2
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=RESULT_DIR, debug=False)
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=RESULT_DIR, debug=True)
     theta, uncertainties = get_best_fit(sampler, discard=fit_params.get("discard", 0))
     components = OPTIONS.model.components = set_components_from_theta(theta)
     np.save(RESULT_DIR / "theta.npy", theta)

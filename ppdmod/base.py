@@ -6,7 +6,11 @@ import numpy as np
 
 from .options import OPTIONS
 from .parameter import Parameter
-from .utils import transform_coordinates, translate_image_func, translate_vis_func
+from .utils import (
+    transform_coordinates,
+    translate_image_func,
+    translate_vis_func,
+)
 
 
 class Component:
@@ -101,8 +105,8 @@ class FourierComponent(Component):
         """The class's constructor."""
         super().__init__(**kwargs)
         self.fr = Parameter(base="fr")
-        self.x = Parameter(base="x")
-        self.y = Parameter(base="y")
+        self.r = Parameter(base="r")
+        self.phi = Parameter(base="phi")
         self.pa = Parameter(base="pa")
         self.cinc = Parameter(base="cinc")
         self.dim = Parameter(base="dim")
@@ -113,6 +117,20 @@ class FourierComponent(Component):
             theta = Parameter(name=theta_str, free=self.asymmetric, base="theta")
             setattr(self, rho_str, rho)
             setattr(self, theta_str, theta)
+
+    @property
+    def x(self) -> u.Quantity:
+        r = self.r()
+        if self.r.unit == u.au:
+            r = (r.to(u.au) / self.dist().to(u.pc)).value * 1e3 * u.mas
+        return r * np.sin(self.phi().to(u.rad))
+
+    @property
+    def y(self) -> u.Quantity:
+        r = self.r()
+        if self.r.unit != u.mas:
+            r = (r.to(u.au) / self.dist().to(u.pc)).value * 1e3 * u.mas
+        return r * np.cos(self.phi().to(u.rad))
 
     @property
     def asymmetric(self) -> bool:
@@ -161,9 +179,7 @@ class FourierComponent(Component):
         vtb = (vt / wl.to(u.m)).value[..., np.newaxis] / u.rad
         spf, psi = np.hypot(utb, vtb), np.arctan2(utb, vtb)
 
-        shift = translate_vis_func(
-            utb.value, vtb.value, self.x().to(u.rad).value, self.y().to(u.rad).value
-        )
+        shift = translate_vis_func(utb.value, vtb.value, self.x, self.y)
         shift = shift.reshape(shift.shape[:-1]) if shift.shape[-1] == 1 else shift
         vis = self.vis_func(spf, psi, wl, **kwargs)
         vis = vis.reshape(vis.shape[:-1]) if vis.shape[-1] == 1 else vis

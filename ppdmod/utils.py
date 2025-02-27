@@ -225,63 +225,6 @@ def compute_stellar_radius(luminosity: u.Lsun, temperature: u.K) -> u.Rsun:
         luminosity.to(u.W) / (4 * np.pi * const.sigma_sb * temperature**4)
     ).to(u.Rsun)
 
-
-def angular_to_distance(angular_diameter: u.mas, distance: u.pc) -> u.m:
-    """Converts an angular diameter of an object at a certain distance
-    from the observer from mas to meters.
-
-    Parameters
-    ----------
-    angular_diameter : astropy.units.mas
-        The angular diameter of an object.
-    distance : astropy.units.pc
-        The distance to the object.
-
-    Returns
-    -------
-    diameter : astropy.units.m
-        The diameter of the object.
-
-    Notes
-    -----
-    The formula for the angular diameter small angle approximation is
-
-    .. math:: d = \\delta*D
-
-    where 'd' is the diameter of the object and 'D' is the distance from the
-    observer to the object and ..math::`\\delta` is the angular diameter.
-    """
-    return angular_diameter.to(u.rad).value * distance.to(u.m)
-
-
-def distance_to_angular(diameter: u.au, distance: u.pc) -> u.mas:
-    """Converts an angular diameter of an object at a certain distance
-    from the observer from mas to meters.
-
-    Parameters
-    ----------
-    diameter : astropy.units.au
-        The diameter of an object.
-    distance : astropy.units.pc
-        The distance to the object.
-
-    Returns
-    -------
-    diameter : astropy.units.mas
-        The diameter of the object.
-
-    Notes
-    -----
-    The formula for the angular diameter small angle approximation is
-
-    .. math:: \\delta = \\frac{d}{D}
-
-    where 'd' is the diameter of the object and 'D' is the distance from the
-    observer to the object and ..math::`\\delta` is the angular diameter.
-    """
-    return ((diameter.to(u.m) / distance.to(u.m)) * u.rad).to(u.mas)
-
-
 def transform_coordinates(
     x: float | np.ndarray,
     y: float | np.ndarray,

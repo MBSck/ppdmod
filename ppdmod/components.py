@@ -9,7 +9,7 @@ from scipy.special import j0, jv
 from .base import Component, FourierComponent
 from .options import OPTIONS
 from .parameter import Parameter
-from .utils import angular_to_distance, compare_angles, distance_to_angular
+from .utils import compare_angles
 
 
 class NBandFit(Component):
@@ -77,6 +77,7 @@ class Point(FourierComponent):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.dist = Parameter(base="dist")
         self.eval(**kwargs)
 
     def flux_func(self, wl: u.um) -> np.ndarray:
@@ -202,7 +203,7 @@ class Ring(FourierComponent):
                 intensity = intensity[:, np.newaxis]
 
             if radius.unit not in [u.rad, u.mas]:
-                radius = distance_to_angular(radius, self.dist())
+                radius = (radius.to(u.au) / self.dist().to(u.pc)).value * 1e3 * u.mas
 
             radius = radius.to(u.rad)
             vis = _vis_func(2 * np.pi * radius * spf)
@@ -237,8 +238,8 @@ class Ring(FourierComponent):
         image : astropy.units.Jy
         """
         if self.rin.unit == u.au:
-            xx = angular_to_distance(xx, self.dist()).to(u.au)
-            yy = angular_to_distance(yy, self.dist()).to(u.au)
+            xx = (xx.to(u.arcsec) * self.dist().to(u.pc)).value * u.au
+            yy = (yy.to(u.arcsec) * self.dist().to(u.pc)).value * u.au
 
         radius = np.hypot(xx, yy)[np.newaxis, ...]
         dx = np.max([np.diff(xx), np.diff(yy)]) * self.rin.unit
@@ -395,7 +396,7 @@ class TempGrad(Ring):
         radius = self.compute_internal_grid()
         intensity = self.compute_intensity(radius, wl[:, np.newaxis])
         if self.rin.unit == u.au:
-            radius = distance_to_angular(radius, self.dist())
+            radius = (radius.to(u.au) / self.dist().to(u.pc)).value * 1e3 * u.mas
 
         flux = 2 * np.pi * self.cinc() * np.trapz(radius * intensity, radius).to(u.Jy)
         return flux.value.reshape((flux.shape[0], 1)).astype(OPTIONS.data.dtype.real)
