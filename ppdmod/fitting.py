@@ -58,16 +58,10 @@ def get_labels(components: List[Component]) -> np.ndarray:
     -------
     theta : numpy.ndarray
     """
-    disc_models = ["TempGrad", "AsymTempGrad", "GreyBody", "AsymGreyBody"]
-    labels, labels_shared, zone_count = [], [], 1
-    for component in components:
+    labels, labels_shared = [], []
+    for index, component in enumerate(components):
         component_labels = [key for key in component.get_params(free=True)]
-        if component.name == "Star":
-            component_labels = [rf"{label}-\star" for label in component_labels]
-
-        if component.name in disc_models:
-            component_labels = [f"{label}-{zone_count}" for label in component_labels]
-            zone_count += 1
+        component_labels = [f"{label}-{index}" for label in component_labels]
 
         labels.extend(component_labels)
 
@@ -369,13 +363,14 @@ def ptform_one_disc(theta: List[float]) -> np.ndarray:
     return params
 
 
-# TODO: Check this condition again
 def ptform_sequential_radii(theta: List[float]) -> np.ndarray:
     """Transform that soft constrains successive radii to be smaller than the one before."""
+    labels = get_labels(OPTIONS.model.components)
     priors = get_priors(OPTIONS.model.components)
     params = transform_uniform_prior(theta)
     indices = OPTIONS.fit.condition_indices
 
+    # NOTE: Sets the radii to be sequential
     new_radii = [params[indices][0]]
     for index, (uniform, prior) in enumerate(
         zip(theta[indices][1:], priors[indices][1:]), start=1
@@ -384,6 +379,30 @@ def ptform_sequential_radii(theta: List[float]) -> np.ndarray:
         new_radii.append(prior[0] + (prior[1] - prior[0]) * uniform)
 
     params[indices] = new_radii
+
+    # NOTE: Makes sure there is no overlap when x, y is moved
+    coord_indices = np.reshape(
+        list(
+            map(
+                labels.index,
+                (filter(lambda x: x.split("-")[0] == "r" or "phi" in x, labels)),
+            )
+        ),
+        (-1, 2),
+    ).tolist()
+
+    if coord_indices:
+        new_coords = []
+        for phi_ind, r_ind in coord_indices:
+            r_prior, phi_prior = priors[r_ind], priors[phi_ind]
+            if (zone_index := int(labels[r_ind].split("-")[-1])) == 0:
+                ...
+            else:
+                breakpoint()
+
+        new_coords.append(phi_prior[0] + (phi_prior[1] - phi_prior[0]) * theta[phi_ind])
+        new_coords.append(r_prior[0] + (r_prior[1] - r_prior[0]) * theta[r_ind])
+
     return params
 
 

@@ -179,6 +179,7 @@ class FourierComponent(Component):
         vtb = (vt / wl.to(u.m)).value[..., np.newaxis] / u.rad
         spf, psi = np.hypot(utb, vtb), np.arctan2(utb, vtb)
 
+        breakpoint()
         shift = translate_vis_func(utb.value, vtb.value, self.x, self.y)
         shift = shift.reshape(shift.shape[:-1]) if shift.shape[-1] == 1 else shift
         vis = self.vis_func(spf, psi, wl, **kwargs)
