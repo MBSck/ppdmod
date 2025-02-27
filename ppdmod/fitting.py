@@ -158,7 +158,6 @@ def compute_chi_sq(
 
     residuals = data - model_data
     if diff_method == "periodic":
-        breakpoint()
         residuals = np.rad2deg(compare_angles(data, model_data))
 
     chi_sq = residuals**2 / sn

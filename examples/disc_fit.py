@@ -79,6 +79,9 @@ grid, value = load_data(
 )
 kappa_cont = Parameter(grid=grid, value=value, base="kappa_cont")
 
+r0 = Parameter(free=True, value=2, min=0, max=1.5, unit=u.au, base="r")
+phi0 = Parameter(free=True, base="phi")
+
 r1 = Parameter(free=True, min=0, max=1.5, unit=u.au, base="r")
 phi1 = Parameter(free=True, base="phi")
 rin1 = Parameter(value=0.1, min=0, max=4, unit=u.au, base="rin")
@@ -124,8 +127,8 @@ shared_params = {
 star = Point(label="Star", fr=flux_star, **shared_params)
 first = TempGrad(
     label="First Zone",
-    # r=r1,
-    # phi=phi1,
+    r=r1,
+    phi=phi1,
     rin=rin1,
     rout=rout1,
     p=p1,
@@ -158,7 +161,7 @@ if __name__ == "__main__":
     )
     fit_params = {"dlogz_init": 0.01, "nlive_init": 1500, "nlive_batch": 150}
     ncores = fit_params.get("nwalkers", 150) // 2
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=RESULT_DIR, debug=True)
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=RESULT_DIR, debug=False)
     theta, uncertainties = get_best_fit(sampler, discard=fit_params.get("discard", 0))
     components = OPTIONS.model.components = set_components_from_theta(theta)
     np.save(RESULT_DIR / "theta.npy", theta)
