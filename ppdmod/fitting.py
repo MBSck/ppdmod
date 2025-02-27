@@ -1,4 +1,4 @@
-from multiprocessing import Pool
+from multiprocessing import Pool, Value
 from pathlib import Path
 from typing import List, Tuple
 
@@ -158,7 +158,8 @@ def compute_chi_sq(
 
     residuals = data - model_data
     if diff_method == "periodic":
-        residuals = np.rad2deg(compare_angles(np.deg2rad(data), np.deg2rad(model_data)))
+        breakpoint()
+        residuals = np.rad2deg(compare_angles(data, model_data))
 
     chi_sq = residuals**2 / sn
     if method == "linear":
@@ -380,28 +381,31 @@ def ptform_sequential_radii(theta: List[float]) -> np.ndarray:
 
     params[indices] = new_radii
 
-    # NOTE: Makes sure there is no overlap when x, y is moved
-    coord_indices = np.reshape(
-        list(
-            map(
-                labels.index,
-                (filter(lambda x: x.split("-")[0] == "r" or "phi" in x, labels)),
-            )
-        ),
-        (-1, 2),
-    ).tolist()
+    # NOTE: Removes overlap caused by photosphere shift
+    # TODO: This does not account for direction -> Problem? Try in a fit.
+    # Subtract the distance also from the centre?
+    components = set_components_from_theta(params)
+    for index, comp in enumerate(components):
+        bounds = np.array([np.nan, np.nan])
+        if index != 0:
+            prev_comp = components[index - 1]
+            try:
+                bounds[0] = comp.rout.value - prev_comp.rin.value
+            except AttributeError:
+                bounds[0] = comp.r.value
 
-    if coord_indices:
-        new_coords = []
-        for phi_ind, r_ind in coord_indices:
-            r_prior, phi_prior = priors[r_ind], priors[phi_ind]
-            if (zone_index := int(labels[r_ind].split("-")[-1])) == 0:
-                ...
-            else:
-                breakpoint()
+        if index != len(components) - 1:
+            next_comp = components[index + 1]
+            try:
+                bounds[1] = next_comp.rin.value - comp.rout.value
+            except AttributeError:
+                bounds[1] = next_comp.rin.value
 
-        new_coords.append(phi_prior[0] + (phi_prior[1] - phi_prior[0]) * theta[phi_ind])
-        new_coords.append(r_prior[0] + (r_prior[1] - r_prior[0]) * theta[r_ind])
+        upper = np.min(bounds[~np.isnan(bounds)])
+        if f"r-{index}" in labels:
+            r_ind = labels.index(f"r-{index}")
+            lower = priors[r_ind][0]
+            params[r_ind] = lower + (upper - lower) * theta[r_ind]
 
     return params
 

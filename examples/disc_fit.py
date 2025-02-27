@@ -79,9 +79,6 @@ grid, value = load_data(
 )
 kappa_cont = Parameter(grid=grid, value=value, base="kappa_cont")
 
-r0 = Parameter(free=True, value=2, min=0, max=1.5, unit=u.au, base="r")
-phi0 = Parameter(free=True, base="phi")
-
 r1 = Parameter(free=True, min=0, max=1.5, unit=u.au, base="r")
 phi1 = Parameter(free=True, base="phi")
 rin1 = Parameter(value=0.1, min=0, max=4, unit=u.au, base="rin")
@@ -124,11 +121,11 @@ shared_params = {
     # "t3_lnf": t3_lnf,
 }
 
-star = Point(label="Star", fr=flux_star, r=r0, phi=phi0, **shared_params)
+star = Point(label="Star", fr=flux_star, **shared_params)
 first = TempGrad(
     label="First Zone",
-    r=r1,
-    phi=phi1,
+    # r=r1,
+    # phi=phi1,
     rin=rin1,
     rout=rout1,
     p=p1,
