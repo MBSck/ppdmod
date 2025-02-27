@@ -79,17 +79,24 @@ def create_adaptive_bins(
     return bins, windows
 
 
-def compare_angles(angle1: u.Quantity, angle2: u.Quantity) -> complex:
-    """Subtracts two angles and makes sure the are between -np.pi and +np.pi."""
-    if isinstance(angle1, u.Quantity):
-        angle1 = angle1.to(u.rad).value
+def compare_angles(phi: float, psi: float) -> float:
+    """Subtracts two angles [-π, π].
 
-    if isinstance(angle2, u.Quantity):
-        angle2 = angle2.to(u.rad).value
+    Parameters
+    ----------
+    phi : float
+        Angle in degrees.
+    psi : float
+        Angle in degrees.
 
-    diff = angle1 - angle2
-    diff[diff > np.pi] -= 2 * np.pi
-    diff[diff < -np.pi] += 2 * np.pi
+    Returns
+    -------
+    float
+        Difference between the angles (rad).
+    """
+    diff = np.deg2rad(phi - psi)
+    diff = np.where(diff > np.pi, diff - 2 * np.pi, diff)
+    diff = np.where(diff < -np.pi, diff + 2 * np.pi, diff)
     return diff
 
 
