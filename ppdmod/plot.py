@@ -98,7 +98,7 @@ def plot_components(
         dist = [component for component in components if hasattr(component, "dist")][
             0
         ].dist()
-        pixel_size = (pixel_size.to(u.arcsec) * self.dist.to(u.pc)).value * u.au
+        pixel_size = (pixel_size.to(u.arcsec) * dist.to(u.pc)).value
 
     extent = u.Quantity([sign * dim * pixel_size / 2 for sign in [-1, 1, 1, -1]])
     if save_as_fits:
