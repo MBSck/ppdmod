@@ -5,6 +5,8 @@ value = 0
 unit = "mas"
 min = -10
 max = 10
+free = false
+shared = false
 
 [STANDARD_PARAMETERS.y]
 name = "y"
@@ -13,6 +15,8 @@ value = 0
 unit = "mas"
 min = -10
 max = 10
+free = false
+shared = false
 
 [STANDARD_PARAMETERS.r]
 name = "r"
@@ -21,6 +25,8 @@ value = 0
 unit = "mas"
 min = 0
 max = 10
+free = false
+shared = false
 
 [STANDARD_PARAMETERS.phi]
 name = "phi"
@@ -29,6 +35,8 @@ value = 0
 unit = "deg"
 min = -180
 max = 180
+free = false
+shared = false
 
 [STANDARD_PARAMETERS.f]
 name = "f"

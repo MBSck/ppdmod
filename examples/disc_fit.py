@@ -127,8 +127,8 @@ shared_params = {
 star = Point(label="Star", fr=flux_star, **shared_params)
 first = TempGrad(
     label="First Zone",
-    r=r1,
-    phi=phi1,
+    # r=r1,
+    # phi=phi1,
     rin=rin1,
     rout=rout1,
     p=p1,
