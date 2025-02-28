@@ -389,7 +389,7 @@ def ptform_sequential_radii(theta: List[float]) -> np.ndarray:
         if index != 0:
             prev_comp = components[index - 1]
             try:
-                bounds[0] = comp.rout.value - prev_comp.rin.value
+                bounds[0] = min(comp.rin.value - prev_comp.rout.value, prev_comp.rout.value)
             except AttributeError:
                 bounds[0] = comp.r.value
 
