@@ -158,7 +158,7 @@ def compute_chi_sq(
 
     residuals = data - model_data
     if diff_method == "periodic":
-        residuals = np.rad2deg(compare_angles(data, model_data))
+        residuals = np.rad2deg(compare_angles(np.deg2rad(data), np.deg2rad(model_data)))
 
     chi_sq = residuals**2 / sn
     if method == "linear":
@@ -389,7 +389,9 @@ def ptform_sequential_radii(theta: List[float]) -> np.ndarray:
         if index != 0:
             prev_comp = components[index - 1]
             try:
-                bounds[0] = min(comp.rin.value - prev_comp.rout.value, prev_comp.rout.value)
+                bounds[0] = min(
+                    comp.rin.value - prev_comp.rout.value, prev_comp.rout.value
+                )
             except AttributeError:
                 bounds[0] = comp.r.value
 

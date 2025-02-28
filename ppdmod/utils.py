@@ -85,16 +85,16 @@ def compare_angles(phi: float, psi: float) -> float:
     Parameters
     ----------
     phi : float
-        Angle in degrees.
+        Angle (rad).
     psi : float
-        Angle in degrees.
+        Angle (rad).
 
     Returns
     -------
     float
-        Difference between the angles (rad).
+        Difference of angles (rad).
     """
-    diff = np.deg2rad(phi - psi)
+    diff = phi - psi
     diff = np.where(diff > np.pi, diff - 2 * np.pi, diff)
     diff = np.where(diff < -np.pi, diff + 2 * np.pi, diff)
     return diff
@@ -231,6 +231,7 @@ def compute_stellar_radius(luminosity: u.Lsun, temperature: u.K) -> u.Rsun:
     return np.sqrt(
         luminosity.to(u.W) / (4 * np.pi * const.sigma_sb * temperature**4)
     ).to(u.Rsun)
+
 
 def transform_coordinates(
     x: float | np.ndarray,

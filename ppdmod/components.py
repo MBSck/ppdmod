@@ -170,7 +170,7 @@ class Ring(FourierComponent):
             for i in range(1, OPTIONS.model.modulation + 1):
                 rho, theta = getattr(self, f"rho{i}")(), getattr(self, f"theta{i}")()
                 mod_amps.append((-1j) ** i * rho)
-                cos_diff.append(np.cos(i * compare_angles(psi, theta)))
+                cos_diff.append(np.cos(i * compare_angles(psi.value, theta.to(u.rad).value)))
                 bessel_funcs.append(partial(jv, i))
 
             mod_amps = np.array(mod_amps)

@@ -631,7 +631,12 @@ def plot_data_vs_model(
             )
 
             if key == "t3":
-                residuals = compare_angles(band_value[index], band_model_data[index])
+                residuals = np.rad2deg(
+                    compare_angles(
+                        np.deg2rad(band_value[index]),
+                        np.deg2rad(band_model_data[index]),
+                    )
+                )
             else:
                 residuals = band_value[index] - band_model_data[index]
 
