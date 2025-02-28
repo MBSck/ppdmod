@@ -30,7 +30,7 @@ from ppdmod.utils import (
 )
 
 DATA_DIR = Path(__file__).parent.parent / "data"
-RESULT_DIR_NAME = "all_asym_shit_const_small_error"
+RESULT_DIR_NAME = "constrained_shift"
 if RESULT_DIR_NAME is None:
     RESULT_DIR_NAME = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 
@@ -126,7 +126,7 @@ shared_params = {
 }
 
 star = Point(label="Star", fr=flux_star, **shared_params)
-first = AsymTempGrad(
+first = TempGrad(
     label="First Zone",
     # r=r1,
     # phi=phi1,
@@ -134,19 +134,19 @@ first = AsymTempGrad(
     rout=rout1,
     p=p1,
     sigma0=sigma01,
-    rho1=rho11,
-    theta1=theta11,
+    # rho1=rho11,
+    # theta1=theta11,
     **shared_params,
 )
-second = AsymTempGrad(
+second = TempGrad(
     label="Second Zone",
     r=r2,
     phi=phi2,
     rin=rin2,
     rout=rout2,
     p=p2,
-    sigma0=sigma02,
-    rho1=rho21,
+    # sigma0=sigma02,
+    # rho1=rho21,
     theta1=theta21,
     **shared_params,
 )
