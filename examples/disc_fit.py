@@ -30,7 +30,7 @@ from ppdmod.utils import (
 )
 
 DATA_DIR = Path(__file__).parent.parent / "data"
-RESULT_DIR_NAME = "all_data"
+RESULT_DIR_NAME = "all_asym_shit_const_small_error"
 if RESULT_DIR_NAME is None:
     RESULT_DIR_NAME = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 
@@ -51,6 +51,7 @@ wls = np.concatenate([wls[band] for band in bands])
 
 fit_data = ["flux", "vis", "t3"]
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*.fits"))
+fits_files = [x for x in fits_files if x.name != "HD_142527_2022-03-23T08_20_55_U1U2U3U4_N_TARGET_FINALCAL_INT_FLAG.fits"]
 data = set_data(
     fits_files,
     wavelengths=wls,
@@ -125,7 +126,7 @@ shared_params = {
 }
 
 star = Point(label="Star", fr=flux_star, **shared_params)
-first = TempGrad(
+first = AsymTempGrad(
     label="First Zone",
     # r=r1,
     # phi=phi1,
@@ -133,19 +134,19 @@ first = TempGrad(
     rout=rout1,
     p=p1,
     sigma0=sigma01,
-    # rho1=rho11,
-    # theta1=theta11,
+    rho1=rho11,
+    theta1=theta11,
     **shared_params,
 )
-second = TempGrad(
+second = AsymTempGrad(
     label="Second Zone",
     r=r2,
     phi=phi2,
     rin=rin2,
     rout=rout2,
     p=p2,
-    # sigma0=sigma02,
-    # rho1=rho21,
+    sigma0=sigma02,
+    rho1=rho21,
     theta1=theta21,
     **shared_params,
 )
