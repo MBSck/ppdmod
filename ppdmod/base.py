@@ -201,7 +201,7 @@ class FourierComponent(Component):
         """Computes the image."""
         wl = wl[np.newaxis, np.newaxis]
         xx = np.linspace(-0.5, 0.5, dim) * pixel_size * dim
-        xxs, yys = translate_image_func(*np.meshgrid(xx, xx), self.x, self.y)
-        xxt, yyt = transform_coordinates(xxs, yys, self.cinc(), self.pa(), axis="x")
-        image = self.image_func(xxt, yyt, pixel_size, wl)
+        xxt, yyt = transform_coordinates(*np.meshgrid(xx, xx), self.cinc(), self.pa(), axis="x")
+        xxs, yys = translate_image_func(xxt, yyt, self.x, self.y)
+        image = self.image_func(xxs, yys, pixel_size, wl)
         return (self.fr(wl) * image).value.astype(OPTIONS.data.dtype.real)
