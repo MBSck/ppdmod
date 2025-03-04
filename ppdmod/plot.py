@@ -80,7 +80,7 @@ def plot_components(
     components: List[FourierComponent],
     dim: int,
     pixel_size: u.mas,
-    wl: u.um,
+    wls: float | List[float],
     norm: float = 0.5,
     save_as_fits: bool = False,
     zoom: float | None = None,
@@ -91,25 +91,38 @@ def plot_components(
 ) -> Tuple[Axes]:
     """Plots a component."""
     components = [components] if not isinstance(components, list) else components
-    wl, pixel_size = u.Quantity(wl, unit=u.um), u.Quantity(pixel_size, unit=u.mas)
-    image = sum([comp.compute_image(dim, pixel_size, wl) for comp in components])[0]
+    pixel_size = u.Quantity(pixel_size, unit=u.mas)
+    if not isinstance(wls, (list, tuple, np.ndarray)):
+        wls = [wls]
 
-    if any(hasattr(component, "dist") for component in components):
-        dist = [component for component in components if hasattr(component, "dist")][
-            0
-        ].dist()
-        pixel_size = (pixel_size.to(u.arcsec) * dist.to(u.pc)).value
+    images = []
+    for wl in u.Quantity(wls, unit=u.um):
+        images.append(
+            sum([comp.compute_image(dim, pixel_size, wl) for comp in components])[0]
+        )
 
-    extent = u.Quantity([sign * dim * pixel_size / 2 for sign in [-1, 1, 1, -1]])
+    images = np.array(images)
+
     if save_as_fits:
-        wcs = WCS(naxis=2)
-        wcs.wcs.crpix = (dim / 2, dim / 2)
-        wcs.wcs.cdelt = (pixel_size * u.mas.to(u.rad), pixel_size * u.mas.to(u.rad))
-        wcs.wcs.crval = (0.0, 0.0)
-        wcs.wcs.cunit = (u.rad, u.rad)
-        hdu = fits.HDUList([fits.PrimaryHDU(image, header=wcs.to_header())])
+        wcs = WCS(naxis=3)
+        wcs.wcs.crpix = (dim / 2, dim / 2, 1.0)
+        wcs.wcs.cdelt = (
+            pixel_size.to(u.rad).value,
+            pixel_size.to(u.rad).value,
+            np.diff(wls)[0],
+        )
+        wcs.wcs.crval = (0.0, 0.0, wls[0])
+        wcs.wcs.cunit = ("RAD", "RAD", "MICRON")
+        hdu = fits.HDUList([fits.PrimaryHDU(images, header=wcs.to_header())])
         hdu.writeto(savefig, overwrite=True)
     else:
+        if any(hasattr(component, "dist") for component in components):
+            dist = [
+                component for component in components if hasattr(component, "dist")
+            ][0].dist()
+            pixel_size = (pixel_size.to(u.arcsec) * dist.to(u.pc)).value
+
+        extent = u.Quantity([sign * dim * pixel_size / 2 for sign in [-1, 1, 1, -1]])
         if ax is None:
             _, ax = plt.subplots(1, 1)
 
@@ -140,7 +153,7 @@ def plot_components(
             ax.text(
                 0.18,
                 0.95,
-                rf"$\lambda$ = {wl.value if isinstance(wl, u.Quantity) else wl} "
+                rf"$\lambda$ = {wls.value if isinstance(wls, u.Quantity) else wls} "
                 + r"$\mathrm{\mu}$m",
                 transform=ax.transAxes,
                 fontsize=12,
