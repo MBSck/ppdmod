@@ -46,12 +46,18 @@ wls = {
     "mband": windowed_linspace(4.6, 5, 0.2) * u.um,
     "nband": windowed_linspace(8, 13, 0.2) * u.um,
 }
-bands = ["hband", "kband", "lband", "mband", "nband"]
+# bands = ["hband", "kband", "lband", "mband", "nband"]
+bands = ["nband"]
 wls = np.concatenate([wls[band] for band in bands])
 
 fit_data = ["flux", "vis", "t3"]
 fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*.fits"))
-fits_files = [x for x in fits_files if x.name != "HD_142527_2022-03-23T08_20_55_U1U2U3U4_N_TARGET_FINALCAL_INT_FLAG.fits"]
+fits_files = [
+    x
+    for x in fits_files
+    if x.name
+    != "HD_142527_2022-03-23T08_20_55_U1U2U3U4_N_TARGET_FINALCAL_INT_FLAG.fits"
+]
 data = set_data(
     fits_files,
     wavelengths=wls,
