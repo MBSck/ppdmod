@@ -146,15 +146,11 @@ class FourierComponent(Component):
             getattr(self, f"rho{i}").free = value
             getattr(self, f"theta{i}").free = value
 
-    def compute_internal_grid(
-        self, dim: int, pixel_size: u.au
-    ) -> Tuple[u.Quantity[u.au], u.Quantity[u.au]]:
+    def compute_internal_grid( self) -> Tuple[u.Quantity[u.au], u.Quantity[u.au]]:
         """Calculates the model grid.
 
         Parameters
         ----------
-        dim : float, optional
-        pixel_size : float, optional
 
         Returns
         -------
@@ -187,7 +183,7 @@ class FourierComponent(Component):
         vis = vis.reshape(vis.shape[:-1]) if vis.shape[-1] == 1 else vis
 
         if self.name != "Point":
-            vis *= self.fr(wl)
+            vis *= self.fr(wl).value
 
         return (vis * shift).astype(OPTIONS.data.dtype.complex)
 

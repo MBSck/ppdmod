@@ -82,9 +82,9 @@ class Point(FourierComponent):
 
     def flux_func(self, wl: u.um) -> np.ndarray:
         """Computes the flux of the star."""
-        fr = self.fr(wl)
-        if not isinstance(fr.value, (tuple, list, np.ndarray)):
-            fr = np.array([fr.value])[:, np.newaxis] * fr.unit
+        fr = self.fr(wl).value
+        if not isinstance(fr, (tuple, list, np.ndarray)):
+            fr = np.array([fr])[:, np.newaxis]
         else:
             fr = fr.reshape((wl.size, 1))
         return fr
@@ -170,9 +170,7 @@ class Ring(FourierComponent):
             for i in range(1, OPTIONS.model.modulation + 1):
                 rho, theta = getattr(self, f"rho{i}")(), getattr(self, f"theta{i}")()
                 mod_amps.append((-1j) ** i * rho)
-                cos_diff.append(
-                    np.cos(i * compare_angles(psi.value, theta.to(u.rad).value))
-                )
+                cos_diff.append(np.cos(i * compare_angles(psi.value, theta.to(u.rad).value)))
                 bessel_funcs.append(partial(jv, i))
 
             mod_amps = np.array(mod_amps)
@@ -264,12 +262,7 @@ class Ring(FourierComponent):
             polar_angle, modulations = np.arctan2(yy, xx), []
             for i in range(1, OPTIONS.model.modulation + 1):
                 rho, theta = getattr(self, f"rho{i}")(), getattr(self, f"theta{i}")()
-                modulations.append(
-                    rho
-                    * np.cos(
-                        compare_angles(theta.to(u.rad).value, i * polar_angle.value)
-                    )
-                )
+                modulations.append(rho * np.cos(compare_angles(theta.to(u.rad).value, i * polar_angle.value)))
 
             modulations = u.Quantity(modulations)
             image = image * (1 + np.sum(modulations, axis=0))

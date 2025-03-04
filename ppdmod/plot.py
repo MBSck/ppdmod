@@ -1158,9 +1158,7 @@ def plot_products(
     save_dir: Path | None = None,
 ) -> None:
     """Plots the intermediate products of the model (temperature, density, etc.)."""
-    wavelength = (
-        u.Quantity(wavelength, u.um) if wavelength is not None else OPTIONS.fit.wls
-    )
+    wl = wavelength if wavelength is not None else OPTIONS.fit.wls
     wavelengths = np.linspace(wavelength[0], wavelength[-1], dim)
     component_labels = [
         " ".join(map(str.title, label.split("_"))) for label in component_labels
@@ -1182,7 +1180,6 @@ def plot_products(
             label=label,
         )
         fluxes.append(flux)
-
         if component.name == "Point":
             continue
 
