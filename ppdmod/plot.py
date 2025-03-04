@@ -596,7 +596,7 @@ def plot_data_vs_model(
 ):
     """Plots the data versus the model or just the data if not model data given."""
     upper_ax, lower_ax = set_axis_information(axarr, key, ylims, cinc)
-    colormap, alpha = get_colormap(colormap), 1 if lower_ax is None else 0.7
+    colormap, alpha = get_colormap(colormap), 1 if lower_ax is None else 0.55
     hline_color = "gray" if OPTIONS.plot.color.background == "white" else "white"
     errorbar_params, scatter_params = OPTIONS.plot.errorbar, OPTIONS.plot.scatter
     if OPTIONS.plot.color.background == "black":
@@ -630,7 +630,6 @@ def plot_data_vs_model(
             grid[index],
             band_value[index],
             band_err[index],
-            alpha=alpha,
             fmt="o",
             **vars(errorbar_params),
         )
@@ -640,8 +639,10 @@ def plot_data_vs_model(
                 grid[index],
                 band_model_data[index],
                 marker="X",
+                alpha=alpha,
                 **vars(scatter_params),
             )
+            upper_ax.axhline(0, color="grey", linestyle="--")
 
             if key == "t3":
                 residuals = np.rad2deg(
