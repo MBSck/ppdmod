@@ -12,12 +12,13 @@ os.environ["NUMEXPR_NUM_THREADS"] = "1"
 import astropy.units as u
 import numpy as np
 
-from ppdmod.components import TempGrad, AsymTempGrad, Point
+from ppdmod.components import AsymTempGrad, Point, TempGrad
 from ppdmod.data import set_data
 from ppdmod.fitting import (
     compute_interferometric_chi_sq,
     get_best_fit,
     get_labels,
+    get_theta,
     run_fit,
     set_components_from_theta,
 )
@@ -126,9 +127,9 @@ shared_params = {
     "cinc": cinc,
     "q": q,
     "temp0": temp0,
-    # "flux_lnf": flux_lnf,
-    # "vis_lnf": vis_lnf,
-    # "t3_lnf": t3_lnf,
+    "flux_lnf": flux_lnf,
+    "vis_lnf": vis_lnf,
+    "t3_lnf": t3_lnf,
 }
 
 star = Point(label="Star", fr=flux_star, **shared_params)
@@ -157,7 +158,7 @@ second = TempGrad(
     **shared_params,
 )
 
-OPTIONS.model.components = components = [star, first, second]
+breakpoint()
 
 if __name__ == "__main__":
     labels = get_labels(components)
@@ -168,7 +169,7 @@ if __name__ == "__main__":
     )
     fit_params = {"dlogz_init": 0.01, "nlive_init": 1500, "nlive_batch": 150}
     ncores = fit_params.get("nwalkers", 150) // 2
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=RESULT_DIR, debug=False)
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=RESULT_DIR, debug=True)
     theta, uncertainties = get_best_fit(sampler, discard=fit_params.get("discard", 0))
     components = OPTIONS.model.components = set_components_from_theta(theta)
     np.save(RESULT_DIR / "theta.npy", theta)
@@ -182,7 +183,9 @@ if __name__ == "__main__":
         theta.size,
         method="linear",
         reduced=True,
-    )[0]
-    print(f"Total reduced chi_sq: {rchi_sq:.2f}")
+    )
+    print(f"Total reduced chi_sq: {rchi_sq[0]:.2f}")
     with open(RESULT_DIR / "chi_sq.txt", "wb") as file:
-        file.write(f"Total reduced chi_sq: {rchi_sq:.2f}".encode())
+        file.write(f"Total reduced chi_sq: {rchi_sq[0]:.2f}".encode())
+        for name, val in zip(fit_data, rchi_sq[1:]):
+            file.write(f"{name} reduced chi_sq: {val:.2f}".encode())
