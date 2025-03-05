@@ -44,7 +44,7 @@ wls = {
     "kband": [2.15] * u.um,
     "lband": windowed_linspace(3, 4, 0.2) * u.um,
     "mband": windowed_linspace(4.6, 5, 0.2) * u.um,
-    "nband": windowed_linspace(8, 13, 0.2) * u.um,
+    "nband": windowed_linspace(8, 13, 0.1) * u.um,
 }
 # bands = ["hband", "kband", "lband", "mband", "nband"]
 bands = ["nband"]
