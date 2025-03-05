@@ -262,7 +262,7 @@ def clear_data() -> List[str]:
     return ["flux", "vis", "vis2", "t3"]
 
 
-def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> None:
+def read_data(data_to_read: List[str], wavelengths: u.um) -> None:
     """Reads in the data from the keys."""
     OPTIONS.data.nB = []
     for readout in OPTIONS.data.readouts:
@@ -272,10 +272,6 @@ def read_data(data_to_read: List[str], wavelengths: u.um, min_err: float) -> Non
             val, err = readout.get_data_for_wavelength(
                 wavelengths, key, OPTIONS.data.do_bin
             )
-            if key in ["vis", "vis2", "t3"]:
-                ind = np.where(np.ma.abs(err / val) < min_err)
-                err[ind] = np.ma.abs(val[ind]) * min_err
-
             if data.val.size == 0:
                 data.val, data.err = val, err
             else:
@@ -377,22 +373,6 @@ def average_data(average: bool) -> None:
         OPTIONS.data.flux.err = flux_err_averaged[:, np.newaxis]
 
 
-def correct_data_errors(
-    data_to_read: List[str], wavelengths: u.um, set_std_err: List[str], min_err: float
-) -> None:
-    """Corrects the errors for the data."""
-    for key in data_to_read:
-        data = getattr(OPTIONS.data, key)
-        bands = np.array(list(map(get_band, wavelengths)))
-        for band in set_std_err:
-            ind = np.where(band == bands)[0]
-            band_data = data.value[ind, :]
-            band_std = np.tile(np.std(band_data, axis=0), (band_data.shape[0], 1))
-            err_ind = np.where(np.abs(band_std / band_data) < min_err)
-            band_std[err_ind] = np.abs(band_data[err_ind]) * min_err
-            data.err[ind, :] = band_std
-
-
 def set_data(
     fits_files: List[Path] | None = None,
     wavelengths: str | u.Quantity[u.um] | None = None,
@@ -451,11 +431,8 @@ def set_data(
         raise ValueError("No wavelengths given and/or not 'all' specified!")
 
     wavelengths = set_fit_wavelengths(wavelengths)
-    read_data(data_to_read, wavelengths, min_err)
+    read_data(data_to_read, wavelengths)
     average_data(average)
-
-    if set_std_err is not None:
-        correct_data_errors(data_to_read, wavelengths, set_std_err, min_err)
 
     if weights is not None:
         OPTIONS.fit.weights = SimpleNamespace(**weights)
