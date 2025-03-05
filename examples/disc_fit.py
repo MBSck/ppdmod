@@ -31,7 +31,7 @@ from ppdmod.utils import (
 )
 
 DATA_DIR = Path(__file__).parent.parent / "data"
-RESULT_DIR_NAME = "constrained_shift"
+RESULT_DIR_NAME = "small_err_correct_err_shift"
 if RESULT_DIR_NAME is None:
     RESULT_DIR_NAME = f"results_model_{datetime.now().strftime('%H:%M:%S')}"
 
@@ -158,7 +158,7 @@ second = TempGrad(
     **shared_params,
 )
 
-breakpoint()
+OPTIONS.components = components = [star, first, second]
 
 if __name__ == "__main__":
     labels = get_labels(components)
@@ -169,7 +169,7 @@ if __name__ == "__main__":
     )
     fit_params = {"dlogz_init": 0.01, "nlive_init": 1500, "nlive_batch": 150}
     ncores = fit_params.get("nwalkers", 150) // 2
-    sampler = run_fit(**fit_params, ncores=ncores, save_dir=RESULT_DIR, debug=True)
+    sampler = run_fit(**fit_params, ncores=ncores, save_dir=RESULT_DIR, debug=False)
     theta, uncertainties = get_best_fit(sampler, discard=fit_params.get("discard", 0))
     components = OPTIONS.model.components = set_components_from_theta(theta)
     np.save(RESULT_DIR / "theta.npy", theta)
