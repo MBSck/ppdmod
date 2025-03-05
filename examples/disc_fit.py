@@ -158,7 +158,7 @@ second = TempGrad(
     **shared_params,
 )
 
-OPTIONS.components = components = [star, first, second]
+OPTIONS.model.components = components = [star, first, second]
 
 if __name__ == "__main__":
     labels = get_labels(components)
