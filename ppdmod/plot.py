@@ -27,6 +27,7 @@ from .utils import (
     compare_angles,
     get_band,
     transform_coordinates,
+    translate_vis,
 )
 
 
@@ -74,6 +75,59 @@ def set_legend_color(legend: Legend, background_color: str) -> None:
     opposite_color = "white" if background_color == "black" else "black"
     plt.setp(legend.get_texts(), color=opposite_color)
     legend.get_frame().set_facecolor(background_color)
+
+
+def make_2D_fourier(
+    components: List[FourierComponent],
+    dim: int,
+    wls: float | List[float],
+    cmap: str = "inferno",
+    longest_baseline: float | int = 200,
+    savefig: Path | None = None,
+) -> None:
+    if not isinstance(wls, (list, tuple, np.ndarray)):
+        wls = [wls]
+
+    wls = u.Quantity(wls, unit=u.um)
+    ucoord = np.linspace(-1, 1, dim, endpoint=False) * longest_baseline
+    uu, vv = np.meshgrid(ucoord, ucoord)
+
+    complex_vis = np.zeros((wls.shape[0], *uu.shape)).astype(complex)
+    for comp in components:
+        ut, vt = transform_coordinates(uu, vv, comp.cinc(), comp.pa())
+        utb = ut / wls.to(u.m).value[:, np.newaxis, np.newaxis] / u.rad
+        vtb = vt / wls.to(u.m).value[:, np.newaxis, np.newaxis] / u.rad
+        spf, psi = np.hypot(utb, vtb), np.arctan2(uu, vv)[np.newaxis, ...] * u.rad
+        vis = comp.vis_func(
+            spf[..., np.newaxis], psi[..., np.newaxis], wls[:, np.newaxis]
+        )
+        if vis.shape[-1] == 1:
+            vis = vis.reshape(vis.shape[:-1])
+
+        shift = translate_vis(
+            utb.value, vtb.value, comp.x.to(u.rad).value, comp.y.to(u.rad).value
+        )
+        if shift.shape[-1] == 1:
+            shift = shift.reshape(shift.shape[:-1])
+
+        complex_vis += vis * shift
+
+    vis, phase = np.abs(complex_vis), np.angle(complex_vis, deg=True)
+    vis /= vis.max()
+    wcs = WCS(naxis=3)
+    wcs.wcs.crpix = (dim / 2, dim / 2, 1.0)
+    wcs.wcs.cdelt = (
+        np.diff(np.abs(ucoord))[0],
+        np.diff(np.abs(ucoord))[0],
+        np.diff(wls.value)[0],
+    )
+    wcs.wcs.crval = (0.0, 0.0, wls.value[0])
+    wcs.wcs.cunit = ("METER", "METER", "MICRON")
+    hdu = fits.HDUList([fits.PrimaryHDU(vis, header=wcs.to_header())])
+    hdu.writeto(savefig / "visamp.fits", overwrite=True)
+
+    hdu = fits.HDUList([fits.PrimaryHDU(phase, header=wcs.to_header())])
+    hdu.writeto(savefig / "visphi.fits", overwrite=True)
 
 
 def plot_components(
@@ -580,14 +634,25 @@ def set_axis_information(
     return upper_ax, lower_ax
 
 
+def get_band_indices(wavelengths: u.um, bands: List[str] | str) -> np.ndarray:
+    wavelength_to_bands = np.array(list(map(get_band, wavelengths.value)))
+    if bands != "all":
+        band_indices = np.where(
+            np.any([wavelength_to_bands == band for band in bands], axis=0)
+        )
+    else:
+        band_indices = np.where(wavelength_to_bands.astype(bool))[0]
+    return band_indices
+
+
 def plot_data_vs_model(
     axarr,
     wavelengths: np.ndarray,
-    value: np.ndarray,
+    val: np.ndarray,
     err: np.ndarray,
     key: str,
     baselines: np.ndarray | None = None,
-    model_data: np.ndarray | None = None,
+    model_val: np.ndarray | None = None,
     colormap: str = OPTIONS.plot.color.colormap,
     bands: List[str] | str = "all",
     cinc=None,
@@ -603,41 +668,30 @@ def plot_data_vs_model(
         errorbar_params.markeredgecolor = "white"
         scatter_params.edgecolor = "white"
 
-    wavelength_to_bands = np.array(list(map(get_band, wavelengths.value)))
-    band_indices = np.where(wavelength_to_bands.astype(bool))[0]
-    if bands != "all":
-        band_indices = np.where(
-            np.any([wavelength_to_bands == band for band in bands], axis=0)
-        )
-
-    band_wl = wavelengths[band_indices]
-    band_value, band_err = value[band_indices], err[band_indices]
-    if model_data is not None:
-        band_model_data = np.ma.masked_array(
-            model_data[band_indices], mask=band_value.mask
-        )
+    if model_val is not None:
+        model_val = np.ma.masked_array(model_val, mask=val.mask)
 
     set_axes_color(upper_ax, OPTIONS.plot.color.background)
-    color = colormap(norm(band_wl.value))
+    color = colormap(norm(wavelengths.value))
     if baselines is None:
-        grid = [wl.repeat(band_value.shape[-1]) for wl in band_wl.value]
+        grid = [wl.repeat(val.shape[-1]) for wl in wavelengths.value]
     else:
-        grid = baselines / band_wl.value[:, np.newaxis]
+        grid = baselines / wavelengths.value[:, np.newaxis]
 
-    for index, _ in enumerate(band_wl.value):
+    for index, _ in enumerate(wavelengths.value):
         errorbar_params.color = scatter_params.color = color[index]
         upper_ax.errorbar(
             grid[index],
-            band_value[index],
-            band_err[index],
+            val[index],
+            err[index],
             fmt="o",
             **vars(errorbar_params),
         )
 
-        if model_data is not None and lower_ax is not None:
+        if model_val is not None and lower_ax is not None:
             upper_ax.scatter(
                 grid[index],
-                band_model_data[index],
+                model_val[index],
                 marker="X",
                 alpha=alpha,
                 **vars(scatter_params),
@@ -647,17 +701,17 @@ def plot_data_vs_model(
             if key == "t3":
                 residuals = np.rad2deg(
                     compare_angles(
-                        np.deg2rad(band_value[index]),
-                        np.deg2rad(band_model_data[index]),
+                        np.deg2rad(val[index]),
+                        np.deg2rad(model_val[index]),
                     )
                 )
             else:
-                residuals = band_value[index] - band_model_data[index]
+                residuals = val[index] - model_val[index]
 
             lower_ax.errorbar(
                 grid[index],
                 residuals,
-                band_err[index],
+                err[index],
                 fmt="o",
                 **vars(errorbar_params),
             )
@@ -668,9 +722,9 @@ def plot_data_vs_model(
     elif key == "vis2":
         ylim = ylims.get(key, [0, 1])
     else:
-        value = OPTIONS.data.t3.val
-        lower_bound = np.ma.min(value) + np.ma.min(value) * 0.25
-        upper_bound = np.ma.max(value) + np.ma.max(value) * 0.25
+        val = OPTIONS.data.t3.val
+        lower_bound = np.ma.min(val) + np.ma.min(val) * 0.25
+        upper_bound = np.ma.max(val) + np.ma.max(val) * 0.25
         ylim = ylims.get("t3", [lower_bound, upper_bound])
 
     upper_ax.set_ylim(ylim)
@@ -773,7 +827,7 @@ def plot_fit(
             "flux",
             ylims=ylims,
             bands=bands,
-            model_data=model_flux,
+            model_val=model_flux,
             cinc=cinc,
             **plot_kwargs,
         )
@@ -789,7 +843,7 @@ def plot_fit(
             ylims=ylims,
             bands=bands,
             baselines=baselines[:, 1:],
-            model_data=model_vis,
+            model_val=model_vis,
             cinc=cinc,
             **plot_kwargs,
         )
@@ -806,7 +860,7 @@ def plot_fit(
             ylims=ylims,
             bands=bands,
             baselines=baselines,
-            model_data=model_t3,
+            model_val=model_t3,
             cinc=cinc,
             **plot_kwargs,
         )

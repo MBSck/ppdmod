@@ -91,8 +91,8 @@ class Point(FourierComponent):
 
     def vis_func(self, spf: 1 / u.rad, psi: u.rad, wl: u.um, **kwargs) -> np.ndarray:
         """Computes the complex visibility."""
-        new_shape = (-1,) + (1,) * (len(spf.shape) - 1)
-        vis = np.tile(self.flux_func(wl).reshape(new_shape), spf.shape[1:])
+        vis = np.zeros_like(spf).value
+        vis[:] = self.flux_func(wl)[(...,) + (len(vis.shape[1:]) - 1) * (np.newaxis,)]
         return vis.astype(OPTIONS.data.dtype.complex)
 
     def image_func(
@@ -170,7 +170,9 @@ class Ring(FourierComponent):
             for i in range(1, OPTIONS.model.modulation + 1):
                 rho, theta = getattr(self, f"rho{i}")(), getattr(self, f"theta{i}")()
                 mod_amps.append((-1j) ** i * rho)
-                cos_diff.append(np.cos(i * compare_angles(psi.value, theta.to(u.rad).value)))
+                cos_diff.append(
+                    np.cos(i * compare_angles(psi.value, theta.to(u.rad).value))
+                )
                 bessel_funcs.append(partial(jv, i))
 
             mod_amps = np.array(mod_amps)
@@ -210,6 +212,8 @@ class Ring(FourierComponent):
             if intensity_func is None:
                 vis = np.trapezoid(vis, radius)
             else:
+                if len(vis.shape) >= 4:
+                    intensity = intensity[..., np.newaxis, :]
                 vis = np.trapezoid(radius * intensity * vis, radius).to(u.Jy)
 
             if intensity_func is None:
@@ -262,7 +266,12 @@ class Ring(FourierComponent):
             polar_angle, modulations = np.arctan2(yy, xx), []
             for i in range(1, OPTIONS.model.modulation + 1):
                 rho, theta = getattr(self, f"rho{i}")(), getattr(self, f"theta{i}")()
-                modulations.append(rho * np.cos(compare_angles(theta.to(u.rad).value, i * polar_angle.value)))
+                modulations.append(
+                    rho
+                    * np.cos(
+                        compare_angles(theta.to(u.rad).value, i * polar_angle.value)
+                    )
+                )
 
             modulations = u.Quantity(modulations)
             image = image * (1 + np.sum(modulations, axis=0))

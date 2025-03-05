@@ -8,8 +8,8 @@ from .options import OPTIONS
 from .parameter import Parameter
 from .utils import (
     transform_coordinates,
-    translate_image_func,
-    translate_vis_func,
+    translate_image,
+    translate_vis,
 )
 
 
@@ -175,7 +175,7 @@ class FourierComponent(Component):
         vtb = (vt / wl.to(u.m)).value[..., np.newaxis] / u.rad
         spf, psi = np.hypot(utb, vtb), np.arctan2(utb, vtb)
 
-        shift = translate_vis_func(
+        shift = translate_vis(
             utb.value, vtb.value, self.x.to(u.rad).value, self.y.to(u.rad).value
         )
         shift = shift.reshape(shift.shape[:-1]) if shift.shape[-1] == 1 else shift
@@ -198,6 +198,6 @@ class FourierComponent(Component):
         wl = wl[np.newaxis, np.newaxis]
         xx = np.linspace(-0.5, 0.5, dim) * pixel_size * dim
         xxt, yyt = transform_coordinates(*np.meshgrid(xx, xx), self.cinc(), self.pa(), axis="x")
-        xxs, yys = translate_image_func(xxt, yyt, self.x, self.y)
+        xxs, yys = translate_image(xxt, yyt, self.x, self.y)
         image = self.image_func(xxs, yys, pixel_size, wl)
         return (self.fr(wl) * image).value.astype(OPTIONS.data.dtype.real)

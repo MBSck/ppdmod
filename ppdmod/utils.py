@@ -279,7 +279,7 @@ def transform_coordinates(
     return xt, yt
 
 
-def translate_vis_func(
+def translate_vis(
     ucoord: np.ndarray, vcoord: np.ndarray, x: float, y: float
 ) -> np.ndarray:
     """Translates a coordinate shift in image space to Fourier space.
@@ -291,7 +291,7 @@ def translate_vis_func(
     return translation.astype(OPTIONS.data.dtype.complex)
 
 
-def translate_image_func(
+def translate_image(
     xx: np.ndarray, yy: np.ndarray, x: float, y: float
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Shifts the coordinates in image space according to an offset."""
