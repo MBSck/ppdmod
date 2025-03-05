@@ -151,9 +151,9 @@ second = TempGrad(
     rin=rin2,
     rout=rout2,
     p=p2,
-    # sigma0=sigma02,
+    sigma0=sigma02,
     # rho1=rho21,
-    theta1=theta21,
+    # theta1=theta21,
     **shared_params,
 )
 
