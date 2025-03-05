@@ -51,7 +51,7 @@ bands = ["nband"]
 wls = np.concatenate([wls[band] for band in bands])
 
 fit_data = ["flux", "vis", "t3"]
-fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*.fits"))
+fits_files = list((DATA_DIR / "fits" / "hd142527").glob("*_N_*.fits"))
 fits_files = [
     x
     for x in fits_files
