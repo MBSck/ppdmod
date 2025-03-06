@@ -158,15 +158,25 @@ def plot_components(
     images = np.array(images)
 
     if save_as_fits:
-        wcs = WCS(naxis=3)
-        wcs.wcs.crpix = (dim / 2, dim / 2, 1.0)
-        wcs.wcs.cdelt = (
-            pixel_size.to(u.rad).value,
-            pixel_size.to(u.rad).value,
-            np.diff(wls)[0],
-        )
-        wcs.wcs.crval = (0.0, 0.0, wls[0])
-        wcs.wcs.cunit = ("RAD", "RAD", "MICRON")
+        naxis = 2
+        crpix = (dim / 2,) * naxis
+        cdelt = (pixel_size.to(u.rad).value,) * naxis
+        crval = (0.0,) * naxis
+        cunit = ("rad",) * naxis
+        if len(wls) > 1:
+            naxis += 1
+            crpix += (1.0,)
+            cdelt += (np.diff(wls)[0],)
+            crval += (wls[0],)
+            cunit += ("micron",)
+        else:
+            images = images[0]
+
+        wcs = WCS(naxis=naxis)
+        wcs.wcs.crpix = crpix
+        wcs.wcs.cdelt = cdelt
+        wcs.wcs.crval = crval
+        wcs.wcs.cunit = cunit
         hdu = fits.HDUList([fits.PrimaryHDU(images, header=wcs.to_header())])
         hdu.writeto(savefig, overwrite=True)
     else:
