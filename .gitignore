@@ -12,6 +12,7 @@ build/
 *.exe
 *typed
 cython_src/*.c
+*.fits
 
 # Sensitive Data
 data/fits
