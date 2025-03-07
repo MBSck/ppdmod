@@ -196,7 +196,7 @@ class FourierComponent(Component):
     def compute_image(self, dim: int, pixel_size: u.mas, wl: u.um) -> np.ndarray:
         """Computes the image."""
         wl = wl[np.newaxis, np.newaxis]
-        xx = np.linspace(-0.5, 0.5, dim) * pixel_size * dim
+        xx = np.linspace(-0.5, 0.5, dim, endpoint=False) * pixel_size * dim
         xxt, yyt = transform_coordinates(*np.meshgrid(xx, xx), self.cinc(), self.pa(), axis="x")
         xxs, yys = translate_image(xxt, yyt, self.x, self.y)
         image = self.image_func(xxs, yys, pixel_size, wl)

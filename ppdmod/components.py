@@ -242,8 +242,8 @@ class Ring(FourierComponent):
         image : astropy.units.Jy
         """
         if self.rin.unit == u.au:
-            xx = (xx.to(u.arcsec) * self.dist().to(u.pc)).value * u.au
-            yy = (yy.to(u.arcsec) * self.dist().to(u.pc)).value * u.au
+            xx = (xx * 1e-3 * self.dist()).value * u.au
+            yy = (yy * 1e-3 * self.dist()).value * u.au
 
         radius = np.hypot(xx, yy)[np.newaxis, ...]
         dx = np.max([np.diff(xx), np.diff(yy)]) * self.rin.unit
@@ -253,7 +253,7 @@ class Ring(FourierComponent):
         radial_profile = (radius >= self.rin()) & (radius <= (self.rin() + dx))
         intensity_func = kwargs.pop("intensity_func", None)
         if intensity_func is None:
-            intensity = 1 / (2 * np.pi)
+            intensity = 1 / (2 * np.pi * dx.value)
         else:
             intensity = (
                 intensity_func(radius, wl).to(u.erg / (u.cm**2 * u.rad**2 * u.s * u.Hz))

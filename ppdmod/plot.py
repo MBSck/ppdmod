@@ -114,20 +114,29 @@ def make_2D_fourier(
 
     vis, phase = np.abs(complex_vis), np.angle(complex_vis, deg=True)
     vis /= vis.max()
-    wcs = WCS(naxis=3)
-    wcs.wcs.crpix = (dim / 2, dim / 2, 1.0)
-    wcs.wcs.cdelt = (
-        np.diff(np.abs(ucoord))[0],
-        np.diff(np.abs(ucoord))[0],
-        np.diff(wls.value)[0],
-    )
-    wcs.wcs.crval = (0.0, 0.0, wls.value[0])
-    wcs.wcs.cunit = ("METER", "METER", "MICRON")
-    hdu = fits.HDUList([fits.PrimaryHDU(vis, header=wcs.to_header())])
-    hdu.writeto(savefig / "visamp.fits", overwrite=True)
 
-    hdu = fits.HDUList([fits.PrimaryHDU(phase, header=wcs.to_header())])
-    hdu.writeto(savefig / "visphi.fits", overwrite=True)
+    naxis = 2
+    crpix = (dim / 2,) * naxis
+    cdelt = (np.diff(np.abs(ucoord))[0]) * naxis
+    crval = (0.0,) * naxis
+    cunit = ("rad",) * naxis
+    if len(wls) > 1:
+        naxis += 1
+        crpix += (1.0,)
+        cdelt += (np.diff(wls)[0],)
+        crval += (wls[0],)
+        cunit += ("meter",)
+    else:
+        vis, phase = vis[0], phase[0]
+
+    # TODO: Make sure the orientation here is correct
+    wcs = WCS(naxis=naxis)
+    wcs.wcs.crpix = crpix
+    wcs.wcs.cdelt = cdelt
+    wcs.wcs.crval = crval
+    wcs.wcs.cunit = cunit
+    hdu = fits.HDUList([fits.PrimaryHDU(vis, header=wcs.to_header())])
+    hdu.writeto(savefig, overwrite=True)
 
 
 def plot_components(
