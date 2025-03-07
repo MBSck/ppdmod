@@ -186,6 +186,6 @@ if __name__ == "__main__":
     )
     print(f"Total reduced chi_sq: {rchi_sq[0]:.2f}")
     with open(RESULT_DIR / "chi_sq.txt", "wb") as file:
-        file.write(f"Total reduced chi_sq: {rchi_sq[0]:.2f}".encode())
+        file.write(f"Total reduced chi_sq: {rchi_sq[0]:.2f}\n".encode())
         for name, val in zip(fit_data, rchi_sq[1:]):
-            file.write(f"{name} reduced chi_sq: {val:.2f}".encode())
+            file.write(f"{name} reduced chi_sq: {val:.2f}\n".encode())
