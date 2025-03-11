@@ -131,9 +131,9 @@ shared_params = {
     "cinc": cinc,
     "q": q,
     "temp0": temp0,
-    "flux_lnf": flux_lnf,
-    "vis_lnf": vis_lnf,
-    "t3_lnf": t3_lnf,
+    # "flux_lnf": flux_lnf,
+    # "vis_lnf": vis_lnf,
+    # "t3_lnf": t3_lnf,
 }
 
 star = Point(label="Star", fr=flux_star, **shared_params)
