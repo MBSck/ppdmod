@@ -59,13 +59,17 @@ fits_files = [
     if x.name
     != "HD_142527_2022-03-23T08_20_55_U1U2U3U4_N_TARGET_FINALCAL_INT_FLAG.fits"
 ]
+wls = "all"
+weights = "ndata"
 data = set_data(
     fits_files,
     wavelengths=wls,
+    weights=weights,
     fit_data=fit_data,
 )
 
-np.save(RESULT_DIR / "wl.npy", wls.value)
+np.save(RESULT_DIR / "weights.npy", weights)
+np.save(RESULT_DIR / "wl.npy", wls.value if not isinstance(wls, str) else wls)
 np.save(RESULT_DIR / "observables.npy", fit_data)
 np.save(RESULT_DIR / "files.npy", [fits_file.name for fits_file in fits_files])
 

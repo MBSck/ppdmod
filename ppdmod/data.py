@@ -377,7 +377,7 @@ def set_data(
     fits_files: List[Path] | None = None,
     wavelengths: str | u.Quantity[u.um] | None = None,
     fit_data: List[str] = ["flux", "vis", "t3"],
-    weights: Dict[str, float] | None = None,
+    weights: Dict[str, float] | str | None = None,
     set_std_err: List[str] | None = None,
     min_err: float = 0.05,
     filter_by_array: str | None = None,
@@ -422,7 +422,6 @@ def set_data(
         )
 
     OPTIONS.data.bands = list(map(lambda x: x.band, OPTIONS.data.readouts))
-
     if wavelengths == "all":
         wavelengths = get_all_wavelengths(OPTIONS.data.readouts)
         OPTIONS.data.do_bin = True
@@ -435,6 +434,9 @@ def set_data(
     average_data(average)
 
     if weights is not None:
+        if weights == "ndata":
+            ndata = get_counts_data()
+            weights = dict(zip(OPTIONS.fit.data, (ndata / ndata.max()) ** - 1))
         OPTIONS.fit.weights = SimpleNamespace(**weights)
 
     return OPTIONS.data
