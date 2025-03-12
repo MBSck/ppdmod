@@ -115,33 +115,21 @@ class Ring(FourierComponent):
     rin : astropy.units.mas
         The inner radius of the ring
     thin : bool
-        If toggled the ring has an infinitesimal width.
-        Default is 'True'.
-    has_outer_radius : bool
-        If toggled the ring has an outer radius instead of
-        a width.
-        Default is 'False'.
-    width : astropy.units.mas
-        The width of the ring. Applies only for 'False' thin
-        and 'False' has outer radius.
+        If toggled the ring is infinitesimal. Default is 'True'.
     rout : astropy.units.mas
         The outer radius of the ring. Applies only for 'False' thin
     """
 
     name = "Ring"
     description = "A simple ring."
-    thin, has_outer_radius = True, False
+    thin = True
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.rin = Parameter(base="rin")
         self.rout = Parameter(base="rout")
-        self.width = Parameter(base="width")
 
         self.eval(**kwargs)
-
-        if self.has_outer_radius or self.thin:
-            self.width.free = False
 
     def compute_internal_grid(self) -> u.Quantity:
         """Computes the model grid.
@@ -150,18 +138,15 @@ class Ring(FourierComponent):
         -------
         radial_grid
         """
-        rin, dim = self.rin.value, self.dim.value
-        if self.has_outer_radius:
-            rout = self.rout.value
-        else:
-            rout = self.rin.value + self.width.value
-
+        dim = self.rin.value, self.dim.value
+        rin, rout = self.rin.value, self.rout.value
+        dim, dtype = self.dim.value, OPTIONS.data.dtype.real
         if OPTIONS.model.gridtype == "linear":
-            radius = np.linspace(rin, rout, dim)
-        else:
-            radius = np.logspace(np.log10(rin), np.log10(rout), dim)
-
-        return radius.astype(OPTIONS.data.dtype.real) * self.rin.unit
+            return np.linspace(rin, rout, dim).astype(dtype) * self.rin.unit
+        return (
+            np.logspace(np.log10(rin), np.log10(rout), dim).astype(dtype)
+            * self.rin.unit
+        )
 
     def vis_func(self, spf: 1 / u.rad, psi: u.rad, wl: u.um, **kwargs) -> np.ndarray:
         """Computes the complex visibility."""
@@ -217,10 +202,7 @@ class Ring(FourierComponent):
                 vis = np.trapezoid(radius * intensity * vis, radius).to(u.Jy)
 
             if intensity_func is None:
-                if self.has_outer_radius:
-                    vis /= (self.rout() - self.rin()).to(u.rad)
-                else:
-                    vis /= self.width().to(u.rad)
+                vis /= (self.rout() - self.rin()).to(u.rad)
             else:
                 vis *= 2 * np.pi * self.cinc()
 
@@ -248,7 +230,7 @@ class Ring(FourierComponent):
         radius = np.hypot(xx, yy)[np.newaxis, ...]
         dx = np.max([np.diff(xx), np.diff(yy)]) * self.rin.unit
         if not self.thin:
-            dx = self.rout() - self.rin() if self.has_outer_radius else self.width()
+            dx = self.rout() - self.rin()
 
         radial_profile = (radius >= self.rin()) & (radius <= (self.rin() + dx))
         intensity_func = kwargs.pop("intensity_func", None)
@@ -294,7 +276,6 @@ class TempGrad(Ring):
 
     name = "TempGrad"
     thin = False
-    has_outer_radius = True
     optically_thick = False
     const_temperature = False
     continuum_contribution = True
