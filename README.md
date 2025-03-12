@@ -1,6 +1,6 @@
 # PPDMod
-![Info]
-Active development has been moved to codeberg: https://codeberg.org/MBSck/ppdmod.git
+> [!NOTE]
+> Active development has been moved to codeberg: https://codeberg.org/MBSck/ppdmod.git
 
 ## Installation
 Run the following to install:
